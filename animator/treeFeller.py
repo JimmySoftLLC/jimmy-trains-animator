@@ -10,6 +10,7 @@ import digitalio
 import random
 import rtc
 import board
+import audiomp3
 from analogio import AnalogIn
 from rainbowio import colorwheel
 from adafruit_motor import servo
@@ -63,13 +64,8 @@ right_switch = Debouncer(switch_io_2)
 i2s_bclk = board.GP18   # BCLK on MAX98357A
 i2s_lrc = board.GP19  # LRC on MAX98357A
 i2s_din = board.GP20  # DIN on MAX98357A
-num_voices = 2
 
 audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
-
-mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True)
-audio.play(mixer)
 
 # Setup sdCard
 # the sdCard holds all the media and calibration files
@@ -85,9 +81,9 @@ try:
   vfs = storage.VfsFat(sdcard)
   storage.mount(vfs, "/sd")
 except:
-  wave0 = audiocore.WaveFile(open("microSdCardNotInserted.wav", "rb"))
-  mixer.voice[0].play( wave0, loop=False )
-  while mixer.voice[0].playing:
+  wave0 = audiomp3.MP3Decoder(open("microSdCardNotInserted.mp3", "rb"))
+  audio.play(wave0)
+  while audio.playing:
     pass
   cardInserted = False
   while not cardInserted:
@@ -98,9 +94,22 @@ except:
             vfs = storage.VfsFat(sdcard)
             storage.mount(vfs, "/sd")
             cardInserted = True
+            wave0 = audiomp3.MP3Decoder(open("microSdCardSuccess.mp3", "rb"))
+            audio.play(wave0)
+            while audio.playing:
+                pass
         except:
-            wave0 = audiocore.WaveFile(open("microSdCardNotInserted.wav", "rb"))
-            mixer.voice[0].play( wave0, loop=False )
+            wave0 = audiomp3.MP3Decoder(open("microSdCardNotInserted.mp3", "rb"))
+            audio.play(wave0)
+            while audio.playing:
+                pass
+
+# Setup the mixer it can play higher quality audio wav using larger wave files
+# wave files are less cpu intensive since they are not compressed
+num_voices = 2
+mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
+                         bits_per_sample=16, samples_signed=True)
+audio.play(mixer)
 
 ################################################################################
 # Global Variables
