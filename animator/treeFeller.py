@@ -7,7 +7,6 @@ import storage
 import busio
 import pwmio
 import digitalio
-import os
 import random
 import rtc
 import board
@@ -17,36 +16,13 @@ from adafruit_motor import servo
 from adafruit_debouncer import Debouncer
 from analogio import AnalogIn
 from adafruit_motor import servo
+from adafruit_motor import servo
+import files
 
 analog_in = AnalogIn(board.A0)
 
 def get_voltage(pin):
     return (pin.value) / 65536
-
-def print_directory(path, tabs=0):
-    for file in os.listdir(path):
-        stats = os.stat(path + "/" + file)
-        filesize = stats[6]
-        isdir = stats[0] & 0x4000
-
-        if filesize < 1000:
-            sizestr = str(filesize) + " by"
-        elif filesize < 1000000:
-            sizestr = "%0.1f KB" % (filesize / 1000)
-        else:
-            sizestr = "%0.1f MB" % (filesize / 1000000)
-
-        prettyprintname = ""
-        for _ in range(tabs):
-            prettyprintname += "   "
-        prettyprintname += file
-        if isdir:
-            prettyprintname += "/"
-        print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
-
-        # recursively print directory contents
-        if isdir:
-            print_directory(path + "/" + file, tabs + 1)
 
 # Pins
 SWITCH_0_PIN = board.GP6
@@ -85,6 +61,8 @@ spi = busio.SPI(sck, si, so)
 sdcard = sdcardio.SDCard(spi, cs)
 vfs = storage.VfsFat(sdcard)
 storage.mount(vfs, "/sd")
+
+files.print_directory(switch_0,"/sd/wav")
 
 #setup audio
 i2s_bclk = board.GP18   # BCK on PCM5102 I2S DAC (SCK pin to Gnd)
@@ -301,11 +279,6 @@ class WaitingState(State):
             my_servo2.angle = upPos
 
         if switch_1.fell:
-            
-            print("Files on filesystem:")
-            print("====================")
-            print_directory("/sd/wav")
-
             print('Just pressed 1')
             volume = get_voltage(analog_in)
             print(volume)
@@ -398,5 +371,4 @@ while True:
     pretty_state_machine.update()
     setVolume()
     sleepAndUpdateVolume(.1)
-    
     
