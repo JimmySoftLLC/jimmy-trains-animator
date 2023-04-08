@@ -52,19 +52,6 @@ switch_io_2.direction = digitalio.Direction.INPUT
 switch_io_2.pull = digitalio.Pull.UP
 right_switch = Debouncer(switch_io_2)
 
-# Setup sdCard
-# the sdCard holds all the media and calibration files
-sck = board.GP2
-si = board.GP3
-so = board.GP4
-cs = board.GP5
-spi = busio.SPI(sck, si, so)
-sdcard = sdcardio.SDCard(spi, cs)
-vfs = storage.VfsFat(sdcard)
-storage.mount(vfs, "/sd")
-
-files.print_directory(left_switch,"/sd/wav")
-
 # setup audio on the i2s bus, the animator uses the MAX98357A
 # the animator can have one or two MAX98357As. one for mono two for stereo
 # both MAX98357As share the same bus
@@ -83,6 +70,37 @@ audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
                          bits_per_sample=16, samples_signed=True)
 audio.play(mixer)
+
+# Setup sdCard
+# the sdCard holds all the media and calibration files
+# if the card is missing a voice command is spoken
+# the user inserts the card a presses the left button to move forward
+sck = board.GP2
+si = board.GP3
+so = board.GP4
+cs = board.GP5
+spi = busio.SPI(sck, si, so)
+try:
+  sdcard = sdcardio.SDCard(spi, cs)
+  vfs = storage.VfsFat(sdcard)
+  storage.mount(vfs, "/sd")
+except:
+  wave0 = audiocore.WaveFile(open("microSdCardNotInserted.wav", "rb"))
+  mixer.voice[0].play( wave0, loop=False )
+  while mixer.voice[0].playing:
+    pass
+  cardInserted = False
+  while not cardInserted:
+    left_switch.update()
+    if left_switch.fell:
+        try:
+            sdcard = sdcardio.SDCard(spi, cs)
+            vfs = storage.VfsFat(sdcard)
+            storage.mount(vfs, "/sd")
+            cardInserted = True
+        except:
+            wave0 = audiocore.WaveFile(open("microSdCardNotInserted.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
 
 ################################################################################
 # Global Variables
@@ -160,7 +178,6 @@ class StateMachine(object):
 # States
 
 # Abstract parent state class.
-
 class State(object):
 
     def __init__(self):
@@ -183,10 +200,6 @@ class State(object):
             return False
         return True
 
-
-# Wait for 10 seconds to midnight or the witch to be pressed,
-# then drop the ball.
-
 class WaitingState(State):
 
     def __init__(self):      
@@ -206,92 +219,8 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animateFeller.animationOne(sleepAndUpdateVolume,audiocore, upPos, downPos)
-            # sleepAndUpdateVolume(0.05)
-            # chopNum = 1
-            # chopNumber = random.randint(2, 7)
-            # while chopNum < chopNumber:
-            #     wave0 = audiocore.WaveFile(open("/sd/wav/chop" + str(chopNum) + ".wav", "rb"))
-            #     chopNum += 1
-            #     chopActive = True
-            #     for angle in range(0, upPos+5, 10):  # 0 - 180 degrees, 5 degrees at a time.
-            #         feller_servo.angle = angle                                 
-            #         if angle >= (upPos-10) and chopActive:
-            #             mixer.voice[0].play( wave0, loop=False )
-            #             chopActive = False
-            #         if angle >= upPos:
-            #             chopActive = True
-            #             tree_servo.angle = upPosChop
-            #             sleepAndUpdateVolume(0.1)
-            #             tree_servo.angle = upPos
-            #             sleepAndUpdateVolume(0.1)
-            #             tree_servo.angle = upPosChop
-            #             sleepAndUpdateVolume(0.1)
-            #             tree_servo.angle = upPos
-            #             sleepAndUpdateVolume(0.1)
-            #         sleepAndUpdateVolume(0.02)
-            #         setVolume()
-            #     if chopNum < chopNumber: 
-            #         for angle in range(upPos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
-            #             feller_servo.angle = angle
-            #             sleepAndUpdateVolume(0.02)
-            #             setVolume()
-            #     pass
-            # wave0 = audiocore.WaveFile(open("/sd/wav/falling.wav", "rb"))
-            # mixer.voice[0].play( wave0, loop=False )
-            # for angle in range(upPos, 50 + downPos, -5): # 180 - 0 degrees, 5 degrees at a time.
-            #     tree_servo.angle = angle
-            #     sleepAndUpdateVolume(0.06)
-            #     setVolume()
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 50 + downPos
-            # sleepAndUpdateVolume(0.1)
-            # tree_servo.angle = 43 + downPos
-            # while mixer.voice[0].playing:
-            #     setVolume()
-            # for angle in range(upPos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
-            #     feller_servo.angle = angle
-            #     sleepAndUpdateVolume(0.02)
-            # for angle in range( 43 + downPos, upPos, 1): # 180 - 0 degrees, 5 degrees at a time.
-            #     tree_servo.angle = angle
-            #     sleepAndUpdateVolume(0.01)
-            # tree_servo.angle = upPos
-            # sleepAndUpdateVolume(0.02)
-            # tree_servo.angle = upPos
-
+            animateFeller.animationOne(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop)
+            
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
@@ -349,9 +278,8 @@ class ProgramState(State):
                     pass
             machine.go_to_state('waiting')
 
-# exampleState copy and add functionality
-
-class ExampleState(State):
+# StateTemplate copy and add functionality
+class StateTemplate(State):
 
     def __init__(self):
         super().__init__()

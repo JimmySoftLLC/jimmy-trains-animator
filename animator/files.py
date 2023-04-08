@@ -1,5 +1,7 @@
 import os
 
+#files.print_directory(left_switch,"/sd/wav")
+
 def print_directory(switch_0, path, tabs=0):
     print("Files on filesystem:")
     print("====================")

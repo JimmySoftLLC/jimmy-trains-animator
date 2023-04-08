@@ -1,6 +1,6 @@
 import random
 
-def animationOne(sleepAndUpdateVolume, audiocore, upPos, downPos):
+def animationOne(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
     chopNumber = random.randint(2, 7)
@@ -24,19 +24,16 @@ def animationOne(sleepAndUpdateVolume, audiocore, upPos, downPos):
                 tree_servo.angle = upPos
                 sleepAndUpdateVolume(0.1)
             sleepAndUpdateVolume(0.02)
-            setVolume()
         if chopNum < chopNumber: 
             for angle in range(upPos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
                 feller_servo.angle = angle
                 sleepAndUpdateVolume(0.02)
-                setVolume()
         pass
     wave0 = audiocore.WaveFile(open("/sd/wav/falling.wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     for angle in range(upPos, 50 + downPos, -5): # 180 - 0 degrees, 5 degrees at a time.
         tree_servo.angle = angle
         sleepAndUpdateVolume(0.06)
-        setVolume()
     tree_servo.angle = 43 + downPos
     sleepAndUpdateVolume(0.1)
     tree_servo.angle = 50 + downPos
@@ -75,7 +72,7 @@ def animationOne(sleepAndUpdateVolume, audiocore, upPos, downPos):
     sleepAndUpdateVolume(0.1)
     tree_servo.angle = 43 + downPos
     while mixer.voice[0].playing:
-        setVolume()
+        sleepAndUpdateVolume(0.02)
     for angle in range(upPos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
         feller_servo.angle = angle
         sleepAndUpdateVolume(0.02)
