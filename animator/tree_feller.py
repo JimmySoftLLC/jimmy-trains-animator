@@ -19,7 +19,7 @@ from analogio import AnalogIn
 from adafruit_motor import servo
 from adafruit_motor import servo
 import files
-import animateFeller
+import animate_feller
 
 ################################################################################
 # Setup hardware
@@ -81,7 +81,7 @@ try:
   vfs = storage.VfsFat(sdcard)
   storage.mount(vfs, "/sd")
 except:
-  wave0 = audiomp3.MP3Decoder(open("microSdCardNotInserted.mp3", "rb"))
+  wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
   audio.play(wave0)
   while audio.playing:
     pass
@@ -94,12 +94,12 @@ except:
             vfs = storage.VfsFat(sdcard)
             storage.mount(vfs, "/sd")
             cardInserted = True
-            wave0 = audiomp3.MP3Decoder(open("microSdCardSuccess.mp3", "rb"))
+            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_success.mp3", "rb"))
             audio.play(wave0)
             while audio.playing:
                 pass
         except:
-            wave0 = audiomp3.MP3Decoder(open("microSdCardNotInserted.mp3", "rb"))
+            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
             audio.play(wave0)
             while audio.playing:
                 pass
@@ -119,13 +119,9 @@ upPos = 167
 upPosChop = upPos - 3
 downPos = 60
 
-options = [
-'choppingToMusic',
-'choppingThunder',
-'choppingRandom',
-'choppingNoOtherSounds',
-'choppingBirdsAndDogs'
-]
+main_menu = ['sound_options','calibrate_position']
+
+feller_sound_options = ['option_birds_dogs','option_music','option_no_sounds','option_random','option_thunder']
 
 feller_servo.angle = 0
 tree_servo.angle = upPos
@@ -228,7 +224,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animateFeller.animationOne(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop)
+            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop)
             
         if right_switch.fell:
             print('Just pressed 1')
@@ -250,7 +246,7 @@ class ProgramState(State):
             while mixer.voice[0].playing:
                 pass
         else:
-            wave0 = audiocore.WaveFile(open("/sd/wav/option mode.wav", "rb"))
+            wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_mode_entered.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
@@ -268,7 +264,7 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/wav/" + options[self.optionIndex] + ".wav" , "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/feller_sound_options/" + feller_sound_options[self.optionIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 self.optionIndex +=1
                 if self.optionIndex > 4:
@@ -281,7 +277,7 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/wav/optionSelected.wav", "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
                     pass
