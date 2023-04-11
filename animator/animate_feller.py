@@ -1,5 +1,17 @@
 import random
 
+def chooseSound(index):
+    if index == 1:
+        return "/sd/feller_sounds/sounds_birds_dogs.wav"
+    elif index == 2:
+        return "/sd/feller_sounds/sounds_just_birds.wav"
+    elif index == 3:
+        return "/sd/feller_sounds/sounds_machines.wav"
+    elif index == 4:
+        return "/sd/feller_sounds/sounds_no_sounds.wav"
+    elif index == 5:
+        return "/sd/feller_sounds/sounds_owl.wav"
+
 def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
@@ -29,7 +41,9 @@ def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_ser
                 feller_servo.angle = angle
                 sleepAndUpdateVolume(0.02)
         pass
-    wave0 = audiocore.WaveFile(open("/sd/feller_sounds/sounds_birds_dogs.wav", "rb"))
+    soundNumber = random.randint(1, 5)
+    soundFile = chooseSound(soundNumber)
+    wave0 = audiocore.WaveFile(open(soundFile, "rb"))
     mixer.voice[0].play( wave0, loop=False )
     for angle in range(upPos, 50 + downPos, -5): # 180 - 0 degrees, 5 degrees at a time.
         tree_servo.angle = angle
