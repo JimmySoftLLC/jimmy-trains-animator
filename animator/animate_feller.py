@@ -11,6 +11,8 @@ def chooseSound(index):
         return "/sd/feller_sounds/sounds_no_sounds.wav"
     elif index == 5:
         return "/sd/feller_sounds/sounds_owl.wav"
+    elif index == 6:
+        return "/sd/feller_sounds/sounds_halloween.wav"
 
 def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop):
     sleepAndUpdateVolume(0.05)
@@ -41,7 +43,7 @@ def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_ser
                 feller_servo.angle = angle
                 sleepAndUpdateVolume(0.02)
         pass
-    soundNumber = random.randint(1, 5)
+    soundNumber = random.randint(1, 6)
     soundFile = chooseSound(soundNumber)
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
     mixer.voice[0].play( wave0, loop=False )
