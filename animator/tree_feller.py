@@ -115,16 +115,17 @@ audio.play(mixer)
 # Global Variables
 
 # get the calibration settings which are stored on the sdCard
-upPos = 167
-upPosChop = upPos - 3
-downPos = 60
+treeUpPos = 167
+treeDownPos = 103
+fellerStartPos = 0
+fellerChopPos = 165
 
 main_menu = ['sound_options','calibrate_position']
 
 feller_sound_options = ['option_birds_dogs','option_music','option_no_sounds','option_random','option_thunder']
 
 feller_servo.angle = 0
-tree_servo.angle = upPos
+tree_servo.angle = treeUpPos
 
 ################################################################################
 # Global Methods
@@ -224,8 +225,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop)
-            
+            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, treeUpPos, treeChopPos, treeDownPos, fellerStartPos, fellerChopPos)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
