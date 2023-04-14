@@ -101,6 +101,16 @@ mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_coun
                          bits_per_sample=16, samples_signed=True)
 audio.play(mixer)
 
+# Setup time
+r = rtc.RTC()
+r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
+
+#setup neo pixels
+num_pixels = 30
+ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
+ledStrip.auto_write = False
+ledStrip.brightness = 1.0
+
 ################################################################################
 # Global Variables
 
@@ -206,7 +216,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer)
+            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer, ledStrip)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
@@ -298,3 +308,4 @@ pretty_state_machine.go_to_state('waiting')
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
+    
