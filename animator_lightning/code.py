@@ -17,6 +17,7 @@ from analogio import AnalogIn
 from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
 import files
+import animate_lightning
 
 ################################################################################
 # Setup hardware
@@ -205,7 +206,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            print("left button pressed")
+            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
