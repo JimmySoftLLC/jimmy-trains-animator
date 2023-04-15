@@ -149,7 +149,8 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
     73.365,
     80.455,
     88.27,
-    96.004]
+    96.004,
+    120]
 
     flashTimeLen = len(flashTime)
     flashTimeIndex = 0
@@ -164,7 +165,7 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
         right_switch.update()
         if right_switch.fell:
             print(timeElasped)
-        if timeElasped > flashTime[flashTimeIndex] - random.randint(0, 2):
+        if timeElasped > flashTime[flashTimeIndex]:
             flashTimeIndex += 1
             change_color(ledStrip)
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
@@ -172,5 +173,6 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
         if left_switch.fell:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
             break
-        
