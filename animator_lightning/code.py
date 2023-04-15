@@ -114,9 +114,11 @@ ledStrip.brightness = 1.0
 ################################################################################
 # Global Variables
 
+config = files.read_json_file("/sd/config.json")
+
 main_menu = ['sound_options','calibrate_position']
 
-sound_options = ['option_birds_dogs','option_music','option_no_sounds','option_random','option_thunder']
+sound_options = config["options"]
 
 ################################################################################
 # Global Methods
@@ -216,7 +218,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch)
+            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config["option_selected"])
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
@@ -225,6 +227,7 @@ class ProgramState(State):
 
     def __init__(self):
         self.optionIndex = 0
+        self.currentOption = 0
 
     @property
     def name(self):
@@ -237,7 +240,7 @@ class ProgramState(State):
             while mixer.voice[0].playing:
                 pass
         else:
-            wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_mode_entered.wav", "rb"))
+            wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_mode_entered.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
@@ -255,10 +258,11 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_sound_options/" + sound_options[self.optionIndex] + ".wav" , "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/" + sound_options[self.optionIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
+                self.currentOption = self.optionIndex
                 self.optionIndex +=1
-                if self.optionIndex > 4:
+                if self.optionIndex > len(sound_options)-1:
                     self.optionIndex = 0
                 while mixer.voice[0].playing:
                     pass
@@ -268,7 +272,9 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_selected.wav", "rb"))
+                config["option_selected"] = sound_options[self.currentOption]
+                files.write_json_file("/sd/config.json",config)
+                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
                     pass
