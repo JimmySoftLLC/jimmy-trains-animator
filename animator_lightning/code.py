@@ -10,7 +10,7 @@ import digitalio
 import board
 import neopixel
 import random
-# import rtc
+import rtc
 
 import audiomp3
 from analogio import AnalogIn
@@ -102,11 +102,11 @@ mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_coun
 audio.play(mixer)
 
 # Setup time
-# r = rtc.RTC()
-# r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
+r = rtc.RTC()
+r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 #setup neo pixels
-num_pixels = 30
+num_pixels = 90
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 ledStrip.auto_write = False
 ledStrip.brightness = 1.0
@@ -216,7 +216,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch)
+            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
