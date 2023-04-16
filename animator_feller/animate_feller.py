@@ -13,8 +13,8 @@ def chooseSound(index):
         return "/sd/feller_sounds/sounds_owl.wav"
     elif index == 6:
         return "/sd/feller_sounds/sounds_halloween.wav"
-
-def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop):
+# animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos)'
+def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
     chopNumber = random.randint(2, 7)
@@ -22,24 +22,24 @@ def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_ser
         wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
         chopNum += 1
         chopActive = True
-        for angle in range(0, upPos+5, 10):  # 0 - 180 degrees, 5 degrees at a time.
+        for angle in range(0, tree_up_pos+5, 10):  # 0 - 180 degrees, 10 degrees at a time.
             feller_servo.angle = angle                                 
-            if angle >= (upPos-10) and chopActive:
+            if angle >= (tree_up_pos-10) and chopActive:
                 mixer.voice[0].play( wave0, loop=False )
                 chopActive = False
-            if angle >= upPos:
+            if angle >= tree_up_pos:
                 chopActive = True
-                tree_servo.angle = upPosChop
+                tree_servo.angle = tree_chop_pos
                 sleepAndUpdateVolume(0.1)
-                tree_servo.angle = upPos
+                tree_servo.angle = tree_up_pos
                 sleepAndUpdateVolume(0.1)
-                tree_servo.angle = upPosChop
+                tree_servo.angle = tree_chop_pos
                 sleepAndUpdateVolume(0.1)
-                tree_servo.angle = upPos
+                tree_servo.angle = tree_up_pos
                 sleepAndUpdateVolume(0.1)
             sleepAndUpdateVolume(0.02)
         if chopNum < chopNumber: 
-            for angle in range(upPos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
+            for angle in range(tree_up_pos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
                 feller_servo.angle = angle
                 sleepAndUpdateVolume(0.02)
         pass
@@ -47,54 +47,55 @@ def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_ser
     soundFile = chooseSound(soundNumber)
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
     mixer.voice[0].play( wave0, loop=False )
-    for angle in range(upPos, 50 + downPos, -5): # 180 - 0 degrees, 5 degrees at a time.
+    for angle in range(tree_up_pos, 50 + tree_down_pos, -5): # 180 - 0 degrees, 5 degrees at a time.
         tree_servo.angle = angle
         sleepAndUpdateVolume(0.06)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 50 + downPos
+    tree_servo.angle = 50 + tree_down_pos
     sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + downPos
+    tree_servo.angle = 43 + tree_down_pos
     while mixer.voice[0].playing:
         sleepAndUpdateVolume(0.02)
-    for angle in range(upPos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
+    for angle in range(tree_up_pos, 0, -5): # 180 - 0 degrees, 5 degrees at a time.
         feller_servo.angle = angle
         sleepAndUpdateVolume(0.02)
-    for angle in range( 43 + downPos, upPos, 1): # 180 - 0 degrees, 5 degrees at a time.
+    for angle in range( 43 + tree_down_pos, tree_up_pos, 1): # 180 - 0 degrees, 5 degrees at a time.
         tree_servo.angle = angle
         sleepAndUpdateVolume(0.01)
-    tree_servo.angle = upPos
+    tree_servo.angle = tree_up_pos
     sleepAndUpdateVolume(0.02)
-    tree_servo.angle = upPos
+    tree_servo.angle = tree_up_pos
+
