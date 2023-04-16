@@ -115,19 +115,30 @@ audio.play(mixer)
 # Global Variables
 
 # get the calibration settings which are stored on the sdCard
-upPos = 167
-upPosChop = upPos - 3
-downPos = 60
+config = files.read_json_file("/sd/config.json")
+
+feller_sound_options = config["options"]
+tree_up_pos = config["tree_up_pos"]
+tree_chop_pos = config["tree_chop_pos"]
+tree_down_pos = config["tree_down_pos"]
+feller_rest_pos = config["feller_rest_pos"]
+feller_chop_pos = config["feller_chop_pos"]
 
 main_menu = ['sound_options','calibrate_position']
 
-feller_sound_options = ['option_birds_dogs','option_music','option_no_sounds','option_random','option_thunder']
-
+# set servos to starting position
 feller_servo.angle = 0
-tree_servo.angle = upPos
+tree_servo.angle = tree_up_pos
 
 ################################################################################
 # Global Methods
+
+def reset_to_defaults():
+    tree_up_pos = 167
+    tree_chop_pos = 164
+    tree_down_pos = 60
+    feller_rest_pos = 0
+    feller_chop_pos = 167
 
 def setVolume():
     volume = get_voltage(analog_in)
@@ -224,7 +235,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, upPos, downPos, upPosChop)
+            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos)
             
         if right_switch.fell:
             print('Just pressed 1')
