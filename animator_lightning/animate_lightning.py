@@ -114,7 +114,7 @@ def animation_12_minute_thunderstorm(sleepAndUpdateVolume, audiocore, mixer, led
             break
         
 def change_color(ledStrip):
-    ledStrip.brightness = 0.1
+    ledStrip.brightness = 0.5
     color_r = random.randint(0, 255)
     color_g = random.randint(0, 255)
     color_b = random.randint(0, 255)     
@@ -176,3 +176,4 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
             break
+        

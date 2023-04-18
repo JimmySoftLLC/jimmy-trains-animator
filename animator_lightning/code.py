@@ -19,6 +19,8 @@ from adafruit_debouncer import Debouncer
 import files
 import animate_lightning
 
+is_show_unit = False
+
 ################################################################################
 # Setup hardware
 
@@ -218,7 +220,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_lightning.animation_one(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config["option_selected"])
+            animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config["option_selected"])
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
@@ -240,7 +242,10 @@ class ProgramState(State):
             while mixer.voice[0].playing:
                 pass
         else:
-            wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_mode_entered.wav", "rb"))
+            if (is_show_unit):                  
+                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_mode_entered_left_right.wav", "rb"))
+            else:
+                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_mode_entered_black_red.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
@@ -258,7 +263,7 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/" + sound_options[self.optionIndex] + ".wav" , "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 self.currentOption = self.optionIndex
                 self.optionIndex +=1
