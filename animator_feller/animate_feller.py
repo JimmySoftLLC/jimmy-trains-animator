@@ -4,15 +4,15 @@ def chooseSound(index):
     if index == 1:
         return "/sd/feller_sounds/sounds_birds_dogs.wav"
     elif index == 2:
-        return "/sd/feller_sounds/sounds_just_birds.wav"
-    elif index == 3:
-        return "/sd/feller_sounds/sounds_machines.wav"
-    elif index == 4:
-        return "/sd/feller_sounds/sounds_no_sounds.wav"
-    elif index == 5:
-        return "/sd/feller_sounds/sounds_owl.wav"
-    elif index == 6:
         return "/sd/feller_sounds/sounds_halloween.wav"
+    elif index == 3:
+        return "/sd/feller_sounds/sounds_just_birds.wav"
+    elif index == 4:
+        return "/sd/feller_sounds/sounds_machines.wav"
+    elif index == 5:
+        return "/sd/feller_sounds/sounds_no_sounds.wav"
+    elif index == 6:
+        return "/sd/feller_sounds/sounds_owl.wav"
 def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, option_selected):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
