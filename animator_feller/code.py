@@ -115,7 +115,7 @@ audio.play(mixer)
 # Global Variables
 
 # get the calibration settings which are stored on the sdCard
-config = files.read_json_file("/sd/configFeller.json")
+config = files.read_json_file("/sd/config_feller.json")
 
 feller_sound_options = config["options"]
 tree_up_pos = config["tree_up_pos"]
@@ -290,7 +290,7 @@ class ProgramState(State):
                     pass
             else:
                 config["option_selected"] = feller_sound_options[self.currentOption]
-                files.write_json_file("/sd/configFeller.json",config)
+                files.write_json_file("/sd/config_feller.json",config)
                 wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
