@@ -235,7 +235,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, config["option_selected"])
+            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, config["option_selected"], feller_sound_options)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')

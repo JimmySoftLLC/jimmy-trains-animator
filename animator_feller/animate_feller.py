@@ -1,19 +1,6 @@
 import random
 
-def chooseSound(index):
-    if index == 1:
-        return "/sd/feller_sounds/sounds_birds_dogs.wav"
-    elif index == 2:
-        return "/sd/feller_sounds/sounds_halloween.wav"
-    elif index == 3:
-        return "/sd/feller_sounds/sounds_just_birds.wav"
-    elif index == 4:
-        return "/sd/feller_sounds/sounds_machines.wav"
-    elif index == 5:
-        return "/sd/feller_sounds/sounds_no_sounds.wav"
-    elif index == 6:
-        return "/sd/feller_sounds/sounds_owl.wav"
-def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, option_selected):
+def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, option_selected, feller_sound_options):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
     chopNumber = random.randint(2, 7)
@@ -43,8 +30,9 @@ def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_ser
                 sleepAndUpdateVolume(0.02)
         pass
     if option_selected == "random":
-        soundNumber = random.randint(1, 6)
-        soundFile = chooseSound(soundNumber)
+        feller_sound_options_highest_index = len(feller_sound_options)-2 #sub -2 to avoid choosing "random" for a file
+        soundNumber = random.randint(0, feller_sound_options_highest_index)
+        soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[soundNumber] + ".wav"
     else:
         soundFile = "/sd/feller_sounds/sounds_" + option_selected + ".wav"
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
@@ -100,4 +88,3 @@ def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_ser
     tree_servo.angle = tree_up_pos
     sleepAndUpdateVolume(0.02)
     tree_servo.angle = tree_up_pos
-
