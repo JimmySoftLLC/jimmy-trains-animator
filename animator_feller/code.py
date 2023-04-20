@@ -235,8 +235,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos)
-            
+            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, config["option_selected"])
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
@@ -245,6 +244,7 @@ class ProgramState(State):
 
     def __init__(self):
         self.optionIndex = 0
+        self.currentOption = 0
 
     @property
     def name(self):
@@ -277,6 +277,7 @@ class ProgramState(State):
             else:
                 wave0 = audiocore.WaveFile(open("/sd/feller_sound_options/option_" + feller_sound_options[self.optionIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
+                self.currentOption = self.optionIndex
                 self.optionIndex +=1
                 if self.optionIndex > len(feller_sound_options)-1:
                     self.optionIndex = 0
@@ -288,6 +289,8 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
+                config["option_selected"] = feller_sound_options[self.currentOption]
+                files.write_json_file("/sd/configFeller.json",config)
                 wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
