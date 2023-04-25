@@ -116,7 +116,6 @@ config = files.read_json_file("/sd/config_feller.json")
 
 feller_sound_options = config["options"]
 tree_up_pos = config["tree_up_pos"]
-tree_chop_pos = config["tree_chop_pos"]
 tree_down_pos = config["tree_down_pos"]
 feller_rest_pos = config["feller_rest_pos"]
 feller_chop_pos = config["feller_chop_pos"]
@@ -132,7 +131,6 @@ tree_servo.angle = tree_up_pos
 
 def reset_to_defaults():
     tree_up_pos = 167
-    tree_chop_pos = 164
     tree_down_pos = 60
     feller_rest_pos = 0
     feller_chop_pos = 167
@@ -240,7 +238,6 @@ class WaitingState(State):
                 tree_servo, 
                 tree_up_pos, 
                 tree_down_pos, 
-                tree_chop_pos, 
                 config["option_selected"], 
                 feller_sound_options,
                 feller_rest_pos,

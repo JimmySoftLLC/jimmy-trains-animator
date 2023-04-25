@@ -8,7 +8,6 @@ def animation_one(
         tree_servo, 
         tree_up_pos, 
         tree_down_pos, 
-        tree_chop_pos, 
         option_selected, 
         feller_sound_options, 
         feller_rest_pos,
@@ -16,6 +15,7 @@ def animation_one(
     sleepAndUpdateVolume(0.05)
     chopNum = 1
     chopNumber = random.randint(1, 7)
+    tree_chop_pos = tree_up_pos - 3
     while chopNum < chopNumber:
         wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
         chopNum += 1
@@ -52,7 +52,7 @@ def animation_one(
     for feller_angle in range(tree_up_pos, 50 + tree_down_pos, -5): # 180 - 0 degrees, 5 degrees at a time.
         tree_servo.angle = feller_angle
         sleepAndUpdateVolume(0.06)
-        shake = 8
+    shake = 8
     for _ in range(shake):
         tree_servo.angle = 43 + tree_down_pos
         sleepAndUpdateVolume(0.1)
@@ -70,3 +70,4 @@ def animation_one(
     tree_servo.angle = tree_up_pos
     sleepAndUpdateVolume(0.02)
     tree_servo.angle = tree_up_pos
+    
