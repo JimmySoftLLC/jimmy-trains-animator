@@ -12,12 +12,9 @@ import rtc
 import board
 import audiomp3
 from analogio import AnalogIn
-from rainbowio import colorwheel
 from adafruit_motor import servo
 from adafruit_debouncer import Debouncer
 from analogio import AnalogIn
-from adafruit_motor import servo
-from adafruit_motor import servo
 import files
 import animate_feller
 
@@ -235,7 +232,19 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_feller.animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, config["option_selected"], feller_sound_options)
+            animate_feller.animation_one(
+                sleepAndUpdateVolume, 
+                audiocore, 
+                mixer, 
+                feller_servo, 
+                tree_servo, 
+                tree_up_pos, 
+                tree_down_pos, 
+                tree_chop_pos, 
+                config["option_selected"], 
+                feller_sound_options,
+                feller_rest_pos,
+                feller_chop_pos)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')

@@ -1,9 +1,21 @@
 import random
 
-def animation_one(sleepAndUpdateVolume, audiocore, mixer, feller_servo, tree_servo, tree_up_pos, tree_down_pos, tree_chop_pos, option_selected, feller_sound_options):
+def animation_one(
+        sleepAndUpdateVolume, 
+        audiocore, 
+        mixer, 
+        feller_servo, 
+        tree_servo, 
+        tree_up_pos, 
+        tree_down_pos, 
+        tree_chop_pos, 
+        option_selected, 
+        feller_sound_options, 
+        feller_rest_pos,
+        feller_chop_pos):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
-    chopNumber = random.randint(2, 7)
+    chopNumber = random.randint(1, 7)
     while chopNum < chopNumber:
         wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
         chopNum += 1
