@@ -6,6 +6,13 @@ from adafruit_led_animation.animation.rainbowchase import RainbowChase
 from adafruit_led_animation.animation.rainbowcomet import RainbowComet
 from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
 from adafruit_led_animation.sequence import AnimationSequence
+from rainbowio import colorwheel
+import digitalio
+import board
+import asyncio
+import audiocore
+import audiomixer
+
 
 def lightning(ledStrip):
     r = random.randint(40, 80)
@@ -77,12 +84,54 @@ def lightning(ledStrip):
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
         
-def animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+def animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name, num_pixels):
     print(file_name)
     if file_name == "12_minute_thunderstorm":
         animation_12_minute_thunderstorm(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
     elif file_name == "alien_lightshow":
         animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "continuous_thunder":
+        continuous_thunder(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "inspiring_cinematic_ambient_lightshow":
+        animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+        #animation_lightshow_async(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "timestamp_mode":
+        animation_timestamp(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "breakfast_at_diner":
+        breakfast_at_diner(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+        
+def continuous_thunder(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    
+    flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/" + file_name + ".json")
+    
+    flashTime = flash_time_dictionary["flashTime"]
+
+    flashTimeLen = len(flashTime)
+    
+    while True:
+        wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        startTime = time.monotonic()
+        pressed_stop_button = False
+        flashTimeIndex = 0
+        while True:
+            sleepAndUpdateVolume(.1)
+            timeElasped = time.monotonic()-startTime
+            right_switch.update()
+            if right_switch.fell:
+                print(timeElasped)
+            if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 2): #amount of time before you here thunder 0.5 is synched with the lightning
+                flashTimeIndex += 1
+                lightning(ledStrip)
+            if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
+            left_switch.update()
+            if left_switch.fell:
+                mixer.voice[0].stop()
+                pressed_stop_button = True
+            if not mixer.voice[0].playing:
+                break
+        if pressed_stop_button:
+            break
 
 def animation_12_minute_thunderstorm(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
     
@@ -103,7 +152,7 @@ def animation_12_minute_thunderstorm(sleepAndUpdateVolume, audiocore, mixer, led
         right_switch.update()
         if right_switch.fell:
             print(timeElasped)
-        if timeElasped > flashTime[flashTimeIndex] - random.randint(0, 2):
+        if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 2): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
             flashTimeIndex += 1
             lightning(ledStrip)
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
@@ -114,43 +163,84 @@ def animation_12_minute_thunderstorm(sleepAndUpdateVolume, audiocore, mixer, led
             break
         
 def change_color(ledStrip):
-    ledStrip.brightness = 0.5
+    ledStrip.brightness = 1.0
     color_r = random.randint(0, 255)
     color_g = random.randint(0, 255)
     color_b = random.randint(0, 255)     
     ledStrip.fill((color_r, color_g, color_b))
     ledStrip.show()
+    
+async def fire(ledStrip):
+    while True:
+        ledStrip.brightness = 1.0
+        r = 226
+        g = 121
+        b = 35
+
+        #Flicker, based on our initial RGB values
+        for i in range (0, len(ledStrip)):
+            flicker = random.randint(0,110)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 255)
+            b1 = bounds(b-flicker, 0, 255)
+            ledStrip[i] = (r1,g1,b1)
+        ledStrip.show()
+        await asyncio.sleep(random.randint(100,1000) / 3000)
+
+
+def rainbow(ledStrip, speed, num_pixels, sleepAndUpdateVolume):
+    for j in range(255):
+        for i in range(num_pixels):
+            pixel_index = (i * 256 // num_pixels) + j
+            ledStrip[i] = colorwheel(pixel_index & 255)
+        ledStrip.show()
+        sleepAndUpdateVolume(speed)
+    for j in reversed(range(255)):
+        for i in range(num_pixels):
+            pixel_index = (i * 256 // num_pixels) + j
+            ledStrip[i] = colorwheel(pixel_index & 255)
+        ledStrip.show()
+        sleepAndUpdateVolume(speed)
         
+async def play_music(file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch):
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while True:
+        if not mixer.voice[0].playing:
+            break
+        sleepAndUpdateVolume(.1)
+        await asyncio.sleep(1)
+        
+def fire_now(ledStrip, num_times, sleepAndUpdateVolume):
+    ledStrip.brightness = 1.0
+    r = 226
+    g = 121
+    b = 35
+
+    #Flicker, based on our initial RGB values
+    for _ in range(num_times):
+        for i in range (1, 20):
+            flicker = random.randint(0,110)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 255)
+            b1 = bounds(b-flicker, 0, 255)
+            ledStrip[i] = (r1,g1,b1)
+        ledStrip.show()
+        sleepAndUpdateVolume(random.uniform(0.05,0.3))
+        
+async def main(ledStrip, file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch):
+    fire_task = asyncio.create_task(fire(ledStrip))
+    play_music_task = asyncio.create_task(play_music(file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch))
+    await asyncio.gather(fire_task)
+    print("done")
+        
+def animation_lightshow_async(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    asyncio.run(main(ledStrip, file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch))
+    
 def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
     
     flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/" + file_name + ".json")
     flashTime = flash_time_dictionary["flashTime"]
-    
-    flashTime = [
-    3.35699,
-    8.393,
-    11.626,
-    14.495,
-    16.514,
-    20.251,
-    24.218,
-    28.214,
-    32.276,
-    36.256,
-    40.174,
-    46.975,
-    48.572,
-    53.875,
-    57.366,
-    60.89,
-    64.311,
-    69.784,
-    71.336,
-    73.365,
-    80.455,
-    88.27,
-    96.004,
-    120]
 
     flashTimeLen = len(flashTime)
     flashTimeIndex = 0
@@ -158,16 +248,25 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
     wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     startTime = time.monotonic()
+    my_index = 0
     
     while True:
-        sleepAndUpdateVolume(.1)
         timeElasped = time.monotonic()-startTime
         right_switch.update()
         if right_switch.fell:
             print(timeElasped)
-        if timeElasped > flashTime[flashTimeIndex]:
+        if timeElasped > flashTime[flashTimeIndex] - 0.25:
             flashTimeIndex += 1
-            change_color(ledStrip)
+            my_index += 1 #random.randint(1, 3)
+            if my_index == 1:
+                change_color(ledStrip)
+                sleepAndUpdateVolume(.3)
+                rainbow(ledStrip, .001, 20, sleepAndUpdateVolume)
+            elif my_index == 2:
+                change_color(ledStrip)
+                sleepAndUpdateVolume(.3)
+                fire_now(ledStrip, 8, sleepAndUpdateVolume)    
+            if (my_index > 1): my_index = 0
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
         if left_switch.fell:
@@ -176,4 +275,231 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
             break
+        sleepAndUpdateVolume(.1)
+         
+def animation_timestamp(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    print("time stamp mode")
+
+    print_timestamp = False
+    
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+    
+    my_time_stamps = {"flashTime":[0]}
+
+    while True:
+        time_elasped = time.monotonic()-startTime
+        right_switch.update()
+        if right_switch.fell:
+            my_time_stamps["flashTime"].append(time_elasped) 
+            print(time_elasped)
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+        if not mixer.voice[0].playing:
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
+            print(my_time_stamps)
+            break
+        sleepAndUpdateVolume(.05)
         
+def breakfast_at_diner(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    print("time stamp mode")
+
+    print_timestamp = False
+    
+    customer = [
+        "I_am_so_hungry",
+        "i_know_but_i_am_starving",
+        "let_me_in_i_will_give_big_tip",
+        "thank_you_for_letting_me_in",
+        "i_would_like_some_bacon",
+        "yes_please_some_black_coffee",
+        "i_want_to_pay",
+        "thank_for_everything"   
+        ]
+    
+    employee = [
+        "we_are_closed",
+        "the_cook_not_here",
+        "Ok_for_you",
+        "can_i_take_order",
+        "do_you_want_drink",
+        "want_anything_else",
+        "six_hundred_dollars",  
+        ]
+    
+    ledStrip.fill((0, 0, 0))
+    ledStrip.show()
+    
+    ledStrip[0] = (50,50,50)
+    ledStrip.show()
+    
+    while True:
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[0] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        ledStrip[7] = (255,255,255)
+        ledStrip.show()
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[0] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[1] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[1] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[2] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[2] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        ledStrip[6] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[8] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[5] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[9] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[4] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[10] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[3] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[11] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[3] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/footsteps_1.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[3] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[4] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[4] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[5] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/footsteps_2.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        walking_light = 50
+        walking_time = .5
+        ledStrip[9] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[8] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[7] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[6] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[5] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[4] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[3] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/bacon_cooking.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:  
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/footsteps_1.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        walking_light = 255
+        walking_time = .5
+        ledStrip[3] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[4] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[5] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[6] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[7] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[8] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[9] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[5] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[6] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[6] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/cash_register.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[7] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+        if not mixer.voice[0].playing:
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
+            break
+        sleepAndUpdateVolume(.05)
+        
+def bounds(my_color, lower, upper):
+    if (my_color < lower): my_color = lower
+    if (my_color > upper): my_color = upper
+    return my_color
+ 

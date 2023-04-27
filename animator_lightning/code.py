@@ -98,7 +98,7 @@ except:
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
-num_voices = 2
+num_voices = 1
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
                          bits_per_sample=16, samples_signed=True)
 audio.play(mixer)
@@ -108,7 +108,7 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 #setup neo pixels
-num_pixels = 90
+num_pixels = 20
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 ledStrip.auto_write = False
 ledStrip.brightness = 1.0
@@ -116,11 +116,11 @@ ledStrip.brightness = 1.0
 ################################################################################
 # Global Variables
 
-config = files.read_json_file("/sd/config.json")
+config_lightning = files.read_json_file("/sd/config_lightning.json")
 
 main_menu = ['sound_options','calibrate_position']
 
-sound_options = config["options"]
+sound_options = config_lightning["options"]
 
 ################################################################################
 # Global Methods
@@ -128,7 +128,6 @@ sound_options = config["options"]
 def setVolume():
     volume = get_voltage(analog_in)
     mixer.voice[0].level = volume
-    mixer.voice[1].level = volume
     
 def sleepAndUpdateVolume(seconds):
     setVolume()
@@ -220,7 +219,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config["option_selected"])
+            animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config_lightning["option_selected"], num_pixels)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
@@ -277,8 +276,8 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                config["option_selected"] = sound_options[self.currentOption]
-                files.write_json_file("/sd/config.json",config)
+                config_lightning["option_selected"] = sound_options[self.currentOption]
+                files.write_json_file("/sd/config_lightning.json",config_lightning)
                 wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
