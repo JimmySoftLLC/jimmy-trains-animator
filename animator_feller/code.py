@@ -111,16 +111,28 @@ audio.play(mixer)
 ################################################################################
 # Global Variables
 
-# get the calibration settings which are stored on the sdCard
+# get the calibration settings from various json files which are stored on the sdCard
 config = files.read_json_file("/sd/config_feller.json")
-
-feller_sound_options = config["options"]
-tree_up_pos = config["tree_up_pos"]
 tree_down_pos = config["tree_down_pos"]
+tree_up_pos = config["tree_up_pos"]
 feller_rest_pos = config["feller_rest_pos"]
 feller_chop_pos = config["feller_chop_pos"]
 
-main_menu = ['sound_options','calibrate_position']
+if tree_down_pos < 0: tree_down_pos = 0
+if tree_up_pos > 170: tree_up_pos = 170
+if feller_rest_pos < 0: feller_rest_pos = 0
+if feller_chop_pos > 170: feller_chop_pos = 170
+
+config_main_menu = files.read_json_file("/sd/feller_menu/main_menu.json")
+main_menu = config_main_menu["main_menu"]
+
+config_choose_sounds = files.read_json_file("/sd/feller_menu/choose_sounds.json")
+feller_sound_options = config_choose_sounds["choose_sounds"]
+
+config_feller_dialog = files.read_json_file("/sd/feller_dialog/feller_dialog.json")
+
+feller_dialog_positive = config_feller_dialog["feller_dialog_positive"]
+feller_dialog_negative = config_feller_dialog["feller_dialog_negative"]
 
 # set servos to starting position
 feller_servo.angle = 0
@@ -133,7 +145,7 @@ def reset_to_defaults():
     tree_up_pos = 167
     tree_down_pos = 60
     feller_rest_pos = 0
-    feller_chop_pos = 167
+    feller_chop_pos = 180
 
 def setVolume():
     volume = get_voltage(analog_in)
@@ -211,14 +223,14 @@ class State(object):
             return False
         return True
 
-class WaitingState(State):
+class BaseState(State):
 
     def __init__(self):      
         pass
 
     @property
     def name(self):
-        return 'waiting'
+        return 'base_state'
 
     def enter(self, machine):
         State.enter(self, machine)
@@ -241,20 +253,22 @@ class WaitingState(State):
                 config["option_selected"], 
                 feller_sound_options,
                 feller_rest_pos,
-                feller_chop_pos)
+                feller_chop_pos,
+                feller_dialog_positive,
+                feller_dialog_negative)
         if right_switch.fell:
             print('Just pressed 1')
-            machine.go_to_state('program')
+            machine.go_to_state('main_menu')
 
-class ProgramState(State):
+class ChooseSounds(State):
 
     def __init__(self):
-        self.optionIndex = 0
-        self.currentOption = 0
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
 
     @property
     def name(self):
-        return 'program'
+        return 'choose_sounds'
 
     def enter(self, machine):
         print('Select a program option')
@@ -263,7 +277,11 @@ class ProgramState(State):
             while mixer.voice[0].playing:
                 pass
         else:
-            wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_mode_entered.wav", "rb"))
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/sound_selection_menu.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            while mixer.voice[0].playing:
+                pass
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/press_left_button_right_button.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
@@ -281,12 +299,12 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_sound_options/option_" + feller_sound_options[self.optionIndex] + ".wav" , "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_" + feller_sound_options[self.menuIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
-                self.currentOption = self.optionIndex
-                self.optionIndex +=1
-                if self.optionIndex > len(feller_sound_options)-1:
-                    self.optionIndex = 0
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(feller_sound_options)-1:
+                    self.menuIndex = 0
                 while mixer.voice[0].playing:
                     pass
         if right_switch.fell:
@@ -295,14 +313,77 @@ class ProgramState(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                config["option_selected"] = feller_sound_options[self.currentOption]
+                config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
                 files.write_json_file("/sd/config_feller.json",config)
-                wave0 = audiocore.WaveFile(open("/sd/feller_confirmations/option_selected.wav", "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
                     pass
-            machine.go_to_state('waiting')
+            machine.go_to_state('base_state')
 
+class MainMenu(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'main_menu'
+
+    def enter(self, machine):
+        print('Select main menu')
+        if mixer.voice[0].playing:
+            mixer.voice[0].stop()
+            while mixer.voice[0].playing:
+                pass
+        else:
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/main_menu.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            while mixer.voice[0].playing:
+                pass
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/press_left_button_right_button.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            while mixer.voice[0].playing:
+                pass
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + main_menu[self.menuIndex] + ".wav" , "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(main_menu)-1:
+                    self.menuIndex = 0
+                while mixer.voice[0].playing:
+                    pass
+        if right_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                selected_menu_item = main_menu[self.selectedMenuIndex]
+                if selected_menu_item == "choose_sounds":
+                     machine.go_to_state('choose_sounds')
+                elif selected_menu_item =="choose_sounds":
+                     machine.go_to_state('base_state')
+                elif selected_menu_item == "exit_menu":
+                     machine.go_to_state('base_state')
+                else:
+                    machine.go_to_state('base_state')
+                
 # StateTemplate copy and add functionality
 class StateTemplate(State):
 
@@ -327,14 +408,18 @@ class StateTemplate(State):
 # Create the state machine
 
 pretty_state_machine = StateMachine()
-pretty_state_machine.add_state(WaitingState())
-pretty_state_machine.add_state(ProgramState())
+pretty_state_machine.add_state(BaseState())
+pretty_state_machine.add_state(MainMenu())
+pretty_state_machine.add_state(ChooseSounds())
+
+ChooseSounds
 
 print("animator has started")
 
-pretty_state_machine.go_to_state('waiting')
+pretty_state_machine.go_to_state('base_state')
 
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
+
     
