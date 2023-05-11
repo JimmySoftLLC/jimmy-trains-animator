@@ -54,14 +54,12 @@ def animation_one(
                 chopActive = False
             if feller_angle >= feller_chop_pos:
                 chopActive = True
-                tree_servo.angle = tree_chop_pos
-                sleepAndUpdateVolume(0.1)
-                tree_servo.angle = tree_up_pos
-                sleepAndUpdateVolume(0.1)
-                tree_servo.angle = tree_chop_pos
-                sleepAndUpdateVolume(0.1)
-                tree_servo.angle = tree_up_pos
-                sleepAndUpdateVolume(0.1)
+                shake = 2
+                for _ in range(shake):
+                    tree_servo.angle = tree_chop_pos
+                    sleepAndUpdateVolume(0.1)
+                    tree_servo.angle = tree_up_pos
+                    sleepAndUpdateVolume(0.1)
             sleepAndUpdateVolume(0.02)
         if chopNum < chopNumber: 
             for feller_angle in range(feller_chop_pos, feller_rest_pos, -5): # 180 - 0 degrees, 5 degrees at a time.

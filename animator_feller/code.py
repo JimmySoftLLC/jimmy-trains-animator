@@ -233,6 +233,16 @@ class BaseState(State):
         return 'base_state'
 
     def enter(self, machine):
+        sleepAndUpdateVolume(.1)
+        if mixer.voice[0].playing:
+            mixer.voice[0].stop()
+            while mixer.voice[0].playing:
+                pass
+        else:
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/animations_are_now_active.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            while mixer.voice[0].playing:
+                pass
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -299,7 +309,10 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_" + feller_sound_options[self.menuIndex] + ".wav" , "rb"))
+                if self.menuIndex == len(feller_sound_options)-1:
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/exit_this_menu.wav" , "rb"))
+                else:
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_" + feller_sound_options[self.menuIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
@@ -308,6 +321,12 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
         if right_switch.fell:
+            if self.selectedMenuIndex == len(feller_sound_options)-1:
+                if mixer.voice[0].playing:
+                    mixer.voice[0].stop()
+                    while mixer.voice[0].playing:
+                        pass
+                machine.go_to_state('main_menu')
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -376,12 +395,24 @@ class MainMenu(State):
             else:
                 selected_menu_item = main_menu[self.selectedMenuIndex]
                 if selected_menu_item == "choose_sounds":
-                     machine.go_to_state('choose_sounds')
-                elif selected_menu_item =="choose_sounds":
-                     machine.go_to_state('base_state')
+                    machine.go_to_state('choose_sounds')
+                elif selected_menu_item == "choose_sounds":
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
+                    machine.go_to_state('base_state')
                 elif selected_menu_item == "exit_menu":
-                     machine.go_to_state('base_state')
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
+                    machine.go_to_state('base_state')
                 else:
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
                     machine.go_to_state('base_state')
                 
 # StateTemplate copy and add functionality
