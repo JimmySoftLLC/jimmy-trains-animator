@@ -134,6 +134,9 @@ config_feller_dialog = files.read_json_file("/sd/feller_dialog/feller_dialog.jso
 feller_dialog_positive = config_feller_dialog["feller_dialog_positive"]
 feller_dialog_negative = config_feller_dialog["feller_dialog_negative"]
 
+config_adjust_feller_and_tree = files.read_json_file("/sd/feller_menu/adjust_feller_and_tree.json")
+adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
+
 # set servos to starting position
 feller_servo.angle = 0
 tree_servo.angle = tree_up_pos
@@ -269,6 +272,70 @@ class BaseState(State):
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('main_menu')
+            
+class AdjustFellerAndTree(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'adjust_feller_and_tree'
+
+    def enter(self, machine):
+        print('Select a program option')
+        if mixer.voice[0].playing:
+            mixer.voice[0].stop()
+            while mixer.voice[0].playing:
+                pass
+        else:
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/adjust_feller_and_tree_menu.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            while mixer.voice[0].playing:
+                pass
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/press_left_button_right_button.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            while mixer.voice[0].playing:
+                pass
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + adjust_feller_and_tree[self.menuIndex] + ".wav" , "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(adjust_feller_and_tree)-1:
+                    self.menuIndex = 0
+                while mixer.voice[0].playing:
+                    pass
+        if right_switch.fell:
+                selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
+                if selected_menu_item == "move_feller_to_chop_position":
+                    feller_servo.angle = feller_chop_pos   
+                elif selected_menu_item == "move_feller_to_rest_position":
+                    feller_servo.angle = feller_rest_pos
+                elif selected_menu_item == "move_tree_to_upright_position":
+                    tree_servo.angle = tree_up_pos   
+                elif selected_menu_item == "move_tree_to_fallen_position":
+                    tree_servo.angle = 43 + tree_down_pos
+                else:
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
+                    machine.go_to_state('base_state')
 
 class ChooseSounds(State):
 
@@ -396,12 +463,8 @@ class MainMenu(State):
                 selected_menu_item = main_menu[self.selectedMenuIndex]
                 if selected_menu_item == "choose_sounds":
                     machine.go_to_state('choose_sounds')
-                elif selected_menu_item == "choose_sounds":
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
-                    machine.go_to_state('base_state')
+                elif selected_menu_item == "adjust_feller_and_tree":
+                    machine.go_to_state('adjust_feller_and_tree')
                 elif selected_menu_item == "exit_menu":
                     wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
                     mixer.voice[0].play( wave0, loop=False )
@@ -442,8 +505,7 @@ pretty_state_machine = StateMachine()
 pretty_state_machine.add_state(BaseState())
 pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(ChooseSounds())
-
-ChooseSounds
+pretty_state_machine.add_state(AdjustFellerAndTree())
 
 print("animator has started")
 
@@ -452,5 +514,3 @@ pretty_state_machine.go_to_state('base_state')
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
-
-    
