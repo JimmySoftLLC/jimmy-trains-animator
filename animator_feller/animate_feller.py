@@ -24,6 +24,8 @@ def animation_one(
     print("chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
     tree_chop_pos = config["tree_up_pos"] - 3
+    speak_rotation = 7
+    speak_cadence = 0.2
     while chopNum <= chopNumber:
         if what_to_speak == 1 and when_to_speak == chopNum and not spoken:
             spoken = True
@@ -33,10 +35,10 @@ def animation_one(
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
-                feller_servo.angle = 5 + config["feller_rest_pos"]
-                sleepAndUpdateVolume(0.1)
+                feller_servo.angle = speak_rotation + config["feller_rest_pos"]
+                sleepAndUpdateVolume(speak_cadence)
                 feller_servo.angle = config["feller_rest_pos"]
-                sleepAndUpdateVolume(0.1)
+                sleepAndUpdateVolume(speak_cadence)
         if what_to_speak == 2 and when_to_speak == chopNum and not spoken:
             spoken = True
             highest_index = len(feller_dialog_negative) - 1
@@ -45,10 +47,10 @@ def animation_one(
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
-                feller_servo.angle = 5 + config["feller_rest_pos"]
-                sleepAndUpdateVolume(0.1)
+                feller_servo.angle = speak_rotation + config["feller_rest_pos"]
+                sleepAndUpdateVolume(speak_cadence)
                 feller_servo.angle = config["feller_rest_pos"]
-                sleepAndUpdateVolume(0.1)
+                sleepAndUpdateVolume(speak_cadence)
         if what_to_speak == 3 and when_to_speak == chopNum and not spoken:
             spoken = True
             highest_index = len(feller_dialog_advice) - 1
@@ -57,10 +59,10 @@ def animation_one(
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
-                feller_servo.angle = 5 + config["feller_rest_pos"]
-                sleepAndUpdateVolume(0.1)
+                feller_servo.angle = speak_rotation + config["feller_rest_pos"]
+                sleepAndUpdateVolume(speak_cadence)
                 feller_servo.angle = config["feller_rest_pos"]
-                sleepAndUpdateVolume(0.1)
+                sleepAndUpdateVolume(speak_cadence)
         wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
         chopNum += 1
         chopActive = True

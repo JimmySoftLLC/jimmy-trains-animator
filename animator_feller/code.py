@@ -164,6 +164,7 @@ def sleepAndUpdateVolume(seconds):
 # Dialog
     
 def fellerCalAnnouncement():
+    global left_switch
     wave0 = audiocore.WaveFile(open("/sd/feller_menu/now_we_can_adjust_the_feller_position.wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     while mixer.voice[0].playing:
@@ -242,6 +243,12 @@ def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
             pass 
         return False
     return True
+
+def shortCircuitDialog():
+    sleepAndUpdateVolume(0.02)
+    left_switch.update()
+    if left_switch.fell:
+        mixer.voice[0].stop()
 
 #############################################################################################
 # Servo helpers
@@ -485,7 +492,7 @@ class AdjustFellerAndTree(State):
                 if self.menuIndex > len(adjust_feller_and_tree)-1:
                     self.menuIndex = 0
                 while mixer.voice[0].playing:
-                    pass
+                    shortCircuitDialog()
         if right_switch.fell:
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
@@ -549,7 +556,7 @@ class ChooseSounds(State):
                 if self.menuIndex > len(feller_sound_options)-1:
                     self.menuIndex = 0
                 while mixer.voice[0].playing:
-                    pass
+                    shortCircuitDialog()
         if right_switch.fell:
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
@@ -598,7 +605,7 @@ class MainMenu(State):
                 if self.menuIndex > len(main_menu)-1:
                     self.menuIndex = 0
                 while mixer.voice[0].playing:
-                    pass
+                    shortCircuitDialog()
         if right_switch.fell:
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
