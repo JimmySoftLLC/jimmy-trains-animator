@@ -79,17 +79,17 @@ def animation_one(
         sleepAndUpdateVolume(0.06)
     shake = 8
     for _ in range(shake):
-        tree_servo.angle = 43 + tree_down_pos
+        tree_servo.angle = tree_down_pos
         sleepAndUpdateVolume(0.1)
-        tree_servo.angle = 50 + tree_down_pos
+        tree_servo.angle = 7 + tree_down_pos
         sleepAndUpdateVolume(0.1)
-    tree_servo.angle = 43 + tree_down_pos
+    tree_servo.angle = tree_down_pos
     while mixer.voice[0].playing:
         sleepAndUpdateVolume(0.02)
     for feller_angle in range(feller_chop_pos, feller_rest_pos, -5): # 180 - 0 degrees, 5 degrees at a time.
         feller_servo.angle = feller_angle
         sleepAndUpdateVolume(0.02)
-    for tree_angle in range( 43 + tree_down_pos, tree_up_pos, 1): # 180 - 0 degrees, 1 degrees at a time.
+    for tree_angle in range( tree_down_pos + 7, tree_up_pos, 1): # 180 - 0 degrees, 1 degrees at a time.
         tree_servo.angle = tree_angle
         sleepAndUpdateVolume(0.01)
     tree_servo.angle = tree_up_pos
