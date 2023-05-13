@@ -6,8 +6,7 @@ def animation_one(
         mixer, 
         feller_servo, 
         tree_servo, 
-        config, 
-        option_selected, 
+        config,
         feller_sound_options, 
         feller_dialog_positive,
         feller_dialog_negative,
@@ -85,12 +84,12 @@ def animation_one(
                 sleepAndUpdateVolume(0.02)
         pass
     sleepAndUpdateVolume(0.02)
-    if option_selected == "random":
+    if config["option_selected"] == "random":
         feller_sound_options_highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
         soundNumber = random.randint(0, feller_sound_options_highest_index)
         soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[soundNumber] + ".wav"
     else:
-        soundFile = "/sd/feller_sounds/sounds_" + option_selected + ".wav"
+        soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
     mixer.voice[0].play( wave0, loop=False )
     for tree_angle in range(config["tree_up_pos"], config["tree_down_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.

@@ -114,8 +114,6 @@ audio.play(mixer)
 # get the calibration settings from various json files which are stored on the sdCard
 config = files.read_json_file("/sd/config_feller.json")
 
-option_selected = config["option_selected"]
-
 tree_last_pos = config["tree_up_pos"]
 tree_min = 90
 tree_max = 180
@@ -440,8 +438,7 @@ class BaseState(State):
                 mixer, 
                 feller_servo, 
                 tree_servo, 
-                config, 
-                option_selected, 
+                config,
                 feller_sound_options, 
                 feller_dialog_positive,
                 feller_dialog_negative,
@@ -452,7 +449,6 @@ class BaseState(State):
                 moveTreeToPositionGently,
                 left_switch)
         if right_switch.fell:
-            print('Just pressed 1')
             machine.go_to_state('main_menu')
                      
 class AdjustFellerAndTree(State):
@@ -559,9 +555,10 @@ class ChooseSounds(State):
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
                     pass
-            config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
+            config["config["option_selected"]"] = feller_sound_options[self.selectedMenuIndex]
+            print ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["config["option_selected"]"])
             files.write_json_file("/sd/config_feller.json",config)
-            wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_selected.wav", "rb"))
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/config["option_selected"].wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
