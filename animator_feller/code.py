@@ -555,10 +555,10 @@ class ChooseSounds(State):
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
                     pass
-            config["config["option_selected"]"] = feller_sound_options[self.selectedMenuIndex]
-            print ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["config["option_selected"]"])
+            config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
+            print ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
             files.write_json_file("/sd/config_feller.json",config)
-            wave0 = audiocore.WaveFile(open("/sd/feller_menu/config["option_selected"].wav", "rb"))
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_selected.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
