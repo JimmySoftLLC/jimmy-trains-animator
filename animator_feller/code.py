@@ -452,7 +452,8 @@ class BaseState(State):
                 moveFellerServo,
                 moveTreeServo,
                 moveFellerToPositionGently,
-                moveTreeToPositionGently)
+                moveTreeToPositionGently,
+                left_switch)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('main_menu')

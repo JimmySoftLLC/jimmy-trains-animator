@@ -18,7 +18,8 @@ def animation_one(
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
-        moveTreeToPositionGently):
+        moveTreeToPositionGently,
+        left_switch):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
     chopNumber = random.randint(2, 7)
@@ -107,6 +108,9 @@ def animation_one(
     moveTreeServo(tree_down_pos)
     while mixer.voice[0].playing:
         sleepAndUpdateVolume(0.02)
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
     moveFellerToPositionGently(feller_rest_pos)
     sleepAndUpdateVolume(0.02)
     moveTreeToPositionGently(tree_up_pos)
