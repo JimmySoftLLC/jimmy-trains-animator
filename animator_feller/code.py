@@ -241,7 +241,11 @@ def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
         while mixer.voice[0].playing:
             pass 
         return False
-    if servo_pos > max_servo_pos: 
+    if servo_pos > max_servo_pos:
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/reset_tree_to_defaults.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass 
         return False
     return True
 
@@ -288,10 +292,10 @@ def calibratePosition(servo, servo_pos, movement_type):
             else:
                 servo_pos -= 1 * sign
     if movement_type == "feller":
-        global tree_last_pos
-        tree_last_pos = servo_pos
-    else:
         global feller_last_pos
+        feller_last_pos = servo_pos
+    else:
+        global tree_last_pos
         tree_last_pos = servo_pos
     return servo_pos
 
@@ -482,12 +486,12 @@ class AdjustFellerAndTree(State):
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_upright_position":
                     global tree_up_pos
-                    fellerCalAnnouncement()
+                    treeCalAnnouncement()
                     tree_up_pos = calibratePosition(tree_servo, tree_up_pos, "tree")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_fallen_position":
                     global tree_down_pos
-                    fellerCalAnnouncement()
+                    treeCalAnnouncement()
                     tree_down_pos = calibratePosition(tree_servo, tree_down_pos, "tree")
                     machine.go_to_state('base_state')
                 else:

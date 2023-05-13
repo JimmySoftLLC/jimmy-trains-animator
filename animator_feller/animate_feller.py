@@ -66,6 +66,7 @@ def animation_one(
                 feller_servo.angle = feller_angle
                 sleepAndUpdateVolume(0.02)
         pass
+    sleepAndUpdateVolume(0.02)
     if option_selected == "random":
         feller_sound_options_highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
         soundNumber = random.randint(0, feller_sound_options_highest_index)
@@ -74,7 +75,7 @@ def animation_one(
         soundFile = "/sd/feller_sounds/sounds_" + option_selected + ".wav"
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
     mixer.voice[0].play( wave0, loop=False )
-    for tree_angle in range(tree_up_pos, 50 + tree_down_pos, -5): # 180 - 0 degrees, 5 degrees at a time.
+    for tree_angle in range(tree_up_pos, tree_down_pos, -5): # 180 - 0 degrees, 5 degrees at a time.
         tree_servo.angle = tree_angle
         sleepAndUpdateVolume(0.06)
     shake = 8
@@ -95,4 +96,4 @@ def animation_one(
     tree_servo.angle = tree_up_pos
     sleepAndUpdateVolume(0.02)
     tree_servo.angle = tree_up_pos
-    
+       
