@@ -116,7 +116,7 @@ config = files.read_json_file("/sd/config_feller.json")
 tree_down_pos = config["tree_down_pos"]
 tree_up_pos = config["tree_up_pos"]
 tree_last_pos = tree_up_pos
-tree_min = 100
+tree_min = 80
 tree_max = 180
 if tree_down_pos < tree_min or tree_down_pos > tree_max: tree_down_pos = tree_min
 if tree_up_pos < tree_min or tree_up_pos > tree_max: tree_up_pos = tree_max
@@ -139,6 +139,7 @@ config_feller_dialog = files.read_json_file("/sd/feller_dialog/feller_dialog.jso
 
 feller_dialog_positive = config_feller_dialog["feller_dialog_positive"]
 feller_dialog_negative = config_feller_dialog["feller_dialog_negative"]
+feller_dialog_advice = config_feller_dialog["feller_dialog_advice"]
 
 config_adjust_feller_and_tree = files.read_json_file("/sd/feller_menu/adjust_feller_and_tree.json")
 adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
@@ -160,6 +161,9 @@ def setVolume():
 def sleepAndUpdateVolume(seconds):
     setVolume()
     time.sleep(seconds)
+
+################################################################################
+# Dialog
     
 def fellerCalAnnouncement():
     wave0 = audiocore.WaveFile(open("/sd/feller_menu/now_we_can_adjust_the_feller_position.wav", "rb"))
@@ -177,10 +181,6 @@ def fellerCalAnnouncement():
     
 def treeCalAnnouncement():
     wave0 = audiocore.WaveFile(open("/sd/feller_menu/now_we_can_adjust_the_tree_position.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/press_left_for_up_right_for_down.wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     while mixer.voice[0].playing:
         pass
@@ -236,19 +236,21 @@ def adjustFellerAndTreeMenuAnnouncement():
 
 def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/reset_tree_to_defaults.wav", "rb"))
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/limit_reached.wav", "rb"))
         mixer.voice[0].play( wave0, loop=False )
         while mixer.voice[0].playing:
             pass 
         return False
     if servo_pos > max_servo_pos:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/reset_tree_to_defaults.wav", "rb"))
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/limit_reached.wav", "rb"))
         mixer.voice[0].play( wave0, loop=False )
         while mixer.voice[0].playing:
             pass 
         return False
     return True
 
+#############################################################################################
+# Servo helpers
     
 def calibratePosition(servo, servo_pos, movement_type):
     if movement_type == "feller":
@@ -286,11 +288,12 @@ def calibratePosition(servo, servo_pos, movement_type):
                     calibrations_complete = True 
                 if right_switch.rose:
                     button_check = False
-            servo_pos += 1 * sign
-            if checkLimits(min_servo_pos, max_servo_pos, servo_pos):
-                servo.angle = servo_pos
-            else:
-                servo_pos -= 1 * sign
+            if not calibrations_complete:
+                servo_pos += 1 * sign
+                if checkLimits(min_servo_pos, max_servo_pos, servo_pos):
+                    servo.angle = servo_pos
+                else:
+                    servo_pos -= 1 * sign
     if movement_type == "feller":
         global feller_last_pos
         feller_last_pos = servo_pos
@@ -301,6 +304,7 @@ def calibratePosition(servo, servo_pos, movement_type):
 
 def moveFellerToPositionGently (new_position):
     global feller_last_pos
+    print("feller angle: " + str(tree_last_pos) + "  " + str(new_position))
     sign = 1
     if feller_last_pos > new_position: sign = - 1
     for feller_angle in range( feller_last_pos, new_position, sign):
@@ -319,6 +323,16 @@ def moveTreeToPositionGently (new_position):
         sleepAndUpdateVolume(0.01)
     tree_servo.angle = new_position
     tree_last_pos = new_position
+
+def moveFellerServo (servo_pos):
+    feller_servo.angle = servo_pos
+    global feller_last_pos
+    feller_last_pos = servo_pos
+
+def moveTreeServo (servo_pos):
+    tree_servo.angle = servo_pos
+    global tree_last_pos
+    tree_last_pos = servo_pos
     
 ################################################################################
 # State Machine
@@ -405,6 +419,7 @@ class BaseState(State):
         else:
             # set servos to starting position
             moveFellerToPositionGently(feller_rest_pos)
+            sleepAndUpdateVolume(0.02)
             moveTreeToPositionGently(tree_up_pos)
             wave0 = audiocore.WaveFile(open("/sd/feller_menu/animations_are_now_active.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
@@ -432,7 +447,12 @@ class BaseState(State):
                 feller_rest_pos,
                 feller_chop_pos,
                 feller_dialog_positive,
-                feller_dialog_negative)
+                feller_dialog_negative,
+                feller_dialog_advice,
+                moveFellerServo,
+                moveTreeServo,
+                moveFellerToPositionGently,
+                moveTreeToPositionGently)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('main_menu')
@@ -476,21 +496,25 @@ class AdjustFellerAndTree(State):
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
                     global feller_rest_pos
+                    moveFellerToPositionGently(feller_rest_pos)
                     fellerCalAnnouncement()
                     feller_rest_pos = calibratePosition(feller_servo, feller_rest_pos, "feller")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_feller_to_chop_position":
                     global feller_chop_pos
+                    moveFellerToPositionGently(feller_chop_pos)
                     fellerCalAnnouncement()
                     feller_chop_pos = calibratePosition(feller_servo, feller_chop_pos, "feller")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_upright_position":
                     global tree_up_pos
+                    moveTreeToPositionGently(tree_up_pos)
                     treeCalAnnouncement()
                     tree_up_pos = calibratePosition(tree_servo, tree_up_pos, "tree")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_fallen_position":
                     global tree_down_pos
+                    moveTreeToPositionGently(tree_down_pos)
                     treeCalAnnouncement()
                     tree_down_pos = calibratePosition(tree_servo, tree_down_pos, "tree")
                     machine.go_to_state('base_state')
