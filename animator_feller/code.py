@@ -18,6 +18,73 @@ from analogio import AnalogIn
 import files
 import animate_feller
 
+
+################################################################################
+# Test wifi
+
+import os
+import time
+import ssl
+import wifi
+import ipaddress
+import socketpool
+import microcontroller
+import adafruit_requests
+from adafruit_httpserver.server import HTTPServer
+from adafruit_httpserver.request import HTTPRequest
+from adafruit_httpserver.response import HTTPResponse
+from adafruit_httpserver.methods import HTTPMethod
+from adafruit_httpserver.mime_type import MIMEType
+import microcontroller
+
+print("Connecting to WiFi")
+#  set static IP address
+ipv4 =  ipaddress.IPv4Address("192.168.1.42")
+netmask =  ipaddress.IPv4Address("255.255.255.0")
+gateway =  ipaddress.IPv4Address("192.168.1.1")
+wifi.radio.set_ipv4_address(ipv4=ipv4,netmask=netmask,gateway=gateway)
+
+# make settings.toml file as follows.  Do not save this to github an make sure you added *.toml to your gitignore
+# Comments are supported
+# CIRCUITPY_WIFI_SSID="YOURSSID"
+# CIRCUITPY_WIFI_PASSWORD="YOURPASSWORD"
+# CIRCUITPY_WEB_API_PORT=80
+# CIRCUITPY_WEB_API_USERNAME=""
+# CIRCUITPY_WEB_API_PASSWORD="somepassword"
+
+#  connect to your SSID
+wifi.radio.connect(os.getenv('CIRCUITPY_WIFI_SSID'), os.getenv('CIRCUITPY_WIFI_PASSWORD'))
+
+#  prints MAC address to REPL
+
+mystring = [hex(i) for i in wifi.radio.mac_address]
+print("My MAC addr:", mystring)
+
+#  prints IP address to REPL
+print("My IP address is", wifi.radio.ipv4_address)
+
+print("Connected to WiFi")
+pool = socketpool.SocketPool(wifi.radio)
+server = HTTPServer(pool)
+   
+get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
+
+if get_time_url == "":
+    requests = adafruit_requests.Session(pool, ssl.create_default_context())
+    try:
+        print("Fetching time from %s" % get_time_url)
+        response = requests.get(get_time_url)  
+        responseObject = files.json_parse(response.text)
+        print(responseObject["timezone"])
+        print(responseObject["datetime"])
+        response.close()
+        time.sleep(1)
+    except Exception as e:
+        print("Error:\n", str(e))
+        print("Resetting microcontroller in 10 seconds")
+        time.sleep(10)
+        microcontroller.reset()
+    
 ################################################################################
 # Setup hardware
 
@@ -339,6 +406,79 @@ def moveTreeServo (servo_pos):
     global tree_last_pos
     tree_last_pos = servo_pos
     
+def animateFeller ():
+    animate_feller.animation_one(
+        sleepAndUpdateVolume, 
+        audiocore, 
+        mixer, 
+        feller_servo, 
+        tree_servo, 
+        config,
+        feller_sound_options, 
+        feller_dialog_positive,
+        feller_dialog_negative,
+        feller_dialog_advice,
+        moveFellerServo,
+        moveTreeServo,
+        moveFellerToPositionGently,
+        moveTreeToPositionGently,
+        left_switch)
+    
+################################################################################
+# Setup webpage
+
+# serve webpage
+@server.route("/")
+def base(request: HTTPRequest):
+    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
+
+# if a button is pressed on the site
+@server.route("/", method=HTTPMethod.POST)
+def buttonpress(request: HTTPRequest):
+    global config
+    raw_text = request.raw_request.decode("utf8")
+    if "random" in raw_text: 
+        config["option_selected"] = "random"
+        animateFeller()
+    if "forth_of_july" in raw_text: 
+        config["option_selected"] = "forth_of_july"
+        animateFeller()
+    if "christmas" in raw_text: 
+        config["option_selected"] = "christmas"
+        animateFeller()
+    if "halloween" in raw_text: 
+        config["option_selected"] = "halloween"
+        animateFeller()
+    if "birds_dogs" in raw_text: 
+        config["option_selected"] = "birds_dogs"
+        animateFeller()
+    if "birds_dogs_short_version" in raw_text: 
+        config["option_selected"] = "birds_dogs_short_version"
+        animateFeller()
+    if "just_birds" in raw_text: 
+        config["option_selected"] = "just_birds"
+        animateFeller()
+    if "machines" in raw_text: 
+        config["option_selected"] = "machines"
+        animateFeller()
+    if "no_sounds" in raw_text: 
+        config["option_selected"] = "no_sounds"
+        animateFeller()
+    if "owl" in raw_text: 
+        config["option_selected"] = "owl"
+        animateFeller() 
+    if "feller_rest_pos" in raw_text:
+        moveFellerToPositionGently(config["feller_rest_pos"])
+    if "feller_chop_pos" in raw_text:
+        moveFellerToPositionGently(config["feller_chop_pos"])
+    if "tree_up_pos" in raw_text:
+        moveTreeToPositionGently(config["tree_up_pos"])
+    if "tree_down_pos" in raw_text:
+        moveTreeToPositionGently(config["tree_down_pos"])
+    #  reload site
+    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
+
+    
 ################################################################################
 # State Machine
 
@@ -439,22 +579,7 @@ class BaseState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_feller.animation_one(
-                sleepAndUpdateVolume, 
-                audiocore, 
-                mixer, 
-                feller_servo, 
-                tree_servo, 
-                config,
-                feller_sound_options, 
-                feller_dialog_positive,
-                feller_dialog_negative,
-                feller_dialog_advice,
-                moveFellerServo,
-                moveTreeServo,
-                moveFellerToPositionGently,
-                moveTreeToPositionGently,
-                left_switch)
+            animateFeller()
         if right_switch.fell:
             machine.go_to_state('main_menu')
                      
@@ -663,7 +788,23 @@ print("animator has started")
 
 pretty_state_machine.go_to_state('base_state')
 
+print("starting server..")
+# startup the server
+try:
+    server.start(str(wifi.radio.ipv4_address))
+    print("Listening on http://%s:80" % wifi.radio.ipv4_address)
+#  if the server fails to begin, restart the pico w
+except OSError:
+    time.sleep(5)
+    print("restarting..")
+    microcontroller.reset()
+
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
+    try:
+        server.poll()
+    except Exception as e:
+        continue
+
     
