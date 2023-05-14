@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        html {
+            font-family: monospace;
+            background-color: lightgrey;
+            display: inline-block;
+            margin: 0px auto;
+            text-align: center;
+        }
+
+        h1 {
+            color: deeppink;
+            width: 200;
+            word-wrap: break-word;
+            padding: 2vh;
+            font-size: 35px;
+        }
+
+        p {
+            font-size: 1.5rem;
+            width: 200;
+            word-wrap: break-word;
+        }
+
+        .button {
+            font-family: monospace;
+            display: inline-block;
+            background-color: black;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            padding: 16px 40px;
+            text-decoration: none;
+            font-size: 30px;
+            margin: 2px;
+            cursor: pointer;
+        }
+
+        p.dotted {
+            margin: auto;
+            width: 75%;
+            font-size: 25px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <title>Animator - Feller</title>
+    <h1>Animator - Feller</h1>
+    <br>
+    <p class="dotted">Use this to move your animated items around.</p>
+    <br>
+
+    <h1>Feller positions:</h1><br>
+
+    <form accept-charset="utf-8" method="POST">
+        <button class="button" name="FELLER REST" value="feller_rest_pos" type="submit">Rest</button></a></p>
+    </form>
+
+    <p>
+    <form accept-charset="utf-8" method="POST">
+        <button class="button" name="FELLER CHOP" value="feller_chop_pos" type="submit">Chop</button></a></p>
+    </form>
+
+    <h1>Tree positions:</h1><br>
+
+    <form accept-charset="utf-8" method="POST">
+        <button class="button" name="TREE UP" value="tree_up_pos" type="submit">Upright</button></a></p>
+    </form>
+
+    <p>
+    <form accept-charset="utf-8" method="POST">
+        <button class="button" name="TREE DOWN" value="tree_down_pos" type="submit">Fallen</button></a></p>
+    </form>
+
+</body>
+
+</html>
