@@ -1,41 +1,44 @@
-import time
-import audiocore
-import audiomixer
-import audiobusio
-import sdcardio
-import storage
-import busio
-import pwmio
-import digitalio
-import random
-import rtc
-import board
-import audiomp3
-from analogio import AnalogIn
-from adafruit_motor import servo
-from adafruit_debouncer import Debouncer
-from analogio import AnalogIn
-import files
-import animate_feller
-
-
-################################################################################
-# Test wifi
-
 import os
 import time
+
 import ssl
 import wifi
 import ipaddress
 import socketpool
-import microcontroller
 import adafruit_requests
 from adafruit_httpserver.server import HTTPServer
 from adafruit_httpserver.request import HTTPRequest
 from adafruit_httpserver.response import HTTPResponse
 from adafruit_httpserver.methods import HTTPMethod
 from adafruit_httpserver.mime_type import MIMEType
+
+import audiomp3
+import audiocore
+import audiomixer
+import audiobusio
+
+import sdcardio
+import storage
+
+import board
 import microcontroller
+import busio
+import pwmio
+import digitalio
+
+import random
+import rtc
+
+from analogio import AnalogIn
+from adafruit_motor import servo
+from adafruit_debouncer import Debouncer
+from analogio import AnalogIn
+
+import files
+import animate_feller
+
+################################################################################
+# Setup wifi and web server
 
 print("Connecting to WiFi")
 #  set static IP address
@@ -56,20 +59,19 @@ wifi.radio.set_ipv4_address(ipv4=ipv4,netmask=netmask,gateway=gateway)
 wifi.radio.connect(os.getenv('CIRCUITPY_WIFI_SSID'), os.getenv('CIRCUITPY_WIFI_PASSWORD'))
 
 #  prints MAC address to REPL
-
 mystring = [hex(i) for i in wifi.radio.mac_address]
 print("My MAC addr:", mystring)
 
 #  prints IP address to REPL
 print("My IP address is", wifi.radio.ipv4_address)
-
 print("Connected to WiFi")
+
+# set up server
 pool = socketpool.SocketPool(wifi.radio)
 server = HTTPServer(pool)
-   
-get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
 
-if get_time_url == "":
+def getTime(): 
+    get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
     requests = adafruit_requests.Session(pool, ssl.create_default_context())
     try:
         print("Fetching time from %s" % get_time_url)
@@ -79,12 +81,13 @@ if get_time_url == "":
         print(responseObject["datetime"])
         response.close()
         time.sleep(1)
+        return responseObject["datetime"]
     except Exception as e:
         print("Error:\n", str(e))
         print("Resetting microcontroller in 10 seconds")
         time.sleep(10)
         microcontroller.reset()
-    
+        
 ################################################################################
 # Setup hardware
 
@@ -172,7 +175,7 @@ except:
 # wave files are less cpu intensive since they are not compressed
 num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True)
+                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
 audio.play(mixer)
 
 ################################################################################
@@ -425,7 +428,7 @@ def animateFeller ():
         left_switch)
     
 ################################################################################
-# Setup webpage
+# Setup routes
 
 # serve webpage
 @server.route("/")
@@ -514,11 +517,8 @@ class StateMachine(object):
         self.state = self.states[state_name]
 
     def reset(self):
-        """As indicated, reset"""
-        self.firework_color = random_color()
-        self.burst_count = 0
-        self.shower_count = 0
-        self.firework_step_time = time.monotonic() + 0.05
+        microcontroller.reset()
+        
 
 ################################################################################
 # States
@@ -793,7 +793,7 @@ print("starting server..")
 try:
     server.start(str(wifi.radio.ipv4_address))
     print("Listening on http://%s:80" % wifi.radio.ipv4_address)
-#  if the server fails to begin, restart the pico w
+# if the server fails to begin, restart the pico w
 except OSError:
     time.sleep(5)
     print("restarting..")
@@ -805,6 +805,5 @@ while True:
     try:
         server.poll()
     except Exception as e:
+        print(e)
         continue
-
-    
