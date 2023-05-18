@@ -582,6 +582,62 @@ class BaseState(State):
             animateFeller()
         if right_switch.fell:
             machine.go_to_state('main_menu')
+
+class MoveFellerAndTree(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'move_feller_and_tree'
+
+    def enter(self, machine):
+        print('Select a program option')
+        adjustFellerAndTreeMenuAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + adjust_feller_and_tree[self.menuIndex] + ".wav" , "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(adjust_feller_and_tree)-1:
+                    self.menuIndex = 0
+                while mixer.voice[0].playing:
+                    shortCircuitDialog()
+        if right_switch.fell:
+                selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
+                if selected_menu_item == "move_feller_to_rest_position":
+                    moveFellerToPositionGently(config["feller_rest_pos"])
+                    fellerCalAnnouncement()
+                elif selected_menu_item == "move_feller_to_chop_position":
+                    moveFellerToPositionGently(config["feller_chop_pos"])
+                    fellerCalAnnouncement()
+                elif selected_menu_item == "move_tree_to_upright_position":
+                    moveTreeToPositionGently(config["tree_up_pos"])
+                    treeCalAnnouncement()
+                elif selected_menu_item == "move_tree_to_fallen_position":
+                    moveTreeToPositionGently(config["tree_down_pos"])
+                    treeCalAnnouncement()
+                else:
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
+                    machine.go_to_state('base_state')
                      
 class AdjustFellerAndTree(State):
 
@@ -742,12 +798,8 @@ class MainMenu(State):
                     machine.go_to_state('choose_sounds')
                 elif selected_menu_item == "adjust_feller_and_tree":
                     machine.go_to_state('adjust_feller_and_tree')
-                elif selected_menu_item == "exit_menu":
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
-                    machine.go_to_state('base_state')
+                elif selected_menu_item == "move_feller_and_tree":
+                    machine.go_to_state('move_feller_and_tree')
                 else:
                     wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
                     mixer.voice[0].play( wave0, loop=False )
@@ -783,6 +835,7 @@ pretty_state_machine.add_state(BaseState())
 pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(AdjustFellerAndTree())
+pretty_state_machine.add_state(MoveFellerAndTree())
 
 print("animator has started")
 
