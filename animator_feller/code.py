@@ -1,5 +1,6 @@
 import os
 import time
+import gc
 
 import ssl
 import wifi
@@ -37,56 +38,16 @@ from analogio import AnalogIn
 import files
 import animate_feller
 
-################################################################################
-# Setup wifi and web server
+def garbage_collect(collection_point):
+    gc.collect()
+    start_mem = gc.mem_free()
+    print( "Point " + collection_point + " Available memory: {} bytes".format(start_mem) )
 
-print("Connecting to WiFi")
-#  set static IP address
-ipv4 =  ipaddress.IPv4Address("192.168.1.42")
-netmask =  ipaddress.IPv4Address("255.255.255.0")
-gateway =  ipaddress.IPv4Address("192.168.1.1")
-wifi.radio.set_ipv4_address(ipv4=ipv4,netmask=netmask,gateway=gateway)
-
-# make settings.toml file as follows.  Do not save this to github an make sure you added *.toml to your gitignore
-# Comments are supported
-# CIRCUITPY_WIFI_SSID="YOURSSID"
-# CIRCUITPY_WIFI_PASSWORD="YOURPASSWORD"
-# CIRCUITPY_WEB_API_PORT=80
-# CIRCUITPY_WEB_API_USERNAME=""
-# CIRCUITPY_WEB_API_PASSWORD="somepassword"
-
-#  connect to your SSID
-wifi.radio.connect(os.getenv('CIRCUITPY_WIFI_SSID'), os.getenv('CIRCUITPY_WIFI_PASSWORD'))
-
-#  prints MAC address to REPL
-mystring = [hex(i) for i in wifi.radio.mac_address]
-print("My MAC addr:", mystring)
-
-#  prints IP address to REPL
-print("My IP address is", wifi.radio.ipv4_address)
-print("Connected to WiFi")
-
-# set up server
-pool = socketpool.SocketPool(wifi.radio)
-server = HTTPServer(pool)
-
-def getTime(): 
-    get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
-    requests = adafruit_requests.Session(pool, ssl.create_default_context())
-    try:
-        print("Fetching time from %s" % get_time_url)
-        response = requests.get(get_time_url)  
-        responseObject = files.json_parse(response.text)
-        print(responseObject["timezone"])
-        print(responseObject["datetime"])
-        response.close()
-        time.sleep(1)
-        return responseObject["datetime"]
-    except Exception as e:
-        print("Error:\n", str(e))
-        print("Resetting microcontroller in 10 seconds")
-        time.sleep(10)
-        microcontroller.reset()
+def reset_pico():
+    microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
+    microcontroller.reset()
+    
+garbage_collect("imports")
         
 ################################################################################
 # Setup hardware
@@ -156,27 +117,16 @@ except:
   while not cardInserted:
     left_switch.update()
     if left_switch.fell:
-        try:
-            sdcard = sdcardio.SDCard(spi, cs)
-            vfs = storage.VfsFat(sdcard)
-            storage.mount(vfs, "/sd")
-            cardInserted = True
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_success.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
-        except:
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
+        reset_pico()
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
 num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
+                         bits_per_sample=16, samples_signed=True, buffer_size=8192)
 audio.play(mixer)
+
+garbage_collect("hardware setup")
 
 ################################################################################
 # Global Variables
@@ -211,6 +161,9 @@ feller_dialog_advice = config_feller_dialog["feller_dialog_advice"]
 config_adjust_feller_and_tree = files.read_json_file("/sd/feller_menu/adjust_feller_and_tree.json")
 adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
 
+config_move_feller_and_tree = files.read_json_file("/sd/feller_menu/move_feller_and_tree.json")
+move_feller_and_tree = config_move_feller_and_tree["move_feller_and_tree"]
+
 ################################################################################
 # Global Methods
 
@@ -229,6 +182,8 @@ def setVolume():
 def sleepAndUpdateVolume(seconds):
     setVolume()
     time.sleep(seconds)
+    
+garbage_collect("global variable and methods")
 
 ################################################################################
 # Dialog
@@ -298,7 +253,22 @@ def adjustFellerAndTreeMenuAnnouncement():
         mixer.voice[0].play( wave0, loop=False )
         while mixer.voice[0].playing:
             pass
-
+        
+def moveFellerAndTreeMenuAnnouncement():
+    if mixer.voice[0].playing:
+        mixer.voice[0].stop()
+        while mixer.voice[0].playing:
+            pass
+    else:
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/move_feller_and_tree_menu.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/press_left_button_right_button.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        
 def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
         wave0 = audiocore.WaveFile(open("/sd/feller_menu/limit_reached.wav", "rb"))
@@ -319,6 +289,8 @@ def shortCircuitDialog():
     left_switch.update()
     if left_switch.fell:
         mixer.voice[0].stop()
+        
+garbage_collect("dialog methods")
 
 #############################################################################################
 # Servo helpers
@@ -426,6 +398,59 @@ def animateFeller ():
         moveFellerToPositionGently,
         moveTreeToPositionGently,
         left_switch)
+
+garbage_collect("servo helpers")
+
+################################################################################
+# Setup wifi and web server
+
+print("Connecting to WiFi")
+#  set static IP address
+ipv4 =  ipaddress.IPv4Address(os.getenv('CIRCUITPY_WEB_IPV4'))  
+netmask =  ipaddress.IPv4Address("255.255.255.0")
+gateway =  ipaddress.IPv4Address(os.getenv('CIRCUITPY_WEB_GATEWAY'))
+wifi.radio.set_ipv4_address(ipv4=ipv4,netmask=netmask,gateway=gateway)
+
+# make settings.toml file as follows.  Do not save this to github an make sure you added *.toml to your gitignore
+# Comments are supported
+# CIRCUITPY_WIFI_SSID="YOURSSID"
+# CIRCUITPY_WIFI_PASSWORD="YOURPASSWORD"
+# CIRCUITPY_WEB_API_PORT=80
+# CIRCUITPY_WEB_API_USERNAME=""
+# CIRCUITPY_WEB_API_PASSWORD="somepassword"
+
+#  connect to your SSID
+wifi.radio.connect(os.getenv('CIRCUITPY_WIFI_SSID'), os.getenv('CIRCUITPY_WIFI_PASSWORD'))
+
+#  prints MAC address to REPL
+mystring = [hex(i) for i in wifi.radio.mac_address]
+print("My MAC addr:", mystring)
+
+#  prints IP address to REPL
+print("My IP address is", wifi.radio.ipv4_address)
+print("Connected to WiFi")
+
+# set up server
+pool = socketpool.SocketPool(wifi.radio)
+server = HTTPServer(pool)
+
+def getTime(): 
+    get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
+    requests = adafruit_requests.Session(pool, ssl.create_default_context())
+    try:
+        print("Fetching time from %s" % get_time_url)
+        response = requests.get(get_time_url)  
+        responseObject = files.json_parse(response.text)
+        print(responseObject["timezone"])
+        print(responseObject["datetime"])
+        response.close()
+        time.sleep(1)
+        return responseObject["datetime"]
+    except Exception as e:
+        print("Error:\n", str(e))
+        print("Resetting pico in 4 seconds")
+        time.sleep(4)
+        reset_pico()
     
 ################################################################################
 # Setup routes
@@ -480,8 +505,9 @@ def buttonpress(request: HTTPRequest):
         moveTreeToPositionGently(config["tree_down_pos"])
     #  reload site
     with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
-
     
+garbage_collect("web server")
+
 ################################################################################
 # State Machine
 
@@ -517,7 +543,7 @@ class StateMachine(object):
         self.state = self.states[state_name]
 
     def reset(self):
-        microcontroller.reset()
+        reset_pico()
         
 
 ################################################################################
@@ -595,7 +621,7 @@ class MoveFellerAndTree(State):
 
     def enter(self, machine):
         print('Select a program option')
-        adjustFellerAndTreeMenuAnnouncement()
+        moveFellerAndTreeMenuAnnouncement()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -610,28 +636,24 @@ class MoveFellerAndTree(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + adjust_feller_and_tree[self.menuIndex] + ".wav" , "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + move_feller_and_tree[self.menuIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
-                if self.menuIndex > len(adjust_feller_and_tree)-1:
+                if self.menuIndex > len(move_feller_and_tree)-1:
                     self.menuIndex = 0
                 while mixer.voice[0].playing:
                     shortCircuitDialog()
         if right_switch.fell:
-                selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
+                selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
                     moveFellerToPositionGently(config["feller_rest_pos"])
-                    fellerCalAnnouncement()
                 elif selected_menu_item == "move_feller_to_chop_position":
                     moveFellerToPositionGently(config["feller_chop_pos"])
-                    fellerCalAnnouncement()
                 elif selected_menu_item == "move_tree_to_upright_position":
                     moveTreeToPositionGently(config["tree_up_pos"])
-                    treeCalAnnouncement()
                 elif selected_menu_item == "move_tree_to_fallen_position":
                     moveTreeToPositionGently(config["tree_down_pos"])
-                    treeCalAnnouncement()
                 else:
                     wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
                     mixer.voice[0].play( wave0, loop=False )
@@ -825,7 +847,8 @@ class StateTemplate(State):
 
     def update(self, machine):
         State.update(self, machine)
-
+        
+garbage_collect("state machine")
 
 ###############################################################################
 # Create the state machine
@@ -837,11 +860,9 @@ pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(AdjustFellerAndTree())
 pretty_state_machine.add_state(MoveFellerAndTree())
 
-print("animator has started")
-
 pretty_state_machine.go_to_state('base_state')
 
-print("starting server..")
+print("starting server...")
 # startup the server
 try:
     server.start(str(wifi.radio.ipv4_address))
@@ -849,8 +870,10 @@ try:
 # if the server fails to begin, restart the pico w
 except OSError:
     time.sleep(5)
-    print("restarting..")
-    microcontroller.reset()
+    print("restarting...")
+    reset_pico()
+    
+print("animator has started...")
 
 while True:
     pretty_state_machine.update()
@@ -860,3 +883,4 @@ while True:
     except Exception as e:
         print(e)
         continue
+    
