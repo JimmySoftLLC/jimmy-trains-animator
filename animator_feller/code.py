@@ -133,6 +133,7 @@ garbage_collect("hardware setup")
 
 # get the calibration settings from various json files which are stored on the sdCard
 config = files.read_json_file("/sd/config_feller.json")
+env = files.read_json_file("/sd/env.json")
 
 tree_last_pos = config["tree_up_pos"]
 tree_min = 90
@@ -404,35 +405,28 @@ garbage_collect("servo helpers")
 ################################################################################
 # Setup wifi and web server
 
-print("Connecting to WiFi")
-#  set static IP address
-ipv4 =  ipaddress.IPv4Address(os.getenv('CIRCUITPY_WEB_IPV4'))  
-netmask =  ipaddress.IPv4Address("255.255.255.0")
-gateway =  ipaddress.IPv4Address(os.getenv('CIRCUITPY_WEB_GATEWAY'))
-wifi.radio.set_ipv4_address(ipv4=ipv4,netmask=netmask,gateway=gateway)
+if (True == True):
+    print("Connecting to WiFi")
+    #  set static IP address
+    ipv4 =  ipaddress.IPv4Address(env["WEB_IPV4"])
+    netmask =  ipaddress.IPv4Address("255.255.255.0")
+    gateway =  ipaddress.IPv4Address(env["WEB_GATEWAY"])
+    wifi.radio.set_ipv4_address(ipv4=ipv4,netmask=netmask,gateway=gateway)
 
-# make settings.toml file as follows.  Do not save this to github an make sure you added *.toml to your gitignore
-# Comments are supported
-# CIRCUITPY_WIFI_SSID="YOURSSID"
-# CIRCUITPY_WIFI_PASSWORD="YOURPASSWORD"
-# CIRCUITPY_WEB_API_PORT=80
-# CIRCUITPY_WEB_API_USERNAME=""
-# CIRCUITPY_WEB_API_PASSWORD="somepassword"
+    #  connect to your SSID
+    wifi.radio.connect(env["WIFI_SSID"], env["WIFI_PASSWORD"])
 
-#  connect to your SSID
-wifi.radio.connect(os.getenv('CIRCUITPY_WIFI_SSID'), os.getenv('CIRCUITPY_WIFI_PASSWORD'))
+    #  prints MAC address to REPL
+    mystring = [hex(i) for i in wifi.radio.mac_address]
+    print("My MAC addr:", mystring)
 
-#  prints MAC address to REPL
-mystring = [hex(i) for i in wifi.radio.mac_address]
-print("My MAC addr:", mystring)
+    #  prints IP address to REPL
+    print("My IP address is", wifi.radio.ipv4_address)
+    print("Connected to WiFi")
 
-#  prints IP address to REPL
-print("My IP address is", wifi.radio.ipv4_address)
-print("Connected to WiFi")
-
-# set up server
-pool = socketpool.SocketPool(wifi.radio)
-server = HTTPServer(pool)
+    # set up server
+    pool = socketpool.SocketPool(wifi.radio)
+    server = HTTPServer(pool)
 
 def getTime(): 
     get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"

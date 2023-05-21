@@ -27,35 +27,11 @@ def animation_one(
     speak_rotation = 7
     speak_cadence = 0.2
     while chopNum <= chopNumber:
-        if what_to_speak == 1 and when_to_speak == chopNum and not spoken:
+        if when_to_speak == chopNum and not spoken:
             spoken = True
-            highest_index = len(feller_dialog_positive) - 1
+            highest_index = len(feller_dialog) - 1
             soundNumber = random.randint(0, highest_index)
-            soundFile = "/sd/feller_dialog/" + feller_dialog_positive[soundNumber] + ".wav"
-            wave0 = audiocore.WaveFile(open(soundFile, "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                feller_servo.angle = speak_rotation + config["feller_rest_pos"]
-                sleepAndUpdateVolume(speak_cadence)
-                feller_servo.angle = config["feller_rest_pos"]
-                sleepAndUpdateVolume(speak_cadence)
-        if what_to_speak == 2 and when_to_speak == chopNum and not spoken:
-            spoken = True
-            highest_index = len(feller_dialog_negative) - 1
-            soundNumber = random.randint(0, highest_index)
-            soundFile = "/sd/feller_dialog/" + feller_dialog_negative[soundNumber] + ".wav"
-            wave0 = audiocore.WaveFile(open(soundFile, "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                feller_servo.angle = speak_rotation + config["feller_rest_pos"]
-                sleepAndUpdateVolume(speak_cadence)
-                feller_servo.angle = config["feller_rest_pos"]
-                sleepAndUpdateVolume(speak_cadence)
-        if what_to_speak == 3 and when_to_speak == chopNum and not spoken:
-            spoken = True
-            highest_index = len(feller_dialog_advice) - 1
-            soundNumber = random.randint(0, highest_index)
-            soundFile = "/sd/feller_dialog/" + feller_dialog_advice[soundNumber] + ".wav"
+            soundFile = "/sd/feller_dialog/" + feller_dialog[soundNumber] + ".wav"
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
@@ -104,6 +80,9 @@ def animation_one(
         moveTreeServo(7 + config["tree_down_pos"])
         sleepAndUpdateVolume(0.1)
     moveTreeServo(config["tree_down_pos"])
+    #soundFile2 = "/sd/feller_dialog/i_am_exhausted.wav"
+    #wave1 = audiocore.WaveFile(open(soundFile2, "rb"))
+    #mixer.voice[1].play( wave1, loop=True )
     while mixer.voice[0].playing:
         sleepAndUpdateVolume(0.02)
         left_switch.update()
