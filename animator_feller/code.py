@@ -1,25 +1,13 @@
-import os
-import time
 import gc
-
-import ssl
-import wifi
-import ipaddress
-import socketpool
-import adafruit_requests
-from adafruit_httpserver.server import HTTPServer
-from adafruit_httpserver.request import HTTPRequest
-from adafruit_httpserver.response import HTTPResponse
-from adafruit_httpserver.methods import HTTPMethod
-from adafruit_httpserver.mime_type import MIMEType
+import sdcardio
+import storage
 
 import audiomp3
 import audiocore
 import audiomixer
 import audiobusio
-
-import sdcardio
-import storage
+import os
+import time
 
 import board
 import microcontroller
@@ -113,11 +101,30 @@ except:
   audio.play(wave0)
   while audio.playing:
     pass
+  wave0.deinit()
+  garbage_collect("deinit wave0")
   cardInserted = False
   while not cardInserted:
     left_switch.update()
     if left_switch.fell:
-        reset_pico()
+        try:
+            sdcard = sdcardio.SDCard(spi, cs)
+            vfs = storage.VfsFat(sdcard)
+            storage.mount(vfs, "/sd")
+            cardInserted = True
+            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_success.mp3", "rb"))
+            audio.play(wave0)
+            while audio.playing:
+                pass
+            wave0.deinit()
+            garbage_collect("deinit wave0")
+        except:
+            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
+            audio.play(wave0)
+            while audio.playing:
+                pass
+            wave0.deinit()
+            garbage_collect("deinit wave0")
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
@@ -133,7 +140,6 @@ garbage_collect("hardware setup")
 
 # get the calibration settings from various json files which are stored on the sdCard
 config = files.read_json_file("/sd/config_feller.json")
-env = files.read_json_file("/sd/env.json")
 
 tree_last_pos = config["tree_up_pos"]
 tree_min = 90
@@ -401,7 +407,20 @@ garbage_collect("servo helpers")
 ################################################################################
 # Setup wifi and web server
 
-if (True == True):
+if (config["serve_webpage"]):
+    import ssl
+    import wifi
+    import ipaddress
+    import socketpool
+    import adafruit_requests
+    from adafruit_httpserver.server import HTTPServer
+    from adafruit_httpserver.request import HTTPRequest
+    from adafruit_httpserver.response import HTTPResponse
+    from adafruit_httpserver.methods import HTTPMethod
+    from adafruit_httpserver.mime_type import MIMEType
+    
+    env = files.read_json_file("/sd/env.json")
+    
     print("Connecting to WiFi")
     #  set static IP address
     ipv4 =  ipaddress.IPv4Address(env["WEB_IPV4"])
@@ -424,74 +443,77 @@ if (True == True):
     pool = socketpool.SocketPool(wifi.radio)
     server = HTTPServer(pool)
 
-def getTime(): 
-    get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
-    requests = adafruit_requests.Session(pool, ssl.create_default_context())
-    try:
-        print("Fetching time from %s" % get_time_url)
-        response = requests.get(get_time_url)  
-        responseObject = files.json_parse(response.text)
-        print(responseObject["timezone"])
-        print(responseObject["datetime"])
-        response.close()
-        time.sleep(1)
-        return responseObject["datetime"]
-    except Exception as e:
-        print("Error:\n", str(e))
-    
-################################################################################
-# Setup routes
+    def getTime(): 
+        get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
+        requests = adafruit_requests.Session(pool, ssl.create_default_context())
+        try:
+            print("Fetching time from %s" % get_time_url)
+            response = requests.get(get_time_url)  
+            responseObject = files.json_parse(response.text)
+            print(responseObject["timezone"])
+            print(responseObject["datetime"])
+            response.close()
+            time.sleep(1)
+            return responseObject["datetime"]
+        except Exception as e:
+            print("Error:\n", str(e))
+        
+    ################################################################################
+    # Setup routes
 
-# serve webpage
-@server.route("/")
-def base(request: HTTPRequest):
-    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
+    # serve webpage
+    @server.route("/")
+    def base(request: HTTPRequest):
+        with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
 
-# if a button is pressed on the site
-@server.route("/", method=HTTPMethod.POST)
-def buttonpress(request: HTTPRequest):
-    global config
-    raw_text = request.raw_request.decode("utf8")
-    if "random" in raw_text: 
-        config["option_selected"] = "random"
-        animateFeller()
-    if "forth_of_july" in raw_text: 
-        config["option_selected"] = "forth_of_july"
-        animateFeller()
-    if "christmas" in raw_text: 
-        config["option_selected"] = "christmas"
-        animateFeller()
-    if "halloween" in raw_text: 
-        config["option_selected"] = "halloween"
-        animateFeller()
-    if "birds_dogs" in raw_text: 
-        config["option_selected"] = "birds_dogs"
-        animateFeller()
-    if "birds_dogs_short_version" in raw_text: 
-        config["option_selected"] = "birds_dogs_short_version"
-        animateFeller()
-    if "just_birds" in raw_text: 
-        config["option_selected"] = "just_birds"
-        animateFeller()
-    if "machines" in raw_text: 
-        config["option_selected"] = "machines"
-        animateFeller()
-    if "no_sounds" in raw_text: 
-        config["option_selected"] = "no_sounds"
-        animateFeller()
-    if "owl" in raw_text: 
-        config["option_selected"] = "owl"
-        animateFeller() 
-    if "feller_rest_pos" in raw_text:
-        moveFellerToPositionGently(config["feller_rest_pos"])
-    if "feller_chop_pos" in raw_text:
-        moveFellerToPositionGently(config["feller_chop_pos"])
-    if "tree_up_pos" in raw_text:
-        moveTreeToPositionGently(config["tree_up_pos"])
-    if "tree_down_pos" in raw_text:
-        moveTreeToPositionGently(config["tree_down_pos"])
-    #  reload site
-    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
+    # if a button is pressed on the site
+    @server.route("/", method=HTTPMethod.POST)
+    def buttonpress(request: HTTPRequest):
+        global config
+        raw_text = request.raw_request.decode("utf8")
+        if "random" in raw_text: 
+            config["option_selected"] = "random"
+            animateFeller()
+        elif "forth_of_july" in raw_text: 
+            config["option_selected"] = "forth_of_july"
+            animateFeller()
+        elif "christmas" in raw_text: 
+            config["option_selected"] = "christmas"
+            animateFeller()
+        elif "halloween" in raw_text: 
+            config["option_selected"] = "halloween"
+            animateFeller()
+        elif "birds_dogs_short_version" in raw_text: 
+            config["option_selected"] = "birds_dogs_short_version"
+            animateFeller()
+        elif "birds_dogs" in raw_text: 
+            config["option_selected"] = "birds_dogs"
+            animateFeller()
+        elif "just_birds" in raw_text: 
+            config["option_selected"] = "just_birds"
+            animateFeller()
+        elif "machines" in raw_text: 
+            config["option_selected"] = "machines"
+            animateFeller()
+        elif "no_sounds" in raw_text: 
+            config["option_selected"] = "no_sounds"
+            animateFeller()
+        elif "owl" in raw_text: 
+            config["option_selected"] = "owl"
+            animateFeller() 
+        elif "feller_rest_pos" in raw_text:
+            moveFellerToPositionGently(config["feller_rest_pos"])
+        elif "feller_chop_pos" in raw_text:
+            moveFellerToPositionGently(config["feller_chop_pos"])
+        elif "tree_up_pos" in raw_text:
+            moveTreeToPositionGently(config["tree_up_pos"])
+        elif "tree_down_pos" in raw_text:
+            moveTreeToPositionGently(config["tree_down_pos"])
+        #  reload site
+        try:
+            with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
+        except Exception as e:
+            print(e)
     
 garbage_collect("web server")
 
@@ -849,26 +871,26 @@ pretty_state_machine.add_state(MoveFellerAndTree())
 
 pretty_state_machine.go_to_state('base_state')
 
-print("starting server...")
-# startup the server
-try:
-    server.start(str(wifi.radio.ipv4_address))
-    print("Listening on http://%s:80" % wifi.radio.ipv4_address)
-# if the server fails to begin, restart the pico w
-except OSError:
-    time.sleep(5)
-    print("restarting...")
-    reset_pico()
+if (config["serve_webpage"]):
+    print("starting server...")
+    # startup the server
+    try:
+        server.start(str(wifi.radio.ipv4_address))
+        print("Listening on http://%s:80" % wifi.radio.ipv4_address)
+    # if the server fails to begin, restart the pico w
+    except OSError:
+        time.sleep(5)
+        print("restarting...")
+        reset_pico()
     
 print("animator has started...")
-
-getTime()
 
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
-    try:
-        server.poll()
-    except Exception as e:
-        print(e)
-        continue
+    if (config["serve_webpage"]):
+        try:
+            server.poll()
+        except Exception as e:
+            print(e)
+            continue

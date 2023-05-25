@@ -8,9 +8,7 @@ def animation_one(
         tree_servo, 
         config,
         feller_sound_options, 
-        feller_dialog_positive,
-        feller_dialog_negative,
-        feller_dialog_advice,
+        feller_dialog,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
@@ -19,7 +17,8 @@ def animation_one(
     sleepAndUpdateVolume(0.05)
     chopNum = 1
     chopNumber = random.randint(2, 7)
-    what_to_speak = random.randint(1, 3)
+    highest_index = len(feller_dialog) - 1
+    what_to_speak = random.randint(0, highest_index)
     when_to_speak = random.randint(2, chopNumber)
     print("chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
@@ -28,10 +27,8 @@ def animation_one(
     speak_cadence = 0.2
     while chopNum <= chopNumber:
         if when_to_speak == chopNum and not spoken:
-            spoken = True
-            highest_index = len(feller_dialog) - 1
-            soundNumber = random.randint(0, highest_index)
-            soundFile = "/sd/feller_dialog/" + feller_dialog[soundNumber] + ".wav"
+            spoken = True    
+            soundFile = "/sd/feller_dialog/" + feller_dialog[what_to_speak] + ".wav"
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
