@@ -155,9 +155,7 @@ feller_sound_options = config_choose_sounds["choose_sounds"]
 
 config_feller_dialog = files.read_json_file("/sd/feller_dialog/feller_dialog.json")
 
-feller_dialog_positive = config_feller_dialog["feller_dialog_positive"]
-feller_dialog_negative = config_feller_dialog["feller_dialog_negative"]
-feller_dialog_advice = config_feller_dialog["feller_dialog_advice"]
+feller_dialog = config_feller_dialog["feller_dialog"]
 
 config_adjust_feller_and_tree = files.read_json_file("/sd/feller_menu/adjust_feller_and_tree.json")
 adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
@@ -391,9 +389,7 @@ def animateFeller ():
         tree_servo, 
         config,
         feller_sound_options, 
-        feller_dialog_positive,
-        feller_dialog_negative,
-        feller_dialog_advice,
+        feller_dialog,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
@@ -442,9 +438,6 @@ def getTime():
         return responseObject["datetime"]
     except Exception as e:
         print("Error:\n", str(e))
-        print("Resetting pico in 4 seconds")
-        time.sleep(4)
-        reset_pico()
     
 ################################################################################
 # Setup routes
@@ -869,6 +862,8 @@ except OSError:
     
 print("animator has started...")
 
+getTime()
+
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
@@ -877,4 +872,3 @@ while True:
     except Exception as e:
         print(e)
         continue
-    
