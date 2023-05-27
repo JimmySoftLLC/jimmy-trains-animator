@@ -2,7 +2,7 @@ import random
 import time
 import files
 
-def feller_talking_movement():
+def feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume):
     speak_rotation = 7
     speak_cadence = 0.2
     while mixer.voice[0].playing:
@@ -36,10 +36,12 @@ def animation_one(
     when_to_speak = random.randint(2, chopNumber)
     highest_index = len(feller_poem) - 1
     poem_index = random.randint(0, highest_index)
-    soundFile = "/sd/feller_dialog/feller_poem" + feller_poem[poem_index] + ".wav"
+    files.log_item("Poem index: " + str(poem_index))
+    soundFile = "/sd/feller_poem/" + feller_poem[poem_index] + ".wav"
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
     mixer.voice[0].play( wave0, loop=False )
-    feller_talking_movement()
+    while mixer.voice[0].playing:
+        sleepAndUpdateVolume(.1)
     files.log_item("Chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
     tree_chop_pos = config["tree_up_pos"] - 3
@@ -49,7 +51,7 @@ def animation_one(
             soundFile = "/sd/feller_dialog/" + feller_dialog[what_to_speak] + ".wav"
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
-            feller_talking_movement()
+            feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume)
         wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
         chopNum += 1
         chopActive = True
@@ -97,7 +99,7 @@ def animation_one(
         sleepAndUpdateVolume(0.1)
     moveTreeServo(config["tree_down_pos"])
     startTime = time.monotonic()
-    wife_speak_time = random.uniform(2.0, 10.0)
+    wife_speak_time = random.uniform(3.0, 10.0)
     wife_spoke = False
     while mixer.voice[0].playing or mixer.voice[1].playing :
         sleepAndUpdateVolume(0.1)
