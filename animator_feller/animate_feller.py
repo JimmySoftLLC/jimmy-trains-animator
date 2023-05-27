@@ -1,4 +1,5 @@
 import random
+import time
 
 def animation_one(
         sleepAndUpdateVolume, 
@@ -9,11 +10,13 @@ def animation_one(
         config,
         feller_sound_options, 
         feller_dialog,
+        feller_wife,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
         moveTreeToPositionGently,
-        left_switch):
+        left_switch,
+        garbage_collect):
     sleepAndUpdateVolume(0.05)
     chopNum = 1
     chopNumber = random.randint(2, 7)
@@ -65,7 +68,12 @@ def animation_one(
         soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[soundNumber] + ".wav"
     else:
         soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
+    wave0.deinit()
+    garbage_collect("deinit wave0")
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
+    feller_wife_highest_index = len(feller_wife) - 1
+    wife_sound_number = random.randint(0, feller_wife_highest_index)
+    wave1 = audiocore.WaveFile(open("/sd/feller_wife/" + feller_wife[wife_sound_number] + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     for tree_angle in range(config["tree_up_pos"], config["tree_down_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
         moveTreeServo(tree_angle)
@@ -77,14 +85,27 @@ def animation_one(
         moveTreeServo(7 + config["tree_down_pos"])
         sleepAndUpdateVolume(0.1)
     moveTreeServo(config["tree_down_pos"])
-    #soundFile2 = "/sd/feller_dialog/i_am_exhausted.wav"
-    #wave1 = audiocore.WaveFile(open(soundFile2, "rb"))
-    #mixer.voice[1].play( wave1, loop=True )
-    while mixer.voice[0].playing:
-        sleepAndUpdateVolume(0.02)
+    startTime = time.monotonic()
+    print(startTime)
+    wife_speak_time = random.randint(2, 10)
+    wife_spoke = False
+    while mixer.voice[0].playing or mixer.voice[1].playing :
+        sleepAndUpdateVolume(0.1)
+        timeElasped = time.monotonic()-startTime
+        if timeElasped > wife_speak_time and wife_spoke == False:
+            print(timeElasped)
+            if mixer.voice[0].playing:
+                mixer.voice[1].play( wave1, loop=False )
+            wife_spoke = True
         left_switch.update()
         if left_switch.fell:
             mixer.voice[0].stop()
+            mixer.voice[1].stop()
+    wave0.deinit()
+    garbage_collect("deinit wave0")
+    if wife_spoke:
+        wave1.deinit()
+        garbage_collect("deinit wave1")
     moveFellerToPositionGently(config["feller_rest_pos"])
     sleepAndUpdateVolume(0.02)
     moveTreeToPositionGently(config["tree_up_pos"])

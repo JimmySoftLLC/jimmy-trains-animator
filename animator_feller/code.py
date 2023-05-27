@@ -26,6 +26,9 @@ from analogio import AnalogIn
 import files
 import animate_feller
 
+def log_item(item)
+    print(item)
+
 def garbage_collect(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
@@ -160,8 +163,10 @@ config_choose_sounds = files.read_json_file("/sd/feller_menu/choose_sounds.json"
 feller_sound_options = config_choose_sounds["choose_sounds"]
 
 config_feller_dialog = files.read_json_file("/sd/feller_dialog/feller_dialog.json")
-
 feller_dialog = config_feller_dialog["feller_dialog"]
+
+config_feller_wife = files.read_json_file("/sd/feller_wife/feller_wife.json")
+feller_wife = config_feller_wife["feller_wife"]
 
 config_adjust_feller_and_tree = files.read_json_file("/sd/feller_menu/adjust_feller_and_tree.json")
 adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
@@ -396,11 +401,13 @@ def animateFeller ():
         config,
         feller_sound_options, 
         feller_dialog,
+        feller_wife,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
         moveTreeToPositionGently,
-        left_switch)
+        left_switch,
+        garbage_collect)
 
 garbage_collect("servo helpers")
 
