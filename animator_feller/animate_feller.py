@@ -2,6 +2,15 @@ import random
 import time
 import files
 
+def feller_talking_movement():
+    speak_rotation = 7
+    speak_cadence = 0.2
+    while mixer.voice[0].playing:
+        feller_servo.angle = speak_rotation + config["feller_rest_pos"]
+        sleepAndUpdateVolume(speak_cadence)
+        feller_servo.angle = config["feller_rest_pos"]
+        sleepAndUpdateVolume(speak_cadence)
+
 def animation_one(
         sleepAndUpdateVolume, 
         audiocore, 
@@ -12,6 +21,7 @@ def animation_one(
         feller_sound_options, 
         feller_dialog,
         feller_wife,
+        feller_poem,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
@@ -24,22 +34,22 @@ def animation_one(
     highest_index = len(feller_dialog) - 1
     what_to_speak = random.randint(0, highest_index)
     when_to_speak = random.randint(2, chopNumber)
+    highest_index = len(feller_poem) - 1
+    poem_index = random.randint(0, highest_index)
+    soundFile = "/sd/feller_dialog/feller_poem" + feller_poem[poem_index] + ".wav"
+    wave0 = audiocore.WaveFile(open(soundFile, "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    feller_talking_movement()
     files.log_item("Chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
     tree_chop_pos = config["tree_up_pos"] - 3
-    speak_rotation = 7
-    speak_cadence = 0.2
     while chopNum <= chopNumber:
         if when_to_speak == chopNum and not spoken:
             spoken = True    
             soundFile = "/sd/feller_dialog/" + feller_dialog[what_to_speak] + ".wav"
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                feller_servo.angle = speak_rotation + config["feller_rest_pos"]
-                sleepAndUpdateVolume(speak_cadence)
-                feller_servo.angle = config["feller_rest_pos"]
-                sleepAndUpdateVolume(speak_cadence)
+            feller_talking_movement()
         wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
         chopNum += 1
         chopActive = True

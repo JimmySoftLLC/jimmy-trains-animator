@@ -165,6 +165,9 @@ feller_dialog = config_feller_dialog["feller_dialog"]
 config_feller_wife = files.read_json_file("/sd/feller_wife/feller_wife.json")
 feller_wife = config_feller_wife["feller_wife"]
 
+config_feller_poem = files.read_json_file("/sd/feller_poem/feller_poem.json")
+feller_poem = config_feller_poem["feller_poem"]
+
 config_adjust_feller_and_tree = files.read_json_file("/sd/feller_menu/adjust_feller_and_tree.json")
 adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
 
@@ -399,6 +402,7 @@ def animateFeller ():
         feller_sound_options, 
         feller_dialog,
         feller_wife,
+        feller_poem,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
