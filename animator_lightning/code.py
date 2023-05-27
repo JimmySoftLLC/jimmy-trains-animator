@@ -18,6 +18,7 @@ from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
 import files
 import animate_lightning
+import files
 
 is_show_unit = False
 
@@ -221,7 +222,7 @@ class WaitingState(State):
         if left_switch.fell:
             animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config_lightning["option_selected"], num_pixels)
         if right_switch.fell:
-            print('Just pressed 1')
+            files.log_item('Just pressed 1')
             machine.go_to_state('program')
 
 class ProgramState(State):
@@ -235,7 +236,7 @@ class ProgramState(State):
         return 'program'
 
     def enter(self, machine):
-        print('Select a program option')
+        files.log_item('Select a program option')
         if mixer.voice[0].playing:
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -311,7 +312,7 @@ pretty_state_machine = StateMachine()
 pretty_state_machine.add_state(WaitingState())
 pretty_state_machine.add_state(ProgramState())
 
-print("animator has started")
+files.log_item("animator has started")
 
 pretty_state_machine.go_to_state('waiting')
 

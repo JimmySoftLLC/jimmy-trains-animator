@@ -12,6 +12,7 @@ import board
 import asyncio
 import audiocore
 import audiomixer
+import files
 
 
 def lightning(ledStrip):
@@ -28,7 +29,7 @@ def lightning(ledStrip):
     flashBrightness = random.randint(flashBrightnessMin, flashBrightnessMax) / 255
     ledStrip.brightness = flashBrightness
     
-    #print (str(time.monotonic()-startTime))
+    #files.log_item (str(time.monotonic()-startTime))
 
     # flash duration range - ms
     flashDurationMin = 5
@@ -85,7 +86,7 @@ def lightning(ledStrip):
         ledStrip.show()
         
 def animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name, num_pixels):
-    print(file_name)
+    files.log_item(file_name)
     if file_name == "12_minute_thunderstorm":
         animation_12_minute_thunderstorm(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
     elif file_name == "alien_lightshow":
@@ -119,7 +120,7 @@ def continuous_thunder(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_sw
             timeElasped = time.monotonic()-startTime
             right_switch.update()
             if right_switch.fell:
-                print(timeElasped)
+                files.log_item(timeElasped)
             if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 2): #amount of time before you here thunder 0.5 is synched with the lightning
                 flashTimeIndex += 1
                 lightning(ledStrip)
@@ -151,7 +152,7 @@ def animation_12_minute_thunderstorm(sleepAndUpdateVolume, audiocore, mixer, led
         timeElasped = time.monotonic()-startTime
         right_switch.update()
         if right_switch.fell:
-            print(timeElasped)
+            files.log_item(timeElasped)
         if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 2): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
             flashTimeIndex += 1
             lightning(ledStrip)
@@ -232,7 +233,7 @@ async def main(ledStrip, file_name, audiocore, mixer, sleepAndUpdateVolume, left
     fire_task = asyncio.create_task(fire(ledStrip))
     play_music_task = asyncio.create_task(play_music(file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch))
     await asyncio.gather(fire_task)
-    print("done")
+    files.log_item("done")
         
 def animation_lightshow_async(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
     asyncio.run(main(ledStrip, file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch))
@@ -254,7 +255,7 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
         timeElasped = time.monotonic()-startTime
         right_switch.update()
         if right_switch.fell:
-            print(timeElasped)
+            files.log_item(timeElasped)
         if timeElasped > flashTime[flashTimeIndex] - 0.25:
             flashTimeIndex += 1
             my_index += 1 #random.randint(1, 3)
@@ -278,9 +279,9 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
         sleepAndUpdateVolume(.1)
          
 def animation_timestamp(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
-    print("time stamp mode")
+    files.log_item("time stamp mode")
 
-    print_timestamp = False
+    files.log_item_timestamp = False
     
     wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
@@ -293,21 +294,21 @@ def animation_timestamp(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
         right_switch.update()
         if right_switch.fell:
             my_time_stamps["flashTime"].append(time_elasped) 
-            print(time_elasped)
+            files.log_item(time_elasped)
         left_switch.update()
         if left_switch.fell:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
-            print(my_time_stamps)
+            files.log_item(my_time_stamps)
             break
         sleepAndUpdateVolume(.05)
         
 def breakfast_at_diner(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
-    print("time stamp mode")
+    files.log_item("time stamp mode")
 
-    print_timestamp = False
+    files.log_item_timestamp = False
     
     customer = [
         "I_am_so_hungry",
