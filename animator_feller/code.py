@@ -609,6 +609,7 @@ class BaseState(State):
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
+        files.log_item("Entered base state")
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -633,7 +634,7 @@ class MoveFellerAndTree(State):
         return 'move_feller_and_tree'
 
     def enter(self, machine):
-        files.log_item('Select a program option')
+        files.log_item('Move feller and tree menu')
         moveFellerAndTreeMenuAnnouncement()
         State.enter(self, machine)
 
@@ -685,7 +686,7 @@ class AdjustFellerAndTree(State):
         return 'adjust_feller_and_tree'
 
     def enter(self, machine):
-        files.log_item('Select a program option')
+        files.log_item('Adjust feller and tree menu')
         adjustFellerAndTreeMenuAnnouncement()
         State.enter(self, machine)
 
@@ -749,7 +750,7 @@ class ChooseSounds(State):
         return 'choose_sounds'
 
     def enter(self, machine):
-        files.log_item('Select a program option')
+        files.log_item('Choose sounds menu')
         selectSoundMenuAnnouncement()
         State.enter(self, machine)
 
@@ -798,7 +799,7 @@ class MainMenu(State):
         return 'main_menu'
 
     def enter(self, machine):
-        files.log_item('Select main menu')
+        files.log_item('Main menu')
         mainMenuAnnouncement()
         State.enter(self, machine)
 
