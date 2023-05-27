@@ -1,11 +1,14 @@
 import os
 import json
 
+def log_item(item):
+    print(item)
+
 def print_directory(switch_0, path, tabs=0):
-    print("Files on filesystem:")
-    print("====================")
+    files.log_item("Files on filesystem:")
+    files.log_item("====================")
     dude = switch_0.fell
-    print(dude)
+    files.log_item(dude)
     for file in os.listdir(path):
         stats = os.stat(path + "/" + file)
         filesize = stats[6]
@@ -18,17 +21,17 @@ def print_directory(switch_0, path, tabs=0):
         else:
             sizestr = "%0.1f MB" % (filesize / 1000000)
 
-        prettyprintname = ""
+        prettyfiles.log_itemname = ""
         for _ in range(tabs):
-            prettyprintname += "   "
-        prettyprintname += file
+            prettyfiles.log_itemname += "   "
+        prettyfiles.log_itemname += file
         if isdir:
-            prettyprintname += "/"
-        print('{0:<40} Size: {1:>10}'.format(prettyprintname, sizestr))
+            prettyfiles.log_itemname += "/"
+        files.log_item('{0:<40} Size: {1:>10}'.format(prettyfiles.log_itemname, sizestr))
 
-        # recursively print directory contents
+        # recursively files.log_item directory contents
         if isdir:
-            print_directory(path + "/" + file, tabs + 1)
+            files.log_item_directory(path + "/" + file, tabs + 1)
             
 def write_file_lines(file_name, lines):
     with open(file_name, "w") as f:

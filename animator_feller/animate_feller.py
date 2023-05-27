@@ -1,5 +1,6 @@
 import random
 import time
+import files
 
 def animation_one(
         sleepAndUpdateVolume, 
@@ -23,7 +24,7 @@ def animation_one(
     highest_index = len(feller_dialog) - 1
     what_to_speak = random.randint(0, highest_index)
     when_to_speak = random.randint(2, chopNumber)
-    print("chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
+    files.log_item("chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
     tree_chop_pos = config["tree_up_pos"] - 3
     speak_rotation = 7
@@ -86,14 +87,14 @@ def animation_one(
         sleepAndUpdateVolume(0.1)
     moveTreeServo(config["tree_down_pos"])
     startTime = time.monotonic()
-    print(startTime)
+    files.log_item(startTime)
     wife_speak_time = random.randint(2, 10)
     wife_spoke = False
     while mixer.voice[0].playing or mixer.voice[1].playing :
         sleepAndUpdateVolume(0.1)
         timeElasped = time.monotonic()-startTime
         if timeElasped > wife_speak_time and wife_spoke == False:
-            print(timeElasped)
+            files.log_item(timeElasped)
             if mixer.voice[0].playing:
                 mixer.voice[1].play( wave1, loop=False )
             wife_spoke = True

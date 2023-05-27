@@ -26,13 +26,10 @@ from analogio import AnalogIn
 import files
 import animate_feller
 
-def log_item(item)
-    print(item)
-
 def garbage_collect(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
-    print( "Point " + collection_point + " Available memory: {} bytes".format(start_mem) )
+    files.log_item( "Point " + collection_point + " Available memory: {} bytes".format(start_mem) )
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -361,7 +358,7 @@ def calibratePosition(servo, movement_type):
 
 def moveFellerToPositionGently (new_position):
     global feller_last_pos
-    print("feller angle: " + str(tree_last_pos) + "  " + str(new_position))
+    files.log_item("feller angle: " + str(tree_last_pos) + "  " + str(new_position))
     sign = 1
     if feller_last_pos > new_position: sign = - 1
     for feller_angle in range( feller_last_pos, new_position, sign):
@@ -372,7 +369,7 @@ def moveFellerToPositionGently (new_position):
     
 def moveTreeToPositionGently (new_position):
     global tree_last_pos
-    print("tree angle: " + str(tree_last_pos) + "  " + str(new_position))
+    files.log_item("tree angle: " + str(tree_last_pos) + "  " + str(new_position))
     sign = 1
     if tree_last_pos > new_position: sign = - 1
     for tree_angle in range( tree_last_pos, new_position, sign): 
@@ -428,7 +425,7 @@ if (config["serve_webpage"]):
     
     env = files.read_json_file("/sd/env.json")
     
-    print("Connecting to WiFi")
+    files.log_item("Connecting to WiFi")
     #  set static IP address
     ipv4 =  ipaddress.IPv4Address(env["WEB_IPV4"])
     netmask =  ipaddress.IPv4Address("255.255.255.0")
@@ -438,13 +435,13 @@ if (config["serve_webpage"]):
     #  connect to your SSID
     wifi.radio.connect(env["WIFI_SSID"], env["WIFI_PASSWORD"])
 
-    #  prints MAC address to REPL
+    #  files.log_items MAC address to REPL
     mystring = [hex(i) for i in wifi.radio.mac_address]
-    print("My MAC addr:", mystring)
+    files.log_item("My MAC addr:", mystring)
 
-    #  prints IP address to REPL
-    print("My IP address is", wifi.radio.ipv4_address)
-    print("Connected to WiFi")
+    #  files.log_items IP address to REPL
+    files.log_item("My IP address is", wifi.radio.ipv4_address)
+    files.log_item("Connected to WiFi")
 
     # set up server
     pool = socketpool.SocketPool(wifi.radio)
@@ -454,16 +451,16 @@ if (config["serve_webpage"]):
         get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
         requests = adafruit_requests.Session(pool, ssl.create_default_context())
         try:
-            print("Fetching time from %s" % get_time_url)
+            files.log_item("Fetching time from %s" % get_time_url)
             response = requests.get(get_time_url)  
             responseObject = files.json_parse(response.text)
-            print(responseObject["timezone"])
-            print(responseObject["datetime"])
+            files.log_item(responseObject["timezone"])
+            files.log_item(responseObject["datetime"])
             response.close()
             time.sleep(1)
             return responseObject["datetime"]
         except Exception as e:
-            print("Error:\n", str(e))
+            files.log_item("Error:\n", str(e))
         
     ################################################################################
     # Setup routes
@@ -520,7 +517,7 @@ if (config["serve_webpage"]):
         try:
             with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
         except Exception as e:
-            print(e)
+            files.log_item(e)
     
 garbage_collect("web server")
 
@@ -636,7 +633,7 @@ class MoveFellerAndTree(State):
         return 'move_feller_and_tree'
 
     def enter(self, machine):
-        print('Select a program option')
+        files.log_item('Select a program option')
         moveFellerAndTreeMenuAnnouncement()
         State.enter(self, machine)
 
@@ -688,7 +685,7 @@ class AdjustFellerAndTree(State):
         return 'adjust_feller_and_tree'
 
     def enter(self, machine):
-        print('Select a program option')
+        files.log_item('Select a program option')
         adjustFellerAndTreeMenuAnnouncement()
         State.enter(self, machine)
 
@@ -752,7 +749,7 @@ class ChooseSounds(State):
         return 'choose_sounds'
 
     def enter(self, machine):
-        print('Select a program option')
+        files.log_item('Select a program option')
         selectSoundMenuAnnouncement()
         State.enter(self, machine)
 
@@ -782,7 +779,7 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
-            print ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
+            files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
             files.write_json_file("/sd/config_feller.json",config)
             wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_selected.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
@@ -801,7 +798,7 @@ class MainMenu(State):
         return 'main_menu'
 
     def enter(self, machine):
-        print('Select main menu')
+        files.log_item('Select main menu')
         mainMenuAnnouncement()
         State.enter(self, machine)
 
@@ -879,18 +876,18 @@ pretty_state_machine.add_state(MoveFellerAndTree())
 pretty_state_machine.go_to_state('base_state')
 
 if (config["serve_webpage"]):
-    print("starting server...")
+    files.log_item("starting server...")
     # startup the server
     try:
         server.start(str(wifi.radio.ipv4_address))
-        print("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
     # if the server fails to begin, restart the pico w
     except OSError:
         time.sleep(5)
-        print("restarting...")
+        files.log_item("restarting...")
         reset_pico()
     
-print("animator has started...")
+files.log_item("animator has started...")
 
 while True:
     pretty_state_machine.update()
@@ -899,5 +896,5 @@ while True:
         try:
             server.poll()
         except Exception as e:
-            print(e)
+            files.log_item(e)
             continue

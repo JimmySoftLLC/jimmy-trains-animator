@@ -43,7 +43,7 @@ mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_coun
                          bits_per_sample=16, samples_signed=True)
 audio.play(mixer) # attach mixer to audio playback
 
-print("audio is now playing")
+files.log_item("audio is now playing")
 
 # set some initial levels
 mixer.voice[0].level = 1.0
@@ -105,7 +105,7 @@ def lightning():
     flashBrightness = random.randint(flashBrightnessMin, flashBrightnessMax) / 255
     ledStrip.brightness = flashBrightness
     
-    #print (str(time.monotonic()-startTime))
+    #files.log_item (str(time.monotonic()-startTime))
 
     # flash duration range - ms
     flashDurationMin = 5
