@@ -430,6 +430,7 @@ if (config["serve_webpage"]):
     env = files.read_json_file("/sd/env.json")
     
     files.log_item("Connecting to WiFi")
+
     #  set static IP address
     ipv4 =  ipaddress.IPv4Address(env["WEB_IPV4"])
     netmask =  ipaddress.IPv4Address("255.255.255.0")
@@ -441,10 +442,10 @@ if (config["serve_webpage"]):
 
     #  files.log_items MAC address to REPL
     mystring = [hex(i) for i in wifi.radio.mac_address]
-    files.log_item("My MAC addr:", mystring)
+    files.log_item("My MAC addr:" + str(mystring))
 
     #  files.log_items IP address to REPL
-    files.log_item("My IP address is", wifi.radio.ipv4_address)
+    files.log_item("My IP address is" + str(wifi.radio.ipv4_address))
     files.log_item("Connected to WiFi")
 
     # set up server
