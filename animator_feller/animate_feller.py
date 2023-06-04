@@ -35,6 +35,7 @@ def animation_one(
         feller_wife,
         feller_poem,
         feller_buddy,
+        feller_girlfriend,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
@@ -43,7 +44,7 @@ def animation_one(
         garbage_collect):
     sleepAndUpdateVolume(0.05)
     
-    which_sound = random.randint(0,2)
+    which_sound = random.randint(0,3)
     
     if which_sound == 0:
         play_sound(feller_wife, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_wife")
@@ -51,6 +52,8 @@ def animation_one(
         play_sound(feller_buddy, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_buddy")
     if which_sound == 2:
         play_sound(feller_poem, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_poem")
+    if which_sound == 3:
+        play_sound(feller_girlfriend, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_girlfriend")    
         
     chopNum = 1
     chopNumber = random.randint(2, 7)

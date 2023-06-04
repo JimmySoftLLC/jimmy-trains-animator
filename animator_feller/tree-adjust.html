@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - Feller</title>
+    <title>Adjust - Tree</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -56,55 +56,42 @@
 </head>
 
 <body>
-    <h1>Animator - Feller</h1>
-    <br>
-    <p class="dotted">Use this web app to control and calibrate your animator - feller product. Have fun animating.</p>
-    <br>
-
-    <h1>Feller Animations:</h1><br>
+    <h1> </h1>
+    
+    <p class="dotted">Use the buttons below to adjust the up and fallen positions of the tree</p>
+    
+    <h1> </h1>
+    
+    <form accept-charset="utf-8" method="POST">
+        <button class="button animator-feller" data-value="feller_home" data-url="/feller" data-redirect="/" type="button">Return to Home page</button>
+    </form>
+    
+    <h1>Tree - Positions</h1>
 
     <form accept-charset="utf-8" method="POST">
-        <button class="button animator-feller" data-value="random" data-url="/animation" type="button">Random</button>
-        <button class="button animator-feller" data-value="forth_of_july" data-url="/animation" type="button">Forth of
-            July</button>
-        <button class="button animator-feller" data-value="christmas" data-url="/animation"
-            type="button">Christmas</button>
-        <button class="button animator-feller" data-value="halloween" data-url="/animation"
-            type="button">Halloween</button>
-        <button class="button animator-feller" data-value="birds_dogs" data-url="/animation" type="button">Birds and
-            Dogs</button>
-        <button class="button animator-feller" data-value="birds_dogs_short_version" data-url="/animation"
-            type="button">Birds and Dogs Short</button>
-        <button class="button animator-feller" data-value="just_birds" data-url="/animation" type="button">Just
-            Birds</button>
-        <button class="button animator-feller" data-value="machines" data-url="/animation"
-            type="button">Machine</button>
-        <button class="button animator-feller" data-value="owl" data-url="/animation" type="button">Owls</button>
-        <button class="button animator-feller" data-value="no_sounds" data-url="/animation" type="button">No other
-            sounds</button>
-        <button class="button animator-feller" data-value="train" data-url="/animation" type="button">Train</button>
+        <button class="button animator-feller" data-value="tree_up_pos" data-url="/tree"
+            type="button">Upright</button>
+        <button class="button animator-feller" data-value="tree_down_pos" data-url="/tree"
+            type="button">Fallen</button>
     </form>
-
-    <h1>Feller positions:</h1><br>
+    
+    <h1>Tree - Adjustments</h1>
 
     <form accept-charset="utf-8" method="POST">
-        <button class="button animator-feller" data-value="feller_rest_pos" data-url="/feller"
-            type="button">Rest</button>
-        <button class="button animator-feller" data-value="feller_chop_pos" data-url="/feller"
-            type="button">Chop</button>
-        <button class="button animator-feller" data-value="feller_adjust" data-url="/feller" data-redirect="/feller-adjust"
-            type="button">Adjust</button>
+        <button class="button animator-feller" data-value="tree_up" data-url="/tree"
+            type="button">Up</button>
+        <button class="button animator-feller" data-value="tree_down" data-url="/tree"
+            type="button">Down</button>
     </form>
-
-    <h1>Tree positions:</h1><br>
+    
+    <h1> </h1>
 
     <form accept-charset="utf-8" method="POST">
-        <button class="button animator-feller" data-value="tree_up_pos" data-url="/tree" type="button">Upright</button>
-        <button class="button animator-feller" data-value="tree_down_pos" data-url="/tree" type="button">Fallen</button>
-        <button class="button animator-feller" data-value="tree_adjust" data-url="/tree" data-redirect="/tree-adjust"
-            type="button">Adjust</button>
+        <button class="button animator-feller" data-value="tree_cal_saved" data-url="/tree"
+            type="button">Save Adjustment to microSD card</button>
     </form>
-
+    
+    <h1> </h1>
 </body>
 
 <script>
