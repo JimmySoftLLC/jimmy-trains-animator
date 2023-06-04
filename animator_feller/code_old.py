@@ -1,43 +1,90 @@
-import gc
-import files
-
-def garbage_collect(collection_point):
-    gc.collect()
-    start_mem = gc.mem_free()
-    files.log_item( "Point " + collection_point + " Available memory: {} bytes".format(start_mem) )
-    
-garbage_collect("Imports gc, files")
-
-import sdcardio
-import storage
-
-import audiomp3
+import time
 import audiocore
 import audiomixer
 import audiobusio
-import os
-import time
-
-import board
-import microcontroller
+import sdcardio
+import storage
 import busio
 import pwmio
 import digitalio
-
 import random
 import rtc
-
+import board
+import audiomp3
 from analogio import AnalogIn
 from adafruit_motor import servo
 from adafruit_debouncer import Debouncer
 from analogio import AnalogIn
+import files
+import animate_feller
 
-def reset_pico():
-    microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
-    microcontroller.reset()
+
+################################################################################
+# Test wifi
+
+import os
+import time
+import ssl
+import wifi
+import ipaddress
+import socketpool
+import microcontroller
+import adafruit_requests
+from adafruit_httpserver.server import Server
+from adafruit_httpserver.request import Request
+from adafruit_httpserver.response import Response
+from adafruit_httpserver.methods import HTTPMethods
+from adafruit_httpserver.mime_type import MIMEType
+import microcontroller
+
+print("Connecting to WiFi")
+#  set static IP address
+ipv4 =  ipaddress.IPv4Address("192.168.1.42")
+netmask =  ipaddress.IPv4Address("255.255.255.0")
+gateway =  ipaddress.IPv4Address("192.168.1.1")
+wifi.radio.set_ipv4_address(ipv4=ipv4,netmask=netmask,gateway=gateway)
+
+# make settings.toml file as follows.  Do not save this to github an make sure you added *.toml to your gitignore
+# Comments are supported
+# CIRCUITPY_WIFI_SSID="YOURSSID"
+# CIRCUITPY_WIFI_PASSWORD="YOURPASSWORD"
+# CIRCUITPY_WEB_API_PORT=80
+# CIRCUITPY_WEB_API_USERNAME=""
+# CIRCUITPY_WEB_API_PASSWORD="somepassword"
+
+#  connect to your SSID
+wifi.radio.connect(os.getenv('CIRCUITPY_WIFI_SSID'), os.getenv('CIRCUITPY_WIFI_PASSWORD'))
+
+#  prints MAC address to REPL
+
+mystring = [hex(i) for i in wifi.radio.mac_address]
+print("My MAC addr:", mystring)
+
+#  prints IP address to REPL
+print("My IP address is", wifi.radio.ipv4_address)
+
+print("Connected to WiFi")
+pool = socketpool.SocketPool(wifi.radio)
+server = HTTPServer(pool)
+   
+get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
+
+if get_time_url == "":
+    requests = adafruit_requests.Session(pool, ssl.create_default_context())
+    try:
+        print("Fetching time from %s" % get_time_url)
+        response = requests.get(get_time_url)  
+        responseObject = files.json_parse(response.text)
+        print(responseObject["timezone"])
+        print(responseObject["datetime"])
+        response.close()
+        time.sleep(1)
+    except Exception as e:
+        print("Error:\n", str(e))
+        print("Resetting microcontroller in 10 seconds")
+        time.sleep(10)
+        microcontroller.reset()
     
-garbage_collect("imports")
-
 ################################################################################
 # Setup hardware
 
@@ -102,8 +149,6 @@ except:
   audio.play(wave0)
   while audio.playing:
     pass
-  wave0.deinit()
-  garbage_collect("deinit wave0")
   cardInserted = False
   while not cardInserted:
     left_switch.update()
@@ -117,35 +162,18 @@ except:
             audio.play(wave0)
             while audio.playing:
                 pass
-            wave0.deinit()
-            garbage_collect("deinit wave0")
         except:
             wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
             audio.play(wave0)
             while audio.playing:
                 pass
-            wave0.deinit()
-            garbage_collect("deinit wave0")
-            
-audio.deinit()
-
-garbage_collect("deinit audio")
-
-audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
 num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
+                         bits_per_sample=16, samples_signed=True)
 audio.play(mixer)
-
-garbage_collect("audio setup")
-        
-import animate_feller
-import utilities
-
-garbage_collect("animator_feller, utilities")
 
 ################################################################################
 # Global Variables
@@ -172,209 +200,13 @@ config_choose_sounds = files.read_json_file("/sd/feller_menu/choose_sounds.json"
 feller_sound_options = config_choose_sounds["choose_sounds"]
 
 config_feller_dialog = files.read_json_file("/sd/feller_dialog/feller_dialog.json")
-feller_dialog = config_feller_dialog["feller_dialog"]
 
-config_feller_wife = files.read_json_file("/sd/feller_wife/feller_wife.json")
-feller_wife = config_feller_wife["feller_wife"]
-
-config_feller_poem = files.read_json_file("/sd/feller_poem/feller_poem.json")
-feller_poem = config_feller_poem["feller_poem"]
-
-config_feller_buddy = files.read_json_file("/sd/feller_buddy/feller_buddy.json")
-feller_buddy = config_feller_buddy["feller_buddy"]
-
-config_feller_girlfriend = files.read_json_file("/sd/feller_girlfriend/feller_girlfriend.json")
-feller_girlfriend = config_feller_girlfriend["feller_girlfriend"]
+feller_dialog_positive = config_feller_dialog["feller_dialog_positive"]
+feller_dialog_negative = config_feller_dialog["feller_dialog_negative"]
+feller_dialog_advice = config_feller_dialog["feller_dialog_advice"]
 
 config_adjust_feller_and_tree = files.read_json_file("/sd/feller_menu/adjust_feller_and_tree.json")
 adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
-
-config_move_feller_and_tree = files.read_json_file("/sd/feller_menu/move_feller_and_tree.json")
-move_feller_and_tree = config_move_feller_and_tree["move_feller_and_tree"]
-
-serve_webpage = config["serve_webpage"]
-
-feller_movement_type = "feller_rest_pos"
-tree_movement_type = "tree_up_pos"
-
-garbage_collect("config setup")
-
-################################################################################
-# Setup wifi and web server
-
-if (serve_webpage):
-    import socketpool
-    import mdns
-    garbage_collect("config wifi imports")
-    import wifi
-    garbage_collect("config wifi imports")
-    from adafruit_httpserver import Server, Request, FileResponse, Response, POST
-    garbage_collect("config wifi imports")
-    
-    mdns_server = mdns.Server(wifi.radio)
-    mdns_server.hostname = "animator-feller"
-    mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
-
-    files.log_item("Connecting to WiFi")
-
-    try:
-        env = files.read_json_file("/sd/env.json")
-        garbage_collect("wifi env")
-        #  connect to your SSID
-        wifi.radio.connect(env["WIFI_SSID"], env["WIFI_PASSWORD"])
-        garbage_collect("wifi connect")
-        
-        #  files.log_items MAC address to REPL
-        mystring = [hex(i) for i in wifi.radio.mac_address]
-        files.log_item("My MAC addr:" + str(mystring))
-
-        #  files.log_items IP address to REPL
-        files.log_item("My IP address is" + str(wifi.radio.ipv4_address))
-        files.log_item("Connected to WiFi")
-
-        # set up server
-        pool = socketpool.SocketPool(wifi.radio)
-        server = Server(pool, "/static", debug=True)
-        garbage_collect("wifi server")
-        
-        def getTime(): 
-            get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
-            requests = adafruit_requests.Session(pool, ssl.create_default_context())
-            try:
-                files.log_item("Fetching time from %s" % get_time_url)
-                response = requests.get(get_time_url)  
-                responseObject = files.json_parse(response.text)
-                files.log_item(responseObject["timezone"])
-                files.log_item(responseObject["datetime"])
-                response.close()
-                time.sleep(1)
-                return responseObject["datetime"]
-            except Exception as e:
-                files.log_item("Error:\n", str(e))
-        
-        ################################################################################
-        # Setup routes
-
-        # serve webpage
-        @server.route("/")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "index.html", "/")
-        
-        @server.route("/feller-adjust")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "feller-adjust.html", "/")
-        
-        @server.route("/tree-adjust")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "tree-adjust.html", "/")
-
-        # if a button is pressed on the site
-        @server.route("/animation", [POST])
-        def buttonpress(request: Request):
-            global config
-            raw_text = request.raw_request.decode("utf8")
-            if "random" in raw_text: 
-                config["option_selected"] = "random"
-                animateFeller()
-            elif "forth_of_july" in raw_text: 
-                config["option_selected"] = "forth_of_july"
-                animateFeller()
-            elif "christmas" in raw_text: 
-                config["option_selected"] = "christmas"
-                animateFeller()
-            elif "halloween" in raw_text: 
-                config["option_selected"] = "halloween"
-                animateFeller()
-            elif "train" in raw_text: 
-                config["option_selected"] = "train"
-                animateFeller()
-            elif "birds_dogs_short_version" in raw_text: 
-                config["option_selected"] = "birds_dogs_short_version"
-                animateFeller()
-            elif "birds_dogs" in raw_text: 
-                config["option_selected"] = "birds_dogs"
-                animateFeller()
-            elif "just_birds" in raw_text: 
-                config["option_selected"] = "just_birds"
-                animateFeller()
-            elif "machines" in raw_text: 
-                config["option_selected"] = "machines"
-                animateFeller()
-            elif "no_sounds" in raw_text: 
-                config["option_selected"] = "no_sounds"
-                animateFeller()
-            elif "owl" in raw_text: 
-                config["option_selected"] = "owl"
-                animateFeller()
-            return Response(request, "Animation " + config["option_selected"] + " started.")
-        
-        # if a button is pressed on the site
-        @server.route("/feller", [POST])        
-        def buttonpress(request: Request):
-            global config
-            global feller_movement_type
-            raw_text = request.raw_request.decode("utf8")    
-            if "feller_rest_pos" in raw_text:
-                feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Moved feller to rest position.")
-            elif "feller_chop_pos" in raw_text:
-                feller_movement_type = "feller_chop_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Moved feller to chop position.")
-            elif "feller_adjust" in raw_text:
-                feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Redirected to feller-adjust page.")
-            elif "feller_home" in raw_text:
-                return Response(request, "Redirected to home page.")
-            elif "feller_clockwise" in raw_text:
-                calibrationLeftButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
-                return Response(request, "Moved feller clockwise.")
-            elif "feller_counter_clockwise" in raw_text:
-                calibrationRightButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
-                return Response(request, "Moved feller counter clockwise.")
-            elif "feller_cal_saved" in raw_text:
-                write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
-                return Response(request, "Feller " + feller_movement_type + " cal saved.")
-                
-        # if a button is pressed on the site
-        @server.route("/tree", [POST])        
-        def buttonpress(request: Request):
-            global config
-            global tree_movement_type
-            raw_text = request.raw_request.decode("utf8")    
-            if "tree_up_pos" in raw_text:
-                tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Moved tree to up position.")
-            elif "tree_down_pos" in raw_text:
-                tree_movement_type = "tree_down_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Moved tree to fallen position.")
-            elif "tree_adjust" in raw_text:
-                tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Redirected to tree-adjust page.")
-            elif "tree_home" in raw_text:
-                return Response(request, "Redirected to home page.")
-            elif "tree_up" in raw_text:
-                calibrationLeftButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
-                return Response(request, "Moved tree up.")
-            elif "tree_down" in raw_text:
-                calibrationRightButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
-                return Response(request, "Moved tree down.")
-            elif "tree_cal_saved" in raw_text:
-                write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
-                return Response(request, "Tree " + tree_movement_type + " cal saved.")
-                  
-    except Exception as e:
-        serve_webpage = False
-        files.log_item(e)
-    
-garbage_collect("web server")
 
 ################################################################################
 # Global Methods
@@ -394,8 +226,6 @@ def setVolume():
 def sleepAndUpdateVolume(seconds):
     setVolume()
     time.sleep(seconds)
-    
-garbage_collect("global variable and methods")
 
 ################################################################################
 # Dialog
@@ -465,22 +295,7 @@ def adjustFellerAndTreeMenuAnnouncement():
         mixer.voice[0].play( wave0, loop=False )
         while mixer.voice[0].playing:
             pass
-        
-def moveFellerAndTreeMenuAnnouncement():
-    if mixer.voice[0].playing:
-        mixer.voice[0].stop()
-        while mixer.voice[0].playing:
-            pass
-    else:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/move_feller_and_tree_menu.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/press_left_button_right_button.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        
+
 def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
         wave0 = audiocore.WaveFile(open("/sd/feller_menu/limit_reached.wav", "rb"))
@@ -501,37 +316,13 @@ def shortCircuitDialog():
     left_switch.update()
     if left_switch.fell:
         mixer.voice[0].stop()
-        
-garbage_collect("dialog methods")
 
 #############################################################################################
 # Servo helpers
-
-def calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos):
-    global config
-    config[movement_type] -= 1 * sign
-    if checkLimits(min_servo_pos, max_servo_pos, config[movement_type]):
-        servo.angle = config[movement_type]
-    else:
-        config[movement_type] += 1 * sign
-
-def calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos):
-    global config
-    config[movement_type] += 1 * sign
-    if checkLimits(min_servo_pos, max_servo_pos, config[movement_type]):
-        servo.angle = config[movement_type]
-    else:
-        config[movement_type] -= 1 * sign
-        
-def write_calibrations_to_config_file():
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-    global config
-    files.write_json_file("/sd/config_feller.json",config)
     
-def calibratePosition(servo, movement_type):  
+def calibratePosition(servo, movement_type):
+    global config
+    config[movement_type] = config[movement_type]
     if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
         min_servo_pos = feller_min
         max_servo_pos = feller_max
@@ -546,7 +337,11 @@ def calibratePosition(servo, movement_type):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
+            config[movement_type] -= 1 * sign
+            if checkLimits(min_servo_pos, max_servo_pos, config[movement_type]):
+                servo.angle = config[movement_type]
+            else:
+                config[movement_type] += 1 * sign
         if right_switch.fell:
             button_check = True
             number_cycles = 0  
@@ -555,13 +350,23 @@ def calibratePosition(servo, movement_type):
                 right_switch.update()
                 number_cycles += 1
                 if number_cycles > 30:
-                    write_calibrations_to_config_file()
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
+                    global config
+                    config[movement_type] = config[movement_type]
+                    files.write_json_file("/sd/config_feller.json",config)
                     button_check = False
                     calibrations_complete = True 
                 if right_switch.rose:
                     button_check = False           
             if not calibrations_complete:
-                calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
+                config[movement_type] += 1 * sign
+                if checkLimits(min_servo_pos, max_servo_pos, config[movement_type]):
+                    servo.angle = config[movement_type]
+                else:
+                    config[movement_type] -= 1 * sign
     if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
         global feller_last_pos
         feller_last_pos = config[movement_type]
@@ -571,7 +376,7 @@ def calibratePosition(servo, movement_type):
 
 def moveFellerToPositionGently (new_position):
     global feller_last_pos
-    files.log_item("feller angle: " + str(tree_last_pos) + "  " + str(new_position))
+    print("feller angle: " + str(tree_last_pos) + "  " + str(new_position))
     sign = 1
     if feller_last_pos > new_position: sign = - 1
     for feller_angle in range( feller_last_pos, new_position, sign):
@@ -582,7 +387,7 @@ def moveFellerToPositionGently (new_position):
     
 def moveTreeToPositionGently (new_position):
     global tree_last_pos
-    files.log_item("tree angle: " + str(tree_last_pos) + "  " + str(new_position))
+    print("tree angle: " + str(tree_last_pos) + "  " + str(new_position))
     sign = 1
     if tree_last_pos > new_position: sign = - 1
     for tree_angle in range( tree_last_pos, new_position, sign): 
@@ -610,20 +415,70 @@ def animateFeller ():
         tree_servo, 
         config,
         feller_sound_options, 
-        feller_dialog,
-        feller_wife,
-        feller_poem,
-        feller_buddy,
-        feller_girlfriend,
+        feller_dialog_positive,
+        feller_dialog_negative,
+        feller_dialog_advice,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
         moveTreeToPositionGently,
-        left_switch,
-        garbage_collect)
+        left_switch)
+    
+################################################################################
+# Setup webpage
 
-garbage_collect("servo helpers")
+# serve webpage
+@server.route("/")
+def base(request: HTTPRequest):
+    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
 
+# if a button is pressed on the site
+@server.route("/", method=HTTPMethod.POST)
+def buttonpress(request: HTTPRequest):
+    global config
+    raw_text = request.raw_request.decode("utf8")
+    if "random" in raw_text: 
+        config["option_selected"] = "random"
+        animateFeller()
+    if "forth_of_july" in raw_text: 
+        config["option_selected"] = "forth_of_july"
+        animateFeller()
+    if "christmas" in raw_text: 
+        config["option_selected"] = "christmas"
+        animateFeller()
+    if "halloween" in raw_text: 
+        config["option_selected"] = "halloween"
+        animateFeller()
+    if "birds_dogs" in raw_text: 
+        config["option_selected"] = "birds_dogs"
+        animateFeller()
+    if "birds_dogs_short_version" in raw_text: 
+        config["option_selected"] = "birds_dogs_short_version"
+        animateFeller()
+    if "just_birds" in raw_text: 
+        config["option_selected"] = "just_birds"
+        animateFeller()
+    if "machines" in raw_text: 
+        config["option_selected"] = "machines"
+        animateFeller()
+    if "no_sounds" in raw_text: 
+        config["option_selected"] = "no_sounds"
+        animateFeller()
+    if "owl" in raw_text: 
+        config["option_selected"] = "owl"
+        animateFeller() 
+    if "feller_rest_pos" in raw_text:
+        moveFellerToPositionGently(config["feller_rest_pos"])
+    if "feller_chop_pos" in raw_text:
+        moveFellerToPositionGently(config["feller_chop_pos"])
+    if "tree_up_pos" in raw_text:
+        moveTreeToPositionGently(config["tree_up_pos"])
+    if "tree_down_pos" in raw_text:
+        moveTreeToPositionGently(config["tree_down_pos"])
+    #  reload site
+    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response: response.send_file("index.html")
+
+    
 ################################################################################
 # State Machine
 
@@ -659,8 +514,11 @@ class StateMachine(object):
         self.state = self.states[state_name]
 
     def reset(self):
-        reset_pico()
-        
+        """As indicated, reset"""
+        self.firework_color = random_color()
+        self.burst_count = 0
+        self.shower_count = 0
+        self.firework_step_time = time.monotonic() + 0.05
 
 ################################################################################
 # States
@@ -712,49 +570,6 @@ class BaseState(State):
             mixer.voice[0].play( wave0, loop=False )
             while mixer.voice[0].playing:
                 pass
-        files.log_item("Entered base state")
-        State.enter(self, machine)
-
-    def exit(self, machine):
-        State.exit(self, machine)
-
-    def update(self, machine):
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
-        if switch_state == "left_held":
-            wave0 = audiocore.WaveFile(open("/sd/feller_menu/continuous_mode_activated.wav", "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                pass
-            continuous_run = True
-            while continuous_run:
-                sleepAndUpdateVolume(0.5)
-                switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
-                if switch_state == "left_held":
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/continuous_mode_deactivated.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
-                    continuous_run = False
-                if continuous_run:
-                    animateFeller()
-        elif switch_state == "left":
-            animateFeller()
-        elif switch_state == "right":
-            machine.go_to_state('main_menu')
-
-class MoveFellerAndTree(State):
-
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
-
-    @property
-    def name(self):
-        return 'move_feller_and_tree'
-
-    def enter(self, machine):
-        files.log_item('Move feller and tree menu')
-        moveFellerAndTreeMenuAnnouncement()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -764,35 +579,9 @@ class MoveFellerAndTree(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + move_feller_and_tree[self.menuIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(move_feller_and_tree)-1:
-                    self.menuIndex = 0
-                while mixer.voice[0].playing:
-                    shortCircuitDialog()
+            animateFeller()
         if right_switch.fell:
-                selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
-                if selected_menu_item == "move_feller_to_rest_position":
-                    moveFellerToPositionGently(config["feller_rest_pos"])
-                elif selected_menu_item == "move_feller_to_chop_position":
-                    moveFellerToPositionGently(config["feller_chop_pos"])
-                elif selected_menu_item == "move_tree_to_upright_position":
-                    moveTreeToPositionGently(config["tree_up_pos"])
-                elif selected_menu_item == "move_tree_to_fallen_position":
-                    moveTreeToPositionGently(config["tree_down_pos"])
-                else:
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
-                    machine.go_to_state('base_state')
+            machine.go_to_state('main_menu')
                      
 class AdjustFellerAndTree(State):
 
@@ -805,7 +594,7 @@ class AdjustFellerAndTree(State):
         return 'adjust_feller_and_tree'
 
     def enter(self, machine):
-        files.log_item('Adjust feller and tree menu')
+        print('Select a program option')
         adjustFellerAndTreeMenuAnnouncement()
         State.enter(self, machine)
 
@@ -869,7 +658,7 @@ class ChooseSounds(State):
         return 'choose_sounds'
 
     def enter(self, machine):
-        files.log_item('Choose sounds menu')
+        print('Select a program option')
         selectSoundMenuAnnouncement()
         State.enter(self, machine)
 
@@ -899,7 +688,7 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
-            files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
+            print ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
             files.write_json_file("/sd/config_feller.json",config)
             wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_selected.wav", "rb"))
             mixer.voice[0].play( wave0, loop=False )
@@ -918,7 +707,7 @@ class MainMenu(State):
         return 'main_menu'
 
     def enter(self, machine):
-        files.log_item('Main menu')
+        print('Select main menu')
         mainMenuAnnouncement()
         State.enter(self, machine)
 
@@ -953,8 +742,12 @@ class MainMenu(State):
                     machine.go_to_state('choose_sounds')
                 elif selected_menu_item == "adjust_feller_and_tree":
                     machine.go_to_state('adjust_feller_and_tree')
-                elif selected_menu_item == "move_feller_and_tree":
-                    machine.go_to_state('move_feller_and_tree')
+                elif selected_menu_item == "exit_menu":
+                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
+                    machine.go_to_state('base_state')
                 else:
                     wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
                     mixer.voice[0].play( wave0, loop=False )
@@ -980,8 +773,7 @@ class StateTemplate(State):
 
     def update(self, machine):
         State.update(self, machine)
-        
-garbage_collect("state machine")
+
 
 ###############################################################################
 # Create the state machine
@@ -991,36 +783,26 @@ pretty_state_machine.add_state(BaseState())
 pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(AdjustFellerAndTree())
-pretty_state_machine.add_state(MoveFellerAndTree())
 
-sleepAndUpdateVolume(.1)
+print("animator has started")
 
-if (serve_webpage):
-    files.log_item("starting server...")
-    # startup the server
-    try:
-        server.start(str(wifi.radio.ipv4_address))
-        files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/animator_available_on_network.wav", "rb"))
-        # mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-    # if the server fails to begin, restart the pico w
-    except OSError:
-        time.sleep(5)
-        files.log_item("restarting...")
-        reset_pico()
-        
 pretty_state_machine.go_to_state('base_state')
-    
-files.log_item("animator has started...")
+
+print("starting server..")
+# startup the server
+try:
+    server.start(str(wifi.radio.ipv4_address))
+    print("Listening on http://%s:80" % wifi.radio.ipv4_address)
+#  if the server fails to begin, restart the pico w
+except OSError:
+    time.sleep(5)
+    print("restarting..")
+    microcontroller.reset()
 
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
-    if (serve_webpage):
-        try:
-            server.poll()
-        except Exception as e:
-            files.log_item(e)
-            continue
+    try:
+        server.poll()
+    except Exception as e:
+        continue

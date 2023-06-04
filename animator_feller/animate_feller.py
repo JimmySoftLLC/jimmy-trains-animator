@@ -10,7 +10,19 @@ def feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume):
         sleepAndUpdateVolume(speak_cadence)
         feller_servo.angle = config["feller_rest_pos"]
         sleepAndUpdateVolume(speak_cadence)
-
+        
+def play_sound(sound_files, audiocore, mixer, sleepAndUpdateVolume, left_switch, folder):
+    highest_index = len(sound_files) - 1
+    sound_number = random.randint(0, highest_index)
+    files.log_item(folder + ": " + str(sound_number))
+    wave0 = audiocore.WaveFile(open("/sd/" + folder + "/" + sound_files[sound_number] + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing :
+        sleepAndUpdateVolume(0.1)
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+    
 def animation_one(
         sleepAndUpdateVolume, 
         audiocore, 
@@ -22,6 +34,8 @@ def animation_one(
         feller_dialog,
         feller_wife,
         feller_poem,
+        feller_buddy,
+        feller_girlfriend,
         moveFellerServo,
         moveTreeServo,
         moveFellerToPositionGently,
@@ -29,19 +43,24 @@ def animation_one(
         left_switch,
         garbage_collect):
     sleepAndUpdateVolume(0.05)
+    
+    which_sound = random.randint(0,3)
+    
+    if which_sound == 0:
+        play_sound(feller_wife, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_wife")
+    if which_sound == 1:
+        play_sound(feller_buddy, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_buddy")
+    if which_sound == 2:
+        play_sound(feller_poem, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_poem")
+    if which_sound == 3:
+        play_sound(feller_girlfriend, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_girlfriend")    
+        
     chopNum = 1
     chopNumber = random.randint(2, 7)
     highest_index = len(feller_dialog) - 1
     what_to_speak = random.randint(0, highest_index)
     when_to_speak = random.randint(2, chopNumber)
-    highest_index = len(feller_poem) - 1
-    poem_index = random.randint(0, highest_index)
-    files.log_item("Poem index: " + str(poem_index))
-    soundFile = "/sd/feller_poem/" + feller_poem[poem_index] + ".wav"
-    wave0 = audiocore.WaveFile(open(soundFile, "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        sleepAndUpdateVolume(.1)
+          
     files.log_item("Chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
     tree_chop_pos = config["tree_up_pos"] - 3
@@ -76,17 +95,14 @@ def animation_one(
         pass
     sleepAndUpdateVolume(0.02)
     if config["option_selected"] == "random":
-        feller_sound_options_highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
-        soundNumber = random.randint(0, feller_sound_options_highest_index)
-        soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[soundNumber] + ".wav"
+        highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
+        sound_number = random.randint(0, highest_index)
+        soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[sound_number] + ".wav"
     else:
         soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
     wave0.deinit()
     garbage_collect("deinit wave0")
     wave0 = audiocore.WaveFile(open(soundFile, "rb"))
-    feller_wife_highest_index = len(feller_wife) - 1
-    wife_sound_number = random.randint(0, feller_wife_highest_index)
-    wave1 = audiocore.WaveFile(open("/sd/feller_wife/" + feller_wife[wife_sound_number] + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     for tree_angle in range(config["tree_up_pos"], config["tree_down_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
         moveTreeServo(tree_angle)
@@ -98,26 +114,13 @@ def animation_one(
         moveTreeServo(7 + config["tree_down_pos"])
         sleepAndUpdateVolume(0.1)
     moveTreeServo(config["tree_down_pos"])
-    startTime = time.monotonic()
-    wife_speak_time = random.uniform(3.0, 10.0)
-    wife_spoke = False
-    while mixer.voice[0].playing or mixer.voice[1].playing :
+    while mixer.voice[0].playing :
         sleepAndUpdateVolume(0.1)
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > wife_speak_time and wife_spoke == False:
-            files.log_item("When wife speaks: " + str(timeElasped))
-            if mixer.voice[0].playing:
-                mixer.voice[1].play( wave1, loop=False )
-            wife_spoke = True
         left_switch.update()
         if left_switch.fell:
             mixer.voice[0].stop()
-            mixer.voice[1].stop()
     wave0.deinit()
     garbage_collect("deinit wave0")
-    if wife_spoke:
-        wave1.deinit()
-        garbage_collect("deinit wave1")
     moveFellerToPositionGently(config["feller_rest_pos"])
     sleepAndUpdateVolume(0.02)
     moveTreeToPositionGently(config["tree_up_pos"])
