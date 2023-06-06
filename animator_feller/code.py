@@ -1002,7 +1002,7 @@ if (serve_webpage):
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         wave0 = audiocore.WaveFile(open("/sd/feller_menu/animator_available_on_network.wav", "rb"))
-        # mixer.voice[0].play( wave0, loop=False )
+        mixer.voice[0].play( wave0, loop=False )
         while mixer.voice[0].playing:
             pass
     # if the server fails to begin, restart the pico w

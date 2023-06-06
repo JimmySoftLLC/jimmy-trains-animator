@@ -11,7 +11,7 @@ def feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume):
         feller_servo.angle = config["feller_rest_pos"]
         sleepAndUpdateVolume(speak_cadence)
         
-def play_sound(sound_files, audiocore, mixer, sleepAndUpdateVolume, left_switch, folder):
+def play_sound(sound_files, audiocore, mixer, sleepAndUpdateVolume, left_switch, folder, garbage_collect):
     highest_index = len(sound_files) - 1
     sound_number = random.randint(0, highest_index)
     files.log_item(folder + ": " + str(sound_number))
@@ -22,6 +22,8 @@ def play_sound(sound_files, audiocore, mixer, sleepAndUpdateVolume, left_switch,
         left_switch.update()
         if left_switch.fell:
             mixer.voice[0].stop()
+    wave0.deinit()
+    garbage_collect("deinit wave0")
     
 def animation_one(
         sleepAndUpdateVolume, 
@@ -44,16 +46,16 @@ def animation_one(
         garbage_collect):
     sleepAndUpdateVolume(0.05)
     
-    which_sound = random.randint(0,3)
+    which_sound = random.randint(4,4)
     
     if which_sound == 0:
-        play_sound(feller_wife, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_wife")
+        play_sound(feller_wife, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_wife",garbage_collect)
     if which_sound == 1:
-        play_sound(feller_buddy, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_buddy")
+        play_sound(feller_buddy, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_buddy",garbage_collect)
     if which_sound == 2:
-        play_sound(feller_poem, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_poem")
+        play_sound(feller_poem, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_poem",garbage_collect)
     if which_sound == 3:
-        play_sound(feller_girlfriend, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_girlfriend")    
+        play_sound(feller_girlfriend, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_girlfriend",garbage_collect)    
         
     chopNum = 1
     chopNumber = random.randint(2, 7)
@@ -64,6 +66,13 @@ def animation_one(
     files.log_item("Chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
     tree_chop_pos = config["tree_up_pos"] - 3
+    if config["option_selected"] == "random":
+        highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
+        sound_number = random.randint(0, highest_index)
+        soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[sound_number] + ".wav"
+    else:
+        soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
+    wave2 = audiocore.WaveFile(open(soundFile, "rb"))
     while chopNum <= chopNumber:
         if when_to_speak == chopNum and not spoken:
             spoken = True    
@@ -71,39 +80,33 @@ def animation_one(
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume)
+            wave0.deinit()
+            garbage_collect("deinit wave0")
+            
+        grunt_number = random.randint(1, 4)
         wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
+        wave1 = audiocore.WaveFile(open("/sd/feller_grunts/grunt" + str(grunt_number) + ".wav", "rb"))
+        mixer.voice[1].play( wave1, loop=False )
         chopNum += 1
-        chopActive = True
+        
         for feller_angle in range(config["feller_rest_pos"], config["feller_chop_pos"] + 5, 10):  # 0 - 180 degrees, 10 degrees at a time.
             moveFellerServo(feller_angle)                                
-            if feller_angle >= (config["feller_chop_pos"] - 10) and chopActive:
+            if feller_angle >= (config["feller_chop_pos"] - 10):
                 mixer.voice[0].play( wave0, loop=False )
-                chopActive = False
-            if feller_angle >= config["feller_chop_pos"]:
-                chopActive = True
-                shake = 2
+                shake = 2   
                 for _ in range(shake):
                     moveTreeServo(tree_chop_pos)
                     sleepAndUpdateVolume(0.1)
                     moveTreeServo(config["tree_up_pos"])
                     sleepAndUpdateVolume(0.1)
-            sleepAndUpdateVolume(0.02)
+                break
         if chopNum <= chopNumber: 
             for feller_angle in range(config["feller_chop_pos"], config["feller_rest_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
                 moveFellerServo( feller_angle )
                 sleepAndUpdateVolume(0.02)
-        pass
-    sleepAndUpdateVolume(0.02)
-    if config["option_selected"] == "random":
-        highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
-        sound_number = random.randint(0, highest_index)
-        soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[sound_number] + ".wav"
-    else:
-        soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
-    wave0.deinit()
-    garbage_collect("deinit wave0")
-    wave0 = audiocore.WaveFile(open(soundFile, "rb"))
-    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing and mixer.voice[1].playing:
+        sleepAndUpdateVolume(0.1)
+    mixer.voice[0].play( wave2, loop=False )
     for tree_angle in range(config["tree_up_pos"], config["tree_down_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
         moveTreeServo(tree_angle)
         sleepAndUpdateVolume(0.06)
@@ -120,7 +123,9 @@ def animation_one(
         if left_switch.fell:
             mixer.voice[0].stop()
     wave0.deinit()
-    garbage_collect("deinit wave0")
+    wave1.deinit()
+    wave2.deinit()
+    garbage_collect("deinit wave0 wave1")
     moveFellerToPositionGently(config["feller_rest_pos"])
     sleepAndUpdateVolume(0.02)
     moveTreeToPositionGently(config["tree_up_pos"])
