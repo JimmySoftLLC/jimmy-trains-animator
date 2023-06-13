@@ -46,7 +46,7 @@ def animation_one(
         garbage_collect):
     sleepAndUpdateVolume(0.05)
     
-    which_sound = random.randint(4,4)
+    which_sound = random.randint(0,3)
     
     if which_sound == 0:
         play_sound(feller_wife, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_wife",garbage_collect)

@@ -30,7 +30,6 @@ import rtc
 from analogio import AnalogIn
 from adafruit_motor import servo
 from adafruit_debouncer import Debouncer
-from analogio import AnalogIn
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -47,6 +46,10 @@ analog_in = AnalogIn(board.A0)
 
 def get_voltage(pin):
     return (pin.value) / 65536
+
+audio_enable = digitalio.DigitalInOut(board.GP28)
+audio_enable.direction = digitalio.Direction.OUTPUT
+audio_enable.value = False
 
 # Setup the servo, this animation has two the feller and tree
 # also get the programmed values for position which is stored on the sdCard
@@ -88,6 +91,7 @@ audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 # the sdCard holds all the media and calibration files
 # if the card is missing a voice command is spoken
 # the user inserts the card a presses the left button to move forward
+audio_enable.value = True
 sck = board.GP2
 si = board.GP3
 so = board.GP4
@@ -128,6 +132,7 @@ except:
             garbage_collect("deinit wave0")
             
 audio.deinit()
+audio_enable.value = False
 
 garbage_collect("deinit audio")
 
@@ -306,6 +311,11 @@ if (serve_webpage):
             elif "owl" in raw_text: 
                 config["option_selected"] = "owl"
                 animateFeller()
+            elif "speaker_test" in raw_text: 
+                wave0 = audiocore.WaveFile(open("/sd/feller_menu/left_speaker_right_speaker.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         # if a button is pressed on the site
@@ -992,6 +1002,8 @@ pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(AdjustFellerAndTree())
 pretty_state_machine.add_state(MoveFellerAndTree())
+
+audio_enable.value = True
 
 sleepAndUpdateVolume(.1)
 
