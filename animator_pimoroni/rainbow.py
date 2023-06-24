@@ -34,6 +34,8 @@ while True:
         hue = (x + y + (step / 20)) / 8
         hue = hue - int(hue)
         hue = hue - math.floor(hue)
+        
+        print (hue)
 
         # Convert the hue to RGB values.
         r, g, b = hsv_to_rgb(hue, 1, 1)

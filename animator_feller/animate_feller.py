@@ -1,131 +1,143 @@
-import random
-import time
-import files
+# SPDX-FileCopyrightText: 2021 Sandy Macdonald
+#
+# SPDX-License-Identifier: MIT
 
-def feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume):
-    speak_rotation = 7
-    speak_cadence = 0.2
-    while mixer.voice[0].playing:
-        feller_servo.angle = speak_rotation + config["feller_rest_pos"]
-        sleepAndUpdateVolume(speak_cadence)
-        feller_servo.angle = config["feller_rest_pos"]
-        sleepAndUpdateVolume(speak_cadence)
+# This example demonstrates how to light keys when pressed.
+
+# Drop the `pmk` folder
+# into your `lib` folder on your `CIRCUITPY` drive.
+
+import sdcardio
+import storage
+import board
+import busio
+
+import audiomp3
+import audiocore
+import audiomixer
+import audiobusio
+import math
+import asyncio
+import files
+import time
+
+from pmk import PMK, number_to_xy, hsv_to_rgb
+from pmk.platform.rgbkeypadbase import RGBKeypadBase as Hardware  # for Pico RGB Keypad Base
+
+file_path="/sd/lightning_sounds/inspiring_cinematic_ambient_lightshow.wav"
+
+# Set up Keybow keyboard
+keybow = PMK(Hardware())
+keys = keybow.keys
+keyBrightness = 0.25
+
+# setup audio on the i2s bus, the animator uses the MAX98357A
+# the animator can have one or two MAX98357As. one for mono two for stereo
+# both MAX98357As share the same bus
+# for mono the MAX98357A defaults to combine channels
+# for stereo the MAX98357A SD pin is connected to VCC for right and a resistor to VCC for left
+# the audio mixer is used so that volume can be control digitally it is set to stereo
+# the sample_rate of the audio mixer is set to 22050 hz.  This is the max the raspberry pi pico can handle
+# all files with be in the wave format instead of mp3.  This eliminates the need for decoding
+i2s_bclk = board.GP6   # BCLK on MAX98357A
+i2s_lrc = board.GP7  # LRC on MAX98357A
+i2s_din = board.GP8  # DIN on MAX98357A
+
+audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
+
+# Setup sdCard
+# the sdCard holds all the media and calibration files
+# if the card is missing a voice command is spoken
+# the user inserts the card a presses the left button to move forward
+sck = board.GP10
+si = board.GP11
+so = board.GP12
+cs = board.GP13
+spi = busio.SPI(sck, si, so)
+try:
+    sdcard = sdcardio.SDCard(spi, cs)
+    vfs = storage.VfsFat(sdcard)
+    storage.mount(vfs, "/sd")
+except:
+    print("no card")
+    wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
+    audio.play(wave0)
+    while audio.playing:
+        pass
+
+# Setup the mixer it can play higher quality audio wav using larger wave files
+# wave files are less cpu intensive since they are not compressed
+num_voices = 2
+mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
+                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
+audio.play(mixer)
+
+my_time_stamps = {"flashTime":[0]}
+
+def append_time (r, g, b):
+    global my_time_stamps
+    time_elasped = time.monotonic()-startTime
+    my_time_stamps["flashTime"].append({"timeElasped": time_elasped, "r": r,"g": g,"b": b}) 
+
+# Attach handler functions to all of the keys
+for key in keys:
+    # A press handler that sends the keycode and turns on the LED
+    @keybow.on_press(key)
+    def press_handler(key):
+        global my_time_stamps
+        my_time_stamps
+        hue = key.number/16
+        r, g, b = hsv_to_rgb(hue, 1, 1)
+        append_time(r, g, b)
+        print(r, g, b)
+        key.led_off()
         
-def play_sound(sound_files, audiocore, mixer, sleepAndUpdateVolume, left_switch, folder, garbage_collect):
-    highest_index = len(sound_files) - 1
-    sound_number = random.randint(0, highest_index)
-    files.log_item(folder + ": " + str(sound_number))
-    wave0 = audiocore.WaveFile(open("/sd/" + folder + "/" + sound_files[sound_number] + ".wav", "rb"))
+    # A release handler that turns off the LED
+    @keybow.on_release(key)
+    def release_handler(key):
+        hue = key.number/16
+        r, g, b = hsv_to_rgb(hue, 1, keyBrightness)
+        keys[key.number].set_led(r, g, b)
+
+# Define your asynchronous functions or coroutines
+async def my_coroutine():
+    while True:
+        # Do something asynchronously
+        await asyncio.sleep(1)  # Wait for 1 second
+        # Perform your desired actions here
+
+# Create an event loop
+loop = asyncio.get_event_loop()
+
+async def play_music(file_path):
+    wave0 = audiocore.WaveFile(open(file_path, "rb"))
     mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing :
-        sleepAndUpdateVolume(0.1)
-        left_switch.update()
-        if left_switch.fell:
-            mixer.voice[0].stop()
-    wave0.deinit()
-    garbage_collect("deinit wave0")
-    
-def animation_one(
-        sleepAndUpdateVolume, 
-        audiocore, 
-        mixer, 
-        feller_servo, 
-        tree_servo, 
-        config,
-        feller_sound_options, 
-        feller_dialog,
-        feller_wife,
-        feller_poem,
-        feller_buddy,
-        feller_girlfriend,
-        moveFellerServo,
-        moveTreeServo,
-        moveFellerToPositionGently,
-        moveTreeToPositionGently,
-        left_switch,
-        garbage_collect):
-    sleepAndUpdateVolume(0.05)
-    
-    which_sound = random.randint(0,3)
-    
-    if which_sound == 0:
-        play_sound(feller_wife, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_wife",garbage_collect)
-    if which_sound == 1:
-        play_sound(feller_buddy, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_buddy",garbage_collect)
-    if which_sound == 2:
-        play_sound(feller_poem, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_poem",garbage_collect)
-    if which_sound == 3:
-        play_sound(feller_girlfriend, audiocore, mixer, sleepAndUpdateVolume, left_switch, "feller_girlfriend",garbage_collect)    
-        
-    chopNum = 1
-    chopNumber = random.randint(2, 7)
-    highest_index = len(feller_dialog) - 1
-    what_to_speak = random.randint(0, highest_index)
-    when_to_speak = random.randint(2, chopNumber)
-          
-    files.log_item("Chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
-    spoken = False
-    tree_chop_pos = config["tree_up_pos"] - 3
-    if config["option_selected"] == "random":
-        highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
-        sound_number = random.randint(0, highest_index)
-        soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[sound_number] + ".wav"
-    else:
-        soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
-    wave2 = audiocore.WaveFile(open(soundFile, "rb"))
-    while chopNum <= chopNumber:
-        if when_to_speak == chopNum and not spoken:
-            spoken = True    
-            soundFile = "/sd/feller_dialog/" + feller_dialog[what_to_speak] + ".wav"
-            wave0 = audiocore.WaveFile(open(soundFile, "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume)
-            wave0.deinit()
-            garbage_collect("deinit wave0")
-            
-        grunt_number = random.randint(1, 4)
-        wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
-        wave1 = audiocore.WaveFile(open("/sd/feller_grunts/grunt" + str(grunt_number) + ".wav", "rb"))
-        mixer.voice[1].play( wave1, loop=False )
-        chopNum += 1
-        
-        for feller_angle in range(config["feller_rest_pos"], config["feller_chop_pos"] + 5, 10):  # 0 - 180 degrees, 10 degrees at a time.
-            moveFellerServo(feller_angle)                                
-            if feller_angle >= (config["feller_chop_pos"] - 10):
-                mixer.voice[0].play( wave0, loop=False )
-                shake = 2   
-                for _ in range(shake):
-                    moveTreeServo(tree_chop_pos)
-                    sleepAndUpdateVolume(0.1)
-                    moveTreeServo(config["tree_up_pos"])
-                    sleepAndUpdateVolume(0.1)
-                break
-        if chopNum <= chopNumber: 
-            for feller_angle in range(config["feller_chop_pos"], config["feller_rest_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
-                moveFellerServo( feller_angle )
-                sleepAndUpdateVolume(0.02)
-    while mixer.voice[0].playing and mixer.voice[1].playing:
-        sleepAndUpdateVolume(0.1)
-    mixer.voice[0].play( wave2, loop=False )
-    for tree_angle in range(config["tree_up_pos"], config["tree_down_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
-        moveTreeServo(tree_angle)
-        sleepAndUpdateVolume(0.06)
-    shake = 8
-    for _ in range(shake):
-        moveTreeServo(config["tree_down_pos"])
-        sleepAndUpdateVolume(0.1)
-        moveTreeServo(7 + config["tree_down_pos"])
-        sleepAndUpdateVolume(0.1)
-    moveTreeServo(config["tree_down_pos"])
-    while mixer.voice[0].playing :
-        sleepAndUpdateVolume(0.1)
-        left_switch.update()
-        if left_switch.fell:
-            mixer.voice[0].stop()
-    wave0.deinit()
-    wave1.deinit()
-    wave2.deinit()
-    garbage_collect("deinit wave0 wave1")
-    moveFellerToPositionGently(config["feller_rest_pos"])
-    sleepAndUpdateVolume(0.02)
-    moveTreeToPositionGently(config["tree_up_pos"])
+    startTime = time.monotonic()
+
+# turn all button lights on
+for i in range(16):
+    hue = i/16
+    # Convert the hue to RGB values.
+    r, g, b = hsv_to_rgb(hue, 1, keyBrightness)
+    keys[i].set_led(r, g, b)
+
+def play_button(button):
+    if button.value:
+        loop.create_task(play_music(file_name))
+
+def stop_button(button):
+    if button.value:
+        loop.stop()
+
+wave0 = audiocore.WaveFile(open(file_path, "rb"))
+mixer.voice[0].play( wave0, loop=False )
+startTime = time.monotonic()
+
+while True:
+    # Always remember to call keybow.update() on every iteration of your loop!
+    keybow.update()
+    if not mixer.voice[0].playing:
+        for i in range(16):
+            keys[i].led_off()
+        files.log_item(my_time_stamps)
+        break
