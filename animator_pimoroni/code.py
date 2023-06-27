@@ -77,7 +77,10 @@ my_time_stamps = {"flashTime":[0]}
 def append_time (r, g, b):
     global my_time_stamps
     time_elasped = time.monotonic()-startTime
-    my_time_stamps["flashTime"].append({"timeElasped": time_elasped, "r": r,"g": g,"b": b}) 
+    my_time_stamps["flashTime"].append({"timeElasped": time_elasped, "r": r,"g": g,"b": b})
+    
+key_3_state = False
+key_7_state = False
 
 # Attach handler functions to all of the keys
 for key in keys:
@@ -85,6 +88,8 @@ for key in keys:
     @keybow.on_press(key)
     def press_handler(key):
         global my_time_stamps
+        global key_3_state
+        global key_7_state
         my_time_stamps
         hue = key.number/16
         r, g, b = hsv_to_rgb(hue, 1, 1)
@@ -93,18 +98,27 @@ for key in keys:
         key.led_off()
         print(key.number)
         if (key.number == 3):
-            loop.create_task(stop_now())
+            key_3_state = True
         if (key.number == 7):
+            key_7_state = True
             loop.create_task(pressed_button(7))
         if (key.number == 11):
             loop.create_task(pressed_button(11))
+        if key_3_state and key_7_state:
+            loop.create_task(stop_now())
         
     # A release handler that turns off the LED
     @keybow.on_release(key)
     def release_handler(key):
+        global key_3_state
+        global key_7_state
         hue = key.number/16
         r, g, b = hsv_to_rgb(hue, 1, keyBrightness)
         keys[key.number].set_led(r, g, b)
+        if (key.number == 3):
+            key_3_state = False
+        if (key.number == 7):
+            key_7_state = False
 
 # Create an event loop
 loop = asyncio.get_event_loop()
@@ -154,4 +168,3 @@ except KeyboardInterrupt:
         keys[i].led_off()   
     print("Exiting program")
     pass
-
