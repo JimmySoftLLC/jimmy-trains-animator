@@ -91,6 +91,13 @@ for key in keys:
         append_time(r, g, b)
         print(r, g, b)
         key.led_off()
+        print(key.number)
+        if (key.number == 3):
+            loop.create_task(stop_now())
+        if (key.number == 7):
+            loop.create_task(pressed_button(7))
+        if (key.number == 11):
+            loop.create_task(pressed_button(11))
         
     # A release handler that turns off the LED
     @keybow.on_release(key)
@@ -99,20 +106,27 @@ for key in keys:
         r, g, b = hsv_to_rgb(hue, 1, keyBrightness)
         keys[key.number].set_led(r, g, b)
 
-# Define your asynchronous functions or coroutines
-async def my_coroutine():
-    while True:
-        # Do something asynchronously
-        await asyncio.sleep(1)  # Wait for 1 second
-        # Perform your desired actions here
-
 # Create an event loop
 loop = asyncio.get_event_loop()
 
-async def play_music(file_path):
+async def play_music(file_path): 
+    global startTime
     wave0 = audiocore.WaveFile(open(file_path, "rb"))
     mixer.voice[0].play( wave0, loop=False )
     startTime = time.monotonic()
+    mixer.voice[0].level = 0.1
+    print("start music")
+    
+async def pressed_button(buttonNum): 
+    while True:
+        print("pressed button; " + str(buttonNum))
+        await asyncio.sleep(2)
+        
+async def update_keys():         
+    # Always remember to call keybow.update() on every iteration of your loop!
+    while True:
+        keybow.update()
+        await asyncio.sleep(.001)
 
 # turn all button lights on
 for i in range(16):
@@ -120,24 +134,24 @@ for i in range(16):
     # Convert the hue to RGB values.
     r, g, b = hsv_to_rgb(hue, 1, keyBrightness)
     keys[i].set_led(r, g, b)
+    
+async def stop_now():
+    mixer.voice[0].stop()
+    for i in range(16):
+        keys[i].led_off()
+    files.log_item(my_time_stamps)
+    loop.stop()
+        
+loop.create_task(play_music(file_path))
+loop.create_task(update_keys())
 
-def play_button(button):
-    if button.value:
-        loop.create_task(play_music(file_name))
+try:
+    # Run the event loop indefinitely
+    loop.run_forever()
+except KeyboardInterrupt:
+    # Perform any cleanup operations if needed
+    for i in range(16):
+        keys[i].led_off()   
+    print("Exiting program")
+    pass
 
-def stop_button(button):
-    if button.value:
-        loop.stop()
-
-wave0 = audiocore.WaveFile(open(file_path, "rb"))
-mixer.voice[0].play( wave0, loop=False )
-startTime = time.monotonic()
-
-while True:
-    # Always remember to call keybow.update() on every iteration of your loop!
-    keybow.update()
-    if not mixer.voice[0].playing:
-        for i in range(16):
-            keys[i].led_off()
-        files.log_item(my_time_stamps)
-        break
