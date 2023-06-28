@@ -215,28 +215,30 @@ if (serve_webpage):
     garbage_collect("config wifi imports")
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST
     garbage_collect("config wifi imports")
-    
-    mdns_server = mdns.Server(wifi.radio)
-    mdns_server.hostname = "animator-feller"
-    mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
 
     files.log_item("Connecting to WiFi")
 
     try:
         env = files.read_json_file("/sd/env.json")
         garbage_collect("wifi env")
-        #  connect to your SSID
+        
+        # connect to your SSID
         wifi.radio.connect(env["WIFI_SSID"], env["WIFI_PASSWORD"])
         garbage_collect("wifi connect")
         
-        #  files.log_items MAC address to REPL
+        # setup mdns server
+        mdns_server = mdns.Server(wifi.radio)
+        mdns_server.hostname = env["HOST_NAME"]
+        mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
+        
+        # files.log_items MAC address to REPL
         mystring = [hex(i) for i in wifi.radio.mac_address]
         files.log_item("My MAC addr:" + str(mystring))
 
-        #  files.log_items IP address to REPL
+        # files.log_items IP address to REPL
         files.log_item("My IP address is" + str(wifi.radio.ipv4_address))
         files.log_item("Connected to WiFi")
-
+        
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
@@ -1007,6 +1009,24 @@ audio_enable.value = True
 
 sleepAndUpdateVolume(.1)
 
+# speak each character in a string
+def speak_this_string(str_to_speak):
+    for character in str_to_speak:
+        if character == "-":
+            character = "dash"
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/"+ character + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+    wave0 = audiocore.WaveFile(open("/sd/feller_menu/dot.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        pass
+    wave0 = audiocore.WaveFile(open("/sd/feller_menu/local.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        pass
+
 if (serve_webpage):
     files.log_item("starting server...")
     # startup the server
@@ -1014,6 +1034,21 @@ if (serve_webpage):
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         wave0 = audiocore.WaveFile(open("/sd/feller_menu/animator_available_on_network.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/to_access_type.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        if env["HOST_NAME"]== "animator-feller":
+            wave0 = audiocore.WaveFile(open("/sd/feller_menu/animator_feller_local.wav", "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            while mixer.voice[0].playing:
+                pass
+        else:
+            speak_this_string(env["HOST_NAME"])
+        wave0 = audiocore.WaveFile(open("/sd/feller_menu/in_your_browser.wav", "rb"))
         mixer.voice[0].play( wave0, loop=False )
         while mixer.voice[0].playing:
             pass
