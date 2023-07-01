@@ -142,7 +142,7 @@ audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 # wave files are less cpu intensive since they are not compressed
 num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=8192)
+                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
 audio.play(mixer)
 
 garbage_collect("audio setup")
@@ -317,10 +317,7 @@ if (serve_webpage):
                 config["option_selected"] = "owl"
                 animateFeller()
             elif "speaker_test" in raw_text: 
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/left_speaker_right_speaker.wav", "rb"))
-                mixer.voice[0].play( wave0, loop=False )
-                while mixer.voice[0].playing:
-                    pass
+                play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         # if a button is pressed on the site
@@ -409,119 +406,67 @@ def setVolume():
 def sleepAndUpdateVolume(seconds):
     setVolume()
     time.sleep(seconds)
-    
+
 garbage_collect("global variable and methods")
 
 ################################################################################
-# Dialog
+# Dialog and sound play methods
+
+def play_audio_0(file_name):
+    if mixer.voice[0].playing:
+        mixer.voice[0].stop()
+        while mixer.voice[0].playing:
+            sleepAndUpdateVolume(0.02)
+    wave0 = audiocore.WaveFile(open(file_name, "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+
+def stop_audio_0():
+    mixer.voice[0].stop()
+    while mixer.voice[0].playing:
+        pass
 
 def left_right_mouse_button():
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/press_left_button_right_button.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-    
+    play_audio_0("/sd/feller_menu/press_left_button_right_button.wav")
+
 def option_selected_announcement():
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_selected.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-    
+    play_audio_0("/sd/feller_menu/option_selected.wav")
+
 def fellerCalAnnouncement():
-    global left_switch
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/now_we_can_adjust_the_feller_position.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/to_exit_press_and_hold_button_down.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
+    play_audio_0("/sd/feller_menu/now_we_can_adjust_the_feller_position.wav")
+    play_audio_0("/sd/feller_menu/to_exit_press_and_hold_button_down.wav")
     
 def treeCalAnnouncement():
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/now_we_can_adjust_the_tree_position.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/to_exit_press_and_hold_button_down.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
+    play_audio_0("/sd/feller_menu/now_we_can_adjust_the_tree_position.wav")
+    play_audio_0("/sd/feller_menu/to_exit_press_and_hold_button_down.wav")
     
 def mainMenuAnnouncement():
-    if mixer.voice[0].playing:
-        mixer.voice[0].stop()
-        while mixer.voice[0].playing:
-            pass
-    else:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/main_menu.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        left_right_mouse_button()
-
-    
+    play_audio_0("/sd/feller_menu/main_menu.wav")
+    left_right_mouse_button()
+ 
 def selectSoundMenuAnnouncement():
-    if mixer.voice[0].playing:
-        mixer.voice[0].stop()
-        while mixer.voice[0].playing:
-            pass
-    else:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/sound_selection_menu.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        left_right_mouse_button()
+    play_audio_0("/sd/feller_menu/main_menu.wav")
+    left_right_mouse_button()
     
 def adjustFellerAndTreeMenuAnnouncement():
-    if mixer.voice[0].playing:
-        mixer.voice[0].stop()
-        while mixer.voice[0].playing:
-            pass
-    else:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/adjust_feller_and_tree_menu.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        left_right_mouse_button()
+    play_audio_0("/sd/feller_menu/adjust_feller_and_tree_menu.wav")
+    left_right_mouse_button()
         
 def moveFellerAndTreeMenuAnnouncement():
-    if mixer.voice[0].playing:
-        mixer.voice[0].stop()
-        while mixer.voice[0].playing:
-            pass
-    else:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/move_feller_and_tree_menu.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        left_right_mouse_button()
+    play_audio_0("/sd/feller_menu/move_feller_and_tree_menu.wav")
+    left_right_mouse_button()
 
 def selectDialogOptionsAnnouncement():
-    if mixer.voice[0].playing:
-        mixer.voice[0].stop()
-        while mixer.voice[0].playing:
-            pass
-    else:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/dialog_selection_menu.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        left_right_mouse_button()
-
-        
+    play_audio_0("/sd/feller_menu/dialog_selection_menu.wav")
+    left_right_mouse_button()
+ 
 def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/limit_reached.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass 
+        play_audio_0("/sd/feller_menu/limit_reached.wav")
         return False
     if servo_pos > max_servo_pos:
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/limit_reached.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass 
+        play_audio_0("/sd/feller_menu/limit_reached.wav")
         return False
     return True
 
@@ -530,6 +475,15 @@ def shortCircuitDialog():
     left_switch.update()
     if left_switch.fell:
         mixer.voice[0].stop()
+
+# speak each character in a string
+def speak_this_string(str_to_speak):
+    for character in str_to_speak:
+        if character == "-":
+            character = "dash"
+        play_audio_0("/sd/feller_menu/" + character + ".wav")
+    play_audio_0("/sd/feller_menu/dot.wav")
+    play_audio_0("/sd/feller_menu/local.wav")
         
 garbage_collect("dialog methods")
 
@@ -553,10 +507,7 @@ def calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max
         config[movement_type] -= 1 * sign
         
 def write_calibrations_to_config_file():
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
+    play_audio_0("/sd/feller_menu/all_changes_complete.wav")
     global config
     files.write_json_file("/sd/config_feller.json",config)
     
@@ -690,7 +641,6 @@ class StateMachine(object):
     def reset(self):
         reset_pico()
         
-
 ################################################################################
 # States
 
@@ -735,12 +685,8 @@ class BaseState(State):
         else:
             # set servos to starting position
             moveFellerToPositionGently(config["feller_rest_pos"])
-            sleepAndUpdateVolume(0.02)
             moveTreeToPositionGently(config["tree_up_pos"])
-            wave0 = audiocore.WaveFile(open("/sd/feller_menu/animations_are_now_active.wav", "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                pass
+            play_audio_0("/sd/feller_menu/animations_are_now_active.wav")
         files.log_item("Entered base state")
         State.enter(self, machine)
 
@@ -750,19 +696,12 @@ class BaseState(State):
     def update(self, machine):
         switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
         if switch_state == "left_held":
-            wave0 = audiocore.WaveFile(open("/sd/feller_menu/continuous_mode_activated.wav", "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                pass
+            play_audio_0("/sd/feller_menu/continuous_mode_activated.wav")
             continuous_run = True
             while continuous_run:
-                sleepAndUpdateVolume(0.5)
                 switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
                 if switch_state == "left_held":
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/continuous_mode_deactivated.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
+                    play_audio_0("/sd/feller_menu/continuous_mode_deactivated.wav")
                     continuous_run = False
                 if continuous_run:
                     animateFeller()
@@ -793,35 +732,24 @@ class MoveFellerAndTree(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + move_feller_and_tree[self.menuIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(move_feller_and_tree)-1:
-                    self.menuIndex = 0
-                while mixer.voice[0].playing:
-                    shortCircuitDialog()
+            play_audio_0("/sd/feller_menu/" + move_feller_and_tree[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(move_feller_and_tree)-1:
+                self.menuIndex = 0
         if right_switch.fell:
-                selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
-                if selected_menu_item == "move_feller_to_rest_position":
-                    moveFellerToPositionGently(config["feller_rest_pos"])
-                elif selected_menu_item == "move_feller_to_chop_position":
-                    moveFellerToPositionGently(config["feller_chop_pos"])
-                elif selected_menu_item == "move_tree_to_upright_position":
-                    moveTreeToPositionGently(config["tree_up_pos"])
-                elif selected_menu_item == "move_tree_to_fallen_position":
-                    moveTreeToPositionGently(config["tree_down_pos"])
-                else:
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
-                    machine.go_to_state('base_state')
+            selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
+            if selected_menu_item == "move_feller_to_rest_position":
+                moveFellerToPositionGently(config["feller_rest_pos"])
+            elif selected_menu_item == "move_feller_to_chop_position":
+                moveFellerToPositionGently(config["feller_chop_pos"])
+            elif selected_menu_item == "move_tree_to_upright_position":
+                moveTreeToPositionGently(config["tree_up_pos"])
+            elif selected_menu_item == "move_tree_to_fallen_position":
+                moveTreeToPositionGently(config["tree_down_pos"])
+            else:
+                play_audio_0("/sd/feller_menu/all_changes_complete.wav")
+                machine.go_to_state('base_state')
                      
 class AdjustFellerAndTree(State):
 
@@ -850,14 +778,11 @@ class AdjustFellerAndTree(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + adjust_feller_and_tree[self.menuIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                play_audio_0("/sd/feller_menu/" + adjust_feller_and_tree[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
                 if self.menuIndex > len(adjust_feller_and_tree)-1:
                     self.menuIndex = 0
-                while mixer.voice[0].playing:
-                    shortCircuitDialog()
         if right_switch.fell:
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
@@ -881,10 +806,7 @@ class AdjustFellerAndTree(State):
                     calibratePosition(tree_servo, "tree_down_pos")
                     machine.go_to_state('base_state')
                 else:
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
+                    play_audio_0("/sd/feller_menu/all_changes_complete.wav")
                     machine.go_to_state('base_state')
 
 class SetDialogOptions(State):
@@ -914,14 +836,11 @@ class SetDialogOptions(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + dialog_selection_menu[self.menuIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                play_audio_0("/sd/feller_menu/" + dialog_selection_menu[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
                 if self.menuIndex > len(dialog_selection_menu)-1:
                     self.menuIndex = 0
-                while mixer.voice[0].playing:
-                    shortCircuitDialog()
         if right_switch.fell:
                 selected_menu_item = dialog_selection_menu[self.selectedMenuIndex]
                 if selected_menu_item == "opening_dialog_on":
@@ -942,10 +861,7 @@ class SetDialogOptions(State):
                     selectDialogOptionsAnnouncement()
                 else:
                     files.write_json_file("/sd/config_feller.json",config)
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
+                    play_audio_0("/sd/feller_menu/all_changes_complete.wav")
                     machine.go_to_state('base_state')
                     
 class ChooseSounds(State):
@@ -975,19 +891,12 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/option_" + feller_sound_options[self.menuIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                play_audio_0("/sd/feller_menu/option_" + feller_sound_options[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
                 if self.menuIndex > len(feller_sound_options)-1:
                     self.menuIndex = 0
-                while mixer.voice[0].playing:
-                    shortCircuitDialog()
         if right_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
             config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
             files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
             files.write_json_file("/sd/config_feller.json",config)
@@ -1021,14 +930,11 @@ class MainMenu(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/feller_menu/" + main_menu[self.menuIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                play_audio_0("/sd/feller_menu/" + main_menu[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
                 if self.menuIndex > len(main_menu)-1:
                     self.menuIndex = 0
-                while mixer.voice[0].playing:
-                    shortCircuitDialog()
         if right_switch.fell:
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
@@ -1045,10 +951,7 @@ class MainMenu(State):
                 elif selected_menu_item == "set_dialog_options":
                     machine.go_to_state('set_dialog_options')
                 else:
-                    wave0 = audiocore.WaveFile(open("/sd/feller_menu/all_changes_complete.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
+                    play_audio_0("/sd/feller_menu/all_changes_complete.wav")
                     machine.go_to_state('base_state')
                 
 # StateTemplate copy and add functionality
@@ -1087,49 +990,19 @@ audio_enable.value = True
 
 sleepAndUpdateVolume(.1)
 
-# speak each character in a string
-def speak_this_string(str_to_speak):
-    for character in str_to_speak:
-        if character == "-":
-            character = "dash"
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/"+ character + ".wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/dot.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-    wave0 = audiocore.WaveFile(open("/sd/feller_menu/local.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        pass
-
 if (serve_webpage):
     files.log_item("starting server...")
     # startup the server
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/animator_available_on_network.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/to_access_type.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
+        play_audio_0("/sd/feller_menu/animator_available_on_network.wav")
+        play_audio_0("/sd/feller_menu/to_access_type.wav")
         if env["HOST_NAME"]== "animator-feller":
-            wave0 = audiocore.WaveFile(open("/sd/feller_menu/animator_feller_local.wav", "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                pass
+            play_audio_0("/sd/feller_menu/animator_feller_local.wav")
         else:
             speak_this_string(env["HOST_NAME"])
-        wave0 = audiocore.WaveFile(open("/sd/feller_menu/in_your_browser.wav", "rb"))
-        mixer.voice[0].play( wave0, loop=False )
-        while mixer.voice[0].playing:
-            pass
+        play_audio_0("/sd/feller_menu/in_your_browser.wav")    
     # if the server fails to begin, restart the pico w
     except OSError:
         time.sleep(5)
