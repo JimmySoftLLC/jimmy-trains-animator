@@ -2,7 +2,7 @@ import random
 import time
 import files
 
-def feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume):
+def feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume, left_switch):
     speak_rotation = 7
     speak_cadence = 0.2
     while mixer.voice[0].playing:
@@ -10,6 +10,25 @@ def feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume):
         sleepAndUpdateVolume(speak_cadence)
         feller_servo.angle = config["feller_rest_pos"]
         sleepAndUpdateVolume(speak_cadence)
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+            while mixer.voice[0].playing:
+                pass
+        
+def tree_talking_movement(mixer,config, tree_servo, sleepAndUpdateVolume, left_switch):
+    speak_rotation = 2
+    speak_cadence = 0.2
+    while mixer.voice[0].playing:
+        tree_servo.angle = speak_rotation + config["tree_up_pos"]
+        sleepAndUpdateVolume(speak_cadence)
+        tree_servo.angle = config["tree_up_pos"] - speak_rotation
+        sleepAndUpdateVolume(speak_cadence)
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+            while mixer.voice[0].playing:
+                pass
         
 def play_sound(sound_files, audiocore, mixer, sleepAndUpdateVolume, left_switch, folder, garbage_collect):
     highest_index = len(sound_files) - 1
@@ -22,6 +41,8 @@ def play_sound(sound_files, audiocore, mixer, sleepAndUpdateVolume, left_switch,
         left_switch.update()
         if left_switch.fell:
             mixer.voice[0].stop()
+            while mixer.voice[0].playing:
+                pass
     wave0.deinit()
     garbage_collect("deinit wave0")
     
@@ -70,8 +91,10 @@ def animation_one(
         highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
         sound_number = random.randint(0, highest_index)
         soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[sound_number] + ".wav"
+        print("Random sound file: " + feller_sound_options[sound_number])
     else:
         soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
+        print("Sound file: " + config["option_selected"])
     wave1 = audiocore.WaveFile(open(soundFile, "rb"))
     while chopNum <= chopNumber:
         if when_to_speak == chopNum and not spoken and config["feller_advice"]:
@@ -79,7 +102,7 @@ def animation_one(
             soundFile = "/sd/feller_dialog/" + feller_dialog[what_to_speak] + ".wav"
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
-            feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume)
+            feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume, left_switch)
             wave0.deinit()
             garbage_collect("deinit wave0")
             
@@ -115,12 +138,32 @@ def animation_one(
         sleepAndUpdateVolume(0.1)
         moveTreeServo(7 + config["tree_down_pos"])
         sleepAndUpdateVolume(0.1)
-    moveTreeServo(config["tree_down_pos"])
-    while mixer.voice[0].playing :
-        sleepAndUpdateVolume(0.1)
-        left_switch.update()
-        if left_switch.fell:
-            mixer.voice[0].stop()
+    if config["option_selected"] == "alien":
+        print("Alien sequence starting....")
+        sleepAndUpdateVolume(2)
+        moveFellerToPositionGently(config["feller_rest_pos"])
+        moveTreeToPositionGently(config["tree_up_pos"])
+        left_pos = config["tree_up_pos"] - 4
+        right_pos = config["tree_up_pos"] + 4
+        while mixer.voice[0].playing :
+            moveTreeToPositionGently(left_pos)
+            moveTreeToPositionGently(right_pos)
+        moveTreeToPositionGently(config["tree_up_pos"])
+        for alien_num in range(7):
+            soundFile = "/sd/feller_alien/human_" + str(alien_num+1) + ".wav"
+            wave0 = audiocore.WaveFile(open(soundFile, "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            feller_talking_movement(mixer,config, feller_servo, sleepAndUpdateVolume, left_switch)
+            soundFile = "/sd/feller_alien/alien_" + str(alien_num+1) + ".wav"
+            wave0 = audiocore.WaveFile(open(soundFile, "rb"))
+            mixer.voice[0].play( wave0, loop=False )
+            tree_talking_movement(mixer,config, tree_servo, sleepAndUpdateVolume, left_switch)
+    else:
+        while mixer.voice[0].playing :
+            sleepAndUpdateVolume(0.1)
+            left_switch.update()
+            if left_switch.fell:
+                mixer.voice[0].stop()
     wave0.deinit()
     wave1.deinit()
     garbage_collect("deinit wave0 wave1")

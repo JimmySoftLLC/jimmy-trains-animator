@@ -44,7 +44,13 @@ garbage_collect("imports")
 # the the volume control is digital by setting mixer voice levels
 analog_in = AnalogIn(board.A0)
 
-def get_voltage(pin):
+def get_voltage(pin, wait_for):
+    my_increment = wait_for/10
+    pin_value = 0
+    for _ in range(10):
+        time.sleep(my_increment)
+        pin_value += 1
+        pin_value = pin_value / 10
     return (pin.value) / 65536
 
 audio_enable = digitalio.DigitalInOut(board.GP28)
@@ -398,14 +404,10 @@ def reset_to_defaults():
     config["feller_rest_pos"] = 0
     config["feller_chop_pos"] = 150
 
-def setVolume():
-    volume = get_voltage(analog_in)
+def sleepAndUpdateVolume(seconds):
+    volume = get_voltage(analog_in, seconds) * 0.8
     mixer.voice[0].level = volume
     mixer.voice[1].level = volume
-    
-def sleepAndUpdateVolume(seconds):
-    setVolume()
-    time.sleep(seconds)
 
 garbage_collect("global variable and methods")
 
