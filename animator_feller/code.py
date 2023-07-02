@@ -304,6 +304,9 @@ if (serve_webpage):
             elif "train" in raw_text: 
                 config["option_selected"] = "train"
                 animateFeller()
+            elif "alien" in raw_text: 
+                config["option_selected"] = "alien"
+                animateFeller()  
             elif "birds_dogs_short_version" in raw_text: 
                 config["option_selected"] = "birds_dogs_short_version"
                 animateFeller()
@@ -387,7 +390,29 @@ if (serve_webpage):
                 write_calibrations_to_config_file()
                 pretty_state_machine.go_to_state('base_state')
                 return Response(request, "Tree " + tree_movement_type + " cal saved.")
-                  
+            
+        # if a button is pressed on the site
+        @server.route("/dialog", [POST])
+        def buttonpress(request: Request):
+            global config
+            raw_text = request.raw_request.decode("utf8")
+            if "opening_dialog_on" in raw_text: 
+                config["opening_dialog"] = True
+
+            elif "opening_dialog_off" in raw_text: 
+                config["opening_dialog"] = False
+
+            elif "feller_advice_on" in raw_text: 
+                config["feller_advice"] = True
+                
+            elif "feller_advice_off" in raw_text: 
+                config["feller_advice"] = False
+                
+            files.write_json_file("/sd/config_feller.json",config)
+            play_audio_0("/sd/feller_menu/all_changes_complete.wav")
+
+            return Response(request, "Dialog option cal saved.")
+              
     except Exception as e:
         serve_webpage = False
         files.log_item(e)
