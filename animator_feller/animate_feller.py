@@ -141,14 +141,14 @@ def animation_one(
     if config["option_selected"] == "alien":
         print("Alien sequence starting....")
         sleepAndUpdateVolume(2)
-        moveFellerToPositionGently(config["feller_rest_pos"])
-        moveTreeToPositionGently(config["tree_up_pos"])
+        moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
+        moveTreeToPositionGently(config["tree_up_pos"], 0.01)
         left_pos = config["tree_up_pos"] - 4
         right_pos = config["tree_up_pos"] + 4
         while mixer.voice[0].playing :
-            moveTreeToPositionGently(left_pos)
-            moveTreeToPositionGently(right_pos)
-        moveTreeToPositionGently(config["tree_up_pos"])
+            moveTreeToPositionGently(left_pos, 0.01)
+            moveTreeToPositionGently(right_pos, 0.01)
+        moveTreeToPositionGently(config["tree_up_pos"], 0.01)
         for alien_num in range(7):
             soundFile = "/sd/feller_alien/human_" + str(alien_num+1) + ".wav"
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
@@ -167,6 +167,6 @@ def animation_one(
     wave0.deinit()
     wave1.deinit()
     garbage_collect("deinit wave0 wave1")
-    moveFellerToPositionGently(config["feller_rest_pos"])
+    moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
     sleepAndUpdateVolume(0.02)
-    moveTreeToPositionGently(config["tree_up_pos"])
+    moveTreeToPositionGently(config["tree_up_pos"], 0.01)

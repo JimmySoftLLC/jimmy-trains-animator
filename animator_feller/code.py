@@ -216,11 +216,6 @@ garbage_collect("config setup")
 ################################################################################
 # Setup wifi and web server
 
-def generate_random_string(length):
-    characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    random_string = ''.join(random.choice(characters) for _ in range(length))
-    return random_string
-
 if (serve_webpage):
     import socketpool
     import mdns
@@ -261,7 +256,6 @@ if (serve_webpage):
         ################################################################################
         # Setup routes
 
-        # serve webpage
         @server.route("/")
         def base(request: HTTPRequest):
             return FileResponse(request, "index.html", "/")
@@ -274,7 +268,6 @@ if (serve_webpage):
         def base(request: HTTPRequest):
             return FileResponse(request, "tree-adjust.html", "/")
 
-        # if a button is pressed on the site
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
             global config
@@ -319,7 +312,6 @@ if (serve_webpage):
                 play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
-        # if a button is pressed on the site
         @server.route("/feller", [POST])        
         def buttonpress(request: Request):
             global config
@@ -327,16 +319,16 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")    
             if "feller_rest_pos" in raw_text:
                 feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
+                moveFellerToPositionGently(config[feller_movement_type], 0.01)
                 return Response(request, "Moved feller to rest position.")
             elif "feller_chop_pos" in raw_text:
                 feller_movement_type = "feller_chop_pos"
                 moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Moved feller to chop position.")
+                return Response(request, "Moved feller to chop position.", 0.01)
             elif "feller_adjust" in raw_text:
                 feller_movement_type = "feller_rest_pos"
                 moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Redirected to feller-adjust page.")
+                return Response(request, "Redirected to feller-adjust page.", 0.01)
             elif "feller_home" in raw_text:
                 return Response(request, "Redirected to home page.")
             elif "feller_clockwise" in raw_text:
@@ -350,7 +342,6 @@ if (serve_webpage):
                 pretty_state_machine.go_to_state('base_state')
                 return Response(request, "Feller " + feller_movement_type + " cal saved.")
                 
-        # if a button is pressed on the site
         @server.route("/tree", [POST])        
         def buttonpress(request: Request):
             global config
@@ -358,16 +349,16 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")    
             if "tree_up_pos" in raw_text:
                 tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
+                moveTreeToPositionGently(config[tree_movement_type], 0.01)
                 return Response(request, "Moved tree to up position.")
             elif "tree_down_pos" in raw_text:
                 tree_movement_type = "tree_down_pos"
                 moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Moved tree to fallen position.")
+                return Response(request, "Moved tree to fallen position.", 0.01)
             elif "tree_adjust" in raw_text:
                 tree_movement_type = "tree_up_pos"
                 moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Redirected to tree-adjust page.")
+                return Response(request, "Redirected to tree-adjust page.", 0.01)
             elif "tree_home" in raw_text:
                 return Response(request, "Redirected to home page.")
             elif "tree_up" in raw_text:
@@ -381,7 +372,6 @@ if (serve_webpage):
                 pretty_state_machine.go_to_state('base_state')
                 return Response(request, "Tree " + tree_movement_type + " cal saved.")
             
-        # if a button is pressed on the site
         @server.route("/dialog", [POST])
         def buttonpress(request: Request):
             global config
@@ -403,7 +393,6 @@ if (serve_webpage):
 
             return Response(request, "Dialog option cal saved.")
 
-        # if a button is pressed on the site
         @server.route("/update-host-name", [POST])
         def buttonpress(request: Request):
             global config
@@ -416,7 +405,6 @@ if (serve_webpage):
 
             return Response(request, config["HOST_NAME"])
         
-        # if a button is pressed on the site
         @server.route("/get-host-name", [POST])
         def buttonpress(request: Request):
             return Response(request, config["HOST_NAME"])
@@ -511,7 +499,6 @@ def shortCircuitDialog():
     if left_switch.fell:
         mixer.voice[0].stop()
 
-# speak each character in a string
 def speak_this_string(str_to_speak):
     for character in str_to_speak:
         if character == "-":
@@ -584,23 +571,23 @@ def calibratePosition(servo, movement_type):
         global tree_last_pos
         tree_last_pos = config[movement_type]
 
-def moveFellerToPositionGently (new_position):
+def moveFellerToPositionGently (new_position, speed):
     global feller_last_pos
     sign = 1
     if feller_last_pos > new_position: sign = - 1
     for feller_angle in range( feller_last_pos, new_position, sign):
         feller_servo.angle = feller_angle
-        sleepAndUpdateVolume(0.01)
+        sleepAndUpdateVolume(speed)
     feller_servo.angle = new_position 
     feller_last_pos = new_position
     
-def moveTreeToPositionGently (new_position):
+def moveTreeToPositionGently (new_position, speed):
     global tree_last_pos
     sign = 1
     if tree_last_pos > new_position: sign = - 1
     for tree_angle in range( tree_last_pos, new_position, sign): 
         tree_servo.angle = tree_angle
-        sleepAndUpdateVolume(0.01)
+        sleepAndUpdateVolume(speed)
     tree_servo.angle = new_position
     tree_last_pos = new_position
 
@@ -717,8 +704,8 @@ class BaseState(State):
                 pass
         else:
             # set servos to starting position
-            moveFellerToPositionGently(config["feller_rest_pos"])
-            moveTreeToPositionGently(config["tree_up_pos"])
+            moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
+            moveTreeToPositionGently(config["tree_up_pos"], 0.01)
             play_audio_0("/sd/feller_menu/animations_are_now_active.wav")
         files.log_item("Entered base state")
         State.enter(self, machine)
@@ -773,13 +760,13 @@ class MoveFellerAndTree(State):
         if right_switch.fell:
             selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
             if selected_menu_item == "move_feller_to_rest_position":
-                moveFellerToPositionGently(config["feller_rest_pos"])
+                moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
             elif selected_menu_item == "move_feller_to_chop_position":
-                moveFellerToPositionGently(config["feller_chop_pos"])
+                moveFellerToPositionGently(config["feller_chop_pos"], 0.01)
             elif selected_menu_item == "move_tree_to_upright_position":
-                moveTreeToPositionGently(config["tree_up_pos"])
+                moveTreeToPositionGently(config["tree_up_pos"], 0.01)
             elif selected_menu_item == "move_tree_to_fallen_position":
-                moveTreeToPositionGently(config["tree_down_pos"])
+                moveTreeToPositionGently(config["tree_down_pos"], 0.01)
             else:
                 play_audio_0("/sd/feller_menu/all_changes_complete.wav")
                 machine.go_to_state('base_state')
@@ -819,22 +806,22 @@ class AdjustFellerAndTree(State):
         if right_switch.fell:
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
-                    moveFellerToPositionGently(config["feller_rest_pos"])
+                    moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
                     fellerCalAnnouncement()
                     calibratePosition(feller_servo, "feller_rest_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_feller_to_chop_position":
-                    moveFellerToPositionGently(config["feller_chop_pos"])
+                    moveFellerToPositionGently(config["feller_chop_pos"], 0.01)
                     fellerCalAnnouncement()
                     calibratePosition(feller_servo, "feller_chop_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_upright_position":
-                    moveTreeToPositionGently(config["tree_up_pos"])
+                    moveTreeToPositionGently(config["tree_up_pos"], 0.01)
                     treeCalAnnouncement()
                     calibratePosition(tree_servo, "tree_up_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_fallen_position":
-                    moveTreeToPositionGently(config["tree_down_pos"])
+                    moveTreeToPositionGently(config["tree_down_pos"], 0.01)
                     treeCalAnnouncement()
                     calibratePosition(tree_servo, "tree_down_pos")
                     machine.go_to_state('base_state')
@@ -1021,8 +1008,6 @@ pretty_state_machine.add_state(SetDialogOptions())
 
 audio_enable.value = True
 
-sleepAndUpdateVolume(.1)
-
 def speak_webpage():
     play_audio_0("/sd/feller_menu/animator_available_on_network.wav")
     play_audio_0("/sd/feller_menu/to_access_type.wav")
@@ -1034,21 +1019,17 @@ def speak_webpage():
 
 if (serve_webpage):
     files.log_item("starting server...")
-    # startup the server
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         speak_webpage()
-    # if the server fails to begin, restart the pico w
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
         reset_pico()
         
-pretty_state_machine.go_to_state('base_state')
-    
+pretty_state_machine.go_to_state('base_state')   
 files.log_item("animator has started...")
-
 garbage_collect("animations started.")
 
 while True:
