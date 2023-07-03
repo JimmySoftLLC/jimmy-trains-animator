@@ -216,6 +216,11 @@ garbage_collect("config setup")
 ################################################################################
 # Setup wifi and web server
 
+def generate_random_string(length):
+    characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    random_string = ''.join(random.choice(characters) for _ in range(length))
+    return random_string
+
 if (serve_webpage):
     import socketpool
     import mdns
@@ -237,7 +242,7 @@ if (serve_webpage):
         
         # setup mdns server
         mdns_server = mdns.Server(wifi.radio)
-        mdns_server.hostname = env["HOST_NAME"]
+        mdns_server.hostname = config["HOST_NAME"]
         mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
         
         # files.log_items MAC address to REPL
@@ -252,21 +257,6 @@ if (serve_webpage):
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
         garbage_collect("wifi server")
-        
-        def getTime(): 
-            get_time_url = "https://worldtimeapi.org/api/timezone/America/New_York"
-            requests = adafruit_requests.Session(pool, ssl.create_default_context())
-            try:
-                files.log_item("Fetching time from %s" % get_time_url)
-                response = requests.get(get_time_url)  
-                responseObject = files.json_parse(response.text)
-                files.log_item(responseObject["timezone"])
-                files.log_item(responseObject["datetime"])
-                response.close()
-                time.sleep(1)
-                return responseObject["datetime"]
-            except Exception as e:
-                files.log_item("Error:\n", str(e))
         
         ################################################################################
         # Setup routes
@@ -412,7 +402,25 @@ if (serve_webpage):
             play_audio_0("/sd/feller_menu/all_changes_complete.wav")
 
             return Response(request, "Dialog option cal saved.")
-              
+
+        # if a button is pressed on the site
+        @server.route("/update-host-name", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["HOST_NAME"] = data_object["text"]
+            
+            files.write_json_file("/sd/config_feller.json",config)       
+            mdns_server.hostname = config["HOST_NAME"]
+            speak_webpage()
+
+            return Response(request, config["HOST_NAME"])
+        
+        # if a button is pressed on the site
+        @server.route("/get-host-name", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["HOST_NAME"])
+           
     except Exception as e:
         serve_webpage = False
         files.log_item(e)
@@ -578,7 +586,6 @@ def calibratePosition(servo, movement_type):
 
 def moveFellerToPositionGently (new_position):
     global feller_last_pos
-    files.log_item("feller angle: " + str(tree_last_pos) + "  " + str(new_position))
     sign = 1
     if feller_last_pos > new_position: sign = - 1
     for feller_angle in range( feller_last_pos, new_position, sign):
@@ -589,7 +596,6 @@ def moveFellerToPositionGently (new_position):
     
 def moveTreeToPositionGently (new_position):
     global tree_last_pos
-    files.log_item("tree angle: " + str(tree_last_pos) + "  " + str(new_position))
     sign = 1
     if tree_last_pos > new_position: sign = - 1
     for tree_angle in range( tree_last_pos, new_position, sign): 
@@ -1017,19 +1023,22 @@ audio_enable.value = True
 
 sleepAndUpdateVolume(.1)
 
+def speak_webpage():
+    play_audio_0("/sd/feller_menu/animator_available_on_network.wav")
+    play_audio_0("/sd/feller_menu/to_access_type.wav")
+    if config["HOST_NAME"]== "animator-feller":
+        play_audio_0("/sd/feller_menu/animator_feller_local.wav")
+    else:
+        speak_this_string(config["HOST_NAME"])
+    play_audio_0("/sd/feller_menu/in_your_browser.wav")    
+
 if (serve_webpage):
     files.log_item("starting server...")
     # startup the server
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        play_audio_0("/sd/feller_menu/animator_available_on_network.wav")
-        play_audio_0("/sd/feller_menu/to_access_type.wav")
-        if env["HOST_NAME"]== "animator-feller":
-            play_audio_0("/sd/feller_menu/animator_feller_local.wav")
-        else:
-            speak_this_string(env["HOST_NAME"])
-        play_audio_0("/sd/feller_menu/in_your_browser.wav")    
+        speak_webpage()
     # if the server fails to begin, restart the pico w
     except OSError:
         time.sleep(5)
@@ -1040,6 +1049,8 @@ pretty_state_machine.go_to_state('base_state')
     
 files.log_item("animator has started...")
 
+garbage_collect("animations started.")
+
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
@@ -1049,3 +1060,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+        
