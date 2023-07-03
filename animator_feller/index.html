@@ -28,6 +28,21 @@
             word-wrap: break-word;
         }
 
+        .non-editable {
+            font-family: monospace;
+            display: inline-block;
+            background-color: rgb(255, 255, 255);
+            border: saddlebrown;
+            border-radius: 4px;
+            color: gray;
+            padding: 16px 40px;
+            text-decoration: none;
+            font-size: 30px;
+            margin: 2px;
+            pointer-events: none;
+            user-select: none;
+        }
+
         .button {
             font-family: monospace;
             display: inline-block;
@@ -136,9 +151,12 @@
     </form>
 
     <h1>Animator web page name:</h1><br>
-
+    <br>
+    <p class="dotted">Use alphanumerics and dashes only.  All names are automatically appended with .local</p>
+    <br>
     <form accept-charset="utf-8" method="POST">
-        <input class="input" animator-feller" id="textInput" type="text" placeholder="Enter your text">
+        <input class="input" animator-feller" id="textInput" type="text" placeholder="Enter your text"><span
+            class="non-editable">.local</span>
         <button id="submitButton" class="button" type="button" data-url="/update-host-name">Change</button>
     </form>
 
@@ -191,15 +209,21 @@
                 "Content-Type": "application/json"
             }
         })
-        .then(function(response) {
-          return response.text(); // assuming the response is plain text
-        })
-        .then(function(data) {
-          textInput.value = data; // Set the value of the input field with the received data
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                textInput.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    });
+
+    // Restrict input to letters, numbers, and hyphens only
+    textInput.addEventListener("input", function () {
+        var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, "");
+        this.value = validatedValue;
     });
 
     // Add click event listener to each button

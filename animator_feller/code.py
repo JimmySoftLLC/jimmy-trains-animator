@@ -1060,4 +1060,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-        
