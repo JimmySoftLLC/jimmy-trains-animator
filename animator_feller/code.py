@@ -206,6 +206,9 @@ move_feller_and_tree = config_move_feller_and_tree["move_feller_and_tree"]
 config_dialog_selection_menu = files.read_json_file("/sd/feller_menu/dialog_selection_menu.json")
 dialog_selection_menu = config_dialog_selection_menu["dialog_selection_menu"]
 
+config_web_menu = files.read_json_file("/sd/feller_menu/web_menu.json")
+web_menu = config_web_menu["web_menu"]
+
 serve_webpage = config["serve_webpage"]
 
 feller_movement_type = "feller_rest_pos"
@@ -246,8 +249,10 @@ if (serve_webpage):
         mystring = [hex(i) for i in wifi.radio.mac_address]
         files.log_item("My MAC addr:" + str(mystring))
 
+        ip_address = str(wifi.radio.ipv4_address)
+
         # files.log_items IP address to REPL
-        files.log_item("My IP address is" + str(wifi.radio.ipv4_address))
+        files.log_item("My IP address is" + ip_address)
         files.log_item("Connected to WiFi")
         
         # set up server
@@ -493,6 +498,10 @@ def moveFellerAndTreeMenuAnnouncement():
 def selectDialogOptionsAnnouncement():
     play_audio_0("/sd/feller_menu/dialog_selection_menu.wav")
     left_right_mouse_button()
+    
+def selectWebOptionsAnnouncement():
+    play_audio_0("/sd/feller_menu/web_menu.wav")
+    left_right_mouse_button()
  
 def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
@@ -509,13 +518,16 @@ def shortCircuitDialog():
     if left_switch.fell:
         mixer.voice[0].stop()
 
-def speak_this_string(str_to_speak):
+def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
         if character == "-":
             character = "dash"
+        if character == ".":
+            character = "dot"
         play_audio_0("/sd/feller_menu/" + character + ".wav")
-    play_audio_0("/sd/feller_menu/dot.wav")
-    play_audio_0("/sd/feller_menu/local.wav")
+    if addLocal:
+        play_audio_0("/sd/feller_menu/dot.wav")
+        play_audio_0("/sd/feller_menu/local.wav")
         
 garbage_collect("dialog methods")
 
@@ -630,6 +642,7 @@ def animateFeller ():
         moveFellerToPositionGently,
         moveTreeToPositionGently,
         left_switch,
+        right_switch,
         garbage_collect)
 
 garbage_collect("servo helpers")
@@ -891,6 +904,61 @@ class SetDialogOptions(State):
                     play_audio_0("/sd/feller_menu/all_changes_complete.wav")
                     machine.go_to_state('base_state')
                     
+class WebOptions(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'web_options'
+
+    def enter(self, machine):
+        files.log_item('Set Web Options')
+        selectWebOptionsAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/feller_menu/" + web_menu[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(web_menu)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+                selected_menu_item = web_menu[self.selectedMenuIndex]
+                if selected_menu_item == "web_on":
+                    config["serve_webpage"] = True
+                    option_selected_announcement()
+                    selectWebOptionsAnnouncement()
+                elif selected_menu_item == "web_off":
+                    config["serve_webpage"] = False
+                    option_selected_announcement()
+                    selectWebOptionsAnnouncement()
+                elif selected_menu_item == "hear_url":
+                    speak_this_string(config["HOST_NAME"], True)
+                    selectWebOptionsAnnouncement()
+                elif selected_menu_item == "hear_ip":
+                    speak_this_string(ip_address, False)
+                    selectWebOptionsAnnouncement()
+                elif selected_menu_item == "hear_instr_web":
+                    play_audio_0("/sd/feller_menu/web_instruct.wav")
+                    selectWebOptionsAnnouncement()
+                else:
+                    files.write_json_file("/sd/config_feller.json",config)
+                    play_audio_0("/sd/feller_menu/all_changes_complete.wav")
+                    machine.go_to_state('base_state')                    
 class ChooseSounds(State):
 
     def __init__(self):
@@ -977,6 +1045,8 @@ class MainMenu(State):
                     machine.go_to_state('move_feller_and_tree')
                 elif selected_menu_item == "set_dialog_options":
                     machine.go_to_state('set_dialog_options')
+                elif selected_menu_item == "web_options":
+                    machine.go_to_state('web_options')
                 else:
                     play_audio_0("/sd/feller_menu/all_changes_complete.wav")
                     machine.go_to_state('base_state')
@@ -1012,6 +1082,7 @@ pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(AdjustFellerAndTree())
 pretty_state_machine.add_state(MoveFellerAndTree())
 pretty_state_machine.add_state(SetDialogOptions())
+pretty_state_machine.add_state(WebOptions())
 
 audio_enable.value = True
 
@@ -1021,7 +1092,7 @@ def speak_webpage():
     if config["HOST_NAME"]== "animator-feller":
         play_audio_0("/sd/feller_menu/animator_feller_local.wav")
     else:
-        speak_this_string(config["HOST_NAME"])
+        speak_this_string(config["HOST_NAME"], True)
     play_audio_0("/sd/feller_menu/in_your_browser.wav")    
 
 if (serve_webpage):
@@ -1049,3 +1120,4 @@ while True:
             files.log_item(e)
             continue
     
+

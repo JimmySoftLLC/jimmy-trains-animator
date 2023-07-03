@@ -1,0 +1,8 @@
+Animation canceled.
+Webpage options.
+Webpage on.
+Webpage off.
+Hear web url.
+Hear web ip address.
+Hear instructions on how to enable web access.
+To enable web access to your animator you will need to make changes to your microSD card that is inserted in your animator...  Don't remove it yet until you here all these instructions...  First make a copy of env_example file... Then rename the copy to env...  Next edit the env file with your SSID and password...  Power off the animator before you remove the card...  After you made your changes reinsert and power on your animator...  Then come back to this menu and select webpage on.  These instructions are also available at jimmytrains.com.
