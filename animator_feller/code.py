@@ -211,6 +211,8 @@ serve_webpage = config["serve_webpage"]
 feller_movement_type = "feller_rest_pos"
 tree_movement_type = "tree_up_pos"
 
+continuous_run = False
+
 garbage_collect("config setup")
 
 ################################################################################
@@ -271,6 +273,7 @@ if (serve_webpage):
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
             global config
+            global continuous_run
             raw_text = request.raw_request.decode("utf8")
             if "random" in raw_text: 
                 config["option_selected"] = "random"
@@ -310,6 +313,12 @@ if (serve_webpage):
                 animateFeller()
             elif "speaker_test" in raw_text: 
                 play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav")
+            elif "cont_mode_on" in raw_text: 
+                continuous_run = True
+                play_audio_0("/sd/feller_menu/continuous_mode_activated.wav")
+            elif "cont_mode_off" in raw_text: 
+                continuous_run = False
+                play_audio_0("/sd/feller_menu/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         @server.route("/feller", [POST])        
@@ -412,6 +421,7 @@ if (serve_webpage):
     except Exception as e:
         serve_webpage = False
         files.log_item(e)
+
     
 garbage_collect("web server")
 
@@ -714,22 +724,19 @@ class BaseState(State):
         State.exit(self, machine)
 
     def update(self, machine):
+        global continuous_run
         switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
         if switch_state == "left_held":
-            play_audio_0("/sd/feller_menu/continuous_mode_activated.wav")
-            continuous_run = True
-            while continuous_run:
-                switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
-                if switch_state == "left_held":
-                    play_audio_0("/sd/feller_menu/continuous_mode_deactivated.wav")
-                    continuous_run = False
-                if continuous_run:
-                    animateFeller()
-        elif switch_state == "left":
+            if continuous_run:
+                continuous_run = False
+                play_audio_0("/sd/feller_menu/continuous_mode_deactivated.wav")
+            else:
+                continuous_run = True
+                play_audio_0("/sd/feller_menu/continuous_mode_activated.wav")
+        elif switch_state == "left" or continuous_run:
             animateFeller()
         elif switch_state == "right":
             machine.go_to_state('main_menu')
-
 class MoveFellerAndTree(State):
 
     def __init__(self):
@@ -1041,3 +1048,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+    

@@ -115,6 +115,10 @@
         <button class="button animator-feller" data-value="alien" data-url="/animation" type="button">Alien</button>
         <button class="button animator-feller" data-value="speaker_test" data-url="/animation" type="button">Speaker
             Test</button>
+        <button class="button animator-feller" data-value="cont_mode_on" data-url="/animation" type="button">Continuous
+            Mode On</button>
+        <button class="button animator-feller" data-value="cont_mode_off" data-url="/animation" type="button">Continuous
+            Mode Off</button>
     </form>
 
     <h1>Feller positions:</h1><br>
@@ -151,16 +155,15 @@
     </form>
 
     <h1>Animator web page name:</h1><br>
-    <br>
-    <p class="dotted">Use alphanumerics and dashes only.  All names are automatically appended with .local</p>
-    <br>
+
     <form accept-charset="utf-8" method="POST">
-        <input class="input" animator-feller" id="textInput" type="text" placeholder="Enter your text"><span
+        <input class="input" animator-feller" id="textInput" type="text" placeholder="Enter website name"><span
             class="non-editable">.local</span>
         <button id="submitButton" class="button" type="button" data-url="/update-host-name">Change</button>
     </form>
 
-    <div id="resultContainer"></div>
+    <p class="dotted">Use alphanumerics and dashes only. All names are automatically appended with .local. For example
+        type, website-name.local, in your browser.</your-name></p>
 
 </body>
 
