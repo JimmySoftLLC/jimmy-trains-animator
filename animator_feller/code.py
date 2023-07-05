@@ -484,7 +484,7 @@ def mainMenuAnnouncement():
     left_right_mouse_button()
  
 def selectSoundMenuAnnouncement():
-    play_audio_0("/sd/feller_menu/main_menu.wav")
+    play_audio_0("/sd/feller_menu/sound_selection_menu.wav")
     left_right_mouse_button()
     
 def adjustFellerAndTreeMenuAnnouncement():
