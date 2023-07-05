@@ -441,7 +441,7 @@ def reset_to_defaults():
     config["feller_chop_pos"] = 150
 
 def sleepAndUpdateVolume(seconds):
-    volume = get_voltage(analog_in, seconds) * 0.8
+    volume = get_voltage(analog_in, seconds)
     mixer.voice[0].level = volume
     mixer.voice[1].level = volume
 
@@ -949,9 +949,6 @@ class WebOptions(State):
                 elif selected_menu_item == "hear_url":
                     speak_this_string(config["HOST_NAME"], True)
                     selectWebOptionsAnnouncement()
-                elif selected_menu_item == "hear_ip":
-                    speak_this_string(ip_address, False)
-                    selectWebOptionsAnnouncement()
                 elif selected_menu_item == "hear_instr_web":
                     play_audio_0("/sd/feller_menu/web_instruct.wav")
                     selectWebOptionsAnnouncement()
@@ -1119,5 +1116,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-    
-
