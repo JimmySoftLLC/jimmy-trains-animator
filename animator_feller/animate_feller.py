@@ -146,8 +146,8 @@ def animation_one(
         sleepAndUpdateVolume(2)
         moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
         moveTreeToPositionGently(config["tree_up_pos"], 0.01)
-        left_pos = config["tree_up_pos"] - 4
-        right_pos = config["tree_up_pos"] + 4
+        left_pos = config["tree_up_pos"]
+        right_pos = config["tree_up_pos"] - 8
         while mixer.voice[0].playing :
             switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 5)
             if switch_state == "left_held":
@@ -160,8 +160,8 @@ def animation_one(
                 while mixer.voice[0].playing:
                     pass
                 break
-            moveTreeToPositionGently(left_pos, 0.04)
-            moveTreeToPositionGently(right_pos, 0.04)
+            moveTreeToPositionGently(left_pos, 0.1)
+            moveTreeToPositionGently(right_pos, 0.1)
         moveTreeToPositionGently(config["tree_up_pos"], 0.04)
         for alien_num in range(7):
             soundFile = "/sd/feller_alien/human_" + str(alien_num+1) + ".wav"

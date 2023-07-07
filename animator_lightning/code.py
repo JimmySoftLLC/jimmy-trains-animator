@@ -18,9 +18,8 @@ from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
 import files
 import animate_lightning
-import files
 
-is_show_unit = False
+is_show_unit = True
 
 ################################################################################
 # Setup hardware
@@ -29,8 +28,18 @@ is_show_unit = False
 # the the volume control is digital by setting mixer voice levels
 analog_in = AnalogIn(board.A0)
 
-def get_voltage(pin):
+def get_voltage(pin, wait_for):
+    my_increment = wait_for/10
+    pin_value = 0
+    for _ in range(10):
+        time.sleep(my_increment)
+        pin_value += 1
+        pin_value = pin_value / 10
     return (pin.value) / 65536
+
+audio_enable = digitalio.DigitalInOut(board.GP28)
+audio_enable.direction = digitalio.Direction.OUTPUT
+audio_enable.value = False
 
 # Setup the switches, there are two the Left and Right or Black and Red
 SWITCH_1_PIN = board.GP6 #S1 on animator board
@@ -64,6 +73,7 @@ audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 # the sdCard holds all the media and calibration files
 # if the card is missing a voice command is spoken
 # the user inserts the card a presses the left button to move forward
+audio_enable.value = True
 sck = board.GP2
 si = board.GP3
 so = board.GP4
@@ -101,7 +111,7 @@ except:
 # wave files are less cpu intensive since they are not compressed
 num_voices = 1
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True)
+                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
 audio.play(mixer)
 
 # Setup time
@@ -109,7 +119,7 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 #setup neo pixels
-num_pixels = 20
+num_pixels = 60
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 ledStrip.auto_write = False
 ledStrip.brightness = 1.0
@@ -126,13 +136,9 @@ sound_options = config_lightning["options"]
 ################################################################################
 # Global Methods
 
-def setVolume():
-    volume = get_voltage(analog_in)
-    mixer.voice[0].level = volume
-    
 def sleepAndUpdateVolume(seconds):
-    setVolume()
-    time.sleep(seconds)
+    volume = get_voltage(analog_in, seconds)
+    mixer.voice[0].level = volume
 
 ################################################################################
 # State Machine
@@ -222,7 +228,7 @@ class WaitingState(State):
         if left_switch.fell:
             animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config_lightning["option_selected"], num_pixels)
         if right_switch.fell:
-            files.log_item('Just pressed 1')
+            print('Just pressed 1')
             machine.go_to_state('program')
 
 class ProgramState(State):
@@ -236,7 +242,7 @@ class ProgramState(State):
         return 'program'
 
     def enter(self, machine):
-        files.log_item('Select a program option')
+        print('Select a program option')
         if mixer.voice[0].playing:
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -312,11 +318,23 @@ pretty_state_machine = StateMachine()
 pretty_state_machine.add_state(WaitingState())
 pretty_state_machine.add_state(ProgramState())
 
-files.log_item("animator has started")
+print("animator has started")
+
+ledStrip.fill((255, 0, 0))
+ledStrip.show()
+sleepAndUpdateVolume(1)
+ledStrip.fill((0, 255, 0))
+ledStrip.show()
+sleepAndUpdateVolume(1)
+ledStrip.fill((0, 0, 255))
+ledStrip.show()
+sleepAndUpdateVolume(1)
+ledStrip.fill((0, 0, 0))
+ledStrip.show()
 
 pretty_state_machine.go_to_state('waiting')
 
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
-    
+      
