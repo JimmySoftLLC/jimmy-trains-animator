@@ -1,3 +1,13 @@
+import gc
+import files
+
+def garbage_collect(collection_point):
+    gc.collect()
+    start_mem = gc.mem_free()
+    files.log_item( "Point " + collection_point + " Available memory: {} bytes".format(start_mem) )
+    
+garbage_collect("Imports gc, files")
+
 import time
 import audiocore
 import audiomixer
@@ -16,10 +26,9 @@ import audiomp3
 from analogio import AnalogIn
 from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
-import files
+
 import animate_lightning
 
-is_show_unit = True
 
 ################################################################################
 # Setup hardware
@@ -133,6 +142,220 @@ main_menu = ['sound_options','calibrate_position']
 
 sound_options = config_lightning["options"]
 
+garbage_collect("config setup")
+
+################################################################################
+# Setup wifi and web server
+
+if (serve_webpage):
+    import socketpool
+    import mdns
+    garbage_collect("config wifi imports")
+    import wifi
+    garbage_collect("config wifi imports")
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST
+    garbage_collect("config wifi imports")
+
+    files.log_item("Connecting to WiFi")
+
+    try:
+        env = files.read_json_file("/sd/env.json")
+        garbage_collect("wifi env")
+        
+        # connect to your SSID
+        wifi.radio.connect(env["WIFI_SSID"], env["WIFI_PASSWORD"])
+        garbage_collect("wifi connect")
+        
+        # setup mdns server
+        mdns_server = mdns.Server(wifi.radio)
+        mdns_server.hostname = config["HOST_NAME"]
+        mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
+        
+        # files.log_items MAC address to REPL
+        mystring = [hex(i) for i in wifi.radio.mac_address]
+        files.log_item("My MAC addr:" + str(mystring))
+
+        ip_address = str(wifi.radio.ipv4_address)
+
+        # files.log_items IP address to REPL
+        files.log_item("My IP address is" + ip_address)
+        files.log_item("Connected to WiFi")
+        
+        # set up server
+        pool = socketpool.SocketPool(wifi.radio)
+        server = Server(pool, "/static", debug=True)
+        garbage_collect("wifi server")
+        
+        ################################################################################
+        # Setup routes
+
+        @server.route("/")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "index.html", "/")
+        
+        @server.route("/feller-adjust")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "feller-adjust.html", "/")
+        
+        @server.route("/tree-adjust")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "tree-adjust.html", "/")
+
+        @server.route("/animation", [POST])
+        def buttonpress(request: Request):
+            global config
+            global continuous_run
+            raw_text = request.raw_request.decode("utf8")
+            if "random" in raw_text: 
+                config["option_selected"] = "random"
+                animateFeller()
+            elif "forth_of_july" in raw_text: 
+                config["option_selected"] = "forth_of_july"
+                animateFeller()
+            elif "christmas" in raw_text: 
+                config["option_selected"] = "christmas"
+                animateFeller()
+            elif "halloween" in raw_text: 
+                config["option_selected"] = "halloween"
+                animateFeller()
+            elif "train" in raw_text: 
+                config["option_selected"] = "train"
+                animateFeller()
+            elif "alien" in raw_text: 
+                config["option_selected"] = "alien"
+                animateFeller()  
+            elif "birds_dogs_short_version" in raw_text: 
+                config["option_selected"] = "birds_dogs_short_version"
+                animateFeller()
+            elif "birds_dogs" in raw_text: 
+                config["option_selected"] = "birds_dogs"
+                animateFeller()
+            elif "just_birds" in raw_text: 
+                config["option_selected"] = "just_birds"
+                animateFeller()
+            elif "machines" in raw_text: 
+                config["option_selected"] = "machines"
+                animateFeller()
+            elif "no_sounds" in raw_text: 
+                config["option_selected"] = "no_sounds"
+                animateFeller()
+            elif "owl" in raw_text: 
+                config["option_selected"] = "owl"
+                animateFeller()
+            elif "speaker_test" in raw_text: 
+                play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav")
+            elif "cont_mode_on" in raw_text: 
+                continuous_run = True
+                play_audio_0("/sd/feller_menu/continuous_mode_activated.wav")
+            elif "cont_mode_off" in raw_text: 
+                continuous_run = False
+                play_audio_0("/sd/feller_menu/continuous_mode_deactivated.wav")
+            return Response(request, "Animation " + config["option_selected"] + " started.")
+        
+        @server.route("/feller", [POST])        
+        def buttonpress(request: Request):
+            global config
+            global feller_movement_type
+            raw_text = request.raw_request.decode("utf8")    
+            if "feller_rest_pos" in raw_text:
+                feller_movement_type = "feller_rest_pos"
+                moveFellerToPositionGently(config[feller_movement_type], 0.01)
+                return Response(request, "Moved feller to rest position.")
+            elif "feller_chop_pos" in raw_text:
+                feller_movement_type = "feller_chop_pos"
+                moveFellerToPositionGently(config[feller_movement_type])
+                return Response(request, "Moved feller to chop position.", 0.01)
+            elif "feller_adjust" in raw_text:
+                feller_movement_type = "feller_rest_pos"
+                moveFellerToPositionGently(config[feller_movement_type])
+                return Response(request, "Redirected to feller-adjust page.", 0.01)
+            elif "feller_home" in raw_text:
+                return Response(request, "Redirected to home page.")
+            elif "feller_clockwise" in raw_text:
+                calibrationLeftButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
+                return Response(request, "Moved feller clockwise.")
+            elif "feller_counter_clockwise" in raw_text:
+                calibrationRightButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
+                return Response(request, "Moved feller counter clockwise.")
+            elif "feller_cal_saved" in raw_text:
+                write_calibrations_to_config_file()
+                pretty_state_machine.go_to_state('base_state')
+                return Response(request, "Feller " + feller_movement_type + " cal saved.")
+                
+        @server.route("/tree", [POST])        
+        def buttonpress(request: Request):
+            global config
+            global tree_movement_type
+            raw_text = request.raw_request.decode("utf8")    
+            if "tree_up_pos" in raw_text:
+                tree_movement_type = "tree_up_pos"
+                moveTreeToPositionGently(config[tree_movement_type], 0.01)
+                return Response(request, "Moved tree to up position.")
+            elif "tree_down_pos" in raw_text:
+                tree_movement_type = "tree_down_pos"
+                moveTreeToPositionGently(config[tree_movement_type])
+                return Response(request, "Moved tree to fallen position.", 0.01)
+            elif "tree_adjust" in raw_text:
+                tree_movement_type = "tree_up_pos"
+                moveTreeToPositionGently(config[tree_movement_type])
+                return Response(request, "Redirected to tree-adjust page.", 0.01)
+            elif "tree_home" in raw_text:
+                return Response(request, "Redirected to home page.")
+            elif "tree_up" in raw_text:
+                calibrationLeftButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
+                return Response(request, "Moved tree up.")
+            elif "tree_down" in raw_text:
+                calibrationRightButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
+                return Response(request, "Moved tree down.")
+            elif "tree_cal_saved" in raw_text:
+                write_calibrations_to_config_file()
+                pretty_state_machine.go_to_state('base_state')
+                return Response(request, "Tree " + tree_movement_type + " cal saved.")
+            
+        @server.route("/dialog", [POST])
+        def buttonpress(request: Request):
+            global config
+            raw_text = request.raw_request.decode("utf8")
+            if "opening_dialog_on" in raw_text: 
+                config["opening_dialog"] = True
+
+            elif "opening_dialog_off" in raw_text: 
+                config["opening_dialog"] = False
+
+            elif "feller_advice_on" in raw_text: 
+                config["feller_advice"] = True
+                
+            elif "feller_advice_off" in raw_text: 
+                config["feller_advice"] = False
+                
+            files.write_json_file("/sd/config_feller.json",config)
+            play_audio_0("/sd/feller_menu/all_changes_complete.wav")
+
+            return Response(request, "Dialog option cal saved.")
+
+        @server.route("/update-host-name", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["HOST_NAME"] = data_object["text"]
+            
+            files.write_json_file("/sd/config_feller.json",config)       
+            mdns_server.hostname = config["HOST_NAME"]
+            speak_webpage()
+
+            return Response(request, config["HOST_NAME"])
+        
+        @server.route("/get-host-name", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["HOST_NAME"])
+           
+    except Exception as e:
+        serve_webpage = False
+        files.log_item(e)
+
+    
+garbage_collect("web server")
+
 ################################################################################
 # Global Methods
 
@@ -140,6 +363,33 @@ def sleepAndUpdateVolume(seconds):
     volume = get_voltage(analog_in, seconds)
     mixer.voice[0].level = volume
 
+################################################################################
+# Dialog and sound play methods
+
+def play_audio_0(file_name):
+    if mixer.voice[0].playing:
+        mixer.voice[0].stop()
+        while mixer.voice[0].playing:
+            sleepAndUpdateVolume(0.02)
+    wave0 = audiocore.WaveFile(open(file_name, "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+
+def stop_audio_0():
+    mixer.voice[0].stop()
+    while mixer.voice[0].playing:
+        sleepAndUpdateVolume(0.02)
+        pass
+
+def shortCircuitDialog():
+    while True:
+        sleepAndUpdateVolume(.05)
+        left_switch.update()
+        if left_switch.fell:
+            stop_audio_0()
+            return
+    
 ################################################################################
 # State Machine
 
@@ -248,13 +498,7 @@ class ProgramState(State):
             while mixer.voice[0].playing:
                 pass
         else:
-            if (is_show_unit):                  
-                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_mode_entered_left_right.wav", "rb"))
-            else:
-                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_mode_entered_black_red.wav", "rb"))
-            mixer.voice[0].play( wave0, loop=False )
-            while mixer.voice[0].playing:
-                pass
+            play_audio_0("/sd/menu_voice_commands/option_mode_entered_left_right.wav")
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -264,19 +508,11 @@ class ProgramState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
-                self.currentOption = self.optionIndex
-                self.optionIndex +=1
-                if self.optionIndex > len(sound_options)-1:
-                    self.optionIndex = 0
-                while mixer.voice[0].playing:
-                    pass
+            play_audio_0("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav")
+            self.currentOption = self.optionIndex
+            self.optionIndex +=1
+            if self.optionIndex > len(sound_options)-1:
+                self.optionIndex = 0
         if right_switch.fell:
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
@@ -285,10 +521,7 @@ class ProgramState(State):
             else:
                 config_lightning["option_selected"] = sound_options[self.currentOption]
                 files.write_json_file("/sd/config_lightning.json",config_lightning)
-                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_selected.wav", "rb"))
-                mixer.voice[0].play( wave0, loop=False )
-                while mixer.voice[0].playing:
-                    pass
+                play_audio_0("/sd/menu_voice_commands/option_selected.wav")
             machine.go_to_state('waiting')
 
 # StateTemplate copy and add functionality
@@ -337,4 +570,9 @@ pretty_state_machine.go_to_state('waiting')
 while True:
     pretty_state_machine.update()
     sleepAndUpdateVolume(.1)
-      
+    play_audio_0("/sd/music/you_got_a_friend_in_me.wav")
+    play_audio_0("/sd/music/beauty_and_the_beast.wav")
+    play_audio_0("/sd/music/mickey_birthday_song.wav")
+    play_audio_0("/sd/music/happy_birthday_in_the_park.wav")
+    play_audio_0("/sd/music/when_you_wish_upon_a_star.wav")
+    play_audio_0("/sd/music/beegie_when_you_wish.wav")
