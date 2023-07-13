@@ -13,6 +13,7 @@
     <h1>Editable Table</h1>
 
     <button id="fetchDataButton" class="btn btn-primary mb-3" type="button">Fetch Data</button>
+    <button id="saveDataButton" class="btn btn-primary mb-3" type="button">Save Data</button>
 
     <table id="dataTable" class="table table-striped">
       <thead>
@@ -29,11 +30,16 @@
 
   <script>
     var fetchDataButton = document.getElementById("fetchDataButton");
+    var saveDataButton = document.getElementById("saveDataButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
 
     fetchDataButton.addEventListener("click", function() {
       fetchData();
+    });
+
+    saveDataButton.addEventListener("click", function() {
+      saveData();
     });
 
     dataTableBody.addEventListener("click", function(event) {
@@ -105,7 +111,7 @@
       var button = document.createElement("button");
       button.type = "button";
       button.className = "btn btn-danger btn-sm delete-row-btn";
-      button.textContent = "Delete";
+      button.innerHTML = '<i class="bi bi-trash"></i>';
       return button;
     }
 
@@ -113,7 +119,7 @@
       var button = document.createElement("button");
       button.type = "button";
       button.className = "btn btn-success btn-sm insert-row-btn";
-      button.textContent = "Insert Row";
+      button.innerHTML = '<i class="bi bi-plus"></i>';
       return button;
     }
 
@@ -123,7 +129,39 @@
 
     function insertRow(row) {
       var newRow = createDataRow({ id: "", name: "", email: "" });
-      dataTableBody.insertBefore(newRow, row);
+      dataTableBody.insertBefore(newRow, row.nextSibling);
+    }
+
+    function saveData() {
+      var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+
+      // Extract data from table rows
+      var data = rows.map(function(row) {
+        var cells = Array.from(row.querySelectorAll("td"));
+        var values = cells.map(function(cell) {
+          return cell.querySelector("input").value;
+        });
+        return values;
+      });
+
+      // Send data to the server
+      fetch("YOUR_API_ENDPOINT", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      })
+        .then(function(response) {
+          if (response.ok) {
+            alert("Data saved successfully!");
+          } else {
+            alert("Error saving data. Please try again.");
+          }
+        })
+        .catch(function(error) {
+          alert("An error occurred. Please try again later.");
+        });
     }
   </script>
 </body>
