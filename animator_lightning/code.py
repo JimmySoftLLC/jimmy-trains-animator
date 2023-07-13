@@ -142,6 +142,8 @@ main_menu = ['sound_options','calibrate_position']
 
 sound_options = config_lightning["options"]
 
+serve_webpage = config_lightning["serve_webpage"]
+
 garbage_collect("config setup")
 
 ################################################################################

@@ -1,7 +1,10 @@
 import os
 import json
 
-def files.log_item_directory(switch_0, path, tabs=0):
+def log_item(item):
+    print(item)
+
+def log_item_directory(switch_0, path, tabs=0):
     files.log_item("Files on filesystem:")
     files.log_item("====================")
     dude = switch_0.fell
