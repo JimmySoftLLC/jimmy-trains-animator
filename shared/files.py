@@ -50,6 +50,12 @@ def write_file_line(file_name, line):
     with open(file_name, "w") as f:
         f.write(line + "\n")
 
+def read_file_line(file_name):
+    with open(file_name, "r") as f:
+        line = f.read()
+        output_line=line.strip()
+        return output_line
+
 def get_next_line(file_path, reset=False):
     if reset:
         # Delete the last_line attribute to reset the state

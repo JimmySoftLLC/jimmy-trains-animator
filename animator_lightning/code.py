@@ -120,8 +120,10 @@ except:
 # wave files are less cpu intensive since they are not compressed
 num_voices = 1
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
+                         bits_per_sample=16, samples_signed=True, buffer_size=8192)
 audio.play(mixer)
+
+audio_enable.value = False
 
 # Setup time
 r = rtc.RTC()
@@ -136,13 +138,13 @@ ledStrip.brightness = 1.0
 ################################################################################
 # Global Variables
 
-config_lightning = files.read_json_file("/sd/config_lightning.json")
+config = files.read_json_file("/sd/config_lightning.json")
 
 main_menu = ['sound_options','calibrate_position']
 
-sound_options = config_lightning["options"]
+sound_options = config["options"]
 
-serve_webpage = config_lightning["serve_webpage"]
+serve_webpage = config["serve_webpage"]
 
 garbage_collect("config setup")
 
@@ -343,7 +345,7 @@ if (serve_webpage):
             
             files.write_json_file("/sd/config_feller.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
-            speak_webpage()
+            #speak_webpage()
 
             return Response(request, config["HOST_NAME"])
         
@@ -478,7 +480,7 @@ class WaitingState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config_lightning["option_selected"], num_pixels)
+            animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config["option_selected"], num_pixels)
         if right_switch.fell:
             print('Just pressed 1')
             machine.go_to_state('program')
@@ -510,20 +512,31 @@ class ProgramState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav")
-            self.currentOption = self.optionIndex
-            self.optionIndex +=1
-            if self.optionIndex > len(sound_options)-1:
-                self.optionIndex = 0
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav" , "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                self.currentOption = self.optionIndex
+                self.optionIndex +=1
+                if self.optionIndex > len(sound_options)-1:
+                    self.optionIndex = 0
+                while mixer.voice[0].playing:
+                    pass
         if right_switch.fell:
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
                     pass
             else:
-                config_lightning["option_selected"] = sound_options[self.currentOption]
-                files.write_json_file("/sd/config_lightning.json",config_lightning)
-                play_audio_0("/sd/menu_voice_commands/option_selected.wav")
+                config["option_selected"] = sound_options[self.currentOption]
+                files.write_json_file("/sd/config_lightning.json",config)
+                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_selected.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
             machine.go_to_state('waiting')
 
 # StateTemplate copy and add functionality
@@ -553,28 +566,46 @@ pretty_state_machine = StateMachine()
 pretty_state_machine.add_state(WaitingState())
 pretty_state_machine.add_state(ProgramState())
 
+if (serve_webpage):
+    files.log_item("starting server...")
+    try:
+        server.start(str(wifi.radio.ipv4_address))
+        files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+    except OSError:
+        time.sleep(5)
+        files.log_item("restarting...")
+        reset_pico()
+        
+audio_enable.value = True
+
 print("animator has started")
 
 ledStrip.fill((255, 0, 0))
-ledStrip.show()
+#ledStrip.show()
 sleepAndUpdateVolume(1)
 ledStrip.fill((0, 255, 0))
-ledStrip.show()
+#ledStrip.show()
 sleepAndUpdateVolume(1)
 ledStrip.fill((0, 0, 255))
-ledStrip.show()
+#ledStrip.show()
 sleepAndUpdateVolume(1)
 ledStrip.fill((0, 0, 0))
-ledStrip.show()
+#ledStrip.show()
 
 pretty_state_machine.go_to_state('waiting')
 
 while True:
     pretty_state_machine.update()
-    sleepAndUpdateVolume(.1)
-    play_audio_0("/sd/music/you_got_a_friend_in_me.wav")
-    play_audio_0("/sd/music/beauty_and_the_beast.wav")
-    play_audio_0("/sd/music/mickey_birthday_song.wav")
-    play_audio_0("/sd/music/happy_birthday_in_the_park.wav")
-    play_audio_0("/sd/music/when_you_wish_upon_a_star.wav")
-    play_audio_0("/sd/music/beegie_when_you_wish.wav")
+    sleepAndUpdateVolume(.02)
+    if (serve_webpage):
+        try:
+            server.poll()
+        except Exception as e:
+            files.log_item(e)
+            continue
+    #play_audio_0("/sd/music/you_got_a_friend_in_me.wav")
+    #play_audio_0("/sd/music/beauty_and_the_beast.wav")
+    #play_audio_0("/sd/music/mickey_birthday_song.wav")
+    #play_audio_0("/sd/music/happy_birthday_in_the_park.wav")
+    #play_audio_0("/sd/music/when_you_wish_upon_a_star.wav")
+    #play_audio_0("/sd/music/beegie_when_you_wish.wav")

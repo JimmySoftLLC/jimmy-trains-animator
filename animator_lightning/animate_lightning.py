@@ -12,7 +12,37 @@ import board
 import asyncio
 import audiocore
 import audiomixer
+from adafruit_motor import servo
+import pwmio
 
+# Setup the servo, this animation has two the feller and tree
+# also get the programmed values for position which is stored on the sdCard
+donald_pwm = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+pluto_pwm = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
+mickey_pwm = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
+minie_pwm = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
+goofy_pwm = pwmio.PWMOut(board.GP15, duty_cycle=2 ** 15, frequency=50)
+
+
+donald_servo = servo.Servo(donald_pwm)
+pluto_servo = servo.Servo(pluto_pwm)
+mickey_servo = servo.Servo(mickey_pwm)
+minie_servo = servo.Servo(minie_pwm)
+goofy_servo = servo.Servo(goofy_pwm)
+
+donald__last_pos = 90
+pluto__last_pos = 90
+mickey_last_pos = 90
+minie__last_pos = 90
+goofy__last_pos = 90
+
+donald_servo.angle = donald__last_pos
+pluto_servo.angle = pluto__last_pos
+mickey_servo.angle = mickey_last_pos
+minie_servo.angle = minie__last_pos
+goofy_servo.angle = goofy__last_pos
+
+flashTimeIndex = 0
 
 def lightning(ledStrip):
     r = random.randint(40, 80)
@@ -86,6 +116,8 @@ def lightning(ledStrip):
         
 def animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name, num_pixels):
     print(file_name)
+    chips_birthday(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    return
     if file_name == "alien_lightshow":
         animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
     elif file_name == "inspiring_cinematic_ambient_lightshow":
@@ -261,7 +293,7 @@ def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
             if my_index == 1:
                 change_color(ledStrip)
                 sleepAndUpdateVolume(.3)
-                rainbow(ledStrip, .001, 20, sleepAndUpdateVolume)
+                rainbow(ledStrip, .006, 8, sleepAndUpdateVolume)
             elif my_index == 2:
                 change_color(ledStrip)
                 sleepAndUpdateVolume(.3)
@@ -497,7 +529,97 @@ def breakfast_at_diner(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_sw
             ledStrip.show()
             break
         sleepAndUpdateVolume(.05)
-        
+               
+def moveToPositionGently (new_position, speed, sleepAndUpdateVolume, ledStrip, startTime, flashTime):
+    global donald__last_pos
+    global pluto__last_pos
+    global mickey_last_pos
+    global minie__last_pos
+    global goofy__last_pos
+    global flashTimeIndex
+    sign = 1
+    if donald__last_pos > new_position: sign = - 1
+    for feller_angle in range( donald__last_pos, new_position, sign):
+        timeElasped = time.monotonic()-startTime
+        if timeElasped > flashTime[flashTimeIndex] - 0.25:
+            print (flashTime[flashTimeIndex])
+            if 11.5117 == flashTime[flashTimeIndex]:
+                rainbow(ledStrip, .001, 40, sleepAndUpdateVolume)
+            elif 60.8691 == flashTime[flashTimeIndex]:
+                fire_now(ledStrip, 10, sleepAndUpdateVolume)    
+            else:
+                change_color(ledStrip)
+            flashTimeIndex+=1
+        donald_servo.angle = feller_angle  
+        sleepAndUpdateVolume(.001)
+        pluto_servo.angle = feller_angle
+        sleepAndUpdateVolume(.001)
+        mickey_servo.angle = feller_angle
+        sleepAndUpdateVolume(.001)
+        minie_servo.angle = feller_angle
+        sleepAndUpdateVolume(.001)
+        goofy_servo.angle = feller_angle
+        sleepAndUpdateVolume(speed)
+    donald__last_pos = new_position
+
+      
+def chips_birthday(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    global flashTimeIndex
+    
+    flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/mickey_birthday_song.json")
+    flashTime = flash_time_dictionary["flashTime"]
+    flashTimeLen = len(flashTime)
+    flashTimeIndex = 0
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/mickey_birthday_song.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+    while mixer.voice[0].playing:
+        moveToPositionGently (30,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        moveToPositionGently (150,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        pass
+    
+    flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/you_got_a_friend_in_me.json")
+    flashTime = flash_time_dictionary["flashTime"]
+    flashTimeLen = len(flashTime)
+    flashTimeIndex = 0
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/you_got_a_friend_in_me.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+    while mixer.voice[0].playing:
+        moveToPositionGently (30,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        moveToPositionGently (150,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        pass
+    
+    return
+
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/happy_birthday_in_the_park.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        moveToPositionGently (30,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        moveToPositionGently (150,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        pass
+    
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/beauty_and_the_beast.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+    while mixer.voice[0].playing:
+        moveToPositionGently (30,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        moveToPositionGently (150,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        pass
+    
+
+    
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/when_you_wish_upon_a_star.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+    while mixer.voice[0].playing:
+        moveToPositionGently (30,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        moveToPositionGently (150,.02,sleepAndUpdateVolume, ledStrip, startTime, flashTime)
+        pass
+    
+    
+    #play_audio_0("/sd/music/beegie_when_you_wish.wav")
+           
 def bounds(my_color, lower, upper):
     if (my_color < lower): my_color = lower
     if (my_color > upper): my_color = upper
