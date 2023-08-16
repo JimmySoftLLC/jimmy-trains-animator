@@ -337,12 +337,12 @@ if (serve_webpage):
                 return Response(request, "Moved feller to rest position.")
             elif "feller_chop_pos" in raw_text:
                 feller_movement_type = "feller_chop_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Moved feller to chop position.", 0.01)
+                moveFellerToPositionGently(config[feller_movement_type], 0.01)
+                return Response(request, "Moved feller to chop position.")
             elif "feller_adjust" in raw_text:
                 feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Redirected to feller-adjust page.", 0.01)
+                moveFellerToPositionGently(config[feller_movement_type],0.01)
+                return Response(request, "Redirected to feller-adjust page.")
             elif "feller_home" in raw_text:
                 return Response(request, "Redirected to home page.")
             elif "feller_clockwise" in raw_text:
@@ -367,12 +367,12 @@ if (serve_webpage):
                 return Response(request, "Moved tree to up position.")
             elif "tree_down_pos" in raw_text:
                 tree_movement_type = "tree_down_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Moved tree to fallen position.", 0.01)
+                moveTreeToPositionGently(config[tree_movement_type], 0.01)
+                return Response(request, "Moved tree to fallen position.")
             elif "tree_adjust" in raw_text:
                 tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Redirected to tree-adjust page.", 0.01)
+                moveTreeToPositionGently(config[tree_movement_type], 0.01)
+                return Response(request, "Redirected to tree-adjust page.")
             elif "tree_home" in raw_text:
                 return Response(request, "Redirected to home page.")
             elif "tree_up" in raw_text:
