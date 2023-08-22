@@ -265,15 +265,35 @@ if (serve_webpage):
 
         @server.route("/")
         def base(request: HTTPRequest):
+            garbage_collect("Home page.")
             return FileResponse(request, "index.html", "/")
         
         @server.route("/feller-adjust")
         def base(request: HTTPRequest):
+            garbage_collect("Feller adjust.")
             return FileResponse(request, "feller-adjust.html", "/")
         
         @server.route("/tree-adjust")
         def base(request: HTTPRequest):
+            garbage_collect("Tree adjust.")
             return FileResponse(request, "tree-adjust.html", "/")
+        
+        @server.route("/table")
+        def base(request: HTTPRequest):
+            garbage_collect("Table.")
+            return FileResponse(request, "index-table.html", "/")
+        
+        @server.route("/mui.css")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "mui.css", "/")
+        
+        @server.route("/mui.min.css")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "mui.min.css", "/")
+        
+        @server.route("/mui.min.js")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "mui.min.js", "/")
 
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
@@ -315,6 +335,9 @@ if (serve_webpage):
                 animateFeller()
             elif "owl" in raw_text: 
                 config["option_selected"] = "owl"
+                animateFeller()
+            elif "happy_birthday" in raw_text: 
+                config["option_selected"] = "happy_birthday"
                 animateFeller()
             elif "speaker_test" in raw_text: 
                 play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav")
@@ -418,6 +441,15 @@ if (serve_webpage):
             speak_webpage()
 
             return Response(request, config["HOST_NAME"])
+        
+        @server.route("/YOUR_API_ENDPOINT", [POST])
+        def buttonpress(request: Request):
+            data_object = request.json()
+            print(data_object[0])
+            print(data_object[1])
+            print(data_object[2])
+            garbage_collect("Save Data.")
+            return Response(request, "success")
         
         @server.route("/get-host-name", [POST])
         def buttonpress(request: Request):

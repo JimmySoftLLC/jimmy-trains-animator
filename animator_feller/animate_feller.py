@@ -96,6 +96,10 @@ def animation_one(
         sound_number = random.randint(0, highest_index)
         soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[sound_number] + ".wav"
         print("Random sound file: " + feller_sound_options[sound_number])
+    elif config["option_selected"] == "happy_birthday":
+        sound_number = random.randint(0, 6)
+        soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + str(sound_number) + ".wav"
+        print("Sound file: " + config["option_selected"] + str(sound_number))
     else:
         soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
         print("Sound file: " + config["option_selected"])

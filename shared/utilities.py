@@ -47,4 +47,5 @@ def switch_state(left_switch, right_switch, sleepAndUpdateVolume, time_to_check)
                 return "right_held" 
             if right_switch.rose:
                 return "none"
+    sleepAndUpdateVolume(0.1)
     return "none"

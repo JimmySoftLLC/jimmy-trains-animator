@@ -55,39 +55,7 @@ def read_file_line(file_name):
         line = f.read()
         output_line=line.strip()
         return output_line
-
-def get_next_line(file_path, reset=False):
-    if reset:
-        # Delete the last_line attribute to reset the state
-        if hasattr(get_next_line, 'last_line'):
-            delattr(get_next_line, 'last_line')
     
-    with open(file_path, 'r') as file:
-        if hasattr(get_next_line, 'last_line'):  # Check if last_line attribute exists
-            line = file.readline().strip()  # Read the next line
-            if line:
-                get_next_line.last_line = line  # Update last_line attribute
-                return line
-        else:
-            line = file.readline().strip()  # Read the first line
-            if line:
-                get_next_line.last_line = line  # Initialize last_line attribute
-                return line
-    return None  # End of file reached or file is empty
-
-# Read lines until the end of the file is reached
-# line = get_next_line(file_path)
-# while line:
-#     print(line)
-#     line = get_next_line(file_path)
-
-# Reset and read lines from the beginning
-# reset = True
-# line = get_next_line(file_path, reset)
-# while line:
-#     print(line)
-#     line = get_next_line(file_path)
-
 def json_stringify(python_dictionary):
     json_string = json.dumps(python_dictionary)
     return json_string
