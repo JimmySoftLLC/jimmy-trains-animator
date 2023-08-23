@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editable Table</title>
+  <link rel="stylesheet" href="/mui.min.css">
+</head>
+
+<body>
+  <div class="mui-container">
+    <h1>Editable Table</h1>
+
+    <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Fetch Data</button>
+    <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Data</button>
+    <button id="goBackButton" class="mui-btn mui-btn--primary" type="button">Goto Home</button>
+
+    <table id="dataTable" class="mui-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</body>
+
+<script>
+  var fetchDataButton = document.getElementById("fetchDataButton");
+  var saveDataButton = document.getElementById("saveDataButton");
+  var dataTable = document.getElementById("dataTable");
+  var dataTableBody = document.querySelector("#dataTable tbody");
+
+  fetchDataButton.addEventListener("click", function () {
+    fetchData();
+  });
+
+  saveDataButton.addEventListener("click", function () {
+    saveData();
+  });
+  
+  goBackButton.addEventListener("click", function () {
+    window.location.href = "http://animator-feller.local";
+  });
+
+  dataTableBody.addEventListener("click", function (event) {
+    var target = event.target;
+    if (target.classList.contains("insert-row-btn")) {
+      insertRow(target.parentNode.parentNode);
+    } else if (target.classList.contains("add-row-btn")) {
+      addRow(target.parentNode.parentNode);
+    } else if (target.classList.contains("delete-row-btn")) {
+      deleteRow(target.parentNode.parentNode);
+    }
+  });
+
+  function fetchData() {
+    // Simulate API call delay
+    fetchDataButton.setAttribute("disabled","true");
+    setTimeout(function () {
+      var fakeData = [
+        { id: 1, name: "John Doe", email: "john@example.com" },
+        { id: 2, name: "Jane Smith", email: "jane@example.com" },
+        { id: 3, name: "Robert Johnson", email: "robert@example.com" }
+      ];
+      populateTable(fakeData);
+    }, 1000); // Simulated delay of 1 second
+  }
+
+  function populateTable(data) {
+    // Clear existing table rows
+    dataTableBody.innerHTML = "";
+
+    // Populate table with new data
+    data.forEach(function (rowData) {
+      var row = createDataRow(rowData);
+      dataTableBody.appendChild(row);
+    });
+    fetchDataButton.removeAttribute("disabled");
+  }
+
+  function createDataRow(rowData) {
+    var row = document.createElement("tr");
+
+    var idCell = createEditableCell(rowData.id);
+    row.appendChild(idCell);
+
+    var nameCell = createEditableCell(rowData.name);
+    row.appendChild(nameCell);
+
+    var emailCell = createEditableCell(rowData.email);
+    row.appendChild(emailCell);
+
+    var actionCell = document.createElement("td");
+    
+    var insertButton = createInsertButton();
+    actionCell.appendChild(insertButton);
+    
+    var addButton = createAddButton();
+    actionCell.appendChild(addButton);
+    
+    var deleteButton = createDeleteButton();
+    actionCell.appendChild(deleteButton);
+    
+    row.appendChild(actionCell);
+
+    return row;
+  }
+
+  function createEditableCell(value) {
+    var cell = document.createElement("td");
+    var input = document.createElement("input");
+    input.type = "text";
+    input.className = "pure-input-rounded";
+    input.value = value;
+    var div = document.createElement("div");
+    div.className = "mui-textfield";
+    div.appendChild(input);
+    cell.appendChild(div);
+    return cell;
+  }
+
+  function createDeleteButton() {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "mui-btn mui-btn--primary delete-row-btn";
+    button.innerHTML = 'Delete';
+    return button;
+  }
+
+  function createInsertButton() {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "mui-btn mui-btn--primary insert-row-btn";
+    button.innerHTML = 'Insert';
+    return button;
+  }
+  
+  function createAddButton() {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "mui-btn mui-btn--primary add-row-btn";
+    button.innerHTML = 'Add';
+    return button;
+  }
+
+  function deleteRow(row) {
+    row.parentNode.removeChild(row);
+  }
+
+  function insertRow(row) {
+    var newRow = createDataRow({ id: "", name: "", email: "" });
+    dataTableBody.insertBefore(newRow, row.nextSibling);
+  }
+  
+  function addRow(row) {
+    var newRow = createDataRow({ id: "", name: "", email: "" });
+    dataTableBody.insertBefore(newRow, row.nextSibling);
+  }
+
+  function saveData() {
+    var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+
+    // Extract data from table rows
+    var data = rows.map(function (row) {
+      var cells = Array.from(row.querySelectorAll("td"));
+      var values = cells.map(function (cell) {
+        const cellValue = cell.querySelector("input")?cell.querySelector("input").value:null
+        return cellValue;
+      });
+      return values;
+    });
+    
+    console.log(data)
+
+    // Send data to the server
+    fetch("/save-data", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    })
+      .then(function (response) {
+        if (response.ok) {
+          alert("Data saved successfully!");
+        } else {
+          alert("Error saving data. Please try again.");
+        }
+      })
+      .catch(function (error) {
+        alert("An error occurred. Please try again later.");
+      });
+  }
+</script>
+
+</html>

@@ -283,10 +283,6 @@ if (serve_webpage):
             garbage_collect("Table.")
             return FileResponse(request, "index-table.html", "/")
         
-        @server.route("/mui.css")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.css", "/")
-        
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
             return FileResponse(request, "mui.min.css", "/")
@@ -442,7 +438,7 @@ if (serve_webpage):
 
             return Response(request, config["HOST_NAME"])
         
-        @server.route("/YOUR_API_ENDPOINT", [POST])
+        @server.route("/save-data", [POST])
         def buttonpress(request: Request):
             data_object = request.json()
             print(data_object[0])
