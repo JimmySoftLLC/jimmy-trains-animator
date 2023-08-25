@@ -148,7 +148,7 @@ audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 # wave files are less cpu intensive since they are not compressed
 num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=16384)
+                         bits_per_sample=16, samples_signed=True, buffer_size=8192)
 audio.play(mixer)
 
 garbage_collect("audio setup")
@@ -456,6 +456,7 @@ if (serve_webpage):
             try:
                 data_object = request.body
                 print(str(data_object))
+                garbage_collect("Upload endpoint.")
                 # add code to append to file here, more posts will just build on that....
                 return Response(request, "success")
             except Exception as e:
