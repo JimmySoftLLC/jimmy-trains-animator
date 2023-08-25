@@ -450,6 +450,16 @@ if (serve_webpage):
         @server.route("/get-host-name", [POST])
         def buttonpress(request: Request):
             return Response(request, config["HOST_NAME"])
+        
+        @server.route("/upload-endpoint", [POST])
+        def upload_file_chunk(request: Request):
+            try:
+                data_object = request.body
+                print(str(data_object))
+                # add code to append to file here, more posts will just build on that....
+                return Response(request, "success")
+            except Exception as e:
+                return Response(request, str(e))
            
     except Exception as e:
         serve_webpage = False

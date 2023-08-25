@@ -6,10 +6,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Editable Table</title>
   <link rel="stylesheet" href="/mui.min.css">
+  <style>
+    input[type=file]::file-selector-button {
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 18px;
+      text-transform: uppercase;
+      color: #FFF;
+      background-color: #2196F3;
+      -webkit-transition: all .2s ease-in-out;
+      transition: all .2s ease-in-out;
+      display: inline-block;
+      height: 36px;
+      padding: 0 26px;
+      margin: 6px 0px;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      -ms-touch-action: manipulation;
+      touch-action: manipulation;
+      background-image: none;
+      text-align: center;
+      line-height: 36px;
+      vertical-align: middle;
+      white-space: nowrap;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      font-size: 14px;
+      font-family: inherit;
+      letter-spacing: .03em;
+      position: relative;
+      overflow: hidden;
+    }
+
+    input[type=file]::file-selector-button:hover {
+      background: #0d45a5;
+    }
+  </style>
 </head>
 
 <body>
   <div class="mui-container">
+    <h1>File Upload</h1>
+    <form id="fileUploadForm">
+      <input type="file" id="fileInput">
+      <div>
+        <button type="submit" class="mui-btn mui-btn--primary">Upload</button>
+        <progress id="uploadProgress" value="0" max="100" style="display: none;"></progress>
+        <div id="statusMessage" style="display: none;"></div>
+      </div>
+    </form>
+
+
     <h1>Editable Table</h1>
 
     <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Fetch Data</button>
@@ -35,6 +85,11 @@
   var saveDataButton = document.getElementById("saveDataButton");
   var dataTable = document.getElementById("dataTable");
   var dataTableBody = document.querySelector("#dataTable tbody");
+  const fileUploadForm = document.getElementById('fileUploadForm');
+  const progressContainer = document.querySelector('.mui-progress');
+  const uploadProgress = document.getElementById('uploadProgress');
+  const statusMessage = document.getElementById('statusMessage');
+  const fileInput = document.getElementById('fileInput');
 
   fetchDataButton.addEventListener("click", function () {
     fetchData();
@@ -43,7 +98,7 @@
   saveDataButton.addEventListener("click", function () {
     saveData();
   });
-  
+
   goBackButton.addEventListener("click", function () {
     window.location.href = "http://animator-feller.local";
   });
@@ -61,7 +116,7 @@
 
   function fetchData() {
     // Simulate API call delay
-    fetchDataButton.setAttribute("disabled","true");
+    fetchDataButton.setAttribute("disabled", "true");
     setTimeout(function () {
       var fakeData = [
         { id: 1, name: "John Doe", email: "john@example.com" },
@@ -97,16 +152,16 @@
     row.appendChild(emailCell);
 
     var actionCell = document.createElement("td");
-    
+
     var insertButton = createInsertButton();
     actionCell.appendChild(insertButton);
-    
+
     var addButton = createAddButton();
     actionCell.appendChild(addButton);
-    
+
     var deleteButton = createDeleteButton();
     actionCell.appendChild(deleteButton);
-    
+
     row.appendChild(actionCell);
 
     return row;
@@ -140,7 +195,7 @@
     button.innerHTML = 'Insert';
     return button;
   }
-  
+
   function createAddButton() {
     var button = document.createElement("button");
     button.type = "button";
@@ -157,7 +212,7 @@
     var newRow = createDataRow({ id: "", name: "", email: "" });
     dataTableBody.insertBefore(newRow, row.nextSibling);
   }
-  
+
   function addRow(row) {
     var newRow = createDataRow({ id: "", name: "", email: "" });
     dataTableBody.insertBefore(newRow, row.nextSibling);
@@ -170,12 +225,12 @@
     var data = rows.map(function (row) {
       var cells = Array.from(row.querySelectorAll("td"));
       var values = cells.map(function (cell) {
-        const cellValue = cell.querySelector("input")?cell.querySelector("input").value:null
+        const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
         return cellValue;
       });
       return values;
     });
-    
+
     console.log(data)
 
     // Send data to the server
@@ -197,6 +252,67 @@
         alert("An error occurred. Please try again later.");
       });
   }
+
+  fileUploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const file = fileInput.files[0];
+    if (!file) {
+      alert('Please select a file.');
+      return;
+    }
+
+    // Record the start time
+    const startTime = Date.now();
+
+    // Show the progress bar
+    uploadProgress.style.display = 'block';
+    statusMessage.style.display = 'none';
+
+    const chunkSize = 1024; // 1 KB chunks
+
+    let offset = 0;
+
+    try {
+      while (offset < file.size) {
+        const chunk = file.slice(offset, offset + chunkSize);
+        const formData = new FormData();
+        formData.append('fileChunk', chunk);
+
+        // Send the chunked file data to the server using Fetch API
+        const response = await fetch('/upload-endpoint', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          console.error('File upload failed.');
+          return;
+        }
+
+        offset += chunkSize;
+        // Update the progress bar based on the upload progress
+        const progress = (offset / file.size) * 100;
+        uploadProgress.value = progress;
+      }
+
+      // Calculate the duration
+      const endTime = Date.now();
+      const durationInSeconds = (endTime - startTime) / 1000;
+      // Hide the progress bar and show success message
+      uploadProgress.style.display = 'none';
+      statusMessage.style.display = 'block';
+      statusMessage.textContent = `Upload success! Duration: ${durationInSeconds} seconds.`;
+      uploadProgress.value = 0;
+    } catch (error) {
+      // Hide the progress bar and show error message
+      uploadProgress.style.display = 'none';
+      statusMessage.style.display = 'block';
+      statusMessage.textContent = 'Upload failed: ' + error.message;
+      uploadProgress.value = 0;
+    }
+  });
+
 </script>
 
 </html>
