@@ -268,21 +268,6 @@ if (serve_webpage):
             garbage_collect("Home page.")
             return FileResponse(request, "index.html", "/")
         
-        @server.route("/feller-adjust")
-        def base(request: HTTPRequest):
-            garbage_collect("Feller adjust.")
-            return FileResponse(request, "feller-adjust.html", "/")
-        
-        @server.route("/tree-adjust")
-        def base(request: HTTPRequest):
-            garbage_collect("Tree adjust.")
-            return FileResponse(request, "tree-adjust.html", "/")
-        
-        @server.route("/table")
-        def base(request: HTTPRequest):
-            garbage_collect("Table.")
-            return FileResponse(request, "index-table.html", "/")
-        
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
             return FileResponse(request, "mui.min.css", "/")
@@ -335,8 +320,6 @@ if (serve_webpage):
             elif "happy_birthday" in raw_text: 
                 config["option_selected"] = "happy_birthday"
                 animateFeller()
-            elif "speaker_test" in raw_text: 
-                play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav")
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/feller_menu/continuous_mode_activated.wav")
@@ -425,6 +408,20 @@ if (serve_webpage):
             play_audio_0("/sd/feller_menu/all_changes_complete.wav")
 
             return Response(request, "Dialog option cal saved.")
+        
+        @server.route("/utilities", [POST])
+        def buttonpress(request: Request):
+            global config
+            raw_text = request.raw_request.decode("utf8")
+            if "speaker_test" in raw_text: 
+                play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav") 
+            elif "reset_to_defaults" in raw_text:
+                reset_to_defaults()      
+                files.write_json_file("/sd/config_feller.json",config)
+                play_audio_0("/sd/feller_menu/all_changes_complete.wav")
+                pretty_state_machine.go_to_state('base_state')
+
+            return Response(request, "Dialog option cal saved.")
 
         @server.route("/update-host-name", [POST])
         def buttonpress(request: Request):
@@ -478,6 +475,8 @@ def reset_to_defaults():
     config["tree_down_pos"] = 100
     config["feller_rest_pos"] = 0
     config["feller_chop_pos"] = 150
+    config["opening_dialog"] = False
+    config["feller_advice"] = True
 
 def sleepAndUpdateVolume(seconds):
     volume = get_voltage(analog_in, seconds)
@@ -645,27 +644,29 @@ def moveFellerToPositionGently (new_position, speed):
     sign = 1
     if feller_last_pos > new_position: sign = - 1
     for feller_angle in range( feller_last_pos, new_position, sign):
-        feller_servo.angle = feller_angle
+        moveFellerServo (feller_angle)
         sleepAndUpdateVolume(speed)
-    feller_servo.angle = new_position 
-    feller_last_pos = new_position
+    moveFellerServo (new_position)
     
 def moveTreeToPositionGently (new_position, speed):
     global tree_last_pos
     sign = 1
     if tree_last_pos > new_position: sign = - 1
     for tree_angle in range( tree_last_pos, new_position, sign): 
-        tree_servo.angle = tree_angle
+        moveTreeServo(tree_angle)
         sleepAndUpdateVolume(speed)
-    tree_servo.angle = new_position
-    tree_last_pos = new_position
+    moveTreeServo(new_position)
 
 def moveFellerServo (servo_pos):
+    if servo_pos < feller_min: servo_pos = feller_min
+    if servo_pos > feller_max: servo_pos = feller_max
     feller_servo.angle = servo_pos
     global feller_last_pos
     feller_last_pos = servo_pos
 
 def moveTreeServo (servo_pos):
+    if servo_pos < tree_min: servo_pos = tree_min
+    if servo_pos > tree_max: servo_pos = tree_max
     tree_servo.angle = servo_pos
     global tree_last_pos
     tree_last_pos = servo_pos

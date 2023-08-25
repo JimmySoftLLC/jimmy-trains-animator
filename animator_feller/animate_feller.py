@@ -28,7 +28,7 @@ def tree_talking_movement(mixer,config, tree_servo, sleepAndUpdateVolume, left_s
             while mixer.voice[0].playing:
                 pass
             return
-        tree_servo.angle = speak_rotation + config["tree_up_pos"]
+        tree_servo.angle = config["tree_up_pos"]
         sleepAndUpdateVolume(speak_cadence)
         tree_servo.angle = config["tree_up_pos"] - speak_rotation
         sleepAndUpdateVolume(speak_cadence)
