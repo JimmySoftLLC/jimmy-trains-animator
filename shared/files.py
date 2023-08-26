@@ -7,8 +7,6 @@ def log_item(item):
 def print_directory(switch_0, path, tabs=0):
     files.log_item("Files on filesystem:")
     files.log_item("====================")
-    dude = switch_0.fell
-    files.log_item(dude)
     for file in os.listdir(path):
         stats = os.stat(path + "/" + file)
         filesize = stats[6]
