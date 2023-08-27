@@ -1,9 +1,1 @@
-{
-  "option_selected": "birds_dogs_short_version",
-  "feller_rest_pos": 0,
-  "feller_chop_pos": 150,
-  "tree_up_pos": 165,
-  "tree": 111,
-  "tree_down_pos": 98,
-  "serve_webpage": false
-}
+{"option_selected": "birds_dogs", "opening_dialog": false, "feller_advice": true, "feller_rest_pos": 0, "tree_up_pos": 165, "tree": 111, "HOST_NAME": "animator-feller", "serve_webpage": true, "feller_chop_pos": 150, "tree_down_pos": 100}
