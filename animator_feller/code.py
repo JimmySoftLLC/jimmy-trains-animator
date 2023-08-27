@@ -229,12 +229,22 @@ if (serve_webpage):
 
     files.log_item("Connecting to WiFi")
 
+    #default for manufacturing and shows
+    WIFI_SSID="jimmytrainsguest"
+    WIFI_PASSWORD=""
+
     try:
         env = files.read_json_file("/sd/env.json")
+        WIFI_SSID = env["WIFI_SSID"]
+        WIFI_PASSWORD = env["WIFI_PASSWORD"]
         garbage_collect("wifi env")
-        
+        print("Using env ssid and password")
+    except:
+        print("Using default ssid and password")
+
+    try:
         # connect to your SSID
-        wifi.radio.connect(env["WIFI_SSID"], env["WIFI_PASSWORD"])
+        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
         garbage_collect("wifi connect")
         
         # setup mdns server
