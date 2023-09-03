@@ -755,18 +755,21 @@ def animation_one():
     files.log_item("Chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
     tree_chop_pos = config["tree_up_pos"] - 3
-    if config["option_selected"] == "random":
-        highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file
+    
+    current_option_selected = config["option_selected"]
+    if current_option_selected == "random":
+        highest_index = len(feller_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file 
         sound_number = random.randint(0, highest_index)
-        soundFile = "/sd/feller_sounds/sounds_" + feller_sound_options[sound_number] + ".wav"
+        current_option_selected = feller_sound_options[sound_number]
         print("Random sound file: " + feller_sound_options[sound_number])
-    elif config["option_selected"] == "happy_birthday":
+    if current_option_selected == "happy_birthday":
         sound_number = random.randint(0, 6)
-        soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + str(sound_number) + ".wav"
-        print("Sound file: " + config["option_selected"] + str(sound_number))
+        soundFile = "/sd/feller_sounds/sounds_" + current_option_selected + str(sound_number) + ".wav"
+        print("Sound file: " + current_option_selected + str(sound_number))
     else:
-        soundFile = "/sd/feller_sounds/sounds_" + config["option_selected"] + ".wav"
-        print("Sound file: " + config["option_selected"])
+        soundFile = "/sd/feller_sounds/sounds_" + current_option_selected + ".wav"
+        print("Sound file: " + current_option_selected)
+      
     wave1 = audiocore.WaveFile(open(soundFile, "rb"))
     while chopNum <= chopNumber:
         if when_to_speak == chopNum and not spoken and config["feller_advice"]:
@@ -809,7 +812,7 @@ def animation_one():
         sleepAndUpdateVolume(0.1)
         moveTreeServo(7 + config["tree_down_pos"])
         sleepAndUpdateVolume(0.1)
-    if config["option_selected"] == "alien":
+    if current_option_selected == "alien":
         print("Alien sequence starting....")
         sleepAndUpdateVolume(2)
         moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
