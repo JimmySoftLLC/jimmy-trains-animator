@@ -224,7 +224,7 @@ if (serve_webpage):
     garbage_collect("config wifi imports")
     import wifi
     garbage_collect("config wifi imports")
-    from adafruit_httpserver import Server, Request, FileResponse, Response, POST
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
     garbage_collect("config wifi imports")
 
     files.log_item("Connecting to WiFi")
@@ -282,6 +282,10 @@ if (serve_webpage):
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
             return FileResponse(request, "mui.min.js", "/")
+        
+        @server.route("/image.jpg")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "sd/images/image.jpg", "/")
 
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
@@ -442,9 +446,44 @@ if (serve_webpage):
 
             return Response(request, config["HOST_NAME"])
         
+        @server.route("/get-directory", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["HOST_NAME"] = data_object["text"]
+            fakeData = [
+                {"id": 1, "name": "John Doe", "email": "john@example.com"},
+                {"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
+                {"id": 3, "name": "Robert Johnson", "email": "robert@example.com"}
+            ]
+            fakeDataJson = files.json_stringify(fakeData)
+            return JSONResponse(request, fakeData)
+               
+        @server.route("/save-data", [POST])
+        def buttonpress(request: Request):
+            data_object = request.json()
+            print(data_object[0])
+            print(data_object[1])
+            print(data_object[2])
+            garbage_collect("Save Data.")
+            return Response(request, "success")
+        
         @server.route("/get-host-name", [POST])
         def buttonpress(request: Request):
             return Response(request, config["HOST_NAME"])
+        
+        @server.route("/upload-file", [POST])
+        def upload_file_chunk(request: FormData):
+            try:
+                # Handle the incoming POST request
+                if 'Content-Type' in request.headers and 'boundary' in request.headers['Content-Type']:
+                    print (request.body)
+                       
+                garbage_collect("Upload endpoint.")
+                # add code to append to file here, more posts will just build on that....
+                return Response(request, "success")
+            except Exception as e:
+                return Response(request, str(e))
            
     except Exception as e:
         serve_webpage = False

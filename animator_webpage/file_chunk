@@ -1,0 +1,55 @@
+POST /upload-file HTTP/1.1
+Host: animator-feller.local
+Connection: keep-alive
+Content-Length: 1221
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryNZgflTZlwOUJaqPw
+Accept: */*
+Origin: http://animator-feller.local
+Referer: http://animator-feller.local/
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US,en;q=0.9,de;q=0.8,nl;q=0.7
+
+------WebKitFormBoundaryNZgflTZlwOUJaqPw
+Content-Disposition: form-data; name="fileChunk"; filename="blob"
+Content-Type: application/octet-stream
+
+ + 1)
+            
+def write_file_lines(file_name, lines):
+    with open(file_name, "w") as f:
+        for line in lines:
+            f.write(line + "\n")
+
+def read_file_lines(file_name):
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+        output_lines = [] 
+        for line in lines:
+            output_lines.append(line.strip())
+        return output_lines
+    
+def write_file_line(file_name, line):
+    with open(file_name, "w") as f:
+        f.write(line + "\n")
+
+def read_file_line(file_name):
+    with open(file_name, "r") as f:
+        line = f.read()
+        output_line=line.strip()
+        return output_line
+    
+def json_stringify(python_dictionary):
+    json_string = json.dumps(python_dictionary)
+    return json_string
+
+def json_parse(my_object):
+    python_dictionary = json.loads(my_object)
+    return python_dictionary
+
+def write_json_file(file_name, python_dictionary):
+    json_string=json_stringify(python_dictionary)
+    write_file_line(file_name, json_string)
+    
+def read_json
+------WebKitFormBoundaryNZgflTZlwOUJaqPw--

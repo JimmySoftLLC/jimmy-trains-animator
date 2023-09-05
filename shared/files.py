@@ -4,33 +4,44 @@ import json
 def log_item(item):
     print(item)
 
-def print_directory(switch_0, path, tabs=0):
-    files.log_item("Files on filesystem:")
-    files.log_item("====================")
+def print_directory(path, tabs=0):
+    log_item_name = ""
+    size_str = ""
+    log_item("Files on filesystem:")
+    log_item("====================")
     for file in os.listdir(path):
         stats = os.stat(path + "/" + file)
         filesize = stats[6]
         isdir = stats[0] & 0x4000
 
         if filesize < 1000:
-            sizestr = str(filesize) + " by"
+            size_str = str(filesize) + " by"
         elif filesize < 1000000:
-            sizestr = "%0.1f KB" % (filesize / 1000)
+            size_str = "%0.1f KB" % (filesize / 1000)
         else:
-            sizestr = "%0.1f MB" % (filesize / 1000000)
+            size_str = "%0.1f MB" % (filesize / 1000000)
 
-        prettyfiles.log_itemname = ""
+        log_item_name = ""
         for _ in range(tabs):
-            prettyfiles.log_itemname += "   "
-        prettyfiles.log_itemname += file
+            log_item_name += "   "
+        log_item_name += file
         if isdir:
-            prettyfiles.log_itemname += "/"
-        files.log_item('{0:<40} Size: {1:>10}'.format(prettyfiles.log_itemname, sizestr))
+            log_item_name += "/"
+        log_item('{0:<40} Size: {1:>10}'.format(log_item_name, size_str))
 
         # recursively files.log_item directory contents
         if isdir:
-            files.log_item_directory(path + "/" + file, tabs + 1)
-            
+            print_directory(path + "/" + file, tabs + 1)
+
+def return_directory(path):
+    file_list = []
+    for file in os.listdir(path):  
+        if "._" not in file and ".wav" in file:
+            file_name = file.replace('.wav', '')
+            file_list.append(file_name)
+    file_list.sort()
+    return file_list
+ 
 def write_file_lines(file_name, lines):
     with open(file_name, "w") as f:
         for line in lines:
