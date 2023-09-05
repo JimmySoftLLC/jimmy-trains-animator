@@ -162,7 +162,7 @@ garbage_collect("animator_feller, utilities")
 config = files.read_json_file("/sd/config_feller.json")
 
 tree_last_pos = config["tree_up_pos"]
-tree_min = 90
+tree_min = 60
 tree_max = 180
 if config["tree_down_pos"] < tree_min or config["tree_down_pos"] > tree_max: config["tree_down_pos"] = tree_min
 if config["tree_up_pos"] < tree_min or config["tree_up_pos"] > tree_max: config["tree_up_pos"] = tree_max
