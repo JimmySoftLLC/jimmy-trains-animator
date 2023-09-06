@@ -1313,8 +1313,6 @@ if (serve_webpage):
 pretty_state_machine.go_to_state('base_state')   
 files.log_item("animator has started...")
 garbage_collect("animations started.")
-file_list = files.return_directory("/sd/feller_buddy")
-print(file_list)
 
 while True:
     pretty_state_machine.update()
