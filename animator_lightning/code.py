@@ -151,6 +151,8 @@ serve_webpage = config["serve_webpage"]
 
 garbage_collect("config setup")
 
+continuous_run = False
+
 ################################################################################
 # Setup wifi and web server
 
@@ -229,7 +231,31 @@ if (serve_webpage):
                 start_animation(config["option_selected"])
             elif "thunder_birds_rain" in raw_text: 
                 config["option_selected"] = "thunder_birds_rain"
-                start_animation("thunder_birds_rain")
+                start_animation(config["option_selected"])
+            elif "continuous_thunder" in raw_text: 
+                config["option_selected"] = "continuous_thunder"
+                start_animation(config["option_selected"])
+            elif "dark_thunder" in raw_text: 
+                config["option_selected"] = "dark_thunder"
+                start_animation(config["option_selected"])
+            elif "epic_thunder" in raw_text: 
+                config["option_selected"] = "epic_thunder"
+                start_animation(config["option_selected"])
+            elif "halloween_thunder" in raw_text: 
+                config["option_selected"] = "halloween_thunder"
+                start_animation(config["option_selected"])
+            elif "thunder_and_rain" in raw_text: 
+                config["option_selected"] = "thunder_and_rain"
+                start_animation(config["option_selected"])
+            elif "thunder_distant" in raw_text: 
+                config["option_selected"] = "thunder_distant"
+                start_animation(config["option_selected"])
+            elif "inspiring_cinematic_ambient_lightshow" in raw_text: 
+                config["option_selected"] = "inspiring_cinematic_ambient_lightshow"
+                start_animation(config["option_selected"])
+            elif "alien_lightshow" in raw_text: 
+                config["option_selected"] = "alien_lightshow"
+                start_animation(config["option_selected"])
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
