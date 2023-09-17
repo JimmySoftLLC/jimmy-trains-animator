@@ -589,8 +589,8 @@ sleepAndUpdateVolume(1)
 ledStrip.fill((0, 0, 255))
 #ledStrip.show()
 sleepAndUpdateVolume(1)
-ledStrip.fill((0, 0, 0))
-#ledStrip.show()
+ledStrip.fill((255, 255, 255))
+ledStrip.show()
 
 pretty_state_machine.go_to_state('waiting')
 
@@ -603,9 +603,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-    #play_audio_0("/sd/music/you_got_a_friend_in_me.wav")
-    #play_audio_0("/sd/music/beauty_and_the_beast.wav")
-    #play_audio_0("/sd/music/mickey_birthday_song.wav")
-    #play_audio_0("/sd/music/happy_birthday_in_the_park.wav")
-    #play_audio_0("/sd/music/when_you_wish_upon_a_star.wav")
-    #play_audio_0("/sd/music/beegie_when_you_wish.wav")
+
