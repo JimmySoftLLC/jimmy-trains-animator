@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Animator - Lightning</title>
+  <title>Animator - Feller</title>
   <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/mui.min.css" />
@@ -13,7 +13,7 @@
   <div class="mui-container">
     <h1>Animator - Lightning</h1>
     <p style="padding-top:0.5rem;">
-      Use this web app to control and setup your animator - lightning
+      Use this web app to control and calibrate your animator - lightning
       product. Have fun animating.
     </p>
     <ul class="mui-tabs__bar">
@@ -25,8 +25,45 @@
       </li>
     </ul>
     <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="random" data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-lightning" data-value="random" data-url="/animation"
+        type="button">
         Random
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="thunder_birds_rain"
+        data-url="/animation" type="button">
+        Thunder Birds and Rain
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="continuous_thunder"
+        data-url="/animation" type="button">
+        Continuous Thunder
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="dark_thunder"
+        data-url="/animation" type="button">
+        Dark Thunder
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="epic_thunder"
+        data-url="/animation" type="button">
+        Epic Thunder
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="halloween_thunder"
+        data-url="/animation" type="button">
+        Halloween Thunder
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="thunder_and_rain"
+        data-url="/animation" type="button">
+        Thunder and Rain
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="thunder_distant"
+        data-url="/animation" type="button">
+        Thunder Distant
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled"
+        data-value="inspiring_cinematic_ambient_lightshow" data-url="/animation" type="button">
+        Inspiring Cinematic Ambient Lightshow
+      </button>
+      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="alien_lightshow"
+        data-url="/animation" type="button">
+        Alien Lightshow
       </button>
       <button class="mui-btn mui-btn--primary animator-lightning" data-value="cont_mode_on" data-url="/animation"
         type="button">
@@ -39,17 +76,20 @@
     </div>
     <div class="mui-tabs__pane" id="settings">
       <h2>Animator web page name:</h2>
+
       <div class="mui-textfield">
         <input class="input" animator-lightning" id="textInput" type="text" placeholder="Enter website name">
         <button id="submitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-host-name">
           Change
         </button>
       </div>
+
       <p>
         Use alphanumerics and dashes only. All names are automatically
         appended with .local. So your website url will be something like
         "website-name.local"
       </p>
+
       <h2>Utilities:</h2>
       <button class="mui-btn mui-btn--primary animator-lightning" data-value="speaker_test" data-url="/utilities"
         type="button">
@@ -161,4 +201,5 @@
     });
   });
 </script>
+
 </html>

@@ -226,43 +226,10 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")
             if "random" in raw_text: 
                 config["option_selected"] = "random"
-                animateFeller()
-            elif "forth_of_july" in raw_text: 
-                config["option_selected"] = "forth_of_july"
-                animateFeller()
-            elif "christmas" in raw_text: 
-                config["option_selected"] = "christmas"
-                animateFeller()
-            elif "halloween" in raw_text: 
-                config["option_selected"] = "halloween"
-                animateFeller()
-            elif "train" in raw_text: 
-                config["option_selected"] = "train"
-                animateFeller()
-            elif "alien" in raw_text: 
-                config["option_selected"] = "alien"
-                animateFeller()  
-            elif "birds_dogs_short_version" in raw_text: 
-                config["option_selected"] = "birds_dogs_short_version"
-                animateFeller()
-            elif "birds_dogs" in raw_text: 
-                config["option_selected"] = "birds_dogs"
-                animateFeller()
-            elif "just_birds" in raw_text: 
-                config["option_selected"] = "just_birds"
-                animateFeller()
-            elif "machines" in raw_text: 
-                config["option_selected"] = "machines"
-                animateFeller()
-            elif "no_sounds" in raw_text: 
-                config["option_selected"] = "no_sounds"
-                animateFeller()
-            elif "owl" in raw_text: 
-                config["option_selected"] = "owl"
-                animateFeller()
-            elif "happy_birthday" in raw_text: 
-                config["option_selected"] = "happy_birthday"
-                animateFeller()
+                start_animation(config["option_selected"])
+            elif "thunder_birds_rain" in raw_text: 
+                config["option_selected"] = "thunder_birds_rain"
+                start_animation("thunder_birds_rain")
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
@@ -430,6 +397,9 @@ def speak_this_string(str_to_speak, addLocal):
     if addLocal:
         play_audio_0("/sd/menu_voice_commands/dot.wav")
         play_audio_0("/sd/menu_voice_commands/local.wav")
+        
+def start_animation(file_name):
+    animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name, num_pixels)
     
 ################################################################################
 # State Machine
@@ -508,6 +478,8 @@ class BaseState(State):
         return 'base_state'
 
     def enter(self, machine):
+        play_audio_0("/sd/menu_voice_commands/animations_are_now_active.wav")
+        files.log_item("Entered base state")
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -517,9 +489,9 @@ class BaseState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config["option_selected"], num_pixels)
+            start_animation(config["option_selected"])
         if right_switch.fell:
-            print('Just pressed 1')
+            print('Just pressed option mode')
             machine.go_to_state('program')
 
 class ProgramState(State):
