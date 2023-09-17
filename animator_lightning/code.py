@@ -21,6 +21,7 @@ import board
 import neopixel
 import random
 import rtc
+import microcontroller
 
 import audiomp3
 from analogio import AnalogIn
@@ -29,7 +30,11 @@ from adafruit_debouncer import Debouncer
 
 import animate_lightning
 
-
+def reset_pico():
+    microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
+    microcontroller.reset()
+    
+garbage_collect("imports")
 ################################################################################
 # Setup hardware
 
@@ -140,8 +145,6 @@ ledStrip.brightness = 1.0
 
 config = files.read_json_file("/sd/config_lightning.json")
 
-main_menu = ['sound_options','calibrate_position']
-
 sound_options = config["options"]
 
 serve_webpage = config["serve_webpage"]
@@ -162,12 +165,22 @@ if (serve_webpage):
 
     files.log_item("Connecting to WiFi")
 
+    #default for manufacturing and shows
+    WIFI_SSID="jimmytrainsguest"
+    WIFI_PASSWORD=""
+
     try:
         env = files.read_json_file("/sd/env.json")
+        WIFI_SSID = env["WIFI_SSID"]
+        WIFI_PASSWORD = env["WIFI_PASSWORD"]
         garbage_collect("wifi env")
-        
+        print("Using env ssid and password")
+    except:
+        print("Using default ssid and password")
+
+    try:
         # connect to your SSID
-        wifi.radio.connect(env["WIFI_SSID"], env["WIFI_PASSWORD"])
+        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
         garbage_collect("wifi connect")
         
         # setup mdns server
@@ -195,15 +208,16 @@ if (serve_webpage):
 
         @server.route("/")
         def base(request: HTTPRequest):
+            garbage_collect("Home page.")
             return FileResponse(request, "index.html", "/")
         
-        @server.route("/feller-adjust")
+        @server.route("/mui.min.css")
         def base(request: HTTPRequest):
-            return FileResponse(request, "feller-adjust.html", "/")
+            return FileResponse(request, "mui.min.css", "/")
         
-        @server.route("/tree-adjust")
+        @server.route("/mui.min.js")
         def base(request: HTTPRequest):
-            return FileResponse(request, "tree-adjust.html", "/")
+            return FileResponse(request, "mui.min.js", "/")
 
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
@@ -212,128 +226,26 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")
             if "random" in raw_text: 
                 config["option_selected"] = "random"
-                animateFeller()
-            elif "forth_of_july" in raw_text: 
-                config["option_selected"] = "forth_of_july"
-                animateFeller()
-            elif "christmas" in raw_text: 
-                config["option_selected"] = "christmas"
-                animateFeller()
-            elif "halloween" in raw_text: 
-                config["option_selected"] = "halloween"
-                animateFeller()
-            elif "train" in raw_text: 
-                config["option_selected"] = "train"
-                animateFeller()
-            elif "alien" in raw_text: 
-                config["option_selected"] = "alien"
-                animateFeller()  
-            elif "birds_dogs_short_version" in raw_text: 
-                config["option_selected"] = "birds_dogs_short_version"
-                animateFeller()
-            elif "birds_dogs" in raw_text: 
-                config["option_selected"] = "birds_dogs"
-                animateFeller()
-            elif "just_birds" in raw_text: 
-                config["option_selected"] = "just_birds"
-                animateFeller()
-            elif "machines" in raw_text: 
-                config["option_selected"] = "machines"
-                animateFeller()
-            elif "no_sounds" in raw_text: 
-                config["option_selected"] = "no_sounds"
-                animateFeller()
-            elif "owl" in raw_text: 
-                config["option_selected"] = "owl"
-                animateFeller()
-            elif "speaker_test" in raw_text: 
-                play_audio_0("/sd/feller_menu/left_speaker_right_speaker.wav")
+                animatelightning()
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
-                play_audio_0("/sd/feller_menu/continuous_mode_activated.wav")
+                play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
             elif "cont_mode_off" in raw_text: 
                 continuous_run = False
-                play_audio_0("/sd/feller_menu/continuous_mode_deactivated.wav")
+                play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
-        @server.route("/feller", [POST])        
-        def buttonpress(request: Request):
-            global config
-            global feller_movement_type
-            raw_text = request.raw_request.decode("utf8")    
-            if "feller_rest_pos" in raw_text:
-                feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type], 0.01)
-                return Response(request, "Moved feller to rest position.")
-            elif "feller_chop_pos" in raw_text:
-                feller_movement_type = "feller_chop_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Moved feller to chop position.", 0.01)
-            elif "feller_adjust" in raw_text:
-                feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type])
-                return Response(request, "Redirected to feller-adjust page.", 0.01)
-            elif "feller_home" in raw_text:
-                return Response(request, "Redirected to home page.")
-            elif "feller_clockwise" in raw_text:
-                calibrationLeftButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
-                return Response(request, "Moved feller clockwise.")
-            elif "feller_counter_clockwise" in raw_text:
-                calibrationRightButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
-                return Response(request, "Moved feller counter clockwise.")
-            elif "feller_cal_saved" in raw_text:
-                write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
-                return Response(request, "Feller " + feller_movement_type + " cal saved.")
-                
-        @server.route("/tree", [POST])        
-        def buttonpress(request: Request):
-            global config
-            global tree_movement_type
-            raw_text = request.raw_request.decode("utf8")    
-            if "tree_up_pos" in raw_text:
-                tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type], 0.01)
-                return Response(request, "Moved tree to up position.")
-            elif "tree_down_pos" in raw_text:
-                tree_movement_type = "tree_down_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Moved tree to fallen position.", 0.01)
-            elif "tree_adjust" in raw_text:
-                tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type])
-                return Response(request, "Redirected to tree-adjust page.", 0.01)
-            elif "tree_home" in raw_text:
-                return Response(request, "Redirected to home page.")
-            elif "tree_up" in raw_text:
-                calibrationLeftButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
-                return Response(request, "Moved tree up.")
-            elif "tree_down" in raw_text:
-                calibrationRightButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
-                return Response(request, "Moved tree down.")
-            elif "tree_cal_saved" in raw_text:
-                write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
-                return Response(request, "Tree " + tree_movement_type + " cal saved.")
-            
-        @server.route("/dialog", [POST])
+        @server.route("/utilities", [POST])
         def buttonpress(request: Request):
             global config
             raw_text = request.raw_request.decode("utf8")
-            if "opening_dialog_on" in raw_text: 
-                config["opening_dialog"] = True
-
-            elif "opening_dialog_off" in raw_text: 
-                config["opening_dialog"] = False
-
-            elif "feller_advice_on" in raw_text: 
-                config["feller_advice"] = True
-                
-            elif "feller_advice_off" in raw_text: 
-                config["feller_advice"] = False
-                
-            files.write_json_file("/sd/config_feller.json",config)
-            play_audio_0("/sd/feller_menu/all_changes_complete.wav")
+            if "speaker_test" in raw_text: 
+                play_audio_0("/sd/menu_voice_commands/left_speaker_right_speaker.wav") 
+            elif "reset_to_defaults" in raw_text:
+                reset_to_defaults()      
+                files.write_json_file("/sd/config_lightning.json",config)
+                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                pretty_state_machine.go_to_state('base_state')
 
             return Response(request, "Dialog option cal saved.")
 
@@ -343,9 +255,9 @@ if (serve_webpage):
             data_object = request.json()
             config["HOST_NAME"] = data_object["text"]
             
-            files.write_json_file("/sd/config_feller.json",config)       
+            files.write_json_file("/sd/config_lightning.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
-            #speak_webpage()
+            speak_webpage()
 
             return Response(request, config["HOST_NAME"])
         
@@ -383,7 +295,6 @@ def play_audio_0(file_name):
 def stop_audio_0():
     mixer.voice[0].stop()
     while mixer.voice[0].playing:
-        sleepAndUpdateVolume(0.02)
         pass
 
 def shortCircuitDialog():
@@ -393,6 +304,17 @@ def shortCircuitDialog():
         if left_switch.fell:
             stop_audio_0()
             return
+        
+def speak_this_string(str_to_speak, addLocal):
+    for character in str_to_speak:
+        if character == "-":
+            character = "dash"
+        if character == ".":
+            character = "dot"
+        play_audio_0("/sd/menu_voice_commands/" + character + ".wav")
+    if addLocal:
+        play_audio_0("/sd/menu_voice_commands/dot.wav")
+        play_audio_0("/sd/menu_voice_commands/local.wav")
     
 ################################################################################
 # State Machine
@@ -461,14 +383,14 @@ class State(object):
             return False
         return True
 
-class WaitingState(State):
+class BaseState(State):
 
     def __init__(self):      
         pass
 
     @property
     def name(self):
-        return 'waiting'
+        return 'base_state'
 
     def enter(self, machine):
         State.enter(self, machine)
@@ -537,7 +459,7 @@ class ProgramState(State):
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
                     pass
-            machine.go_to_state('waiting')
+            machine.go_to_state('base_state')
 
 # StateTemplate copy and add functionality
 class StateTemplate(State):
@@ -558,27 +480,34 @@ class StateTemplate(State):
     def update(self, machine):
         State.update(self, machine)
 
-
 ###############################################################################
 # Create the state machine
 
 pretty_state_machine = StateMachine()
-pretty_state_machine.add_state(WaitingState())
+pretty_state_machine.add_state(BaseState())
 pretty_state_machine.add_state(ProgramState())
+        
+audio_enable.value = True
+
+def speak_webpage():
+    play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")
+    play_audio_0("/sd/menu_voice_commands/to_access_type.wav")
+    if config["HOST_NAME"]== "animator-lightning":
+        play_audio_0("/sd/menu_voice_commands/animator_lightning_local.wav")
+    else:
+        speak_this_string(config["HOST_NAME"], True)
+    play_audio_0("/sd/menu_voice_commands/in_your_browser.wav")    
 
 if (serve_webpage):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        #speak_webpage()
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
         reset_pico()
-        
-audio_enable.value = True
-
-print("animator has started")
 
 ledStrip.fill((255, 0, 0))
 #ledStrip.show()
@@ -592,7 +521,9 @@ sleepAndUpdateVolume(1)
 ledStrip.fill((255, 255, 255))
 ledStrip.show()
 
-pretty_state_machine.go_to_state('waiting')
+pretty_state_machine.go_to_state('base_state')   
+files.log_item("animator has started...")
+garbage_collect("animations started.")
 
 while True:
     pretty_state_machine.update()
