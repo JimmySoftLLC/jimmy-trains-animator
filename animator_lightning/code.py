@@ -226,7 +226,43 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")
             if "random" in raw_text: 
                 config["option_selected"] = "random"
-                animatelightning()
+                animateFeller()
+            elif "forth_of_july" in raw_text: 
+                config["option_selected"] = "forth_of_july"
+                animateFeller()
+            elif "christmas" in raw_text: 
+                config["option_selected"] = "christmas"
+                animateFeller()
+            elif "halloween" in raw_text: 
+                config["option_selected"] = "halloween"
+                animateFeller()
+            elif "train" in raw_text: 
+                config["option_selected"] = "train"
+                animateFeller()
+            elif "alien" in raw_text: 
+                config["option_selected"] = "alien"
+                animateFeller()  
+            elif "birds_dogs_short_version" in raw_text: 
+                config["option_selected"] = "birds_dogs_short_version"
+                animateFeller()
+            elif "birds_dogs" in raw_text: 
+                config["option_selected"] = "birds_dogs"
+                animateFeller()
+            elif "just_birds" in raw_text: 
+                config["option_selected"] = "just_birds"
+                animateFeller()
+            elif "machines" in raw_text: 
+                config["option_selected"] = "machines"
+                animateFeller()
+            elif "no_sounds" in raw_text: 
+                config["option_selected"] = "no_sounds"
+                animateFeller()
+            elif "owl" in raw_text: 
+                config["option_selected"] = "owl"
+                animateFeller()
+            elif "happy_birthday" in raw_text: 
+                config["option_selected"] = "happy_birthday"
+                animateFeller()
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
@@ -234,6 +270,87 @@ if (serve_webpage):
                 continuous_run = False
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
+        
+        @server.route("/feller", [POST])        
+        def buttonpress(request: Request):
+            global config
+            global feller_movement_type
+            raw_text = request.raw_request.decode("utf8")    
+            if "feller_rest_pos" in raw_text:
+                feller_movement_type = "feller_rest_pos"
+                moveFellerToPositionGently(config[feller_movement_type], 0.01)
+                return Response(request, "Moved feller to rest position.")
+            elif "feller_chop_pos" in raw_text:
+                feller_movement_type = "feller_chop_pos"
+                moveFellerToPositionGently(config[feller_movement_type], 0.01)
+                return Response(request, "Moved feller to chop position.")
+            elif "feller_adjust" in raw_text:
+                feller_movement_type = "feller_rest_pos"
+                moveFellerToPositionGently(config[feller_movement_type],0.01)
+                return Response(request, "Redirected to feller-adjust page.")
+            elif "feller_home" in raw_text:
+                return Response(request, "Redirected to home page.")
+            elif "feller_clockwise" in raw_text:
+                calibrationLeftButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
+                return Response(request, "Moved feller clockwise.")
+            elif "feller_counter_clockwise" in raw_text:
+                calibrationRightButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
+                return Response(request, "Moved feller counter clockwise.")
+            elif "feller_cal_saved" in raw_text:
+                write_calibrations_to_config_file()
+                pretty_state_machine.go_to_state('base_state')
+                return Response(request, "Feller " + feller_movement_type + " cal saved.")
+                
+        @server.route("/tree", [POST])        
+        def buttonpress(request: Request):
+            global config
+            global tree_movement_type
+            raw_text = request.raw_request.decode("utf8")    
+            if "tree_up_pos" in raw_text:
+                tree_movement_type = "tree_up_pos"
+                moveTreeToPositionGently(config[tree_movement_type], 0.01)
+                return Response(request, "Moved tree to up position.")
+            elif "tree_down_pos" in raw_text:
+                tree_movement_type = "tree_down_pos"
+                moveTreeToPositionGently(config[tree_movement_type], 0.01)
+                return Response(request, "Moved tree to fallen position.")
+            elif "tree_adjust" in raw_text:
+                tree_movement_type = "tree_up_pos"
+                moveTreeToPositionGently(config[tree_movement_type], 0.01)
+                return Response(request, "Redirected to tree-adjust page.")
+            elif "tree_home" in raw_text:
+                return Response(request, "Redirected to home page.")
+            elif "tree_up" in raw_text:
+                calibrationLeftButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
+                return Response(request, "Moved tree up.")
+            elif "tree_down" in raw_text:
+                calibrationRightButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
+                return Response(request, "Moved tree down.")
+            elif "tree_cal_saved" in raw_text:
+                write_calibrations_to_config_file()
+                pretty_state_machine.go_to_state('base_state')
+                return Response(request, "Tree " + tree_movement_type + " cal saved.")
+            
+        @server.route("/dialog", [POST])
+        def buttonpress(request: Request):
+            global config
+            raw_text = request.raw_request.decode("utf8")
+            if "opening_dialog_on" in raw_text: 
+                config["opening_dialog"] = True
+
+            elif "opening_dialog_off" in raw_text: 
+                config["opening_dialog"] = False
+
+            elif "feller_advice_on" in raw_text: 
+                config["feller_advice"] = True
+                
+            elif "feller_advice_off" in raw_text: 
+                config["feller_advice"] = False
+                
+            files.write_json_file("/sd/config_feller.json",config)
+            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+
+            return Response(request, "Dialog option cal saved.")
         
         @server.route("/utilities", [POST])
         def buttonpress(request: Request):
@@ -243,7 +360,7 @@ if (serve_webpage):
                 play_audio_0("/sd/menu_voice_commands/left_speaker_right_speaker.wav") 
             elif "reset_to_defaults" in raw_text:
                 reset_to_defaults()      
-                files.write_json_file("/sd/config_lightning.json",config)
+                files.write_json_file("/sd/config_feller.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                 pretty_state_machine.go_to_state('base_state')
 
@@ -255,7 +372,7 @@ if (serve_webpage):
             data_object = request.json()
             config["HOST_NAME"] = data_object["text"]
             
-            files.write_json_file("/sd/config_lightning.json",config)       
+            files.write_json_file("/sd/config_feller.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
             speak_webpage()
 
@@ -298,12 +415,10 @@ def stop_audio_0():
         pass
 
 def shortCircuitDialog():
-    while True:
-        sleepAndUpdateVolume(.05)
-        left_switch.update()
-        if left_switch.fell:
-            stop_audio_0()
-            return
+    sleepAndUpdateVolume(0.02)
+    left_switch.update()
+    if left_switch.fell:
+        mixer.voice[0].stop()
         
 def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -492,7 +607,7 @@ audio_enable.value = True
 def speak_webpage():
     play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")
     play_audio_0("/sd/menu_voice_commands/to_access_type.wav")
-    if config["HOST_NAME"]== "animator-lightning":
+    if config["HOST_NAME"]== "animator-lightning-old":
         play_audio_0("/sd/menu_voice_commands/animator_lightning_local.wav")
     else:
         speak_this_string(config["HOST_NAME"], True)
@@ -503,7 +618,7 @@ if (serve_webpage):
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        #speak_webpage()
+        speak_webpage()
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
@@ -534,4 +649,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-

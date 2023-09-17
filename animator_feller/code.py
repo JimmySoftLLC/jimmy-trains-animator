@@ -491,12 +491,10 @@ def stop_audio_0():
         pass
 
 def shortCircuitDialog():
-    while True:
-        sleepAndUpdateVolume(.05)
-        left_switch.update()
-        if left_switch.fell:
-            stop_audio_0()
-            return
+    sleepAndUpdateVolume(0.02)
+    left_switch.update()
+    if left_switch.fell:
+        mixer.voice[0].stop()
 
 def left_right_mouse_button():
     play_audio_0("/sd/feller_menu/press_left_button_right_button.wav")
@@ -544,12 +542,6 @@ def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
         play_audio_0("/sd/feller_menu/limit_reached.wav")
         return False
     return True
-
-def shortCircuitDialog():
-    sleepAndUpdateVolume(0.02)
-    left_switch.update()
-    if left_switch.fell:
-        mixer.voice[0].stop()
 
 def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
