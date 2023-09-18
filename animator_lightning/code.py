@@ -31,6 +31,10 @@ from adafruit_led_animation.animation.rainbow import Rainbow
 from adafruit_led_animation.animation.rainbowchase import RainbowChase
 from adafruit_led_animation.animation.rainbowcomet import RainbowComet
 from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
+from adafruit_led_animation.animation.sparkle import Sparkle
+from adafruit_led_animation.animation.SparklePulse import SparklePulse
+from adafruit_led_animation.color import AMBER
+from adafruit_led_animation.color import JADE
 from adafruit_led_animation.sequence import AnimationSequence
 import asyncio
 
@@ -139,7 +143,7 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 #setup neo pixels
-num_pixels = 60
+num_pixels = 31
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 ledStrip.auto_write = False
 ledStrip.brightness = 1.0
@@ -486,6 +490,10 @@ def animation(file_name):
     if file_name == "alien_lightshow":
         animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
     elif file_name == "inspiring_cinematic_ambient_lightshow":
+        #rainbow_comet()
+        #rainbow_sparkle()
+        #sparkle()
+        #sparkle_pulse()
         animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
         #animation_lightshow_async(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
     elif file_name == "timestamp_mode":
@@ -599,6 +607,27 @@ def rainbow(ledStrip, speed, sleepAndUpdateVolume):
             ledStrip[i] = colorwheel(pixel_index & 255)
         ledStrip.show()
         sleepAndUpdateVolume(speed)
+        
+def rainbow_comet(): 
+    rainbow_comet = RainbowComet(ledStrip, speed=0.1, tail_length=7, bounce=True)
+    while True:
+        rainbow_comet.animate()
+        
+def rainbow_sparkle():
+    rainbow_sparkle = RainbowSparkle(ledStrip, speed=0.1, num_sparkles=15)
+    while True:
+        rainbow_sparkle.animate()
+        
+def sparkle():    
+    sparkle = Sparkle(ledStrip, speed=1, color=AMBER, num_sparkles=10)
+    while True:
+        sparkle.animate()
+        sleepAndUpdateVolume(.1)
+        
+def sparkle_pulse():       
+    sparkle_pulse = SparklePulse(ledStrip, speed=0.05, period=3, color=AMBER)
+    while True:
+        sparkle_pulse.animate()
         
 async def play_music(file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch):
     wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
