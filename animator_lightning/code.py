@@ -15,7 +15,6 @@ import audiobusio
 import sdcardio
 import storage
 import busio
-import pwmio
 import digitalio
 import board
 import neopixel
@@ -28,7 +27,12 @@ from analogio import AnalogIn
 from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
 
-import animate_lightning
+from adafruit_led_animation.animation.rainbow import Rainbow
+from adafruit_led_animation.animation.rainbowchase import RainbowChase
+from adafruit_led_animation.animation.rainbowcomet import RainbowComet
+from adafruit_led_animation.animation.rainbowsparkle import RainbowSparkle
+from adafruit_led_animation.sequence import AnimationSequence
+import asyncio
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -228,34 +232,34 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")
             if "random" in raw_text: 
                 config["option_selected"] = "random"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "thunder_birds_rain" in raw_text: 
                 config["option_selected"] = "thunder_birds_rain"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "continuous_thunder" in raw_text: 
                 config["option_selected"] = "continuous_thunder"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "dark_thunder" in raw_text: 
                 config["option_selected"] = "dark_thunder"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "epic_thunder" in raw_text: 
                 config["option_selected"] = "epic_thunder"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "halloween_thunder" in raw_text: 
                 config["option_selected"] = "halloween_thunder"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "thunder_and_rain" in raw_text: 
                 config["option_selected"] = "thunder_and_rain"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "thunder_distant" in raw_text: 
                 config["option_selected"] = "thunder_distant"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "inspiring_cinematic_ambient_lightshow" in raw_text: 
                 config["option_selected"] = "inspiring_cinematic_ambient_lightshow"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "alien_lightshow" in raw_text: 
                 config["option_selected"] = "alien_lightshow"
-                start_animation(config["option_selected"])
+                animation(config["option_selected"])
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
@@ -264,99 +268,55 @@ if (serve_webpage):
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
-        @server.route("/feller", [POST])        
-        def buttonpress(request: Request):
-            global config
-            global feller_movement_type
-            raw_text = request.raw_request.decode("utf8")    
-            if "feller_rest_pos" in raw_text:
-                feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type], 0.01)
-                return Response(request, "Moved feller to rest position.")
-            elif "feller_chop_pos" in raw_text:
-                feller_movement_type = "feller_chop_pos"
-                moveFellerToPositionGently(config[feller_movement_type], 0.01)
-                return Response(request, "Moved feller to chop position.")
-            elif "feller_adjust" in raw_text:
-                feller_movement_type = "feller_rest_pos"
-                moveFellerToPositionGently(config[feller_movement_type],0.01)
-                return Response(request, "Redirected to feller-adjust page.")
-            elif "feller_home" in raw_text:
-                return Response(request, "Redirected to home page.")
-            elif "feller_clockwise" in raw_text:
-                calibrationLeftButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
-                return Response(request, "Moved feller clockwise.")
-            elif "feller_counter_clockwise" in raw_text:
-                calibrationRightButtonPressed(feller_servo, feller_movement_type, 1, feller_min, feller_max)
-                return Response(request, "Moved feller counter clockwise.")
-            elif "feller_cal_saved" in raw_text:
-                write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
-                return Response(request, "Feller " + feller_movement_type + " cal saved.")
-                
-        @server.route("/tree", [POST])        
-        def buttonpress(request: Request):
-            global config
-            global tree_movement_type
-            raw_text = request.raw_request.decode("utf8")    
-            if "tree_up_pos" in raw_text:
-                tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type], 0.01)
-                return Response(request, "Moved tree to up position.")
-            elif "tree_down_pos" in raw_text:
-                tree_movement_type = "tree_down_pos"
-                moveTreeToPositionGently(config[tree_movement_type], 0.01)
-                return Response(request, "Moved tree to fallen position.")
-            elif "tree_adjust" in raw_text:
-                tree_movement_type = "tree_up_pos"
-                moveTreeToPositionGently(config[tree_movement_type], 0.01)
-                return Response(request, "Redirected to tree-adjust page.")
-            elif "tree_home" in raw_text:
-                return Response(request, "Redirected to home page.")
-            elif "tree_up" in raw_text:
-                calibrationLeftButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
-                return Response(request, "Moved tree up.")
-            elif "tree_down" in raw_text:
-                calibrationRightButtonPressed(tree_servo, tree_movement_type, -1, tree_min, tree_max)
-                return Response(request, "Moved tree down.")
-            elif "tree_cal_saved" in raw_text:
-                write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
-                return Response(request, "Tree " + tree_movement_type + " cal saved.")
-            
-        @server.route("/dialog", [POST])
-        def buttonpress(request: Request):
-            global config
-            raw_text = request.raw_request.decode("utf8")
-            if "opening_dialog_on" in raw_text: 
-                config["opening_dialog"] = True
-
-            elif "opening_dialog_off" in raw_text: 
-                config["opening_dialog"] = False
-
-            elif "feller_advice_on" in raw_text: 
-                config["feller_advice"] = True
-                
-            elif "feller_advice_off" in raw_text: 
-                config["feller_advice"] = False
-                
-            files.write_json_file("/sd/config_feller.json",config)
-            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-
-            return Response(request, "Dialog option cal saved.")
-        
         @server.route("/utilities", [POST])
         def buttonpress(request: Request):
             global config
             raw_text = request.raw_request.decode("utf8")
             if "speaker_test" in raw_text: 
-                play_audio_0("/sd/menu_voice_commands/left_speaker_right_speaker.wav") 
+                play_audio_0("/sd/menu_voice_commands/left_speaker_right_speaker.wav")
+            elif "volume_pot_off" in raw_text:
+                config["volume_pot"] = False
+                files.write_json_file("/sd/config_lightning.json",config)
+                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+            elif "volume_pot_on" in raw_text:
+                config["volume_pot"] = True
+                files.write_json_file("/sd/config_lightning.json",config)
+                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 reset_to_defaults()      
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                 pretty_state_machine.go_to_state('base_state')
-
+            elif "set_to_red" in raw_text:
+                ledStrip.fill((255, 0, 0))
+                ledStrip.show()
+            elif "set_to_green" in raw_text:
+                ledStrip.fill((0, 255, 0))
+                ledStrip.show()
+            elif "set_to_blue" in raw_text:
+                ledStrip.fill((0, 0, 255))
+                ledStrip.show()
+            elif "set_to_white" in raw_text:
+                ledStrip.fill((255, 255, 255))
+                ledStrip.show()
+            elif "set_to_0" in raw_text:
+                ledStrip.brightness = 0.0
+                ledStrip.show()
+            elif "set_to_20" in raw_text:
+                ledStrip.brightness = 0.2
+                ledStrip.show()
+            elif "set_to_40" in raw_text:
+                ledStrip.brightness = 0.4
+                ledStrip.show()
+            elif "set_to_60" in raw_text:
+                ledStrip.brightness = 0.6
+                ledStrip.show()
+            elif "set_to_80" in raw_text:
+                ledStrip.brightness = 0.8
+                ledStrip.show()
+            elif "set_to_100" in raw_text:
+                ledStrip.brightness = 1.0
+                ledStrip.show()
             return Response(request, "Dialog option cal saved.")
 
         @server.route("/update-host-name", [POST])
@@ -365,7 +325,7 @@ if (serve_webpage):
             data_object = request.json()
             config["HOST_NAME"] = data_object["text"]
             
-            files.write_json_file("/sd/config_feller.json",config)       
+            files.write_json_file("/sd/config_lightning.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
             speak_webpage()
 
@@ -374,6 +334,21 @@ if (serve_webpage):
         @server.route("/get-host-name", [POST])
         def buttonpress(request: Request):
             return Response(request, config["HOST_NAME"])
+        
+        @server.route("/update-volume", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["volume"] = data_object["text"]
+            config["volume_pot"] = False
+            files.write_json_file("/sd/config_lightning.json",config)       
+            speak_this_string(config["volume"], False)
+
+            return Response(request, config["volume"])
+        
+        @server.route("/get-volume", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["volume"])
            
     except Exception as e:
         serve_webpage = False
@@ -386,8 +361,17 @@ garbage_collect("web server")
 # Global Methods
 
 def sleepAndUpdateVolume(seconds):
-    volume = get_voltage(analog_in, seconds)
-    mixer.voice[0].level = volume
+    if config["volume_pot"]:
+        volume = get_voltage(analog_in, seconds)
+        mixer.voice[0].level = volume
+    else:
+        try:
+            volume = int(config["volume"]) / 100
+        except:
+            volume = .5
+        if volume < 0 or volume > 1:
+            volume = .5
+        mixer.voice[0].level = volume
 
 ################################################################################
 # Dialog and sound play methods
@@ -423,10 +407,496 @@ def speak_this_string(str_to_speak, addLocal):
     if addLocal:
         play_audio_0("/sd/menu_voice_commands/dot.wav")
         play_audio_0("/sd/menu_voice_commands/local.wav")
-        
-def start_animation(file_name):
-    animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name, num_pixels)
+
+################################################################################
+# animations
+
+def lightning(ledStrip):
+    r = random.randint(40, 80)
+    g = random.randint(10, 25)
+    b = random.randint(0, 10)
+
+    # number of flashes
+    flashCount = random.randint (5, 10)
+
+    # flash white brightness range - 0-255
+    flashBrightnessMin =  150
+    flashBrightnessMax =  255
+    flashBrightness = random.randint(flashBrightnessMin, flashBrightnessMax) / 255
+    ledStrip.brightness = flashBrightness
     
+    #print (str(time.monotonic()-startTime))
+
+    # flash duration range - ms
+    flashDurationMin = 5
+    flashDurationMax = 75
+
+    # flash off range - ms
+    flashOffsetMin = 0
+    flashOffsetMax = 75
+
+    # time to next flash range - ms
+    nextFlashDelayMin = 1
+    nextFlashDelayMax = 50
+    
+    for i in range(0,flashCount):
+        color = random.randint(0, 50)
+        if color < 0: color = 0
+        
+        ledStrip.fill((r + color, g + color, b + color))
+        ledStrip.show()
+        delay = random.randint(flashOffsetMin, flashOffsetMax)
+        delay = delay/1000
+        time.sleep(delay)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        
+        ledStrip.fill((r + color, g + color, b + color))
+        ledStrip.show()
+        delay = random.randint(flashOffsetMin, flashOffsetMax)
+        delay = delay/1000
+        time.sleep(delay)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        
+        ledStrip.fill((r + color, g + color, b + color))
+        ledStrip.show();
+        delay = random.randint(flashOffsetMin, flashOffsetMax)
+        delay = delay/1000
+        time.sleep(delay)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        
+        ledStrip.fill((r + color, g + color, b + color))
+        ledStrip.show()
+        delay = random.randint(flashOffsetMin, flashOffsetMax)
+        delay = delay/1000
+        time.sleep(delay)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        
+        delay = random.randint(nextFlashDelayMin, nextFlashDelayMax)
+        delay = delay/1000
+        time.sleep(delay)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        
+def animation(file_name):
+    print(file_name)
+    if file_name == "alien_lightshow":
+        animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "inspiring_cinematic_ambient_lightshow":
+        animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+        #animation_lightshow_async(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "timestamp_mode":
+        animation_timestamp(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "breakfast_at_diner":
+        breakfast_at_diner(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    elif file_name == "continuous_thunder":
+        continuous_thunder(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+    else:
+        thunder_once_played(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name)
+        
+def continuous_thunder(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    
+    flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/" + file_name + ".json")
+    
+    flashTime = flash_time_dictionary["flashTime"]
+
+    flashTimeLen = len(flashTime)
+    
+    while True:
+        wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        startTime = time.monotonic()
+        pressed_stop_button = False
+        flashTimeIndex = 0
+        while True:
+            sleepAndUpdateVolume(.1)
+            timeElasped = time.monotonic()-startTime
+            right_switch.update()
+            if right_switch.fell:
+                print(timeElasped)
+            if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 2): #amount of time before you here thunder 0.5 is synched with the lightning
+                flashTimeIndex += 1
+                lightning(ledStrip)
+            if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
+            left_switch.update()
+            if left_switch.fell:
+                mixer.voice[0].stop()
+                pressed_stop_button = True
+            if not mixer.voice[0].playing:
+                break
+        if pressed_stop_button:
+            break
+
+def thunder_once_played(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    
+    flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/" + file_name + ".json")
+    
+    flashTime = flash_time_dictionary["flashTime"]
+
+    flashTimeLen = len(flashTime)
+    flashTimeIndex = 0
+    
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+
+    while True:
+        sleepAndUpdateVolume(.1)
+        timeElasped = time.monotonic()-startTime
+        right_switch.update()
+        if right_switch.fell:
+            print(timeElasped)
+        if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 2): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
+            flashTimeIndex += 1
+            lightning(ledStrip)
+        if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+        if not mixer.voice[0].playing:
+            break
+        
+def change_color(ledStrip):
+    ledStrip.brightness = 1.0
+    color_r = random.randint(0, 255)
+    color_g = random.randint(0, 255)
+    color_b = random.randint(0, 255)     
+    ledStrip.fill((color_r, color_g, color_b))
+    ledStrip.show()
+    
+async def fire(ledStrip):
+    while True:
+        ledStrip.brightness = 1.0
+        r = 226
+        g = 121
+        b = 35
+
+        #Flicker, based on our initial RGB values
+        for i in range (0, len(ledStrip)):
+            flicker = random.randint(0,110)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 255)
+            b1 = bounds(b-flicker, 0, 255)
+            ledStrip[i] = (r1,g1,b1)
+        ledStrip.show()
+        await asyncio.sleep(random.randint(100,1000) / 3000)
+
+
+def rainbow(ledStrip, speed, sleepAndUpdateVolume):
+    num_pixels = len(ledStrip)
+    for j in range(255):
+        for i in range(num_pixels):
+            pixel_index = (i * 256 // num_pixels) + j
+            ledStrip[i] = colorwheel(pixel_index & 255)
+        ledStrip.show()
+        sleepAndUpdateVolume(speed)
+    for j in reversed(range(255)):
+        for i in range(num_pixels):
+            pixel_index = (i * 256 // num_pixels) + j
+            ledStrip[i] = colorwheel(pixel_index & 255)
+        ledStrip.show()
+        sleepAndUpdateVolume(speed)
+        
+async def play_music(file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch):
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while True:
+        if not mixer.voice[0].playing:
+            break
+        sleepAndUpdateVolume(.1)
+        await asyncio.sleep(1)
+        
+def fire_now(ledStrip, num_times, sleepAndUpdateVolume):
+    ledStrip.brightness = 1.0
+    r = 226
+    g = 121
+    b = 35
+
+    #Flicker, based on our initial RGB values
+    for _ in range(num_times):
+        for i in range (1, 31):
+            flicker = random.randint(0,110)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 255)
+            b1 = bounds(b-flicker, 0, 255)
+            ledStrip[i] = (r1,g1,b1)
+        ledStrip.show()
+        sleepAndUpdateVolume(random.uniform(0.05,0.1))
+        
+async def main(ledStrip, file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch):
+    fire_task = asyncio.create_task(fire(ledStrip))
+    play_music_task = asyncio.create_task(play_music(file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch))
+    await asyncio.gather(fire_task)
+    print("done")
+        
+def animation_lightshow_async(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    asyncio.run(main(ledStrip, file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch))
+    
+def animation_lightshow(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    
+    flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/" + file_name + ".json")
+    flashTime = flash_time_dictionary["flashTime"]
+
+    flashTimeLen = len(flashTime)
+    flashTimeIndex = 0
+    
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+    my_index = 0
+    
+    while True:
+        timeElasped = time.monotonic()-startTime
+        right_switch.update()
+        if right_switch.fell:
+            print(timeElasped)
+        if timeElasped > flashTime[flashTimeIndex] - 0.25:
+            flashTimeIndex += 1
+            my_index += 1 #random.randint(1, 3)
+            if my_index == 1:
+                change_color(ledStrip)
+                sleepAndUpdateVolume(.3)
+                rainbow(ledStrip, .001, sleepAndUpdateVolume)
+            elif my_index == 2:
+                change_color(ledStrip)
+                sleepAndUpdateVolume(.3)
+                fire_now(ledStrip, 18, sleepAndUpdateVolume)    
+            if (my_index > 1): my_index = 0
+        if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+        if not mixer.voice[0].playing:
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
+            break
+        sleepAndUpdateVolume(.1)
+         
+def animation_timestamp(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    print("time stamp mode")
+
+    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    startTime = time.monotonic()
+    
+    my_time_stamps = {"flashTime":[0]}
+
+    while True:
+        time_elasped = time.monotonic()-startTime
+        right_switch.update()
+        if right_switch.fell:
+            my_time_stamps["flashTime"].append(time_elasped) 
+            print(time_elasped)
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+        if not mixer.voice[0].playing:
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
+            print(my_time_stamps)
+            break
+        sleepAndUpdateVolume(.05)
+        
+def breakfast_at_diner(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, file_name):
+    print("time stamp mode")
+    
+    customer = [
+        "I_am_so_hungry",
+        "i_know_but_i_am_starving",
+        "let_me_in_i_will_give_big_tip",
+        "thank_you_for_letting_me_in",
+        "i_would_like_some_bacon",
+        "yes_please_some_black_coffee",
+        "i_want_to_pay",
+        "thank_for_everything"   
+        ]
+    
+    employee = [
+        "we_are_closed",
+        "the_cook_not_here",
+        "Ok_for_you",
+        "can_i_take_order",
+        "do_you_want_drink",
+        "want_anything_else",
+        "six_hundred_dollars",  
+        ]
+    
+    ledStrip.fill((0, 0, 0))
+    ledStrip.show()
+    
+    ledStrip[0] = (50,50,50)
+    ledStrip.show()
+    
+    while True:
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[0] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        ledStrip[7] = (255,255,255)
+        ledStrip.show()
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[0] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[1] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[1] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[2] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[2] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        ledStrip[6] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[8] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[5] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[9] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[4] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[10] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[3] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        ledStrip[11] = (255,255,255)
+        ledStrip.show()
+        sleepAndUpdateVolume(.2)
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[3] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/footsteps_1.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[3] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[4] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[4] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[5] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/footsteps_2.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        walking_light = 50
+        walking_time = .5
+        ledStrip[9] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[8] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[7] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[6] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[5] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[4] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[3] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/bacon_cooking.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:  
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/footsteps_1.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        walking_light = 255
+        walking_time = .5
+        ledStrip[3] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[4] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[5] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[6] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[7] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[8] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        ledStrip[9] = (walking_light,walking_light,walking_light)
+        ledStrip.show()
+        sleepAndUpdateVolume(walking_time)
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[5] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[6] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + employee[6] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/cash_register.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        wave0 = audiocore.WaveFile(open("/sd/diner/" + customer[7] + ".wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        while mixer.voice[0].playing:
+            pass
+        left_switch.update()
+        if left_switch.fell:
+            mixer.voice[0].stop()
+        if not mixer.voice[0].playing:
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
+            break
+        sleepAndUpdateVolume(.05)
+        
+def bounds(my_color, lower, upper):
+    if (my_color < lower): my_color = lower
+    if (my_color > upper): my_color = upper
+    return my_color
+ 
 ################################################################################
 # State Machine
 
@@ -515,7 +985,7 @@ class BaseState(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            start_animation(config["option_selected"])
+            animation(config["option_selected"])
         if right_switch.fell:
             print('Just pressed option mode')
             machine.go_to_state('program')
@@ -621,18 +1091,6 @@ if (serve_webpage):
         time.sleep(5)
         files.log_item("restarting...")
         reset_pico()
-
-ledStrip.fill((255, 0, 0))
-#ledStrip.show()
-sleepAndUpdateVolume(1)
-ledStrip.fill((0, 255, 0))
-#ledStrip.show()
-sleepAndUpdateVolume(1)
-ledStrip.fill((0, 0, 255))
-#ledStrip.show()
-sleepAndUpdateVolume(1)
-ledStrip.fill((255, 255, 255))
-ledStrip.show()
 
 pretty_state_machine.go_to_state('base_state')   
 files.log_item("animator has started...")
