@@ -464,6 +464,7 @@ def reset_to_defaults():
     config["feller_chop_pos"] = 150
     config["opening_dialog"] = False
     config["feller_advice"] = True
+    config["HOST_NAME"] = "animator-feller"
 
 def sleepAndUpdateVolume(seconds):
     volume = get_voltage(analog_in, seconds)

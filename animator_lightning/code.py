@@ -377,6 +377,12 @@ def sleepAndUpdateVolume(seconds):
             volume = .5
         mixer.voice[0].level = volume
 
+def reset_to_defaults():
+    global config
+    config["volume_pot"] = True
+    config["HOST_NAME"] = "animator-lightning"
+    config["option_selected"] = "thunder_birds_rain"
+
 ################################################################################
 # Dialog and sound play methods
 
