@@ -270,6 +270,7 @@ if (serve_webpage):
             elif "cont_mode_off" in raw_text: 
                 continuous_run = False
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
+            files.write_json_file("/sd/config_lightning.json",config)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         @server.route("/utilities", [POST])
@@ -320,6 +321,10 @@ if (serve_webpage):
                 ledStrip.show()
             elif "set_to_100" in raw_text:
                 ledStrip.brightness = 1.0
+                ledStrip[0] = (255, 0, 0)
+                ledStrip[2] = (255, 0, 0)
+                ledStrip[1] = (0, 255, 255)
+                ledStrip[3] = (0, 255, 255)
                 ledStrip.show()
             return Response(request, "Dialog option cal saved.")
 
@@ -345,7 +350,8 @@ if (serve_webpage):
             data_object = request.json()
             config["volume"] = data_object["text"]
             config["volume_pot"] = False
-            files.write_json_file("/sd/config_lightning.json",config)       
+            files.write_json_file("/sd/config_lightning.json",config)
+            play_audio_0("/sd/menu_voice_commands/volume.wav")
             speak_this_string(config["volume"], False)
 
             return Response(request, config["volume"])
@@ -417,6 +423,13 @@ def speak_this_string(str_to_speak, addLocal):
     if addLocal:
         play_audio_0("/sd/menu_voice_commands/dot.wav")
         play_audio_0("/sd/menu_voice_commands/local.wav")
+
+def selectSoundMenuAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/sound_selection_menu.wav")
+    left_right_mouse_button()
+    
+def left_right_mouse_button():
+    play_audio_0("/sd/menu_voice_commands/press_left_button_right_button.wav")
 
 ################################################################################
 # animations
@@ -563,7 +576,7 @@ def thunder_once_played(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_s
         right_switch.update()
         if right_switch.fell:
             print(timeElasped)
-        if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 2): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
+        if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 1): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
             flashTimeIndex += 1
             lightning(ledStrip)
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
@@ -652,14 +665,14 @@ def fire_now(ledStrip, num_times, sleepAndUpdateVolume):
 
     #Flicker, based on our initial RGB values
     for _ in range(num_times):
-        for i in range (1, 31):
+        for i in range (0, 31):
             flicker = random.randint(0,110)
             r1 = bounds(r-flicker, 0, 255)
             g1 = bounds(g-flicker, 0, 255)
             b1 = bounds(b-flicker, 0, 255)
             ledStrip[i] = (r1,g1,b1)
-        ledStrip.show()
-        sleepAndUpdateVolume(random.uniform(0.05,0.1))
+            ledStrip.show()
+            sleepAndUpdateVolume(random.uniform(0.05,0.1))
         
 async def main(ledStrip, file_name, audiocore, mixer, sleepAndUpdateVolume, left_switch):
     fire_task = asyncio.create_task(fire(ledStrip))
@@ -1042,7 +1055,8 @@ class ProgramState(State):
             while mixer.voice[0].playing:
                 pass
         else:
-            play_audio_0("/sd/menu_voice_commands/option_mode_entered_left_right.wav")
+            files.log_item('Choose sounds menu')
+            selectSoundMenuAnnouncement()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1110,8 +1124,10 @@ audio_enable.value = True
 def speak_webpage():
     play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")
     play_audio_0("/sd/menu_voice_commands/to_access_type.wav")
-    if config["HOST_NAME"]== "animator-lightning-old":
-        play_audio_0("/sd/menu_voice_commands/animator_lightning_local.wav")
+    if config["HOST_NAME"]== "animator-lightning":
+        play_audio_0("/sd/menu_voice_commands/animator_dash_lightning.wav")
+        play_audio_0("/sd/menu_voice_commands/dot.wav")
+        play_audio_0("/sd/menu_voice_commands/local.wav")
     else:
         speak_this_string(config["HOST_NAME"], True)
     play_audio_0("/sd/menu_voice_commands/in_your_browser.wav")    
