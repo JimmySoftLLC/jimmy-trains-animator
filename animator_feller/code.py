@@ -424,11 +424,11 @@ if (serve_webpage):
                 play_audio_0("/sd/menu_voice_commands/left_speaker_right_speaker.wav")
             elif "volume_pot_off" in raw_text:
                 config["volume_pot"] = False
-                files.write_json_file("/sd/config_lightning.json",config)
+                files.write_json_file("/sd/config_feller.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 config["volume_pot"] = True
-                files.write_json_file("/sd/config_lightning.json",config)
+                files.write_json_file("/sd/config_feller.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 reset_to_defaults()      
@@ -460,7 +460,7 @@ if (serve_webpage):
             data_object = request.json()
             config["volume"] = data_object["text"]
             config["volume_pot"] = False
-            files.write_json_file("/sd/config_lightning.json",config)
+            files.write_json_file("/sd/config_feller.json",config)
             play_audio_0("/sd/menu_voice_commands/volume.wav")
             speak_this_string(config["volume"], False)
 
