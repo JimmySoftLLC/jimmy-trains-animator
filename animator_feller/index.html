@@ -147,6 +147,26 @@
           Feller advice off
         </button>
       </div>
+      <h2>Volume:</h2>
+      <button class="mui-btn mui-btn--primary animator-feller" data-value="volume_pot_on" data-url="/utilities"
+        type="button">
+        Volume Pot On
+      </button>
+      <button class="mui-btn mui-btn--primary animator-feller" data-value="volume_pot_off" data-url="/utilities"
+        type="button">
+        Volume Pot Off
+      </button>
+      <div class="mui-textfield">
+        <input class="input" animator-lightning" id="volume" type="number" min="0" max="100"
+          placeholder="Enter volume level">
+        <button id="volumeSubmitButton" class="mui-btn mui-btn--primary" type="button" data-volume-url="/update-volume">
+          Set Volume Level
+        </button>
+      </div>
+
+      <p>
+        Valid volume levels are from 0 to 100
+      </p>
       <h2>Animator web page name:</h2>
 
       <div class="mui-textfield">
@@ -177,6 +197,7 @@
 
 <script>
   var submitButton = document.getElementById('submitButton');
+  var volumeSubmitButton = document.getElementById('volumeSubmitButton');
 
   // Get all buttons with the 'animator-feller' class
   var buttons = document.querySelectorAll('.animator-feller');
@@ -212,8 +233,40 @@
       });
   });
 
+  volumeSubmitButton.addEventListener('click', function () {
+    var volume = document.getElementById('volume');
+    var volumeText = volume.value;
+    var url = this.getAttribute('data-volume-url');
+
+    var data = {
+      text: volumeText,
+    };
+
+    volumeSubmitButton.setAttribute('disabled', 'true')
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        volume.value = data; // Set the value of the input field with the received data
+        volumeSubmitButton.removeAttribute('disabled')
+      })
+      .catch(function (error) {
+        console.log(error);
+        volumeSubmitButton.removeAttribute('disabled')
+      });
+  });
+
   // Load initial data
   document.addEventListener('DOMContentLoaded', function () {
+    // get website url
     fetch('/get-host-name', {
       method: 'POST',
       headers: {
@@ -225,6 +278,23 @@
       })
       .then(function (data) {
         textInput.value = data; // Set the value of the input field with the received data
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+
+    // get volume
+    fetch('/get-volume', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        volume.value = data; // Set the value of the input field with the received data
       })
       .catch(function (error) {
         console.log(error);
