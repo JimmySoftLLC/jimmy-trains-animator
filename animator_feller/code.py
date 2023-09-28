@@ -146,7 +146,7 @@ audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 # wave files are less cpu intensive since they are not compressed
 num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=8192)
+                         bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
 garbage_collect("audio setup")
@@ -212,6 +212,9 @@ feller_movement_type = "feller_rest_pos"
 tree_movement_type = "tree_up_pos"
 
 continuous_run = False
+
+config["min_chops"] = 2
+config["max_chops"] = 7
 
 garbage_collect("config setup")
 
@@ -442,12 +445,10 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            config["HOST_NAME"] = data_object["text"]
-            
+            config["HOST_NAME"] = data_object["text"]  
             files.write_json_file("/sd/config_feller.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
             speak_webpage()
-
             return Response(request, config["HOST_NAME"])
         
         @server.route("/get-host-name", [POST])
@@ -463,12 +464,37 @@ if (serve_webpage):
             files.write_json_file("/sd/config_feller.json",config)
             play_audio_0("/sd/menu_voice_commands/volume.wav")
             speak_this_string(config["volume"], False)
-
             return Response(request, config["volume"])
         
         @server.route("/get-volume", [POST])
         def buttonpress(request: Request):
             return Response(request, config["volume"])
+        
+        @server.route("/update-min-chops", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["min_chops"] = data_object["text"]
+            files.write_json_file("/sd/config_feller.json",config)
+            speak_this_string(config["min_chops"], False)
+            return Response(request, config["max_chops"])
+        
+        @server.route("/get-min-chops", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["min_chops"])
+
+        @server.route("/update-max-chops", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["max_chops"] = data_object["text"]
+            files.write_json_file("/sd/config_feller.json",config)
+            speak_this_string(config["max_chops"], False)
+            return Response(request, config["max_chops"])
+        
+        @server.route("/get-max-chops", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["max_chops"])
            
     except Exception as e:
         serve_webpage = False
@@ -490,6 +516,8 @@ def reset_to_defaults():
     config["feller_advice"] = True
     config["HOST_NAME"] = "animator-feller"
     config["volume_pot"] = True
+    config["min_chops"] = 2
+    config["max_chops"] = 7
 
 def sleepAndUpdateVolume(seconds):
     if config["volume_pot"]:
@@ -754,7 +782,7 @@ def animation_one():
         if which_sound == 3:
             play_sound(feller_girlfriend, "feller_girlfriend")      
     chopNum = 1
-    chopNumber = random.randint(2, 7)
+    chopNumber = random.randint(config["min_chops"], config["max_chops"])
     highest_index = len(feller_dialog) - 1
     what_to_speak = random.randint(0, highest_index)
     when_to_speak = random.randint(2, chopNumber)

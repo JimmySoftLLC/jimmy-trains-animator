@@ -143,10 +143,41 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 #setup neo pixels
-num_pixels = 31
+num_pixels = 42
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 ledStrip.auto_write = False
 ledStrip.brightness = 1.0
+
+lightning_string = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+bars = []
+bolts = []
+
+next_value = 0
+
+elements = lightning_string.split(',')
+
+for element in elements:
+    parts = element.split('-')
+
+    if len(parts) == 2:
+        lightning_type, quantity = parts
+        quantity = int(quantity)
+
+        if lightning_type == 'bar':
+            bar_sequence = list(range(next_value, next_value + quantity))
+            bars.append(bar_sequence)
+            next_value += quantity
+        elif lightning_type == 'bolt':
+            bolt_sequence = list(range(next_value, next_value + quantity))
+            bolts.append(bolt_sequence)
+            next_value += quantity
+
+# Print the resulting arrays
+for i, sequence in enumerate(bars):
+    print(f"bar[{i}] =", sequence)
+
+for i, sequence in enumerate(bolts):
+    print(f"bolt[{i}] =", sequence)
 
 ################################################################################
 # Global Variables
@@ -435,6 +466,19 @@ def left_right_mouse_button():
 # animations
 
 def lightning(ledStrip):
+        
+    lightning_indexes = []
+
+    which_bolt = random.randint(-1,(len(bolts)-1))
+    if which_bolt!= -1:
+        for index, my_array in enumerate(bolts):
+            if index == which_bolt:
+                lightning_indexes.extend(my_array)
+    
+    for index, my_array in enumerate(bars):
+        if index == random.randint(0,(len(bars)-1)):
+            lightning_indexes.extend(my_array)
+     
     r = random.randint(40, 80)
     g = random.randint(10, 25)
     b = random.randint(0, 10)
@@ -461,12 +505,13 @@ def lightning(ledStrip):
     # time to next flash range - ms
     nextFlashDelayMin = 1
     nextFlashDelayMax = 50
+
     
     for i in range(0,flashCount):
         color = random.randint(0, 50)
         if color < 0: color = 0
-        
-        ledStrip.fill((r + color, g + color, b + color))
+        for led_index in lightning_indexes:
+            ledStrip[led_index]=(r + color, g + color, b + color)
         ledStrip.show()
         delay = random.randint(flashOffsetMin, flashOffsetMax)
         delay = delay/1000
@@ -474,7 +519,8 @@ def lightning(ledStrip):
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
         
-        ledStrip.fill((r + color, g + color, b + color))
+        for led_index in lightning_indexes:
+            ledStrip[led_index]=(r + color, g + color, b + color)
         ledStrip.show()
         delay = random.randint(flashOffsetMin, flashOffsetMax)
         delay = delay/1000
@@ -482,7 +528,8 @@ def lightning(ledStrip):
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
         
-        ledStrip.fill((r + color, g + color, b + color))
+        for led_index in lightning_indexes:
+            ledStrip[led_index]=(r + color, g + color, b + color)
         ledStrip.show();
         delay = random.randint(flashOffsetMin, flashOffsetMax)
         delay = delay/1000
@@ -490,7 +537,8 @@ def lightning(ledStrip):
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
         
-        ledStrip.fill((r + color, g + color, b + color))
+        for led_index in lightning_indexes:
+            ledStrip[led_index]=(r + color, g + color, b + color)
         ledStrip.show()
         delay = random.randint(flashOffsetMin, flashOffsetMax)
         delay = delay/1000
