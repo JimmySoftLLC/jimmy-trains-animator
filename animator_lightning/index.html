@@ -21,7 +21,7 @@
         <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
       </li>
       <li>
-        <a data-mui-toggle="tab" data-mui-controls="lightning">lightning</a>
+        <a data-mui-toggle="tab" data-mui-controls="lightning">light string</a>
       </li>
       <li>
         <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
@@ -78,6 +78,18 @@
       </button>
     </div>
     <div class="mui-tabs__pane" id="lightning" style="padding-top:0.5rem;">
+      <div class="mui-textfield">
+        <input class="input" animator-lightning" id="lightString" type="text"
+          placeholder="Enter light string">
+        <button id="lightStringSubmitButton" class="mui-btn mui-btn--primary" type="button" data-light-string-url="/update-light-string">
+          Set light string
+        </button>
+      </div>
+      <p>
+        Enter your light string in the order that each component is connected together, separated by commas (no spaces).
+        Valid components are bar-10, bolt-4, witch-2, saucer-2,
+        ghost-2, plane-2, star-2
+      </p>
       <div>
         <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_red" data-url="/utilities"
           type="button">
@@ -243,6 +255,37 @@
       });
   });
 
+  lightStringSubmitButton.addEventListener('click', function () {
+    var lightString = document.getElementById('lightString');
+    var lightStringText = lightString.value;
+    var url = this.getAttribute('data-light-string-url');
+
+    var data = {
+      text: lightStringText,
+    };
+
+    lightStringSubmitButton.setAttribute('disabled', 'true')
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        lightString.value = data; // Set the value of the input field with the received data
+        lightStringSubmitButton.removeAttribute('disabled')
+      })
+      .catch(function (error) {
+        console.log(error);
+        lightStringSubmitButton.removeAttribute('disabled')
+      });
+  });
+
   // Load initial data
   document.addEventListener('DOMContentLoaded', function () {
     // get website url
@@ -274,6 +317,23 @@
       })
       .then(function (data) {
         volume.value = data; // Set the value of the input field with the received data
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+
+    // get light string
+    fetch('/get-light-string', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        lightString.value = data; // Set the value of the input field with the received data
       })
       .catch(function (error) {
         console.log(error);

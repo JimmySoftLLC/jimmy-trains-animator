@@ -142,43 +142,6 @@ audio_enable.value = False
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
-#setup neo pixels
-num_pixels = 42
-ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
-ledStrip.auto_write = False
-ledStrip.brightness = 1.0
-
-lightning_string = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
-bars = []
-bolts = []
-
-next_value = 0
-
-elements = lightning_string.split(',')
-
-for element in elements:
-    parts = element.split('-')
-
-    if len(parts) == 2:
-        lightning_type, quantity = parts
-        quantity = int(quantity)
-
-        if lightning_type == 'bar':
-            bar_sequence = list(range(next_value, next_value + quantity))
-            bars.append(bar_sequence)
-            next_value += quantity
-        elif lightning_type == 'bolt':
-            bolt_sequence = list(range(next_value, next_value + quantity))
-            bolts.append(bolt_sequence)
-            next_value += quantity
-
-# Print the resulting arrays
-for i, sequence in enumerate(bars):
-    print(f"bar[{i}] =", sequence)
-
-for i, sequence in enumerate(bolts):
-    print(f"bolt[{i}] =", sequence)
-
 ################################################################################
 # Global Variables
 
@@ -191,6 +154,56 @@ serve_webpage = config["serve_webpage"]
 garbage_collect("config setup")
 
 continuous_run = False
+
+################################################################################
+# Setup neo pixels
+
+
+bars = []
+bolts = []
+
+num_pixels = 0
+
+ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
+
+def updateLightString():
+    global bars, bolts, num_pixels, ledStrip, num_pixels
+    num_pixels = 0
+    
+    elements = config["light_string"].split(',')
+
+    for element in elements:
+        parts = element.split('-')
+
+        if len(parts) == 2:
+            lightning_type, quantity = parts
+            quantity = int(quantity)
+
+            if lightning_type == 'bar':
+                bar_sequence = list(range(num_pixels, num_pixels + quantity))
+                bars.append(bar_sequence)
+                num_pixels += quantity
+            elif lightning_type == 'bolt':
+                bolt_sequence = list(range(num_pixels, num_pixels + quantity))
+                bolts.append(bolt_sequence)
+                num_pixels += quantity
+
+    # Print the resulting arrays
+    for i, sequence in enumerate(bars):
+        print(f"bar[{i}] =", sequence)
+
+    for i, sequence in enumerate(bolts):
+        print(f"bolt[{i}] =", sequence)
+
+    print ("Number of pixel total: ", num_pixels)
+    ledStrip.deinit()
+    garbage_collect("Reset neopixel count")
+    ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
+    ledStrip.auto_write = False
+    ledStrip.brightness = 1.0
+    garbage_collect("Neopixel setup")
+    
+updateLightString()
 
 ################################################################################
 # Setup wifi and web server
@@ -352,10 +365,6 @@ if (serve_webpage):
                 ledStrip.show()
             elif "set_to_100" in raw_text:
                 ledStrip.brightness = 1.0
-                ledStrip[0] = (255, 0, 0)
-                ledStrip[2] = (255, 0, 0)
-                ledStrip[1] = (0, 255, 255)
-                ledStrip[3] = (0, 255, 255)
                 ledStrip.show()
             return Response(request, "Dialog option cal saved.")
 
@@ -390,6 +399,21 @@ if (serve_webpage):
         @server.route("/get-volume", [POST])
         def buttonpress(request: Request):
             return Response(request, config["volume"])
+        
+        @server.route("/update-light-string", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["light_string"] = data_object["text"]
+            files.write_json_file("/sd/config_lightning.json",config)
+            updateLightString()
+            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+
+            return Response(request, config["light_string"])
+        
+        @server.route("/get-light-string", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["light_string"])
            
     except Exception as e:
         serve_webpage = False
@@ -713,7 +737,7 @@ def fire_now(ledStrip, num_times, sleepAndUpdateVolume):
 
     #Flicker, based on our initial RGB values
     for _ in range(num_times):
-        for i in range (0, 31):
+        for i in range (0, num_pixels):
             flicker = random.randint(0,110)
             r1 = bounds(r-flicker, 0, 255)
             g1 = bounds(g-flicker, 0, 255)
