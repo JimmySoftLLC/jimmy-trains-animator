@@ -145,6 +145,9 @@ main_menu = config_main_menu["main_menu"]
 config_web_menu = files.read_json_file("/sd/menu_voice_commands/web_menu.json")
 web_menu = config_web_menu["web_menu"]
 
+config_light_string_menu = files.read_json_file("/sd/menu_voice_commands/light_string_menu.json")
+light_string_menu = config_light_string_menu["light_string_menu"]
+
 garbage_collect("config setup")
 
 continuous_run = False
@@ -482,9 +485,18 @@ def mainMenuAnnouncement():
 def selectWebOptionsAnnouncement():
     play_audio_0("/sd/menu_voice_commands/web_menu.wav")
     left_right_mouse_button()
+
+def lightStringSetupAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/light_string_setup_menu.wav")
+    left_right_mouse_button()
+    
+def stringInstructions():
+    play_audio_0("/sd/menu_voice_commands/string_instructions.wav")    
     
 def option_selected_announcement():
     play_audio_0("/sd/menu_voice_commands/option_selected.wav")
+    
+print(light_string_menu)
 
 ################################################################################
 # animations
@@ -873,8 +885,10 @@ class MainMenu(State):
                 selected_menu_item = main_menu[self.selectedMenuIndex]
                 if selected_menu_item == "choose_sounds":
                     machine.go_to_state('choose_sounds')
+                elif selected_menu_item == "light_string_setup_menu":
+                    machine.go_to_state('light_string_setup_menu')
                 elif selected_menu_item == "web_options":
-                    machine.go_to_state('web_options')
+                    machine.go_to_state('web_options')                 
                 else:
                     play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                     machine.go_to_state('base_state')
@@ -987,6 +1001,55 @@ class WebOptions(State):
                     play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                     machine.go_to_state('base_state')   
 
+class LightStringSetupMenu(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'light_string_setup_menu'
+
+    def enter(self, machine):
+        files.log_item('Set Web Options')
+        lightStringSetupAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/menu_voice_commands/" + light_string_menu[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(light_string_menu)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+                selected_menu_item = light_string_menu[self.selectedMenuIndex]
+                if selected_menu_item == "hear_light_setup_instructions":
+                    stringInstructions()
+                elif selected_menu_item == "reset_lights_defaults":
+                    play_audio_0("/sd/menu_voice_commands/lights_reset_to.wav")  
+                elif selected_menu_item == "hear_current_light_settings":
+                    play_audio_0("/sd/menu_voice_commands/current_light_settings_are.wav") 
+                elif selected_menu_item == "clear_light_string":
+                    play_audio_0("/sd/menu_voice_commands/lights_cleared.wav") 
+                elif selected_menu_item == "add_lights":
+                    play_audio_0("/sd/menu_voice_commands/add_light_menu.wav") 
+                else:
+                    files.write_json_file("/sd/config_lightning.json",config)
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state')   
+
 # StateTemplate copy and add functionality
 class StateTemplate(State):
 
@@ -1014,6 +1077,7 @@ pretty_state_machine.add_state(BaseState())
 pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(WebOptions())
+pretty_state_machine.add_state(LightStringSetupMenu())
         
 audio_enable.value = True
 
