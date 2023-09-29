@@ -135,10 +135,12 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 # Global Variables
 
 config = files.read_json_file("/sd/config_lightning.json")
-
 sound_options = config["options"]
 
 serve_webpage = config["serve_webpage"]
+
+config_main_menu = files.read_json_file("/sd/menu_voice_commands/main_menu.json")
+main_menu = config_main_menu["main_menu"]
 
 garbage_collect("config setup")
 
@@ -408,6 +410,10 @@ if (serve_webpage):
  
 garbage_collect("web server")
 
+import utilities
+
+garbage_collect("utilities")
+
 ################################################################################
 # Global Methods
 
@@ -472,6 +478,10 @@ def selectSoundMenuAnnouncement():
     
 def left_right_mouse_button():
     play_audio_0("/sd/menu_voice_commands/press_left_button_right_button.wav")
+    
+def mainMenuAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/main_menu.wav")
+    left_right_mouse_button()
 
 ################################################################################
 # animations
@@ -805,15 +815,68 @@ class BaseState(State):
         State.exit(self, machine)
 
     def update(self, machine):
+        global continuous_run
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
+        if switch_state == "left_held":
+            if continuous_run:
+                continuous_run = False
+                play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
+            else:
+                continuous_run = True
+                play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
+        elif switch_state == "left" or continuous_run:
+            animation(config["option_selected"])
+        elif switch_state == "right":
+            machine.go_to_state('main_menu')
+
+class MainMenu(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'main_menu'
+
+    def enter(self, machine):
+        files.log_item('Main menu')
+        mainMenuAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            animation(config["option_selected"])
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/menu_voice_commands/" + main_menu[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(main_menu)-1:
+                    self.menuIndex = 0
         if right_switch.fell:
-            print('Just pressed option mode')
-            machine.go_to_state('program')
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                selected_menu_item = main_menu[self.selectedMenuIndex]
+                if selected_menu_item == "choose_sounds":
+                    machine.go_to_state('choose_sounds')
+                elif selected_menu_item == "web_options":
+                    machine.go_to_state('web_options')
+                else:
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state')
 
-class ProgramState(State):
+class ChooseSounds(State):
 
     def __init__(self):
         self.optionIndex = 0
@@ -821,7 +884,7 @@ class ProgramState(State):
 
     @property
     def name(self):
-        return 'program'
+        return 'choose_sounds'
 
     def enter(self, machine):
         print('Select a program option')
@@ -892,7 +955,8 @@ class StateTemplate(State):
 
 pretty_state_machine = StateMachine()
 pretty_state_machine.add_state(BaseState())
-pretty_state_machine.add_state(ProgramState())
+pretty_state_machine.add_state(ChooseSounds())
+pretty_state_machine.add_state(MainMenu())
         
 audio_enable.value = True
 
