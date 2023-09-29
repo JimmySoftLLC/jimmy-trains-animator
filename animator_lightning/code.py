@@ -478,7 +478,15 @@ def left_right_mouse_button():
      
 def animation(file_name):
     print(file_name)
-    if file_name == "alien_lightshow":
+    if file_name == "random":
+        current_option_selected = file_name
+        if current_option_selected == "random":
+            highest_index = len(sound_options) - 2 #subtract -2 to avoid choosing "random" for a file 
+            sound_number = random.randint(0, highest_index)
+            current_option_selected = sound_options[sound_number]
+            print("Random sound file: " + sound_options[sound_number])
+            print("Sound file: " + current_option_selected)
+    elif file_name == "alien_lightshow":
         animation_lightshow(file_name)
     elif file_name == "inspiring_cinematic_ambient_lightshow":
         animation_lightshow(file_name)
@@ -581,8 +589,8 @@ def thunder_once_played(file_name):
         if not mixer.voice[0].playing:
             break
 
-################################################################################
-# LED color effects
+##############################
+# Led color effects
         
 def change_color(ledStrip):
     ledStrip.brightness = 1.0

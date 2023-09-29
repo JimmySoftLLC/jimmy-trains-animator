@@ -1,0 +1,37 @@
+Light string setup menu.
+
+Hear current light string settings.
+
+Add lights to light string.
+
+Clear light string.
+
+Light string cleared, to add lights choose menu option, add light to light string.
+
+Hear light string setup instructions.
+
+Each light has an i d on the back.  For example bar, dash, 10.  The lights plug into each other in series.  
+The default setup is bar, dash, 10, bolt, dash, 4, repeated two more times.  This can be changed.  To change it you select menu options clear light string, and, or, add lights to light string.  These settings
+can also be changed on the animator dash lightning dot local web page.  To setup this web page on your local network follow the instructions in the wep page options menu.
+
+Change light string menu.  Press the left button to scroll backward press the right button to scroll forward.  When you hear the light you want to add press and hold the right button until you hear the light you chose added.
+
+bar, dash, 10.
+
+bolt, dash, 4.
+
+witch, dash, 2.
+
+ghost, dash, 2.
+
+saucer, dash, 2.
+
+jet, dash, 2.
+
+star, dash, 2.
+
+Reset lights to defaults.
+
+Light string reset to. 
+
+Added.
