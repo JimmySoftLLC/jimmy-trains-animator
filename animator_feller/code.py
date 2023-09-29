@@ -532,6 +532,7 @@ def sleepAndUpdateVolume(seconds):
             volume = .5
         mixer.voice[0].level = volume
         mixer.voice[1].level = volume
+        time.sleep(seconds)
 
 garbage_collect("global variable and methods")
 
