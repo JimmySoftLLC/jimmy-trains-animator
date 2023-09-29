@@ -1218,7 +1218,8 @@ class WebOptions(State):
                 else:
                     files.write_json_file("/sd/config_feller.json",config)
                     play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                    machine.go_to_state('base_state')                    
+                    machine.go_to_state('base_state')   
+                                     
 class ChooseSounds(State):
 
     def __init__(self):
