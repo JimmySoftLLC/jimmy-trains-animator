@@ -28,108 +28,145 @@
       </li>
     </ul>
     <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="random" data-url="/animation"
-        type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="random" data-url="/animation" type="button">
         Random
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="thunder_birds_rain"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="thunder_birds_rain" data-url="/animation"
+        type="button">
         Thunder Birds and Rain
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="continuous_thunder"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="continuous_thunder" data-url="/animation"
+        type="button">
         Continuous Thunder
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="dark_thunder"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="dark_thunder" data-url="/animation"
+        type="button">
         Dark Thunder
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="epic_thunder"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="epic_thunder" data-url="/animation"
+        type="button">
         Epic Thunder
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="halloween_thunder"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="halloween_thunder" data-url="/animation"
+        type="button">
         Halloween Thunder
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="thunder_and_rain"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="thunder_and_rain" data-url="/animation"
+        type="button">
         Thunder and Rain
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="thunder_distant"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="thunder_distant" data-url="/animation"
+        type="button">
         Thunder Distant
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled"
-        data-value="inspiring_cinematic_ambient_lightshow" data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="inspiring_cinematic_ambient_lightshow"
+        data-url="/animation" type="button">
         Inspiring Cinematic Ambient Lightshow
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning disabled" data-value="alien_lightshow"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-action" data-value="alien_lightshow" data-url="/animation"
+        type="button">
         Alien Lightshow
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="cont_mode_on" data-url="/animation"
+      <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/animation"
         type="button">
         Continuous Mode On
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="cont_mode_off" data-url="/animation"
+      <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/animation"
         type="button">
         Continuous Mode Off
       </button>
     </div>
     <div class="mui-tabs__pane" id="lightning" style="padding-top:0.5rem;">
+      <h2>Setup light string:</h2>
       <div class="mui-textfield">
-        <input class="input" animator-lightning" id="lightString" type="text"
-          placeholder="Enter light string">
-        <button id="lightStringSubmitButton" class="mui-btn mui-btn--primary" type="button" data-light-string-url="/update-light-string">
-          Set light string
+        <p>
+          Enter your light string in the order which each component is connected together by pressing bar-10, bolt-4...
+          When finished press "Save".
+        </p>
+        <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
+          data-url="/update-light-string">
+          Save
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
+          data-url="/update-light-string">
+          Clear
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
+          data-url="/update-light-string">
+          Set to defaults
         </button>
       </div>
-      <p>
-        Enter your light string in the order that each component is connected together, separated by commas (no spaces).
-        Valid components are bar-10, bolt-4, witch-2, saucer-2,
-        ghost-2, plane-2, star-2
-      </p>
+      <div class="mui-textfield">
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bar-10"
+          data-url="/update-light-string">
+          bar-10
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-4"
+          data-url="/update-light-string">
+          bolt-4
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="witch-2"
+          data-url="/update-light-string">
+          witch-2
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="saucer-2"
+          data-url="/update-light-string">
+          saucer-2
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="ghost-2"
+          data-url="/update-light-string">
+          ghost-2
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="jet-2"
+          data-url="/update-light-string">
+          jet-2
+        </button>
+        <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="star-2"
+          data-url="/update-light-string">
+          star-2
+        </button>
+      </div>
+      <h2>Test lights:</h2>
       <div>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_red" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_red" data-url="/lights"
           type="button">
           Red
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_green" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_green" data-url="/lights"
           type="button">
           Green
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_blue" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_blue" data-url="/lights"
           type="button">
           Blue
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_white" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_white" data-url="/lights"
           type="button">
           White
         </button>
       </div>
       <div>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_0" data-url="/utilities"
-          type="button">
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_0" data-url="/lights" type="button">
           Off
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_20" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_20" data-url="/lights"
           type="button">
           20
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_40" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_40" data-url="/lights"
           type="button">
           40
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_60" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_60" data-url="/lights"
           type="button">
           60
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_80" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_80" data-url="/lights"
           type="button">
           80
         </button>
-        <button class="mui-btn mui-btn--primary animator-lightning" data-value="set_to_100" data-url="/utilities"
+        <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_100" data-url="/lights"
           type="button">
           100
         </button>
@@ -137,18 +174,17 @@
     </div>
     <div class="mui-tabs__pane" id="settings">
       <h2>Volume:</h2>
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="volume_pot_on" data-url="/utilities"
+      <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/utilities"
         type="button">
         Volume Pot On
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="volume_pot_off" data-url="/utilities"
+      <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_off" data-url="/utilities"
         type="button">
         Volume Pot Off
       </button>
       <div class="mui-textfield">
-        <input class="input" animator-lightning" id="volume" type="number" min="0" max="100"
-          placeholder="Enter volume level">
-        <button id="volumeSubmitButton" class="mui-btn mui-btn--primary" type="button" data-volume-url="/update-volume">
+        <input class="input" id="volume" type="number" min="0" max="100" placeholder="Enter volume level">
+        <button id="volumeSubmitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-volume">
           Set Volume Level
         </button>
       </div>
@@ -160,9 +196,8 @@
       <h2>Animator web page name:</h2>
 
       <div class="mui-textfield">
-        <input class="input" animator-lightning" id="websiteUrl" type="text" placeholder="Enter website name">
-        <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
-          data-website-url="/update-host-name">
+        <input class="input" id="websiteUrl" type="text" placeholder="Enter website name">
+        <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-host-name">
           Change
         </button>
       </div>
@@ -174,11 +209,11 @@
       </p>
 
       <h2>Utilities:</h2>
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="speaker_test" data-url="/utilities"
+      <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/utilities"
         type="button">
         Speaker Test
       </button>
-      <button class="mui-btn mui-btn--primary animator-lightning" data-value="reset_to_defaults" data-url="/utilities"
+      <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/utilities"
         type="button">
         Reset to defaults
       </button>
@@ -187,106 +222,7 @@
 </body>
 
 <script>
-  var websiteSubmitButton = document.getElementById('websiteSubmitButton');
-  var volumeSubmitButton = document.getElementById('volumeSubmitButton');
-
-  // Get all buttons with the 'animator-lightning' class
-  var buttons = document.querySelectorAll('.animator-lightning');
-
-  websiteSubmitButton.addEventListener('click', function () {
-    var websiteUrl = document.getElementById('websiteUrl');
-    var websiteUrlText = websiteUrl.value;
-    var url = this.getAttribute('data-website-url');
-
-    var data = {
-      text: websiteUrlText,
-    };
-
-    websiteSubmitButton.setAttribute('disabled', 'true')
-
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-      .then(function (response) {
-        return response.text(); // assuming the response is plain text
-      })
-      .then(function (data) {
-        websiteUrl.value = data; // Set the value of the input field with the received data
-        websiteSubmitButton.removeAttribute('disabled')
-      })
-      .catch(function (error) {
-        console.log(error);
-        websiteSubmitButton.removeAttribute('disabled')
-      });
-  });
-
-  volumeSubmitButton.addEventListener('click', function () {
-    var volume = document.getElementById('volume');
-    var volumeText = volume.value;
-    var url = this.getAttribute('data-volume-url');
-
-    var data = {
-      text: volumeText,
-    };
-
-    volumeSubmitButton.setAttribute('disabled', 'true')
-
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-      .then(function (response) {
-        return response.text(); // assuming the response is plain text
-      })
-      .then(function (data) {
-        volume.value = data; // Set the value of the input field with the received data
-        volumeSubmitButton.removeAttribute('disabled')
-      })
-      .catch(function (error) {
-        console.log(error);
-        volumeSubmitButton.removeAttribute('disabled')
-      });
-  });
-
-  lightStringSubmitButton.addEventListener('click', function () {
-    var lightString = document.getElementById('lightString');
-    var lightStringText = lightString.value;
-    var url = this.getAttribute('data-light-string-url');
-
-    var data = {
-      text: lightStringText,
-    };
-
-    lightStringSubmitButton.setAttribute('disabled', 'true')
-
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-      .then(function (response) {
-        return response.text(); // assuming the response is plain text
-      })
-      .then(function (data) {
-        lightString.value = data; // Set the value of the input field with the received data
-        lightStringSubmitButton.removeAttribute('disabled')
-      })
-      .catch(function (error) {
-        console.log(error);
-        lightStringSubmitButton.removeAttribute('disabled')
-      });
-  });
-
-  // Load initial data
+  // Load initial data after webpage loads
   document.addEventListener('DOMContentLoaded', function () {
     // get website url
     fetch('/get-host-name', {
@@ -340,24 +276,21 @@
       });
   });
 
-  // Restrict input to letters, numbers, and hyphens only
-  websiteUrl.addEventListener('input', function () {
-    var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
-    this.value = validatedValue;
-  });
-
+  // Get all buttons with the 'animator-action' class
   // Add click event listener to each button
-  buttons.forEach(function (button) {
+  var actionButtons = document.querySelectorAll('.animator-action');
+  actionButtons.forEach(function (button) {
     button.addEventListener('click', function () {
-      var animation = this.getAttribute('data-value');
-      var url = this.getAttribute('data-url');
-      var redirectUrl = this.getAttribute('data-redirect');
-      if (!redirectUrl) button.setAttribute('disabled', 'true');
+      var url = button.getAttribute('data-url');
+      var animation = button.getAttribute('data-value');
+      var redirectUrl = button.getAttribute('data-redirect');
 
       // Create an object with the data to be sent in the request
       var data = {
         animation: animation,
       };
+
+      button.setAttribute('disabled', 'true')
 
       // Make a POST request using fetch
       fetch(url, {
@@ -381,6 +314,119 @@
         });
     });
   });
+
+  // Get all buttons with the 'animator-light-update' class
+  // Add click event listener to each button
+  var lightUpdateButtons = document.querySelectorAll('.animator-light-update');
+  lightUpdateButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var url = this.getAttribute('data-url');
+      var action = this.getAttribute('data-action');
+      if (action == "save" || action == "clear" || action == "defaults") {
+        var lightStringElement = document.getElementById('lightString');
+        lightStringValue = lightStringElement.value
+        if (action == "defaults") lightStringValue = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+        if (action == "clear") lightStringValue = ""
+        var data = {
+          text: lightStringValue,
+          action: action
+        };
+        button.setAttribute('disabled', 'true')
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        })
+          .then(function (response) {
+            return response.text(); // assuming the response is plain text
+          })
+          .then(function (data) {
+            lightString.value = data; // Set the value of the input field with the received data
+            button.removeAttribute('disabled')
+          })
+          .catch(function (error) {
+            console.log(error);
+            button.removeAttribute('disabled')
+          });
+      }
+    });
+  });
+
+  // Add click event listener to website submit button
+  var websiteSubmitButton = document.getElementById('websiteSubmitButton');
+  websiteSubmitButton.addEventListener('click', function () {
+    var websiteUrl = document.getElementById('websiteUrl');
+    var websiteUrlText = websiteUrl.value;
+    var url = this.getAttribute('data-website-url');
+
+    var data = {
+      text: websiteUrlText,
+    };
+
+    websiteSubmitButton.setAttribute('disabled', 'true')
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        websiteUrl.value = data; // Set the value of the input field with the received data
+        websiteSubmitButton.removeAttribute('disabled')
+      })
+      .catch(function (error) {
+        console.log(error);
+        websiteSubmitButton.removeAttribute('disabled')
+      });
+  });
+  
+  // Restrict input to letters, numbers, and hyphens only
+  websiteUrl.addEventListener('input', function () {
+    var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
+    this.value = validatedValue;
+  });
+
+
+  // Add click event listener to volume submit button
+  var volumeSubmitButton = document.getElementById('volumeSubmitButton');
+  volumeSubmitButton.addEventListener('click', function () {
+    var volume = document.getElementById('volume');
+    var volumeText = volume.value;
+    var url = this.getAttribute('data-volume-url');
+
+    var data = {
+      text: volumeText,
+    };
+
+    volumeSubmitButton.setAttribute('disabled', 'true')
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        volume.value = data; // Set the value of the input field with the received data
+        volumeSubmitButton.removeAttribute('disabled')
+      })
+      .catch(function (error) {
+        console.log(error);
+        volumeSubmitButton.removeAttribute('disabled')
+      });
+  });
 </script>
 
 </html>
+

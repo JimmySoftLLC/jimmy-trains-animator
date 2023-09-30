@@ -331,64 +331,84 @@ if (serve_webpage):
         @server.route("/utilities", [POST])
         def buttonpress(request: Request):
             global config
+            command_sent = ""
             raw_text = request.raw_request.decode("utf8")
-            if "speaker_test" in raw_text: 
+            if "speaker_test" in raw_text:
+                command_sent = "speaker_test"
                 play_audio_0("/sd/menu_voice_commands/left_speaker_right_speaker.wav")
             elif "volume_pot_off" in raw_text:
+                command_sent = "volume_pot_off"
                 config["volume_pot"] = False
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
+                command_sent = "volume_pot_on"
                 config["volume_pot"] = True
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
+                command_sent = "reset_to_defaults"
                 reset_to_defaults()      
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                 pretty_state_machine.go_to_state('base_state')
-            elif "set_to_red" in raw_text:
+            return Response(request, "Utility: " + command_sent)
+        
+        @server.route("/lights", [POST])
+        def buttonpress(request: Request):
+            global config
+            command_sent = ""
+            raw_text = request.raw_request.decode("utf8")
+            if "set_to_red" in raw_text:
+                command_sent = "set_to_red"
                 ledStrip.fill((255, 0, 0))
                 ledStrip.show()
             elif "set_to_green" in raw_text:
+                command_sent = "set_to_green"
                 ledStrip.fill((0, 255, 0))
                 ledStrip.show()
             elif "set_to_blue" in raw_text:
+                command_sent = "set_to_blue"
                 ledStrip.fill((0, 0, 255))
                 ledStrip.show()
             elif "set_to_white" in raw_text:
+                command_sent = "set_to_white"
                 ledStrip.fill((255, 255, 255))
                 ledStrip.show()
             elif "set_to_0" in raw_text:
+                command_sent = "set_to_0"
                 ledStrip.brightness = 0.0
                 ledStrip.show()
             elif "set_to_20" in raw_text:
+                command_sent = "set_to_20"
                 ledStrip.brightness = 0.2
                 ledStrip.show()
             elif "set_to_40" in raw_text:
+                command_sent = "set_to_40"
                 ledStrip.brightness = 0.4
                 ledStrip.show()
             elif "set_to_60" in raw_text:
+                command_sent = "set_to_60"
                 ledStrip.brightness = 0.6
                 ledStrip.show()
             elif "set_to_80" in raw_text:
+                command_sent = "set_to_80"
                 ledStrip.brightness = 0.8
                 ledStrip.show()
             elif "set_to_100" in raw_text:
+                command_sent = "set_to_100"
                 ledStrip.brightness = 1.0
                 ledStrip.show()
-            return Response(request, "Dialog option cal saved.")
+            return Response(request, "Utility: " + command_sent)
 
         @server.route("/update-host-name", [POST])
         def buttonpress(request: Request):
             global config
             data_object = request.json()
             config["HOST_NAME"] = data_object["text"]
-            
             files.write_json_file("/sd/config_lightning.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
             speak_webpage()
-
             return Response(request, config["HOST_NAME"])
         
         @server.route("/get-host-name", [POST])
@@ -404,7 +424,6 @@ if (serve_webpage):
             files.write_json_file("/sd/config_lightning.json",config)
             play_audio_0("/sd/menu_voice_commands/volume.wav")
             speak_this_string(config["volume"], False)
-
             return Response(request, config["volume"])
         
         @server.route("/get-volume", [POST])
@@ -415,12 +434,13 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            config["light_string"] = data_object["text"]
-            files.write_json_file("/sd/config_lightning.json",config)
-            updateLightString()
-            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-
-            return Response(request, config["light_string"])
+            if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
+                config["light_string"] = data_object["text"]
+                print("action: " + data_object["action"]+ " data: " + config["light_string"])
+                files.write_json_file("/sd/config_lightning.json",config)
+                updateLightString()
+                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                return Response(request, config["light_string"])
         
         @server.route("/get-light-string", [POST])
         def buttonpress(request: Request):
@@ -698,12 +718,6 @@ def lightning():
     flashBrightnessMax =  255
     flashBrightness = random.randint(flashBrightnessMin, flashBrightnessMax) / 255
     ledStrip.brightness = flashBrightness
-    
-    #print (str(time.monotonic()-startTime))
-
-    # flash duration range - ms
-    flashDurationMin = 5
-    flashDurationMax = 75
 
     # flash off range - ms
     flashOffsetMin = 0
@@ -1083,8 +1097,7 @@ class LightStringSetupMenu(State):
                 play_audio_0("/sd/menu_voice_commands/lights_cleared.wav") 
             elif selected_menu_item == "add_lights":
                 play_audio_0("/sd/menu_voice_commands/add_light_menu.wav")
-                adding_strings = True
-                while adding_strings:
+                while True:
                     switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
                     if switch_state == "left":
                         if mixer.voice[0].playing:
@@ -1129,13 +1142,13 @@ class LightStringSetupMenu(State):
                             files.write_json_file("/sd/config_lightning.json",config)
                             play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                             updateLightString()
-                            adding_strings = False
                             machine.go_to_state('base_state')  
                     sleepAndUpdateVolume(0.1)
                     pass
             else:
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                updateLightString()
                 machine.go_to_state('base_state')   
 
 # StateTemplate copy and add functionality
