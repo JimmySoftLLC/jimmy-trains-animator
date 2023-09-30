@@ -604,10 +604,10 @@ def animation_lightshow(file_name):
             print(timeElasped)
         if timeElasped > flashTime[flashTimeIndex] - 0.25:
             flashTimeIndex += 1
-            my_index += 1 #random.randint(1, 3)
+            my_index += 1
             if my_index == 1:
                 change_color(ledStrip)
-                speed = .0018*42.0/num_pixels
+                speed = .001*42.0/num_pixels
                 rainbow(speed)
             elif my_index == 2:
                 change_color(ledStrip)
@@ -690,13 +690,13 @@ def change_color(ledStrip):
     ledStrip.show()
 
 def rainbow(speed):
-    for j in range(0,255,2):
+    for j in range(0,255,1):
         for i in range(num_pixels):
             pixel_index = (i * 256 // num_pixels) + j
             ledStrip[i] = colorwheel(pixel_index & 255)
         ledStrip.show()
         sleepAndUpdateVolume(speed)
-    for j in reversed(range(0,255,2)):
+    for j in reversed(range(0,255,1)):
         for i in range(num_pixels):
             pixel_index = (i * 256 // num_pixels) + j
             ledStrip[i] = colorwheel(pixel_index & 255)

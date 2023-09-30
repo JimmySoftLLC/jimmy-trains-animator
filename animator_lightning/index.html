@@ -370,7 +370,7 @@
     websiteSubmitButton.addEventListener('click', function () {
         var websiteUrl = document.getElementById('websiteUrl');
         var websiteUrlText = websiteUrl.value;
-        var url = this.getAttribute('data-website-url');
+        var url = this.getAttribute('data-url');
 
         var data = {
             text: websiteUrlText,
@@ -404,13 +404,12 @@
         this.value = validatedValue;
     });
 
-
     // Add click event listener to volume submit button
     var volumeSubmitButton = document.getElementById('volumeSubmitButton');
     volumeSubmitButton.addEventListener('click', function () {
         var volume = document.getElementById('volume');
         var volumeText = volume.value;
-        var url = this.getAttribute('data-volume-url');
+        var url = this.getAttribute('data-url');
 
         var data = {
             text: volumeText,
