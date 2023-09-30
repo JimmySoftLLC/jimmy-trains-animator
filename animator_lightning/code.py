@@ -441,6 +441,15 @@ if (serve_webpage):
                 updateLightString()
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                 return Response(request, config["light_string"])
+            if config["light_string"] =="":
+                config["light_string"] = data_object["text"]
+            else:
+                config["light_string"] = config["light_string"] + "," + data_object["text"]
+            print("action: " + data_object["action"]+ " data: " + config["light_string"])
+            files.write_json_file("/sd/config_lightning.json",config)
+            updateLightString()
+            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+            return Response(request, config["light_string"])
         
         @server.route("/get-light-string", [POST])
         def buttonpress(request: Request):
