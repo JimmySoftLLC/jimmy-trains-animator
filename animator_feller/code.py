@@ -726,7 +726,7 @@ def feller_talking_movement():
     speak_rotation = 7
     speak_cadence = 0.2
     while mixer.voice[0].playing:
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 5)
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
         if switch_state == "left_held":
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -741,7 +741,7 @@ def tree_talking_movement():
     speak_rotation = 2
     speak_cadence = 0.2
     while mixer.voice[0].playing:
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 5)
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
         if switch_state == "left_held":
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -760,7 +760,7 @@ def play_sound(sound_files, folder):
     mixer.voice[0].play( wave0, loop=False )
     while mixer.voice[0].playing :
         sleepAndUpdateVolume(0.1)
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 5)
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
         if switch_state == "left_held":
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -856,7 +856,7 @@ def animation_one():
         left_pos = config["tree_up_pos"]
         right_pos = config["tree_up_pos"] - 8
         while mixer.voice[0].playing :
-            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 5)
+            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
             if switch_state == "left_held":
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -879,7 +879,7 @@ def animation_one():
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             tree_talking_movement()
-            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 5)
+            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
             if switch_state == "left_held":
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -892,7 +892,7 @@ def animation_one():
                 break
     else:
         while mixer.voice[0].playing:
-            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 5)
+            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
             if switch_state == "left_held":
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -1001,7 +1001,7 @@ class BaseState(State):
 
     def update(self, machine):
         global continuous_run
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
         if switch_state == "left_held":
             if continuous_run:
                 continuous_run = False

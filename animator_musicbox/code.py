@@ -479,7 +479,7 @@ class WaitingState(State):
         State.exit(self, machine)
 
     def update(self, machine):
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3)
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
         if switch_state == "left":
             animate_lightning.animation(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, config["option_selected"], num_pixels, garbage_collect)
         if switch_state == "right":
@@ -509,7 +509,7 @@ class ProgramState(State):
         State.exit(self, machine)
 
     def update(self, machine):
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3)
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
         if switch_state == "left":
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()

@@ -1,4 +1,4 @@
-def switch_state(left_switch, right_switch, sleepAndUpdateVolume, time_to_check):
+def switch_state(left_switch, right_switch, sleepAndUpdateVolume, held_down_seconds):
     left_switch.update()
     right_switch.update()
     if left_switch.fell: 
@@ -8,7 +8,7 @@ def switch_state(left_switch, right_switch, sleepAndUpdateVolume, time_to_check)
             sleepAndUpdateVolume(.1)
             left_switch.update()
             number_cycles += 1
-            if number_cycles > time_to_check:
+            if number_cycles > held_down_seconds*10:
                 return "left_held" 
             if left_switch.rose:
                 print ("left pressed")
@@ -20,7 +20,7 @@ def switch_state(left_switch, right_switch, sleepAndUpdateVolume, time_to_check)
             sleepAndUpdateVolume(.1)
             right_switch.update()
             number_cycles += 1
-            if number_cycles > time_to_check:
+            if number_cycles > held_down_seconds*10:
                 return "right_held" 
             if right_switch.rose:
                 print ("right pressed")
@@ -32,7 +32,7 @@ def switch_state(left_switch, right_switch, sleepAndUpdateVolume, time_to_check)
             sleepAndUpdateVolume(.1)
             left_switch.update()
             number_cycles += 1
-            if number_cycles > time_to_check:
+            if number_cycles > held_down_seconds*10:
                 return "left_held" 
             if left_switch.rose:
                 return "none"
@@ -43,7 +43,7 @@ def switch_state(left_switch, right_switch, sleepAndUpdateVolume, time_to_check)
             sleepAndUpdateVolume(.1)
             right_switch.update()
             number_cycles += 1
-            if number_cycles > time_to_check:
+            if number_cycles > held_down_seconds*10:
                 return "right_held" 
             if right_switch.rose:
                 return "none"

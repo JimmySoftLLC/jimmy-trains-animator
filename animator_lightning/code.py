@@ -148,6 +148,9 @@ web_menu = config_web_menu["web_menu"]
 config_light_string_menu = files.read_json_file("/sd/menu_voice_commands/light_string_menu.json")
 light_string_menu = config_light_string_menu["light_string_menu"]
 
+config_light_options = files.read_json_file("/sd/light_options.json")
+light_options = config["light_options"]
+
 garbage_collect("config setup")
 
 continuous_run = False
@@ -496,8 +499,15 @@ def stringInstructions():
 def option_selected_announcement():
     play_audio_0("/sd/menu_voice_commands/option_selected.wav")
     
-print(light_string_menu)
-
+def speak_light_string():
+    play_audio_0("/sd/menu_voice_commands/current_light_settings_are.wav")
+    elements = config["light_string"].split(',')
+    for index, element in enumerate(elements):
+        play_audio_0("/sd/menu_voice_commands/position.wav")
+        play_audio_0("/sd/menu_voice_commands/" + str(index+1) + ".wav")
+        play_audio_0("/sd/menu_voice_commands/is.wav")
+        play_audio_0("/sd/menu_voice_commands/" + element + ".wav")
+        
 ################################################################################
 # animations
      
@@ -831,7 +841,7 @@ class BaseState(State):
 
     def update(self, machine):
         global continuous_run
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 30)
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
         if switch_state == "left_held":
             if continuous_run:
                 continuous_run = False
@@ -1034,21 +1044,76 @@ class LightStringSetupMenu(State):
                 if self.menuIndex > len(light_string_menu)-1:
                     self.menuIndex = 0
         if right_switch.fell:
-                selected_menu_item = light_string_menu[self.selectedMenuIndex]
-                if selected_menu_item == "hear_light_setup_instructions":
-                    stringInstructions()
-                elif selected_menu_item == "reset_lights_defaults":
-                    play_audio_0("/sd/menu_voice_commands/lights_reset_to.wav")  
-                elif selected_menu_item == "hear_current_light_settings":
-                    play_audio_0("/sd/menu_voice_commands/current_light_settings_are.wav") 
-                elif selected_menu_item == "clear_light_string":
-                    play_audio_0("/sd/menu_voice_commands/lights_cleared.wav") 
-                elif selected_menu_item == "add_lights":
-                    play_audio_0("/sd/menu_voice_commands/add_light_menu.wav") 
-                else:
-                    files.write_json_file("/sd/config_lightning.json",config)
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                    machine.go_to_state('base_state')   
+            selected_menu_item = light_string_menu[self.selectedMenuIndex]
+            if selected_menu_item == "hear_light_setup_instructions":
+                stringInstructions()
+            elif selected_menu_item == "reset_lights_defaults":
+                play_audio_0("/sd/menu_voice_commands/lights_reset_to.wav")  
+            elif selected_menu_item == "hear_current_light_settings": 
+                speak_light_string()
+            elif selected_menu_item == "clear_light_string":
+                config["light_string"] = ""
+                play_audio_0("/sd/menu_voice_commands/lights_cleared.wav") 
+            elif selected_menu_item == "add_lights":
+                play_audio_0("/sd/menu_voice_commands/add_light_menu.wav") 
+                while adding = True:
+                    switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+                    if switch_state == "left":
+                        if mixer.voice[0].playing:
+                            mixer.voice[0].stop()
+                            while mixer.voice[0].playing:
+                                pass
+                        else:
+                            self.menuIndex -=1
+                            if self.menuIndex < 0:
+                                self.menuIndex = len(light_options)-1
+                            self.selectedMenuIndex = self.menuIndex
+                            wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + light_options[self.menuIndex] + ".wav" , "rb"))
+                            mixer.voice[0].play( wave0, loop=False )
+                            while mixer.voice[0].playing:
+                                pass
+                    elif switch_state == "right":
+                        if mixer.voice[0].playing:
+                            mixer.voice[0].stop()
+                            while mixer.voice[0].playing:
+                                pass
+                        else:
+                            self.menuIndex +=1
+                            if self.menuIndex > len(light_options)-1:
+                                self.menuIndex = 0
+                            self.selectedMenuIndex = self.menuIndex
+                            wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + light_options[self.menuIndex] + ".wav" , "rb"))
+                            mixer.voice[0].play( wave0, loop=False )
+                            while mixer.voice[0].playing:
+                                pass
+                    elif switch_state == "right_held":
+                        if mixer.voice[0].playing:
+                            mixer.voice[0].stop()
+                            while mixer.voice[0].playing:
+                                pass
+                        else:
+                            #config["option_selected"] = light_options[self.selectedMenuIndex]
+                            #files.write_json_file("/sd/config_lightning.json",config)
+                            wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/added.wav", "rb"))
+                            mixer.voice[0].play( wave0, loop=False )
+                            while mixer.voice[0].playing:
+                                pass
+                    elif switch_state == "left_held":
+                        if mixer.voice[0].playing:
+                            mixer.voice[0].stop()
+                            while mixer.voice[0].playing:
+                                pass
+                        else:
+                            #config["option_selected"] = light_options[self.selectedMenuIndex]
+                            #files.write_json_file("/sd/config_lightning.json",config)
+                            wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/all_changes_complete.wav", "rb"))
+                            mixer.voice[0].play( wave0, loop=False )
+                            while mixer.voice[0].playing:
+                                pass
+            else:
+                files.write_json_file("/sd/config_lightning.json",config)
+                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                machine.go_to_state('base_state')   
 
 # StateTemplate copy and add functionality
 class StateTemplate(State):
