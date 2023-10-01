@@ -647,12 +647,6 @@ def animation_timestamp(file_name):
             ledStrip.show()
             print(my_time_stamps)
             break
-        if (serve_webpage):
-            try:
-                server.poll()
-            except Exception as e:
-                files.log_item(e)
-                continue
 
 def thunder_once_played(file_name):
     
