@@ -151,6 +151,9 @@ light_string_menu = config_light_string_menu["light_string_menu"]
 config_light_options = files.read_json_file("/sd/menu_voice_commands/light_options.json")
 light_options = config_light_options["light_options"]
 
+volume_settings_options = files.read_json_file("/sd/menu_voice_commands/volume_settings.json")
+volume_settings = volume_settings_options["volume_settings"]
+
 garbage_collect("config setup")
 
 continuous_run = False
@@ -419,20 +422,7 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            volume = int(config["volume"])
-            if data_object["action"] == "lower":
-                volume -= 10
-            if data_object["action"] == "raise":
-                volume += 10
-            if volume > 100:
-                volume =100
-            if volume < 0:
-                volume = 0
-            config["volume"] = str(volume)
-            config["volume_pot"] = False
-            files.write_json_file("/sd/config_lightning.json",config)
-            play_audio_0("/sd/menu_voice_commands/volume.wav")
-            speak_this_string(config["volume"], False)
+            changeVolume(data_object["action"])
             return Response(request, config["volume"])
         
         @server.route("/get-volume", [POST])
@@ -501,6 +491,22 @@ def reset_to_defaults():
 def reset_lights_to_defaults():
     config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
 
+def changeVolume(action):
+    volume = int(config["volume"])
+    if action == "lower":
+        volume -= 10
+    if action == "raise":
+        volume += 10
+    if volume > 100:
+        volume =100
+    if volume < 0:
+        volume = 0
+    config["volume"] = str(volume)
+    config["volume_pot"] = False
+    files.write_json_file("/sd/config_lightning.json",config)
+    play_audio_0("/sd/menu_voice_commands/volume.wav")
+    speak_this_string(config["volume"], False)
+
 ################################################################################
 # Dialog and sound play methods
 
@@ -549,6 +555,10 @@ def mainMenuAnnouncement():
 
 def selectWebOptionsAnnouncement():
     play_audio_0("/sd/menu_voice_commands/web_menu.wav")
+    left_right_mouse_button()
+
+def volumeSettingsAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/volume_settings_menu.wav")
     left_right_mouse_button()
 
 def lightStringSetupAnnouncement():
@@ -954,7 +964,9 @@ class MainMenu(State):
                 elif selected_menu_item == "light_string_setup_menu":
                     machine.go_to_state('light_string_setup_menu')
                 elif selected_menu_item == "web_options":
-                    machine.go_to_state('web_options')                 
+                    machine.go_to_state('web_options') 
+                elif selected_menu_item == "volume_settings":
+                    machine.go_to_state('volume_settings')                 
                 else:
                     play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                     machine.go_to_state('base_state')
@@ -1168,6 +1180,67 @@ class LightStringSetupMenu(State):
                 updateLightString()
                 machine.go_to_state('base_state')   
 
+class VolumeSettings(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'volume_settings'
+
+    def enter(self, machine):
+        files.log_item('Set Web Options')
+        volumeSettingsAnnouncement()
+
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/menu_voice_commands/" + volume_settings[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(volume_settings)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+                selected_menu_item = volume_settings[self.selectedMenuIndex]
+                if selected_menu_item == "volume_level_adjustment":
+                    play_audio_0("/sd/menu_voice_commands/volume_adjustment_menu.wav")
+                    while True: 
+                        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+                        if switch_state == "left":
+                            changeVolume("lower")
+                        elif switch_state == "right":
+                            changeVolume("raise")
+                        elif switch_state == "right_held":
+                            files.write_json_file("/sd/config_lightning.json",config)
+                            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                            machine.go_to_state('base_state') 
+                        pass
+                elif selected_menu_item == "volume_pot_off":
+                    config["volume_pot"] = False
+                    if config["volume"] == 0:
+                        config["volume"] = 10
+                    files.write_json_file("/sd/config_lightning.json",config)
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state') 
+                elif selected_menu_item == "volume_pot_on":
+                    config["volume_pot"] = True
+                    files.write_json_file("/sd/config_lightning.json",config)
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state') 
+
 # StateTemplate copy and add functionality
 class StateTemplate(State):
 
@@ -1196,14 +1269,15 @@ pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(WebOptions())
 pretty_state_machine.add_state(LightStringSetupMenu())
-        
+pretty_state_machine.add_state(VolumeSettings())
+       
 audio_enable.value = True
 
 def speak_webpage():
     play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")
     play_audio_0("/sd/menu_voice_commands/to_access_type.wav")
     if config["HOST_NAME"]== "animator-lightning":
-        play_audio_0("/sd/menu_voice_commands/animator_dash_lightning.wav")
+        play_audio_0("/sd/menu_voice_commands/animator_hyphen_lightning.wav")
         play_audio_0("/sd/menu_voice_commands/dot.wav")
         play_audio_0("/sd/menu_voice_commands/local.wav")
     else:
