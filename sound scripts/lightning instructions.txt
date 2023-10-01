@@ -39,4 +39,15 @@ Add light string menu.  Press the left button to scroll backward or right button
 When you hear the light you want to add press and hold the right button until you hear the light you chose added. 
 When you are finished adding all your lights press and hold the left button until you hear all changes complete.
 
+Volume settings menu.
+
+Volume level adjustment menu.  Press the left button to lower the volume or right button to raise the volume.  
+To save the volume setting press and hold the right button until you hear all changes complete.
+
+Volume set to off.
+
+Volume pot on.
+
+Volume pot off.
+
 

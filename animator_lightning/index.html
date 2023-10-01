@@ -186,10 +186,14 @@
                 Volume Pot Off
             </button>
             <div class="mui-textfield">
-                <input class="input" id="volume" type="number" min="0" max="100" placeholder="Enter volume level">
-                <button id="volumeSubmitButton" class="mui-btn mui-btn--primary" type="button"
-                    data-url="/update-volume">
-                    Set Volume Level
+                <input class="input" id="volume" type="number" disabled>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="lower">
+                    Lower Volume
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="raise">
+                    Raise Volume
                 </button>
             </div>
 
@@ -365,6 +369,39 @@
         });
     });
 
+    // Get all buttons with the 'animator-light-update' class
+    // Add click event listener to each button
+    var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
+    volumeUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            data = {
+                action: action
+            }
+
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    volume.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
     // Add click event listener to website submit button
     var websiteSubmitButton = document.getElementById('websiteSubmitButton');
     websiteSubmitButton.addEventListener('click', function () {
@@ -402,39 +439,6 @@
     websiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
-    });
-
-    // Add click event listener to volume submit button
-    var volumeSubmitButton = document.getElementById('volumeSubmitButton');
-    volumeSubmitButton.addEventListener('click', function () {
-        var volume = document.getElementById('volume');
-        var volumeText = volume.value;
-        var url = this.getAttribute('data-url');
-
-        var data = {
-            text: volumeText,
-        };
-
-        volumeSubmitButton.setAttribute('disabled', 'true')
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                volume.value = data; // Set the value of the input field with the received data
-                volumeSubmitButton.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                console.log(error);
-                volumeSubmitButton.removeAttribute('disabled')
-            });
     });
 </script>
 

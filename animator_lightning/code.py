@@ -419,7 +419,16 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            config["volume"] = data_object["text"]
+            volume = int(config["volume"])
+            if data_object["action"] == "lower":
+                volume -= 10
+            if data_object["action"] == "raise":
+                volume += 10
+            if volume > 100:
+                volume =100
+            if volume < 0:
+                volume = 0
+            config["volume"] = str(volume)
             config["volume_pot"] = False
             files.write_json_file("/sd/config_lightning.json",config)
             play_audio_0("/sd/menu_voice_commands/volume.wav")
