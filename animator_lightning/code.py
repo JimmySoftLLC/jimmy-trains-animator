@@ -499,8 +499,8 @@ def changeVolume(action):
         volume += 10
     if volume > 100:
         volume =100
-    if volume < 0:
-        volume = 0
+    if volume < 10:
+        volume = 10
     config["volume"] = str(volume)
     config["volume_pot"] = False
     files.write_json_file("/sd/config_lightning.json",config)
@@ -1226,7 +1226,17 @@ class VolumeSettings(State):
                         elif switch_state == "right_held":
                             files.write_json_file("/sd/config_lightning.json",config)
                             play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                            machine.go_to_state('base_state') 
+                            machine.go_to_state('base_state')
+                            break
+                            if mixer.voice[0].playing:
+                                mixer.voice[0].stop()
+                                while mixer.voice[0].playing:
+                                    pass
+                            else:
+                                files.write_json_file("/sd/config_lightning.json",config)
+                                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                                machine.go_to_state('base_state')  
+                        sleepAndUpdateVolume(0.1)
                         pass
                 elif selected_menu_item == "volume_pot_off":
                     config["volume_pot"] = False
@@ -1308,3 +1318,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
