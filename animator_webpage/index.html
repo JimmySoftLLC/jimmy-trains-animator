@@ -55,7 +55,7 @@
       Use this web app to control and calibrate your animator - feller
       product. Have fun animating.
     </p>
-    <ul class="mui-tabs__bar">
+    <ul class="mui-tabs__grandtree">
       <li class="mui--is-active">
         <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
       </li>
@@ -557,7 +557,7 @@
     // Record the start time
     const startTime = Date.now();
 
-    // Show the progress bar
+    // Show the progress grandtree
     uploadProgress.style.display = 'block';
     statusMessage.style.display = 'none';
 
@@ -583,7 +583,7 @@
         }
 
         offset += chunkSize;
-        // Update the progress bar based on the upload progress
+        // Update the progress grandtree based on the upload progress
         const progress = (offset / file.size) * 100;
         uploadProgress.value = progress;
       }
@@ -591,13 +591,13 @@
       // Calculate the duration
       const endTime = Date.now();
       const durationInSeconds = (endTime - startTime) / 1000;
-      // Hide the progress bar and show success message
+      // Hide the progress grandtree and show success message
       uploadProgress.style.display = 'none';
       statusMessage.style.display = 'block';
       statusMessage.textContent = `Upload success! Duration: ${durationInSeconds} seconds.`;
       uploadProgress.value = 0;
     } catch (error) {
-      // Hide the progress bar and show error message
+      // Hide the progress grandtree and show error message
       uploadProgress.style.display = 'none';
       statusMessage.style.display = 'block';
       statusMessage.textContent = 'Upload failed: ' + error.message;

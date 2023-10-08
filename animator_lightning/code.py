@@ -160,23 +160,23 @@ continuous_run = False
 
 ################################################################################
 # Setup neo pixels
-bars = []
-bolts = []
+grandtrees = []
+canes = []
 
 num_pixels = 0
 
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 
 def runLightTest():
-    for bar in bars:
-        for led_index in bar:
+    for grandtree in grandtrees:
+        for led_index in grandtree:
             ledStrip[led_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
-    for bolt in bolts:
-        for led_index in bolt:
+    for cane in canes:
+        for led_index in cane:
             ledStrip[led_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
@@ -184,9 +184,9 @@ def runLightTest():
         ledStrip.show()
 
 def updateLightString():
-    global bars, bolts, num_pixels, ledStrip, num_pixels
-    bars = []
-    bolts = []
+    global grandtrees, canes, num_pixels, ledStrip, num_pixels
+    grandtrees = []
+    canes = []
 
     num_pixels = 0
     
@@ -199,13 +199,13 @@ def updateLightString():
             lightning_type, quantity = parts
             quantity = int(quantity)
 
-            if lightning_type == 'bar':
-                bar_sequence = list(range(num_pixels, num_pixels + quantity))
-                bars.append(bar_sequence)
+            if lightning_type == 'grandtree':
+                grandtree_sequence = list(range(num_pixels, num_pixels + quantity))
+                grandtrees.append(grandtree_sequence)
                 num_pixels += quantity
-            elif lightning_type == 'bolt':
-                bolt_sequence = list(range(num_pixels, num_pixels + quantity))
-                bolts.append(bolt_sequence)
+            elif lightning_type == 'cane':
+                cane_sequence = list(range(num_pixels, num_pixels + quantity))
+                canes.append(cane_sequence)
                 num_pixels += quantity
 
     print ("Number of pixels total: ", num_pixels)
@@ -486,10 +486,10 @@ def reset_to_defaults():
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-lightning"
     config["option_selected"] = "thunder_birds_rain"
-    config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+    config["light_string"] = "grandtree-10,cane-4,grandtree-10,cane-4,grandtree-10,cane-4"
     
 def reset_lights_to_defaults():
-    config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+    config["light_string"] = "grandtree-10,cane-4,grandtree-10,cane-4,grandtree-10,cane-4"
 
 def changeVolume(action):
     volume = int(config["volume"])
@@ -723,14 +723,14 @@ def rainbow(speed):
 
 def lightning():       
     lightning_indexes = []
-    which_bolt = random.randint(-1,(len(bolts)-1))
-    if which_bolt!= -1:
-        for index, my_array in enumerate(bolts):
-            if index == which_bolt:
+    which_cane = random.randint(-1,(len(canes)-1))
+    if which_cane!= -1:
+        for index, my_array in enumerate(canes):
+            if index == which_cane:
                 lightning_indexes.extend(my_array)
     
-    for index, my_array in enumerate(bars):
-        if index == random.randint(0,(len(bars)-1)):
+    for index, my_array in enumerate(grandtrees):
+        if index == random.randint(0,(len(grandtrees)-1)):
             lightning_indexes.extend(my_array)
      
     r = random.randint(40, 80)

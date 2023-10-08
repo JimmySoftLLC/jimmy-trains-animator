@@ -162,23 +162,23 @@ continuous_run = False
 import neopixel
 from rainbowio import colorwheel
 
-bars = []
-bolts = []
+grandtrees = []
+canes = []
 
 num_pixels = 0
 
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 
 def runLightTest():
-    for bar in bars:
-        for led_index in bar:
+    for grandtree in grandtrees:
+        for led_index in grandtree:
             ledStrip[led_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
-    for bolt in bolts:
-        for led_index in bolt:
+    for cane in canes:
+        for led_index in cane:
             ledStrip[led_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
@@ -186,9 +186,9 @@ def runLightTest():
         ledStrip.show()
 
 def updateLightString():
-    global bars, bolts, num_pixels, ledStrip, num_pixels
-    bars = []
-    bolts = []
+    global grandtrees, canes, num_pixels, ledStrip, num_pixels
+    grandtrees = []
+    canes = []
 
     num_pixels = 0
     
@@ -201,13 +201,13 @@ def updateLightString():
             christmas_park_type, quantity = parts
             quantity = int(quantity)
 
-            if christmas_park_type == 'bar':
-                bar_sequence = list(range(num_pixels, num_pixels + quantity))
-                bars.append(bar_sequence)
+            if christmas_park_type == 'grandtree':
+                grandtree_sequence = list(range(num_pixels, num_pixels + quantity))
+                grandtrees.append(grandtree_sequence)
                 num_pixels += quantity
-            elif christmas_park_type == 'bolt':
-                bolt_sequence = list(range(num_pixels, num_pixels + quantity))
-                bolts.append(bolt_sequence)
+            elif christmas_park_type == 'cane':
+                cane_sequence = list(range(num_pixels, num_pixels + quantity))
+                canes.append(cane_sequence)
                 num_pixels += quantity
 
     print ("Number of pixels total: ", num_pixels)
@@ -297,32 +297,41 @@ if (serve_webpage):
             if "random" in raw_text: 
                 config["option_selected"] = "random"
                 animation(config["option_selected"])
-            elif "thunder_birds_rain" in raw_text: 
-                config["option_selected"] = "thunder_birds_rain"
+            elif "we_wish_you_a_merry_christmas" in raw_text: 
+                config["option_selected"] = "we_wish_you_a_merry_christmas"
                 animation(config["option_selected"])
-            elif "continuous_thunder" in raw_text: 
-                config["option_selected"] = "continuous_thunder"
+            elif "angels_we_have_heard_on_high" in raw_text: 
+                config["option_selected"] = "angels_we_have_heard_on_high"
                 animation(config["option_selected"])
-            elif "dark_thunder" in raw_text: 
-                config["option_selected"] = "dark_thunder"
+            elif "joyful_snowman" in raw_text: 
+                config["option_selected"] = "joyful_snowman"
                 animation(config["option_selected"])
-            elif "epic_thunder" in raw_text: 
-                config["option_selected"] = "epic_thunder"
+            elif "carol_of_the_bells" in raw_text: 
+                config["option_selected"] = "carol_of_the_bells"
                 animation(config["option_selected"])
-            elif "halloween_thunder" in raw_text: 
-                config["option_selected"] = "halloween_thunder"
+            elif "dance_of_the_sugar_plum_fairy" in raw_text: 
+                config["option_selected"] = "dance_of_the_sugar_plum_fairy"
                 animation(config["option_selected"])
-            elif "thunder_and_rain" in raw_text: 
-                config["option_selected"] = "thunder_and_rain"
+            elif "deck_the_halls_jazzy_version" in raw_text: 
+                config["option_selected"] = "deck_the_halls_jazzy_version"
                 animation(config["option_selected"])
-            elif "thunder_distant" in raw_text: 
-                config["option_selected"] = "thunder_distant"
+            elif "the_wassail_song" in raw_text: 
+                config["option_selected"] = "the_wassail_song"
+                animation(config["option_selected"])     
+            elif "jingle_bells_orchestra" in raw_text: 
+                config["option_selected"] = "jingle_bells_orchestra"
                 animation(config["option_selected"])
-            elif "inspiring_cinematic_ambient_lightshow" in raw_text: 
-                config["option_selected"] = "inspiring_cinematic_ambient_lightshow"
+            elif "away_in_a_manger" in raw_text: 
+                config["option_selected"] = "away_in_a_manger"
                 animation(config["option_selected"])
-            elif "alien_lightshow" in raw_text: 
-                config["option_selected"] = "alien_lightshow"
+            elif "joy_to_the_world" in raw_text: 
+                config["option_selected"] = "joy_to_the_world"
+                animation(config["option_selected"])
+            elif "silent_night" in raw_text: 
+                config["option_selected"] = "silent_night"
+                animation(config["option_selected"])
+            elif "auld_lang_syne_jazzy_version" in raw_text: 
+                config["option_selected"] = "auld_lang_syne_jazzy_version"
                 animation(config["option_selected"])
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
@@ -492,7 +501,7 @@ def reset_to_defaults():
     
 def reset_lights_to_defaults():
     global config
-    config["light_string"] = "canefrontright-4,canefrontleft-4,canemiddleft-4,canemiddleright-4,canebackright-4,canemiddleleft-4,grandtree-21"
+    config["light_string"] = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
 
 def changeVolume(action):
     volume = int(config["volume"])
@@ -728,14 +737,14 @@ def rainbow(speed):
 
 def christmas_park():       
     christmas_park_indexes = []
-    which_bolt = random.randint(-1,(len(bolts)-1))
-    if which_bolt!= -1:
-        for index, my_array in enumerate(bolts):
-            if index == which_bolt:
+    which_cane = random.randint(-1,(len(canes)-1))
+    if which_cane!= -1:
+        for index, my_array in enumerate(canes):
+            if index == which_cane:
                 christmas_park_indexes.extend(my_array)
     
-    for index, my_array in enumerate(bars):
-        if index == random.randint(0,(len(bars)-1)):
+    for index, my_array in enumerate(grandtrees):
+        if index == random.randint(0,(len(grandtrees)-1)):
             christmas_park_indexes.extend(my_array)
      
     r = random.randint(40, 80)
@@ -1352,4 +1361,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-

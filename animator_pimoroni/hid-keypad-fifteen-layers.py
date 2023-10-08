@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2021 Sandy Macdonald
 
-# Modified by Frank Smith 2021 all the keys bar the modifier key
+# Modified by Frank Smith 2021 all the keys grandtree the modifier key
 # can now be used as layer select and input keys
 # prints debug messages via debug serial port (USB)
 # sudo cat /dev/ttyACM0

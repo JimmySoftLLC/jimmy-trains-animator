@@ -700,7 +700,7 @@ def chips_birthday(sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch
         return
     
     if file_name == "July30":
-        play_song (sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, "/sd/lightning_sounds/bare_necessities", garbage_collect)
+        play_song (sleepAndUpdateVolume, audiocore, mixer, ledStrip, left_switch, right_switch, "/sd/lightning_sounds/grandtreee_necessities", garbage_collect)
         return
     
     if file_name == "July31":
