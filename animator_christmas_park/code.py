@@ -170,16 +170,41 @@ num_pixels = 0
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 
 def runLightTest():
+    start_index = 0
     for grandtree in grandtrees:
         for led_index in grandtree:
-            ledStrip[led_index]=(50, 50, 50)
+            start_index=led_index
+            break
+        for led_index in range(0,7):
+            ledStrip[led_index+start_index]=(50, 50, 50)
+        ledStrip.show()
+        time.sleep(.3)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        for led_index in range(7,14):
+            ledStrip[led_index+start_index]=(50, 50, 50)
+        ledStrip.show()
+        time.sleep(.3)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        for led_index in range(14,21):
+            ledStrip[led_index+start_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
     for cane in canes:
         for led_index in cane:
-            ledStrip[led_index]=(50, 50, 50)
+            start_index=led_index
+            break
+        for led_index in range(0,2):
+            ledStrip[led_index+start_index]=(50, 50, 50)
+        ledStrip.show()
+        time.sleep(.3)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        for led_index in range(2,4):
+            ledStrip[led_index+start_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
         ledStrip.fill((0, 0, 0))
