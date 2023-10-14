@@ -166,10 +166,10 @@ from rainbowio import colorwheel
 grand_trees = []
 canes = []
 tree_ornaments = []
-tree_star = []
+tree_stars = []
 tree_branches  = []
-cane_start  = []
-cane_end  = []
+cane_starts  = []
+cane_ends  = []
 
 num_pixels = 0
 
@@ -213,31 +213,49 @@ def show_Lights():
     ledStrip.show()
 
 def runLightTest():
-    global tree_ornaments,tree_star,tree_branches,cane_start,cane_end
+    global tree_ornaments,tree_stars,tree_branches,cane_starts,cane_ends
     tree_ornaments = return_tree_parts("ornaments")
     tree_stars = return_tree_parts("star")
     tree_branches = return_tree_parts("branches")
     cane_starts = return_cane_parts("start")
     cane_ends = return_cane_parts("end")
-    
+
     # cane test
+    count = 0
     for led_index in cane_starts:
         ledStrip[led_index]=(50, 50, 50)
-        show_Lights()
+        count+=1
+        if count > 1:
+            show_Lights()
+            count = 0
     for led_index in cane_ends:
         ledStrip[led_index]=(50, 50, 50)
+        count+=1
+        if count > 1:
+            show_Lights()
+            count = 0
         show_Lights()
 
     #tree test
+    count = 0
     for led_index in tree_ornaments:
         ledStrip[led_index]=(50, 50, 50)
-        show_Lights()
+        count+=1
+        if count > 6:
+            show_Lights()
+            count = 0
     for led_index in tree_stars:
         ledStrip[led_index]=(50, 50, 50)
-        show_Lights()
+        count+=1
+        if count > 6:
+            show_Lights()
+            count = 0
     for led_index in tree_branches:
         ledStrip[led_index]=(50, 50, 50)
-        show_Lights()
+        count+=1
+        if count > 6:
+            show_Lights()
+            count = 0
 
 def updateLightString():
     global grand_trees, canes, num_pixels, ledStrip, num_pixels
@@ -783,33 +801,26 @@ def rainbow(speed,duration):
         if timeElasped > duration:
             return
 
-
-#def return_tree_part(part):
-#        if part == "ornaments":
-#        if part == "star":
-#        if part == "tree":        
-
-
 def fire(duration):
     startTime = time.monotonic()
     ledStrip.brightness = 1.0
 
-    fire_indexs = []
+    fire_indexes = []
     
-    fire_indexs.extend(tree_ornaments)
-    fire_indexs.extend(cane_start)
-    fire_indexs.extend(return_cane_part(cane_end))
+    fire_indexes.extend(tree_ornaments)
+    fire_indexes.extend(cane_starts)
+    fire_indexes.extend(cane_ends)
     
-    star_indexs = []
-    star_indexs.extend(tree_star)
+    star_indexes = []
+    star_indexes.extend(tree_stars)
     
-    for i in star_indexs:
+    for i in star_indexes:
         ledStrip[i] = (255,255,255)
         
-    tree_indexs = []
-    tree_indexs.extend(return_tree_part("tree"))
+    branches_indexes = []
+    branches_indexes.extend((tree_branches))
     
-    for i in tree_indexs:
+    for i in branches_indexes:
         ledStrip[i] = (50,50,50)
     
     r = random.randint(0,255)
@@ -819,7 +830,7 @@ def fire(duration):
     #Flicker, based on our initial RGB values
     while True:
         #for i in range (0, num_pixels):
-        for i in fire_indexs:
+        for i in fire_indexes:
             flicker = random.randint(0,110)
             r1 = bounds(r-flicker, 0, 255)
             g1 = bounds(g-flicker, 0, 255)
@@ -830,8 +841,7 @@ def fire(duration):
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
-        
-        
+               
 def christmas_fire(duration):
     startTime=time.monotonic()
     ledStrip.brightness = 1.0
