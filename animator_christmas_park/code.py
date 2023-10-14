@@ -642,6 +642,10 @@ def speak_this_string(str_to_speak, addLocal):
 def selectSoundMenuAnnouncement():
     play_audio_0("/sd/menu_voice_commands/sound_selection_menu.wav")
     left_right_mouse_button()
+
+def selectMySoundMenuAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/choose_my_sounds_menu.wav")
+    left_right_mouse_button()
     
 def left_right_mouse_button():
     play_audio_0("/sd/menu_voice_commands/press_left_button_right_button.wav")
@@ -1149,7 +1153,7 @@ class ChooseMySounds(State):
                 pass
         else:
             files.log_item('Choose sounds menu')
-            selectSoundMenuAnnouncement()
+            selectMySoundMenuAnnouncement()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1164,8 +1168,7 @@ class ChooseMySounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                my_string = my_sound_options[self.optionIndex]
-                my_string.replace("customers_owned_music_","")
+                my_string = my_sound_options[self.optionIndex].replace("customers_owned_music_","")
                 speak_this_string(my_string,False)
                 self.currentOption = self.optionIndex
                 self.optionIndex +=1
