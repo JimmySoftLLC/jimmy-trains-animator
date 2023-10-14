@@ -136,6 +136,9 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 config = files.read_json_file("/sd/config_christmas_park.json")
 sound_options = config["options"]
 
+my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music")
+print(my_sound_options)
+
 serve_webpage = config["serve_webpage"]
 
 config_main_menu = files.read_json_file("/sd/menu_voice_commands/main_menu.json")
@@ -234,7 +237,6 @@ def runLightTest():
         if count > 1:
             show_Lights()
             count = 0
-        show_Lights()
 
     #tree test
     count = 0
@@ -584,14 +586,18 @@ def reset_lights_to_defaults():
 
 def changeVolume(action):
     volume = int(config["volume"])
-    if action == "lower":
+    if action == "lower1":
+        volume -= 1
+    if action == "lower10":
         volume -= 10
-    if action == "raise":
+    if action == "raise10":
         volume += 10
+    if action == "raise1":
+        volume += 1
     if volume > 100:
         volume =100
-    if volume < 10:
-        volume = 10
+    if volume < 1:
+        volume = 1
     config["volume"] = str(volume)
     config["volume_pot"] = False
     files.write_json_file("/sd/config_christmas_park.json",config)
@@ -692,10 +698,10 @@ def animation(file_name):
          
 def animation_lightshow(file_name):
     rand_index_low = 1
-    rand_index_high = 5
+    rand_index_high = 3
     if file_name == "silent_night":
-        rand_index_low = 4
-        rand_index_high = 4
+        rand_index_low = 3
+        rand_index_high = 3
     
     flash_time_dictionary = files.read_json_file("/sd/christmas_park_sounds/" + file_name + ".json")
     flashTime = flash_time_dictionary["flashTime"]
@@ -722,18 +728,18 @@ def animation_lightshow(file_name):
             my_index = random.randint(rand_index_low, rand_index_high)
             while my_index == previous_index:
                 print("regenerating random selection")
-                my_index = random.randint(1, 5)
+                my_index = random.randint(rand_index_low, rand_index_high)
             if my_index == 1:
                 rainbow(.005,duration)
             elif my_index == 2:
                 multicolor(.01)
                 sleepAndUpdateVolume(duration)
             elif my_index == 3:
-                multicolor(duration)
-            elif my_index == 4:
                 fire(duration)
-            elif my_index == 5:   
+            elif my_index == 4:   
                 christmas_fire(duration)
+            elif my_index == 5:
+                multicolor(duration)
             previous_index = my_index
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
@@ -747,12 +753,18 @@ def animation_lightshow(file_name):
          
 def animation_timestamp(file_name):
     print("time stamp mode")
+ 
+    customers_file = "customers_owned_music_" in file_name
     
-    my_time_stamps = files.read_json_file("/sd/christmas_park_sounds/" + file_name + ".json")
+    my_time_stamps = files.read_json_file("/sd/christmas_park_sounds/timestamp_mode.json")
     my_time_stamps["flashTime"]=[]
 
-    wave0 = audiocore.WaveFile(open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
+    if customers_file :
+        wave0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
+    else:
+        wave0 = audiocore.WaveFile(open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
+    
     startTime = time.monotonic()
     sleepAndUpdateVolume(.1)
 
@@ -765,8 +777,11 @@ def animation_timestamp(file_name):
         if not mixer.voice[0].playing:
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
-            my_time_stamps["flashTime"].append(5000) 
-            files.write_json_file("/sd/christmas_park_sounds/" + file_name + ".json",my_time_stamps)
+            my_time_stamps["flashTime"].append(5000)
+            if customers_file:
+                files.write_json_file("/sd/customers_owned_music/" + file_name + ".json",my_time_stamps)
+            else:   
+                files.write_json_file("/sd/christmas_park_sounds/" + file_name + ".json",my_time_stamps)
             break
 
 ##############################
@@ -826,6 +841,8 @@ def fire(duration):
     r = random.randint(0,255)
     g = random.randint(0,255)
     b = random.randint(0,255)
+    
+    print (len(fire_indexes))
 
     #Flicker, based on our initial RGB values
     while True:
@@ -1047,6 +1064,8 @@ class MainMenu(State):
                 selected_menu_item = main_menu[self.selectedMenuIndex]
                 if selected_menu_item == "choose_sounds":
                     machine.go_to_state('choose_sounds')
+                elif selected_menu_item == "choose_my_sounds":
+                    machine.go_to_state('choose_my_sounds')
                 elif selected_menu_item == "light_string_setup_menu":
                     machine.go_to_state('light_string_setup_menu')
                 elif selected_menu_item == "web_options":
@@ -1112,6 +1131,61 @@ class ChooseSounds(State):
                     pass
             machine.go_to_state('base_state')
 
+class ChooseMySounds(State):
+
+    def __init__(self):
+        self.optionIndex = 0
+        self.currentOption = 0
+
+    @property
+    def name(self):
+        return 'choose_my_sounds'
+
+    def enter(self, machine):
+        print('Select a program option')
+        if mixer.voice[0].playing:
+            mixer.voice[0].stop()
+            while mixer.voice[0].playing:
+                pass
+        else:
+            files.log_item('Choose sounds menu')
+            selectSoundMenuAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                my_string = my_sound_options[self.optionIndex]
+                my_string.replace("customers_owned_music_","")
+                speak_this_string(my_string,False)
+                self.currentOption = self.optionIndex
+                self.optionIndex +=1
+                if self.optionIndex > len(my_sound_options)-1:
+                    self.optionIndex = 0
+                while mixer.voice[0].playing:
+                    pass
+        if right_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                config["option_selected"] = my_sound_options[self.currentOption]
+                files.write_json_file("/sd/config_christmas_park.json",config)
+                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_selected.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
+            machine.go_to_state('base_state')
 class WebOptions(State):
 
     def __init__(self):
@@ -1362,6 +1436,7 @@ class StateTemplate(State):
 pretty_state_machine = StateMachine()
 pretty_state_machine.add_state(BaseState())
 pretty_state_machine.add_state(ChooseSounds())
+pretty_state_machine.add_state(ChooseMySounds())
 pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(WebOptions())
 pretty_state_machine.add_state(LightStringSetupMenu())

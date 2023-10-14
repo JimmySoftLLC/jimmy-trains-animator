@@ -181,17 +181,25 @@
             <div class="mui-textfield">
                 <input class="input" id="volume" type="number" disabled>
                 <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="lower">
-                    Lower Volume
+                    data-action="lower10">
+                    Lower Volume by 10
                 </button>
                 <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="raise">
-                    Raise Volume
+                    data-action="raise10">
+                    Raise Volume by 10
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="lower1">
+                    Lower Volume by 1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="raise1">
+                    Raise Volume by 1
                 </button>
             </div>
 
             <p>
-                Valid volume levels are from 10 to 100
+                Valid volume levels are from 1 to 100
             </p>
 
             <h2>Animator web page name:</h2>
@@ -219,6 +227,34 @@
                 data-url="/utilities" type="button">
                 Reset to defaults
             </button>
+            <h2>Animation timing:</h2>
+            <p>
+                This feature is used to re-time animations. Warning: This will change animations and can only be set
+                back to defaults.
+                Do not use this if you do not want to change the animation timing.
+            </p>
+            <p>
+                When timestamp is on pick the song you want using the sound selection menu. Next activate the animation.
+                Once the animation starts press the right button for each point want the animation change. Time your
+                button presses to key moments in the sound track. Continue to do this until the animation finishes. Then
+                see your animation changes by first turning timestamp mode off and then activate the animation. </p>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on"
+                    data-url="/animation" type="button">
+                    Timestamp Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/animation" type="button">
+                    Timestamp Mode Off
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_animation_timing_to_defaults"
+                    data-url="/animation" type="button">
+                    Reset animation timing to defaults
+                </button>
+            </div>
+
         </div>
     </div>
 </body>
