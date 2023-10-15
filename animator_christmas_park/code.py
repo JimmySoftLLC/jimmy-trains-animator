@@ -416,10 +416,11 @@ if (serve_webpage):
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
             elif "timestamp_mode_on" in raw_text: 
                 time_stamp_mode = True
-                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                play_audio_0("/sd/menu_voice_commands/timestamp_mode_on.wav")
+                play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
             elif "timestamp_mode_off" in raw_text: 
                 time_stamp_mode = False
-                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav") 
+                play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav") 
             files.write_json_file("/sd/config_christmas_park.json",config)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
@@ -698,9 +699,9 @@ def animation(file_name):
     if time_stamp_mode:
         animation_timestamp(current_option_selected)
     else:
-        animation_lightshow(current_option_selected)
+        animation_light_show(current_option_selected)
          
-def animation_lightshow(file_name):
+def animation_light_show(file_name):
     global time_stamp_mode
     rand_index_low = 1
     rand_index_high = 3
@@ -784,7 +785,7 @@ def animation_timestamp(file_name):
  
     customers_file = "customers_owned_music_" in file_name
     
-    my_time_stamps = files.read_json_file("/sd/christmas_park_sounds/timestamp_mode.json")
+    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp_mode.json")
     my_time_stamps["flashTime"]=[]
     
     file_name = file_name.replace("customers_owned_music_","")
@@ -813,7 +814,11 @@ def animation_timestamp(file_name):
             else:   
                 files.write_json_file("/sd/christmas_park_sounds/" + file_name + ".json",my_time_stamps)
             break
+
     time_stamp_mode = False
+    play_audio_0("/sd/menu_voice_commands/timestamp_saved.wav")
+    play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav")
+    play_audio_0("/sd/menu_voice_commands/animations_are_now_active.wav")
 
 ##############################
 # Led color effects
