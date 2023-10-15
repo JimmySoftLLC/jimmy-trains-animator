@@ -424,7 +424,10 @@ if (serve_webpage):
             elif "timestamp_mode_off" in raw_text: 
                 time_stamp_mode = False
                 play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav") 
-            files.write_json_file("/sd/config_christmas_park.json",config)
+            elif "reset_animation_timing_to_defaults" in raw_text:
+                for time_stamp_file in time_stamp_jsons:
+                    time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
+                    files.write_json_file("/sd/christmas_park_sounds2/"+time_stamp_file+".json",time_stamps)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         @server.route("/utilities", [POST])

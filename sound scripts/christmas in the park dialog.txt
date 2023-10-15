@@ -12,7 +12,8 @@
     auld lang syne jazzy version.
     timestamp mode.
 
-When timestamp is on pick the song you want using the sound selection menu. Next activate the animation. Once the animation starts press the right button for each point want the animation change. Time your button presses to key moments in the sound track. Continue to do this until the animation finishes.  Then see your animation changes by first turning timestamp mode off and then activate the animation.
+Time stamp mode allows you to change your animation timing.  Once time stamp mode is turned on press the left button to start your animation.  Once the sound track starts press the right button for each point that you want an animation change. Time your button 
+presses to key moments in the sound track. Continue to do this until the animation finishes.  Then timestamp mode will be automatically turned off and your animation will be ready.
 
 No timestamp file found for this sound track, do you want to switch to timestamp mode?  Press right button to activate left button to skip.
 
