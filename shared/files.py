@@ -33,11 +33,11 @@ def print_directory(path, tabs=0):
         if isdir:
             print_directory(path + "/" + file, tabs + 1)
 
-def return_directory(prefix, path):
+def return_directory(prefix, path, fileType):
     file_list = []
     for file in os.listdir(path):  
-        if "._" not in file and ".wav" in file:
-            file_name = prefix + file.replace('.wav', '')
+        if "._" not in file and fileType in file:
+            file_name = prefix + file.replace(fileType, '')
             file_list.append(file_name)
     file_list.sort()
     return file_list
