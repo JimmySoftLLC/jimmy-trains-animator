@@ -701,19 +701,42 @@ def animation(file_name):
         animation_lightshow(current_option_selected)
          
 def animation_lightshow(file_name):
+    global time_stamp_mode
     rand_index_low = 1
     rand_index_high = 3
     if file_name == "silent_night":
         rand_index_low = 3
         rand_index_high = 3
+
+    customers_file = "customers_owned_music_" in file_name
     
-    flash_time_dictionary = files.read_json_file("/sd/christmas_park_sounds/" + file_name + ".json")
+    if customers_file:
+        file_name=file_name.replace("customers_owned_music_","")
+        try:
+            flash_time_dictionary = files.read_json_file("/sd/customers_owned_music/" + file_name + ".json")
+        except:
+            play_audio_0("/sd/menu_voice_commands/no_timestamp_file_found.wav")
+            while True:
+                left_switch.update()
+                right_switch.update()
+                if left_switch.fell:
+                    time_stamp_mode = False
+                    return
+                if right_switch.fell:
+                    time_stamp_mode = True
+                    play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
+                    return
+    else:
+        flash_time_dictionary = files.read_json_file("/sd/christmas_park_sounds/" + file_name + ".json")
     flashTime = flash_time_dictionary["flashTime"]
 
     flashTimeLen = len(flashTime)
     flashTimeIndex = 0
     
-    wave0 = audiocore.WaveFile(open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
+    if customers_file:
+        wave0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
+    else:
+        wave0 = audiocore.WaveFile(open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     startTime = time.monotonic()
     my_index = 0
@@ -757,11 +780,14 @@ def animation_lightshow(file_name):
          
 def animation_timestamp(file_name):
     print("time stamp mode")
+    global time_stamp_mode
  
     customers_file = "customers_owned_music_" in file_name
     
     my_time_stamps = files.read_json_file("/sd/christmas_park_sounds/timestamp_mode.json")
     my_time_stamps["flashTime"]=[]
+    
+    file_name = file_name.replace("customers_owned_music_","")
 
     if customers_file :
         wave0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
@@ -787,6 +813,7 @@ def animation_timestamp(file_name):
             else:   
                 files.write_json_file("/sd/christmas_park_sounds/" + file_name + ".json",my_time_stamps)
             break
+    time_stamp_mode = False
 
 ##############################
 # Led color effects
@@ -1390,15 +1417,7 @@ class VolumeSettings(State):
                             files.write_json_file("/sd/config_christmas_park.json",config)
                             play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                             machine.go_to_state('base_state')
-                            break
-                            if mixer.voice[0].playing:
-                                mixer.voice[0].stop()
-                                while mixer.voice[0].playing:
-                                    pass
-                            else:
-                                files.write_json_file("/sd/config_christmas_park.json",config)
-                                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                                machine.go_to_state('base_state')  
+                            break 
                         sleepAndUpdateVolume(0.1)
                         pass
                 elif selected_menu_item == "volume_pot_off":
@@ -1482,3 +1501,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
