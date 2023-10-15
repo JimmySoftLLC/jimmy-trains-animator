@@ -136,8 +136,11 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 config = files.read_json_file("/sd/config_christmas_park.json")
 sound_options = config["options"]
 
-my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music")
+my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 print(my_sound_options)
+
+time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
+print(time_stamp_jsons)
 
 serve_webpage = config["serve_webpage"]
 
@@ -1506,4 +1509,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
