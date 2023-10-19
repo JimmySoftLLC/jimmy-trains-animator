@@ -594,6 +594,8 @@ def reset_to_defaults():
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-christmas-park"
     config["option_selected"] = "we_wish_you_a_merry_christmas"
+    config["volume"] = 30
+    
     reset_lights_to_defaults()
     
 def reset_lights_to_defaults():
@@ -703,6 +705,17 @@ def speak_light_string(play_intro):
         play_audio_0("/sd/menu_voice_commands/is.wav")
         play_audio_0("/sd/menu_voice_commands/" + element + ".wav")
         
+def no_user_soundtrack_found():
+    play_audio_0("/sd/menu_voice_commands/no_user_sountrack_found.wav")
+    while True:
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            break
+        if right_switch.fell:
+            play_audio_0("/sd/menu_voice_commands/create_sound_track_files.wav")
+            break
+
 ################################################################################
 # animations
      
@@ -1122,8 +1135,11 @@ class MainMenu(State):
                     machine.go_to_state('choose_sounds')
                 elif selected_menu_item == "choose_my_sounds":
                     machine.go_to_state('choose_my_sounds')
+                elif selected_menu_item == "add_my_sounds_or_animate":
+                    machine.go_to_state('add_my_sounds_or_animate')
                 elif selected_menu_item == "light_string_setup_menu":
                     machine.go_to_state('light_string_setup_menu')
+                    add_my_sounds_or_animate
                 elif selected_menu_item == "web_options":
                     machine.go_to_state('web_options') 
                 elif selected_menu_item == "volume_settings":
@@ -1230,7 +1246,9 @@ class ChooseMySounds(State):
                     while mixer.voice[0].playing:
                         pass
                 except:
-                    print("error with my sounds")
+                    no_user_soundtrack_found()
+                    machine.go_to_state('base_state')
+                    return
         if right_switch.fell:
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
@@ -1245,10 +1263,9 @@ class ChooseMySounds(State):
                     while mixer.voice[0].playing:
                         pass
                 except:
-                    print("error with my sounds")
+                    print("no sound track")
             machine.go_to_state('base_state')
 class WebOptions(State):
-
     def __init__(self):
         self.menuIndex = 0
         self.selectedMenuIndex = 0

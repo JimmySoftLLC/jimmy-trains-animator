@@ -37,3 +37,5 @@ You can create files of this type using Audacity, a free application.
 
 
 Once you have your files on the microSD card reinsert it into the animator and power it back on.  The animator will scan for new files and populate the web page with your sound tracks.  Next you animate them by selecting one of your sound tracks and follow the spoken instructions.
+
+No user sound tracks found or they are not encoded correctly.  Press the right button for further instructions or the left button to skip.  
