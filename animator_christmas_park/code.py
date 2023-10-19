@@ -1135,8 +1135,18 @@ class MainMenu(State):
                     machine.go_to_state('choose_sounds')
                 elif selected_menu_item == "choose_my_sounds":
                     machine.go_to_state('choose_my_sounds')
-                elif selected_menu_item == "add_my_sounds_or_animate":
-                    machine.go_to_state('add_my_sounds_or_animate')
+                elif selected_menu_item == "new_feature": #add this later
+                    play_audio_0("/sd/menu_voice_commands/no_timestamp_file_found.wav")
+                    while True:
+                        left_switch.update()
+                        right_switch.update()
+                        if left_switch.fell:
+                            time_stamp_mode = False
+                            return
+                        if right_switch.fell:
+                            time_stamp_mode = True
+                            play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
+                            return
                 elif selected_menu_item == "light_string_setup_menu":
                     machine.go_to_state('light_string_setup_menu')
                 elif selected_menu_item == "web_options":
