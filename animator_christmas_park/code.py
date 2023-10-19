@@ -1139,7 +1139,6 @@ class MainMenu(State):
                     machine.go_to_state('add_my_sounds_or_animate')
                 elif selected_menu_item == "light_string_setup_menu":
                     machine.go_to_state('light_string_setup_menu')
-                    add_my_sounds_or_animate
                 elif selected_menu_item == "web_options":
                     machine.go_to_state('web_options') 
                 elif selected_menu_item == "volume_settings":
