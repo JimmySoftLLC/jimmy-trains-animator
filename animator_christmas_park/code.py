@@ -137,10 +137,8 @@ config = files.read_json_file("/sd/config_christmas_park.json")
 sound_options = config["options"]
 
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
-print(my_sound_options)
 
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
-print(time_stamp_jsons)
 
 serve_webpage = config["serve_webpage"]
 
@@ -411,6 +409,12 @@ if (serve_webpage):
             elif "auld_lang_syne_jazzy_version" in raw_text: 
                 config["option_selected"] = "auld_lang_syne_jazzy_version"
                 animation(config["option_selected"])
+            elif "customers_owned_music_" in raw_text:
+                for my_sound_file in my_sound_options:
+                    if my_sound_file  in raw_text:
+                        config["option_selected"] = my_sound_file
+                        animation(config["option_selected"])
+                        break
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
@@ -552,6 +556,11 @@ if (serve_webpage):
         @server.route("/get-light-string", [POST])
         def buttonpress(request: Request):
             return Response(request, config["light_string"])
+        
+        @server.route("/get-customers-sound-tracks", [POST])
+        def buttonpress(request: Request):
+            my_string = files.json_stringify(my_sound_options)
+            return Response(request, my_string)
            
     except Exception as e:
         serve_webpage = False
@@ -637,11 +646,16 @@ def shortCircuitDialog():
         
 def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
-        if character == "-":
-            character = "dash"
-        if character == ".":
-            character = "dot"
-        play_audio_0("/sd/menu_voice_commands/" + character + ".wav")
+        try:
+            if character == " ":
+                character = "space"
+            if character == "-":
+                character = "dash"
+            if character == ".":
+                character = "dot"
+            play_audio_0("/sd/menu_voice_commands/" + character + ".wav")
+        except:
+            print("invalid character in string to speak")
     if addLocal:
         play_audio_0("/sd/menu_voice_commands/dot.wav")
         play_audio_0("/sd/menu_voice_commands/local.wav")
@@ -1206,26 +1220,32 @@ class ChooseMySounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                my_string = my_sound_options[self.optionIndex].replace("customers_owned_music_","")
-                speak_this_string(my_string,False)
-                self.currentOption = self.optionIndex
-                self.optionIndex +=1
-                if self.optionIndex > len(my_sound_options)-1:
-                    self.optionIndex = 0
-                while mixer.voice[0].playing:
-                    pass
+                try:
+                    my_string = my_sound_options[self.optionIndex].replace("customers_owned_music_","")
+                    speak_this_string(my_string,False)
+                    self.currentOption = self.optionIndex
+                    self.optionIndex +=1
+                    if self.optionIndex > len(my_sound_options)-1:
+                        self.optionIndex = 0
+                    while mixer.voice[0].playing:
+                        pass
+                except:
+                    print("error with my sounds")
         if right_switch.fell:
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
                     pass
             else:
-                config["option_selected"] = my_sound_options[self.currentOption]
-                files.write_json_file("/sd/config_christmas_park.json",config)
-                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_selected.wav", "rb"))
-                mixer.voice[0].play( wave0, loop=False )
-                while mixer.voice[0].playing:
-                    pass
+                try:
+                    config["option_selected"] = my_sound_options[self.currentOption]
+                    files.write_json_file("/sd/config_christmas_park.json",config)
+                    wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/option_selected.wav", "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                    while mixer.voice[0].playing:
+                        pass
+                except:
+                    print("error with my sounds")
             machine.go_to_state('base_state')
 class WebOptions(State):
 
@@ -1476,6 +1496,8 @@ pretty_state_machine.add_state(LightStringSetupMenu())
 pretty_state_machine.add_state(VolumeSettings())
        
 audio_enable.value = True
+
+sleepAndUpdateVolume(.5)
 
 def speak_webpage():
     play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")

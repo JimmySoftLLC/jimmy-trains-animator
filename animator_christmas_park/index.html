@@ -21,13 +21,15 @@
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
+                <a data-mui-toggle="tab" data-mui-controls="my_animations">my animations</a>
+            </li>
+            <li>
                 <a data-mui-toggle="tab" data-mui-controls="lightning">light string</a>
             </li>
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
             </li>
         </ul>
-
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random" data-url="/animation"
                 type="button">
@@ -89,6 +91,24 @@
                 type="button">
                 Continuous Mode Off
             </button>
+        </div>
+        <div class="mui-tabs__pane" id="my_animations" style="padding-top:0.5rem;">
+            <h2>My Sound tracks:</h2>
+            <div id="buttonContainer"></div>
+            <h2>Instructions on how to add your own sound tracks:</h2>
+            <p>
+                You can create your own sound track files by putting wav files in the folder called
+                "customers_owned_music" on the microSD card that is inserted
+                in your animator. The files must be named with only lower case letters, numbers and spaces. For example
+                "white christmas". The files must be wav files encoded with a sample rate of 22050Hz and a sample format
+                of 16 bits.
+                You can create files of this type using Audacity, a free application.
+            </p>
+            <p>
+                Once you have your files on the microSD card reinsert it into the animator and power it back on. The
+                animator will scan for new files and populate the web page with your sound tracks. Next you animate them
+                by selecting one of your sound tracks and follow the spoken instructions.
+            </p>
         </div>
         <div class="mui-tabs__pane" id="lightning" style="padding-top:0.5rem;">
             <h2>Setup light string:</h2>
@@ -233,7 +253,7 @@
                 left button to start your animation. Once the sound track starts press the right button for each point
                 that you want an animation change. Time your button presses to key moments in the sound track. Continue
                 to do this until the animation finishes. Then
-                timestamp mode will be automatically turned off and your animation will be ready. 
+                timestamp mode will be automatically turned off and your animation will be ready.
             </p>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on"
@@ -305,6 +325,67 @@
             })
             .then(function (data) {
                 lightString.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get customers sound tracks
+        fetch('/get-customers-sound-tracks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                // Loop through the data and create a button for each item
+
+                my_data.forEach((item) => {
+                    const button = document.createElement("button");
+                    button.textContent = item.replace("customers_owned_music_","");
+                    button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+                    button.setAttribute("data-value", item);
+                    button.setAttribute("data-url", "/animation");
+                    button.setAttribute("type", "button");
+                    button.addEventListener('click', function () {
+                        var url = button.getAttribute('data-url');
+                        var animation = button.getAttribute('data-value');
+                        var redirectUrl = button.getAttribute('data-redirect');
+
+                        // Create an object with the data to be sent in the request
+                        var data = {
+                            animation: animation,
+                        };
+
+                        button.setAttribute('disabled', 'true')
+
+                        // Make a POST request using fetch
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(data),
+                        })
+                            .then(function (response) {
+                                // Handle the response from the server
+                                if (redirectUrl) {
+                                    window.location.href = redirectUrl;
+                                } else {
+                                    button.removeAttribute('disabled');
+                                }
+                            })
+                            .catch(function (error) {
+                                button.removeAttribute('disabled');
+                                alert('Try Again');
+                            });
+                    });
+                    buttonContainer.appendChild(button);
+                });
             })
             .catch(function (error) {
                 console.log(error);
