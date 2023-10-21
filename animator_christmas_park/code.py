@@ -138,6 +138,10 @@ sound_options = config["options"]
 
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
+rand_sound_options = []
+rand_sound_options.extend(my_sound_options) 
+rand_sound_options.extend(sound_options) 
+
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
 serve_webpage = config["serve_webpage"]
@@ -724,10 +728,10 @@ def animation(file_name):
     current_option_selected = file_name
     if file_name == "random":
         if file_name == "random":
-            highest_index = len(sound_options) - 2 #subtract -2 to avoid choosing "random" for a file 
+            highest_index = len(rand_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file 
             sound_number = random.randint(0, highest_index)
-            current_option_selected = sound_options[sound_number]
-            print("Random sound file: " + sound_options[sound_number])
+            current_option_selected = rand_sound_options[sound_number]
+            print("Random sound file: " + rand_sound_options[sound_number])
             print("Sound file: " + current_option_selected)
     if time_stamp_mode:
         animation_timestamp(current_option_selected)
