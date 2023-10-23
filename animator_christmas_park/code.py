@@ -21,7 +21,6 @@ import random
 import rtc
 import microcontroller
 
-import audiomp3
 from analogio import AnalogIn
 
 from adafruit_debouncer import Debouncer
@@ -89,33 +88,6 @@ si = board.GP3
 so = board.GP4
 cs = board.GP5
 spi = busio.SPI(sck, si, so)
-try:
-  sdcard = sdcardio.SDCard(spi, cs)
-  vfs = storage.VfsFat(sdcard)
-  storage.mount(vfs, "/sd")
-except:
-  wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
-  audio.play(wave0)
-  while audio.playing:
-    pass
-  cardInserted = False
-  while not cardInserted:
-    left_switch.update()
-    if left_switch.fell:
-        try:
-            sdcard = sdcardio.SDCard(spi, cs)
-            vfs = storage.VfsFat(sdcard)
-            storage.mount(vfs, "/sd")
-            cardInserted = True
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_success.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
-        except:
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
@@ -124,6 +96,38 @@ mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_coun
                          bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
+volume = .2
+mixer.voice[0].level = volume
+mixer.voice[1].level = volume
+
+try:
+  sdcard = sdcardio.SDCard(spi, cs)
+  vfs = storage.VfsFat(sdcard)
+  storage.mount(vfs, "/sd")
+except:
+    wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        pass
+    cardInserted = False
+    while not cardInserted:
+        left_switch.update()
+        if left_switch.fell:
+            try:
+                sdcard = sdcardio.SDCard(spi, cs)
+                vfs = storage.VfsFat(sdcard)
+                storage.mount(vfs, "/sd")
+                cardInserted = True
+                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/micro_sd_card_success.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
+            except:
+                wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
+            
 audio_enable.value = False
 
 # Setup time
@@ -139,8 +143,10 @@ sound_options = config["options"]
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 rand_sound_options = []
-rand_sound_options.extend(my_sound_options) 
-rand_sound_options.extend(sound_options) 
+
+rand_sound_options.extend(sound_options)
+rand_sound_options.extend(my_sound_options)
+rand_sound_options.remove("random")
 
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
@@ -435,7 +441,7 @@ if (serve_webpage):
             elif "reset_animation_timing_to_defaults" in raw_text:
                 for time_stamp_file in time_stamp_jsons:
                     time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
-                    files.write_json_file("/sd/christmas_park_sounds2/"+time_stamp_file+".json",time_stamps)
+                    files.write_json_file("/sd/christmas_park_sounds/"+time_stamp_file+".json",time_stamps)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         @server.route("/utilities", [POST])
@@ -728,7 +734,7 @@ def animation(file_name):
     current_option_selected = file_name
     if file_name == "random":
         if file_name == "random":
-            highest_index = len(rand_sound_options) - 2 #subtract -2 to avoid choosing "random" for a file 
+            highest_index = len(rand_sound_options) - 1
             sound_number = random.randint(0, highest_index)
             current_option_selected = rand_sound_options[sound_number]
             print("Random sound file: " + rand_sound_options[sound_number])
@@ -737,6 +743,7 @@ def animation(file_name):
         animation_timestamp(current_option_selected)
     else:
         animation_light_show(current_option_selected)
+    garbage_collect("animation finished")
          
 def animation_light_show(file_name):
     global time_stamp_mode
