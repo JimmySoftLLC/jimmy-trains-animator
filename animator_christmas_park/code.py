@@ -635,7 +635,7 @@ def changeVolume(action):
         else:
             volume -= 10
     if action == "raise":
-        if volume <= 10:
+        if volume < 10:
             volume += 1
         else:
             volume += 10
