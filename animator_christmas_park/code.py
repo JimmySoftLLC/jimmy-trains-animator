@@ -142,11 +142,10 @@ sound_options = config["options"]
 
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
-rand_sound_options = []
+all_sound_options = []
 
-rand_sound_options.extend(sound_options)
-rand_sound_options.extend(my_sound_options)
-rand_sound_options.remove("random")
+all_sound_options.extend(sound_options)
+all_sound_options.extend(my_sound_options)
 
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
@@ -383,8 +382,14 @@ if (serve_webpage):
             global continuous_run
             global time_stamp_mode
             raw_text = request.raw_request.decode("utf8")
-            if "random" in raw_text: 
-                config["option_selected"] = "random"
+            if "random_built_in" in raw_text: 
+                config["option_selected"] = "random_built_in"
+                animation(config["option_selected"])
+            elif "random_my" in raw_text: 
+                config["option_selected"] = "random_my"
+                animation(config["option_selected"])
+            elif "random_all" in raw_text: 
+                config["option_selected"] = "random_all"
                 animation(config["option_selected"])
             elif "we_wish_you_a_merry_christmas" in raw_text: 
                 config["option_selected"] = "we_wish_you_a_merry_christmas"
@@ -606,7 +611,7 @@ def reset_to_defaults():
     global config
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-christmas-park"
-    config["option_selected"] = "we_wish_you_a_merry_christmas"
+    config["option_selected"] = "random_all"
     config["volume"] = 30
     
     reset_lights_to_defaults()
@@ -739,12 +744,23 @@ def no_user_soundtrack_found():
 def animation(file_name):
     print(file_name)
     current_option_selected = file_name
-    if file_name == "random":
-        if file_name == "random":
-            highest_index = len(rand_sound_options) - 1
+    if file_name == "random_built_in":
+            highest_index = len(sound_options) - 1
             sound_number = random.randint(0, highest_index)
-            current_option_selected = rand_sound_options[sound_number]
-            print("Random sound file: " + rand_sound_options[sound_number])
+            current_option_selected = sound_options[sound_number]
+            print("Random sound file: " + sound_options[sound_number])
+            print("Sound file: " + current_option_selected)
+    elif file_name == "random_my":
+            highest_index = len(my_sound_options) - 1
+            sound_number = random.randint(0, highest_index)
+            current_option_selected = my_sound_options[sound_number]
+            print("Random sound file: " + my_sound_options[sound_number])
+            print("Sound file: " + current_option_selected)
+    elif file_name == "random_all":
+            highest_index = len(all_sound_options) - 1
+            sound_number = random.randint(0, highest_index)
+            current_option_selected = all_sound_options[sound_number]
+            print("Random sound file: " + all_sound_options[sound_number])
             print("Sound file: " + current_option_selected)
     if time_stamp_mode:
         animation_timestamp(current_option_selected)
@@ -1153,18 +1169,6 @@ class MainMenu(State):
                     machine.go_to_state('choose_sounds')
                 elif selected_menu_item == "choose_my_sounds":
                     machine.go_to_state('choose_my_sounds')
-                elif selected_menu_item == "new_feature": #add this later
-                    play_audio_0("/sd/menu_voice_commands/no_timestamp_file_found.wav")
-                    while True:
-                        left_switch.update()
-                        right_switch.update()
-                        if left_switch.fell:
-                            time_stamp_mode = False
-                            return
-                        if right_switch.fell:
-                            time_stamp_mode = True
-                            play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
-                            return
                 elif selected_menu_item == "light_string_setup_menu":
                     machine.go_to_state('light_string_setup_menu')
                 elif selected_menu_item == "web_options":

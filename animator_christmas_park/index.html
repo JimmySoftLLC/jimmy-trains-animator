@@ -31,9 +31,17 @@
             </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
-            <button class="mui-btn mui-btn--primary animator-action" data-value="random" data-url="/animation"
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random_built_in" data-url="/animation"
                 type="button">
-                Random
+                Random only built in sound tracks
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random_my" data-url="/animation"
+                type="button">
+                Random only my sound tracks
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random_all" data-url="/animation"
+                type="button">
+                Random all sound tracks
             </button>
             <button class="mui-btn mui-btn--primary animator-action" data-value="we_wish_you_a_merry_christmas"
                 data-url="/animation" type="button">
@@ -83,18 +91,44 @@
                 data-url="/animation" type="button">
                 auld lang syne jazzy version
             </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/animation"
-                type="button">
-                Continuous Mode On
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/animation"
-                type="button">
-                Continuous Mode Off
-            </button>
+            <h2>Animation settings:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/animation"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off"
+                    data-url="/animation" type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
         </div>
         <div class="mui-tabs__pane" id="my_animations" style="padding-top:0.5rem;">
             <h2>My Sound tracks:</h2>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random_built_in" data-url="/animation"
+                type="button">
+                Random only built in sound tracks
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random_my" data-url="/animation"
+                type="button">
+                Random only my sound tracks
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random_all" data-url="/animation"
+                type="button">
+                Random all sound tracks
+            </button>
             <div id="buttonContainer"></div>
+            <h2>Animation settings:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/animation"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off"
+                    data-url="/animation" type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
             <h2>Instructions on how to add your own sound tracks:</h2>
             <p>
                 You can create your own sound track files by putting wav files in the folder called
@@ -346,7 +380,7 @@
 
                 my_data.forEach((item) => {
                     const button = document.createElement("button");
-                    button.textContent = item.replace("customers_owned_music_","");
+                    button.textContent = item.replace("customers_owned_music_", "");
                     button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
                     button.setAttribute("data-value", item);
                     button.setAttribute("data-url", "/animation");
