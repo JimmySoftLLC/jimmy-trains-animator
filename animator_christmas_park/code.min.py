@@ -303,7 +303,7 @@ def Q(seconds):
 		except:C=.5
 		if C<0 or C>1:C=.5
 		B.voice[0].level=C;B.voice[1].level=C;O.sleep(D)
-def C0():global A;A[y]=J;A[n]=BP;A[F]=AK;A[o]=30;BA()
+def C0():global A;A[y]=J;A[n]=BP;A[F]=AK;A[o]='30';BA()
 def BA():global A;A[P]='cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21'
 def Ad(action):
 	D=action;B=int(A[o])

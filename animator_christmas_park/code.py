@@ -611,7 +611,7 @@ def reset_to_defaults():
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-christmas-park"
     config["option_selected"] = "random_all"
-    config["volume"] = 30
+    config["volume"] = "30"
     
     reset_lights_to_defaults()
     
