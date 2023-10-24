@@ -143,9 +143,8 @@ sound_options = config["options"]
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 all_sound_options = []
-
-all_sound_options.extend(sound_options)
 all_sound_options.extend(my_sound_options)
+all_sound_options.extend(sound_options)
 
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
@@ -745,7 +744,7 @@ def animation(file_name):
     print(file_name)
     current_option_selected = file_name
     if file_name == "random_built_in":
-            highest_index = len(sound_options) - 1
+            highest_index = len(sound_options) - 4
             sound_number = random.randint(0, highest_index)
             current_option_selected = sound_options[sound_number]
             print("Random sound file: " + sound_options[sound_number])
@@ -757,7 +756,7 @@ def animation(file_name):
             print("Random sound file: " + my_sound_options[sound_number])
             print("Sound file: " + current_option_selected)
     elif file_name == "random_all":
-            highest_index = len(all_sound_options) - 1
+            highest_index = len(all_sound_options) - 4
             sound_number = random.randint(0, highest_index)
             current_option_selected = all_sound_options[sound_number]
             print("Random sound file: " + all_sound_options[sound_number])
