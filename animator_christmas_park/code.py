@@ -167,6 +167,9 @@ light_options = config_light_options["light_options"]
 volume_settings_options = files.read_json_file("/sd/menu_voice_commands/volume_settings.json")
 volume_settings = volume_settings_options["volume_settings"]
 
+add_sounds_animate_options = files.read_json_file("/sd/menu_voice_commands/add_sounds_animate.json")
+add_sounds_animate = add_sounds_animate_options["add_sounds_animate"]
+
 garbage_collect("config setup")
 
 continuous_run = False
@@ -685,6 +688,10 @@ def left_right_mouse_button():
     
 def mainMenuAnnouncement():
     play_audio_0("/sd/menu_voice_commands/main_menu.wav")
+    left_right_mouse_button()
+
+def addSoundsAnimateAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/add_sounds_animate.wav")
     left_right_mouse_button()
 
 def selectWebOptionsAnnouncement():
@@ -1436,8 +1443,62 @@ class LightStringSetupMenu(State):
                 files.write_json_file("/sd/config_christmas_park.json",config)
                 play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                 updateLightString()
-                machine.go_to_state('base_state')   
+                machine.go_to_state('base_state')  
 
+class AddSoundsAnimate(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'add_sounds_animate'
+
+    def enter(self, machine):
+        files.log_item('add_sounds_animate')
+        addSoundsAnimateAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        global time_stamp_mode
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/menu_voice_commands/" + add_sounds_animate[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(add_sounds_animate)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                selected_menu_item = add_sounds_animate[self.selectedMenuIndex]
+                if selected_menu_item == "hear_instructions":
+                    play_audio_0("/sd/menu_voice_commands/create_sound_track_files.wav")
+                elif selected_menu_item == "timestamp_mode_on":
+                    time_stamp_mode = True
+                    play_audio_0("/sd/menu_voice_commands/timestamp_mode_on.wav")
+                    play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
+                    machine.go_to_state('base_state') 
+                elif selected_menu_item == "timestamp_mode_off":
+                    time_stamp_mode = False
+                    play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav")
+                    machine.go_to_state('base_state')         
+                else:
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state') 
 class VolumeSettings(State):
 
     def __init__(self):
