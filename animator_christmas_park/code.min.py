@@ -342,7 +342,7 @@ def C5():C('/sd/menu_voice_commands/add_sounds_animate.wav');s()
 def A5():C('/sd/menu_voice_commands/web_menu.wav');s()
 def C6():C('/sd/menu_voice_commands/volume_settings_menu.wav');s()
 def C7():C('/sd/menu_voice_commands/light_string_setup_menu.wav');s()
-def C8():C('/sd/menu_voice_commands/string_instructions.wav')
+def C8():C('/sd/menu_voice_commands/park_string_instructions.wav')
 def BA():C(Ap)
 def BB(play_intro):
 	if play_intro:C('/sd/menu_voice_commands/current_light_settings_are.wav')
@@ -672,7 +672,7 @@ class CM(J):
 			elif F=='hear_instr_web':C('/sd/menu_voice_commands/web_instruct.wav');A5()
 			else:E.write_json_file(T,A);C(a);machine.go_to_state(W)
 class CN(J):
-	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0
+	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0;A.lightIndex=0;A.selectedLightIndex=0
 	@k
 	def name(self):return Au
 	def enter(A,machine):E.log_item(Aw);C7();J.enter(A,machine)
@@ -693,38 +693,38 @@ class CN(J):
 			elif F=='hear_current_light_settings':BB(I)
 			elif F=='clear_light_string':A[O]=h;C('/sd/menu_voice_commands/lights_cleared.wav')
 			elif F=='add_lights':
-				C('/sd/menu_voice_commands/add_light_menu.wav')
-				while I:
+				C('/sd/menu_voice_commands/add_light_menu.wav');M=I
+				while M:
 					J=Ad.switch_state(H,K,P,3.)
 					if J==Aq:
 						if B.voice[0].playing:
 							B.voice[0].stop()
 							while B.voice[0].playing:0
 						else:
-							D.menuIndex-=1
-							if D.menuIndex<0:D.menuIndex=Y(q)-1
-							D.selectedMenuIndex=D.menuIndex;C(i+q[D.menuIndex]+R)
+							D.lightIndex-=1
+							if D.lightIndex<0:D.lightIndex=Y(q)-1
+							D.selectedLightIndex=D.lightIndex;C(i+q[D.lightIndex]+R)
 					elif J==Ar:
 						if B.voice[0].playing:
 							B.voice[0].stop()
 							while B.voice[0].playing:0
 						else:
-							D.menuIndex+=1
-							if D.menuIndex>Y(q)-1:D.menuIndex=0
-							D.selectedMenuIndex=D.menuIndex;C(i+q[D.menuIndex]+R)
+							D.lightIndex+=1
+							if D.lightIndex>Y(q)-1:D.lightIndex=0
+							D.selectedLightIndex=D.lightIndex;C(i+q[D.lightIndex]+R)
 					elif J==BX:
 						if B.voice[0].playing:
 							B.voice[0].stop()
 							while B.voice[0].playing:0
 						else:
-							if A[O]==h:A[O]=q[D.selectedMenuIndex]
-							else:A[O]=A[O]+','+q[D.selectedMenuIndex]
-							C(i+q[D.selectedMenuIndex]+R);C('/sd/menu_voice_commands/added.wav')
+							if A[O]==h:A[O]=q[D.selectedLightIndex]
+							else:A[O]=A[O]+','+q[D.selectedLightIndex]
+							C(i+q[D.selectedLightIndex]+R);C('/sd/menu_voice_commands/added.wav')
 					elif J==BU:
 						if B.voice[0].playing:
 							B.voice[0].stop()
 							while B.voice[0].playing:0
-						else:E.write_json_file(T,A);C(a);A4();L.go_to_state(W)
+						else:E.write_json_file(T,A);C(a);A4();M=G;L.go_to_state(W)
 					P(.1)
 			else:E.write_json_file(T,A);C(a);A4();L.go_to_state(W)
 class CQ(J):
