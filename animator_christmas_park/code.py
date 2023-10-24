@@ -1170,7 +1170,9 @@ class MainMenu(State):
                 elif selected_menu_item == "web_options":
                     machine.go_to_state('web_options') 
                 elif selected_menu_item == "volume_settings":
-                    machine.go_to_state('volume_settings')                 
+                    machine.go_to_state('volume_settings')
+                elif selected_menu_item == "add_sounds_animate":
+                    machine.go_to_state('add_sounds_animate')  
                 else:
                     play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                     machine.go_to_state('base_state')
@@ -1292,6 +1294,125 @@ class ChooseMySounds(State):
                 except:
                     print("no sound track")
             machine.go_to_state('base_state')
+
+class AddSoundsAnimate(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'add_sounds_animate'
+
+    def enter(self, machine):
+        files.log_item('add_sounds_animate')
+        addSoundsAnimateAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        global time_stamp_mode
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/menu_voice_commands/" + add_sounds_animate[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(add_sounds_animate)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                selected_menu_item = add_sounds_animate[self.selectedMenuIndex]
+                if selected_menu_item == "hear_instructions":
+                    play_audio_0("/sd/menu_voice_commands/create_sound_track_files.wav")
+                elif selected_menu_item == "timestamp_mode_on":
+                    time_stamp_mode = True
+                    play_audio_0("/sd/menu_voice_commands/timestamp_mode_on.wav")
+                    play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
+                    machine.go_to_state('base_state') 
+                elif selected_menu_item == "timestamp_mode_off":
+                    time_stamp_mode = False
+                    play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav")
+                            
+                else:
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state')
+                    
+class VolumeSettings(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'volume_settings'
+
+    def enter(self, machine):
+        files.log_item('Set Web Options')
+        volumeSettingsAnnouncement()
+
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/menu_voice_commands/" + volume_settings[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(volume_settings)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+                selected_menu_item = volume_settings[self.selectedMenuIndex]
+                if selected_menu_item == "volume_level_adjustment":
+                    play_audio_0("/sd/menu_voice_commands/volume_adjustment_menu.wav")
+                    while True: 
+                        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+                        if switch_state == "left":
+                            changeVolume("lower")
+                        elif switch_state == "right":
+                            changeVolume("raise")
+                        elif switch_state == "right_held":
+                            files.write_json_file("/sd/config_christmas_park.json",config)
+                            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                            machine.go_to_state('base_state')
+                            break 
+                        sleepAndUpdateVolume(0.1)
+                        pass
+                elif selected_menu_item == "volume_pot_off":
+                    config["volume_pot"] = False
+                    if config["volume"] == 0:
+                        config["volume"] = 10
+                    files.write_json_file("/sd/config_christmas_park.json",config)
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state') 
+                elif selected_menu_item == "volume_pot_on":
+                    config["volume_pot"] = True
+                    files.write_json_file("/sd/config_christmas_park.json",config)
+                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    machine.go_to_state('base_state') 
+
 class WebOptions(State):
     def __init__(self):
         self.menuIndex = 0
@@ -1445,123 +1566,6 @@ class LightStringSetupMenu(State):
                 updateLightString()
                 machine.go_to_state('base_state')  
 
-class AddSoundsAnimate(State):
-
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
-
-    @property
-    def name(self):
-        return 'add_sounds_animate'
-
-    def enter(self, machine):
-        files.log_item('add_sounds_animate')
-        addSoundsAnimateAnnouncement()
-        State.enter(self, machine)
-
-    def exit(self, machine):
-        State.exit(self, machine)
-
-    def update(self, machine):
-        global time_stamp_mode
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/menu_voice_commands/" + add_sounds_animate[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(add_sounds_animate)-1:
-                    self.menuIndex = 0
-        if right_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                selected_menu_item = add_sounds_animate[self.selectedMenuIndex]
-                if selected_menu_item == "hear_instructions":
-                    play_audio_0("/sd/menu_voice_commands/create_sound_track_files.wav")
-                elif selected_menu_item == "timestamp_mode_on":
-                    time_stamp_mode = True
-                    play_audio_0("/sd/menu_voice_commands/timestamp_mode_on.wav")
-                    play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
-                    machine.go_to_state('base_state') 
-                elif selected_menu_item == "timestamp_mode_off":
-                    time_stamp_mode = False
-                    play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav")
-                            
-                else:
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                    machine.go_to_state('base_state') 
-class VolumeSettings(State):
-
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
-
-    @property
-    def name(self):
-        return 'volume_settings'
-
-    def enter(self, machine):
-        files.log_item('Set Web Options')
-        volumeSettingsAnnouncement()
-
-        State.enter(self, machine)
-
-    def exit(self, machine):
-        State.exit(self, machine)
-
-    def update(self, machine):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/menu_voice_commands/" + volume_settings[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(volume_settings)-1:
-                    self.menuIndex = 0
-        if right_switch.fell:
-                selected_menu_item = volume_settings[self.selectedMenuIndex]
-                if selected_menu_item == "volume_level_adjustment":
-                    play_audio_0("/sd/menu_voice_commands/volume_adjustment_menu.wav")
-                    while True: 
-                        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
-                        if switch_state == "left":
-                            changeVolume("lower")
-                        elif switch_state == "right":
-                            changeVolume("raise")
-                        elif switch_state == "right_held":
-                            files.write_json_file("/sd/config_christmas_park.json",config)
-                            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                            machine.go_to_state('base_state')
-                            break 
-                        sleepAndUpdateVolume(0.1)
-                        pass
-                elif selected_menu_item == "volume_pot_off":
-                    config["volume_pot"] = False
-                    if config["volume"] == 0:
-                        config["volume"] = 10
-                    files.write_json_file("/sd/config_christmas_park.json",config)
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                    machine.go_to_state('base_state') 
-                elif selected_menu_item == "volume_pot_on":
-                    config["volume_pot"] = True
-                    files.write_json_file("/sd/config_christmas_park.json",config)
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                    machine.go_to_state('base_state') 
-
 # StateTemplate copy and add functionality
 class StateTemplate(State):
 
@@ -1586,13 +1590,14 @@ class StateTemplate(State):
 
 pretty_state_machine = StateMachine()
 pretty_state_machine.add_state(BaseState())
+pretty_state_machine.add_state(MainMenu())
 pretty_state_machine.add_state(ChooseSounds())
 pretty_state_machine.add_state(ChooseMySounds())
-pretty_state_machine.add_state(MainMenu())
+pretty_state_machine.add_state(AddSoundsAnimate())
+pretty_state_machine.add_state(VolumeSettings())
 pretty_state_machine.add_state(WebOptions())
 pretty_state_machine.add_state(LightStringSetupMenu())
-pretty_state_machine.add_state(VolumeSettings())
-       
+
 audio_enable.value = True
 
 sleepAndUpdateVolume(.5)
