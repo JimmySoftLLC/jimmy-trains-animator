@@ -160,23 +160,23 @@ continuous_run = False
 
 ################################################################################
 # Setup neo pixels
-grandtrees = []
-canes = []
+bars = []
+bolts = []
 
 num_pixels = 0
 
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 
 def runLightTest():
-    for grandtree in grandtrees:
-        for led_index in grandtree:
+    for bar in bars:
+        for led_index in bar:
             ledStrip[led_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
-    for cane in canes:
-        for led_index in cane:
+    for bolt in bolts:
+        for led_index in bolt:
             ledStrip[led_index]=(50, 50, 50)
         ledStrip.show()
         time.sleep(.3)
@@ -184,9 +184,9 @@ def runLightTest():
         ledStrip.show()
 
 def updateLightString():
-    global grandtrees, canes, num_pixels, ledStrip, num_pixels
-    grandtrees = []
-    canes = []
+    global bars, bolts, num_pixels, ledStrip, num_pixels
+    bars = []
+    bolts = []
 
     num_pixels = 0
     
@@ -199,13 +199,13 @@ def updateLightString():
             lightning_type, quantity = parts
             quantity = int(quantity)
 
-            if lightning_type == 'grandtree':
-                grandtree_sequence = list(range(num_pixels, num_pixels + quantity))
-                grandtrees.append(grandtree_sequence)
+            if lightning_type == 'bar':
+                bar_sequence = list(range(num_pixels, num_pixels + quantity))
+                bars.append(bar_sequence)
                 num_pixels += quantity
-            elif lightning_type == 'cane':
-                cane_sequence = list(range(num_pixels, num_pixels + quantity))
-                canes.append(cane_sequence)
+            elif lightning_type == 'bolt':
+                bolt_sequence = list(range(num_pixels, num_pixels + quantity))
+                bolts.append(bolt_sequence)
                 num_pixels += quantity
 
     print ("Number of pixels total: ", num_pixels)
@@ -486,10 +486,10 @@ def reset_to_defaults():
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-lightning"
     config["option_selected"] = "thunder_birds_rain"
-    config["light_string"] = "grandtree-10,cane-4,grandtree-10,cane-4,grandtree-10,cane-4"
+    config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
     
 def reset_lights_to_defaults():
-    config["light_string"] = "grandtree-10,cane-4,grandtree-10,cane-4,grandtree-10,cane-4"
+    config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
 
 def changeVolume(action):
     volume = int(config["volume"])
@@ -723,14 +723,14 @@ def rainbow(speed):
 
 def lightning():       
     lightning_indexes = []
-    which_cane = random.randint(-1,(len(canes)-1))
-    if which_cane!= -1:
-        for index, my_array in enumerate(canes):
-            if index == which_cane:
+    which_bolt = random.randint(-1,(len(bolts)-1))
+    if which_bolt!= -1:
+        for index, my_array in enumerate(bolts):
+            if index == which_bolt:
                 lightning_indexes.extend(my_array)
     
-    for index, my_array in enumerate(grandtrees):
-        if index == random.randint(0,(len(grandtrees)-1)):
+    for index, my_array in enumerate(bars):
+        if index == random.randint(0,(len(bars)-1)):
             lightning_indexes.extend(my_array)
      
     r = random.randint(40, 80)
@@ -799,7 +799,7 @@ def lightning():
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
         
-def fire(num_times):
+def fire2(num_times):
     ledStrip.brightness = 1.0
     r = 226
     g = 121
@@ -820,6 +820,35 @@ def bounds(my_color, lower, upper):
     if (my_color < lower): my_color = lower
     if (my_color > upper): my_color = upper
     return my_color
+
+def fire(num_times):
+    ledStrip.brightness = 1.0
+    r = 226
+    g = 121
+    b = 35
+
+    #Flicker, based on our initial RGB values
+    for _ in range(num_times):
+        for i in range (0, num_pixels):
+            red = random.randint(0,255)
+            green = random.randint(0,255)
+            blue = random.randint(0,255)
+            whichColor = random.randint(0,2)
+            if whichColor == 0:
+                r1=red
+                g1=0
+                b1=0
+            elif whichColor == 1:
+                r1=0
+                g1=green
+                b1=0
+            elif whichColor == 2:
+                r1=0
+                g1=0
+                b1=blue
+            ledStrip[i] = (r1,g1,b1)
+            ledStrip.show()
+        sleepAndUpdateVolume(random.uniform(0.05,0.1))
  
 ################################################################################
 # State Machine
