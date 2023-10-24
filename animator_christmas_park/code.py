@@ -1495,7 +1495,7 @@ class AddSoundsAnimate(State):
                 elif selected_menu_item == "timestamp_mode_off":
                     time_stamp_mode = False
                     play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav")
-                    machine.go_to_state('base_state')         
+                            
                 else:
                     play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                     machine.go_to_state('base_state') 
