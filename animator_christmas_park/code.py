@@ -629,6 +629,16 @@ def changeVolume(action):
         volume += 10
     if action == "raise1":
         volume += 1
+    if action == "lower":
+        if volume <= 10:
+            volume -= 1
+        else:
+            volume -= 10
+    if action == "raise":
+        if volume <= 10:
+            volume += 1
+        else:
+            volume += 10
     if volume > 100:
         volume =100
     if volume < 1:
@@ -727,7 +737,7 @@ def speak_light_string(play_intro):
         play_audio_0("/sd/menu_voice_commands/" + element + ".wav")
         
 def no_user_soundtrack_found():
-    play_audio_0("/sd/menu_voice_commands/no_user_sountrack_found.wav")
+    play_audio_0("/sd/menu_voice_commands/no_user_soundtrack_found.wav")
     while True:
         left_switch.update()
         right_switch.update()
