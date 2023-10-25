@@ -533,24 +533,24 @@ def reset_to_defaults():
     
 def changeVolume(action):
     volume = int(config["volume"])
+    if "volume" in action:
+        vol = action.split("_")
+        volume = int(vol[1])
     if action == "lower1":
         volume -= 1
-    if action == "lower10":
-        volume -= 10
-    if action == "raise10":
-        volume += 10
-    if action == "raise1":
+    elif action == "raise1":
         volume += 1
-    if action == "lower":
+    elif action == "lower":
         if volume <= 10:
             volume -= 1
         else:
             volume -= 10
-    if action == "raise":
+    elif action == "raise":
         if volume < 10:
             volume += 1
         else:
             volume += 10
+
     if volume > 100:
         volume =100
     if volume < 1:
@@ -1581,4 +1581,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
