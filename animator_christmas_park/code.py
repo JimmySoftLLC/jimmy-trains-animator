@@ -1178,14 +1178,14 @@ class MainMenu(State):
                     machine.go_to_state('choose_sounds')
                 elif selected_menu_item == "choose_my_sounds":
                     machine.go_to_state('choose_my_sounds')
+                elif selected_menu_item == "add_sounds_animate":
+                    machine.go_to_state('add_sounds_animate')  
                 elif selected_menu_item == "light_string_setup_menu":
                     machine.go_to_state('light_string_setup_menu')
                 elif selected_menu_item == "web_options":
                     machine.go_to_state('web_options') 
                 elif selected_menu_item == "volume_settings":
                     machine.go_to_state('volume_settings')
-                elif selected_menu_item == "add_sounds_animate":
-                    machine.go_to_state('add_sounds_animate')  
                 else:
                     play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                     machine.go_to_state('base_state')
