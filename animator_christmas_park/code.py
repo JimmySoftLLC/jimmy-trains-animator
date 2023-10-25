@@ -20,6 +20,8 @@ import board
 import random
 import rtc
 import microcontroller
+import neopixel
+from rainbowio import colorwheel
 
 from analogio import AnalogIn
 
@@ -175,8 +177,6 @@ time_stamp_mode = False
 
 ################################################################################
 # Setup neo pixels
-import neopixel
-from rainbowio import colorwheel
 
 grand_trees = []
 canes = []
@@ -449,6 +449,7 @@ if (serve_webpage):
                 for time_stamp_file in time_stamp_jsons:
                     time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
                     files.write_json_file("/sd/christmas_park_sounds/"+time_stamp_file+".json",time_stamps)
+            files.write_json_file("/sd/config_christmas_park.json",config)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         @server.route("/utilities", [POST])
@@ -606,19 +607,18 @@ def sleepAndUpdateVolume(seconds):
         mixer.voice[1].level = volume
         time.sleep(seconds)
 
+def reset_lights_to_defaults():
+    global config
+    config["light_string"] = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
+
 def reset_to_defaults():
     global config
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-christmas-park"
     config["option_selected"] = "random_all"
     config["volume"] = "30"
-    
     reset_lights_to_defaults()
     
-def reset_lights_to_defaults():
-    global config
-    config["light_string"] = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
-
 def changeVolume(action):
     volume = int(config["volume"])
     if action == "lower1":

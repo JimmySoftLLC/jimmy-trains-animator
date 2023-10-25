@@ -22,7 +22,6 @@ import random
 import rtc
 import microcontroller
 
-import audiomp3
 from analogio import AnalogIn
 from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
@@ -90,41 +89,46 @@ si = board.GP3
 so = board.GP4
 cs = board.GP5
 spi = busio.SPI(sck, si, so)
-try:
-  sdcard = sdcardio.SDCard(spi, cs)
-  vfs = storage.VfsFat(sdcard)
-  storage.mount(vfs, "/sd")
-except:
-  wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
-  audio.play(wave0)
-  while audio.playing:
-    pass
-  cardInserted = False
-  while not cardInserted:
-    left_switch.update()
-    if left_switch.fell:
-        try:
-            sdcard = sdcardio.SDCard(spi, cs)
-            vfs = storage.VfsFat(sdcard)
-            storage.mount(vfs, "/sd")
-            cardInserted = True
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_success.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
-        except:
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
 num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=8192)
+                         bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
+volume = .2
+mixer.voice[0].level = volume
+mixer.voice[1].level = volume
+
+try:
+  sdcard = sdcardio.SDCard(spi, cs)
+  vfs = storage.VfsFat(sdcard)
+  storage.mount(vfs, "/sd")
+except:
+    wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        pass
+    cardInserted = False
+    while not cardInserted:
+        left_switch.update()
+        if left_switch.fell:
+            try:
+                sdcard = sdcardio.SDCard(spi, cs)
+                vfs = storage.VfsFat(sdcard)
+                storage.mount(vfs, "/sd")
+                cardInserted = True
+                wave0 = audiocore.WaveFile(open("/sd/menu_voice_commands/micro_sd_card_success.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
+            except:
+                wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
+            
 audio_enable.value = False
 
 # Setup time
@@ -136,6 +140,14 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 config = files.read_json_file("/sd/config_lightning.json")
 sound_options = config["options"]
+
+my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
+
+all_sound_options = []
+all_sound_options.extend(my_sound_options)
+all_sound_options.extend(sound_options)
+
+time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
 serve_webpage = config["serve_webpage"]
 
@@ -154,9 +166,13 @@ light_options = config_light_options["light_options"]
 volume_settings_options = files.read_json_file("/sd/menu_voice_commands/volume_settings.json")
 volume_settings = volume_settings_options["volume_settings"]
 
+add_sounds_animate_options = files.read_json_file("/sd/menu_voice_commands/add_sounds_animate.json")
+add_sounds_animate = add_sounds_animate_options["add_sounds_animate"]
+
 garbage_collect("config setup")
 
 continuous_run = False
+time_stamp_mode = False
 
 ################################################################################
 # Setup neo pixels
@@ -322,12 +338,29 @@ if (serve_webpage):
             elif "alien_lightshow" in raw_text: 
                 config["option_selected"] = "alien_lightshow"
                 animation(config["option_selected"])
+            elif "customers_owned_music_" in raw_text:
+                for my_sound_file in my_sound_options:
+                    if my_sound_file  in raw_text:
+                        config["option_selected"] = my_sound_file
+                        animation(config["option_selected"])
+                        break
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
             elif "cont_mode_off" in raw_text: 
                 continuous_run = False
                 play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
+            elif "timestamp_mode_on" in raw_text: 
+                time_stamp_mode = True
+                play_audio_0("/sd/menu_voice_commands/timestamp_mode_on.wav")
+                play_audio_0("/sd/menu_voice_commands/timestamp_instructions.wav")
+            elif "timestamp_mode_off" in raw_text: 
+                time_stamp_mode = False
+                play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav") 
+            elif "reset_animation_timing_to_defaults" in raw_text:
+                for time_stamp_file in time_stamp_jsons:
+                    time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
+                    files.write_json_file("/sd/christmas_park_sounds/"+time_stamp_file+".json",time_stamps)
             files.write_json_file("/sd/config_lightning.json",config)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
@@ -453,6 +486,11 @@ if (serve_webpage):
         @server.route("/get-light-string", [POST])
         def buttonpress(request: Request):
             return Response(request, config["light_string"])
+        
+        @server.route("/get-customers-sound-tracks", [POST])
+        def buttonpress(request: Request):
+            my_string = files.json_stringify(my_sound_options)
+            return Response(request, my_string)
            
     except Exception as e:
         serve_webpage = False
@@ -481,26 +519,42 @@ def sleepAndUpdateVolume(seconds):
         mixer.voice[1].level = volume
         time.sleep(seconds)
 
+def reset_lights_to_defaults():
+    global config
+    config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+
 def reset_to_defaults():
     global config
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-lightning"
     config["option_selected"] = "thunder_birds_rain"
-    config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+    config["volume"] = "30"
+    reset_lights_to_defaults()
     
-def reset_lights_to_defaults():
-    config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
-
 def changeVolume(action):
     volume = int(config["volume"])
-    if action == "lower":
+    if action == "lower1":
+        volume -= 1
+    if action == "lower10":
         volume -= 10
-    if action == "raise":
+    if action == "raise10":
         volume += 10
+    if action == "raise1":
+        volume += 1
+    if action == "lower":
+        if volume <= 10:
+            volume -= 1
+        else:
+            volume -= 10
+    if action == "raise":
+        if volume < 10:
+            volume += 1
+        else:
+            volume += 10
     if volume > 100:
         volume =100
-    if volume < 10:
-        volume = 10
+    if volume < 1:
+        volume = 1
     config["volume"] = str(volume)
     config["volume_pot"] = False
     files.write_json_file("/sd/config_lightning.json",config)
@@ -533,6 +587,8 @@ def shortCircuitDialog():
         
 def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
+        if character == " ":
+            character = "space"
         if character == "-":
             character = "dash"
         if character == ".":
@@ -545,12 +601,20 @@ def speak_this_string(str_to_speak, addLocal):
 def selectSoundMenuAnnouncement():
     play_audio_0("/sd/menu_voice_commands/sound_selection_menu.wav")
     left_right_mouse_button()
+
+def selectMySoundMenuAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/choose_my_sounds_menu.wav")
+    left_right_mouse_button()
     
 def left_right_mouse_button():
     play_audio_0("/sd/menu_voice_commands/press_left_button_right_button.wav")
     
 def mainMenuAnnouncement():
     play_audio_0("/sd/menu_voice_commands/main_menu.wav")
+    left_right_mouse_button()
+
+def addSoundsAnimateAnnouncement():
+    play_audio_0("/sd/menu_voice_commands/add_sounds_animate.wav")
     left_right_mouse_button()
 
 def selectWebOptionsAnnouncement():
@@ -586,22 +650,34 @@ def speak_light_string(play_intro):
      
 def animation(file_name):
     print(file_name)
-    if file_name == "random":
-        current_option_selected = file_name
-        if current_option_selected == "random":
-            highest_index = len(sound_options) - 2 #subtract -2 to avoid choosing "random" for a file 
+    current_option_selected = file_name
+    if file_name == "random_built_in":
+            highest_index = len(sound_options) - 4
             sound_number = random.randint(0, highest_index)
             current_option_selected = sound_options[sound_number]
             print("Random sound file: " + sound_options[sound_number])
             print("Sound file: " + current_option_selected)
-    elif file_name == "alien_lightshow":
-        animation_lightshow(file_name)
-    elif file_name == "inspiring_cinematic_ambient_lightshow":
-        animation_lightshow(file_name)
-    elif file_name == "timestamp_mode":
-        animation_timestamp(file_name)
+    elif file_name == "random_my":
+            highest_index = len(my_sound_options) - 1
+            sound_number = random.randint(0, highest_index)
+            current_option_selected = my_sound_options[sound_number]
+            print("Random sound file: " + my_sound_options[sound_number])
+            print("Sound file: " + current_option_selected)
+    elif file_name == "random_all":
+            highest_index = len(all_sound_options) - 4
+            sound_number = random.randint(0, highest_index)
+            current_option_selected = all_sound_options[sound_number]
+            print("Random sound file: " + all_sound_options[sound_number])
+            print("Sound file: " + current_option_selected)
+    if time_stamp_mode:
+            animation_timestamp(current_option_selected)
     else:
-        thunder_once_played(file_name)
+        if current_option_selected == "alien_lightshow":
+            animation_lightshow(file_name)
+        elif current_option_selected == "inspiring_cinematic_ambient_lightshow":
+            animation_lightshow(file_name)
+        else:
+            thunder_once_played(current_option_selected)
          
 def animation_lightshow(file_name):
     
@@ -645,12 +721,23 @@ def animation_lightshow(file_name):
          
 def animation_timestamp(file_name):
     print("time stamp mode")
-
-    wave0 = audiocore.WaveFile(open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    startTime = time.monotonic()
+    global time_stamp_mode
+ 
+    customers_file = "customers_owned_music_" in file_name
     
-    my_time_stamps = {"flashTime":[0]}
+    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp_mode.json")
+    my_time_stamps["flashTime"]=[]
+    
+    file_name = file_name.replace("customers_owned_music_","")
+
+    if customers_file :
+        wave0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
+    else:
+        wave0 = audiocore.WaveFile(open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    
+    startTime = time.monotonic()
+    sleepAndUpdateVolume(.1)
 
     while True:
         time_elasped = time.monotonic()-startTime
@@ -658,14 +745,20 @@ def animation_timestamp(file_name):
         if right_switch.fell:
             my_time_stamps["flashTime"].append(time_elasped) 
             print(time_elasped)
-        left_switch.update()
-        if left_switch.fell:
-            mixer.voice[0].stop()
         if not mixer.voice[0].playing:
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
-            print(my_time_stamps)
+            my_time_stamps["flashTime"].append(5000)
+            if customers_file:
+                files.write_json_file("/sd/customers_owned_music/" + file_name + ".json",my_time_stamps)
+            else:   
+                files.write_json_file("/sd/christmas_park_sounds/" + file_name + ".json",my_time_stamps)
             break
+
+    time_stamp_mode = False
+    play_audio_0("/sd/menu_voice_commands/timestamp_saved.wav")
+    play_audio_0("/sd/menu_voice_commands/timestamp_mode_off.wav")
+    play_audio_0("/sd/menu_voice_commands/animations_are_now_active.wav")
 
 def thunder_once_played(file_name):
     
