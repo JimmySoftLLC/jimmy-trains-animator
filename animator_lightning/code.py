@@ -139,7 +139,10 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 # Global Variables
 
 config = files.read_json_file("/sd/config_lightning.json")
-sound_options = config["options"]
+
+sound_options =  files.return_directory("", "/sd/lightning_sounds", ".wav")
+rnd_options = ['random all','random built in','random my']
+sound_options.extend(rnd_options)
 
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
@@ -362,15 +365,15 @@ if (serve_webpage):
                     time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
                     files.write_json_file("/sd/lightning_sounds/"+time_stamp_file+".json",time_stamps)
             elif "customers_owned_music_" in raw_text:
-                for my_sound_file in my_sound_options:
-                    if my_sound_file  in raw_text:
-                        config["option_selected"] = my_sound_file
+                for sound_file in my_sound_options:
+                    if sound_file in raw_text:
+                        config["option_selected"] = sound_file
                         animation(config["option_selected"])
                         break
             else: # built in animations
-                for my_sound_file in time_stamp_jsons:
-                    if my_sound_file  in raw_text:
-                        config["option_selected"] = my_sound_file
+                for sound_file in sound_options:
+                    if sound_file  in raw_text:
+                        config["option_selected"] = sound_file
                         animation(config["option_selected"])
                         break
             files.write_json_file("/sd/config_lightning.json",config)
@@ -502,6 +505,16 @@ if (serve_webpage):
         @server.route("/get-customers-sound-tracks", [POST])
         def buttonpress(request: Request):
             my_string = files.json_stringify(my_sound_options)
+            return Response(request, my_string)
+        
+        @server.route("/get-built-in-sound-tracks", [POST])
+        def buttonpress(request: Request):
+            sounds = []
+            sounds.extend(sound_options)
+            sounds.remove("random all")
+            sounds.remove("random built in")
+            sounds.remove("random my")
+            my_string = files.json_stringify(sounds)
             return Response(request, my_string)
            
     except Exception as e:
@@ -646,6 +659,10 @@ def stringInstructions():
     
 def option_selected_announcement():
     play_audio_0("/sd/mvc/option_selected.wav")
+
+def speak_song_number(song_number):
+    play_audio_0("/sd/mvc/song.wav")
+    speak_this_string(song_number,False)
     
 def speak_light_string(play_intro):
     if play_intro :
@@ -685,19 +702,19 @@ def speak_webpage():
 def animation(file_name):
     print(file_name)
     current_option_selected = file_name
-    if file_name == "random_built_in":
+    if file_name == "random built in":
             highest_index = len(sound_options) - 4
             sound_number = random.randint(0, highest_index)
             current_option_selected = sound_options[sound_number]
             print("Random sound file: " + sound_options[sound_number])
             print("Sound file: " + current_option_selected)
-    elif file_name == "random_my":
+    elif file_name == "random my":
             highest_index = len(my_sound_options) - 1
             sound_number = random.randint(0, highest_index)
             current_option_selected = my_sound_options[sound_number]
             print("Random sound file: " + my_sound_options[sound_number])
             print("Sound file: " + current_option_selected)
-    elif file_name == "random_all":
+    elif file_name == "random all":
             highest_index = len(all_sound_options) - 4
             sound_number = random.randint(0, highest_index)
             current_option_selected = all_sound_options[sound_number]
@@ -1220,8 +1237,11 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav" , "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                try:
+                    wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav" , "rb"))
+                    mixer.voice[0].play( wave0, loop=False )
+                except:
+                    speak_song_number(str(self.optionIndex+1))
                 self.currentOption = self.optionIndex
                 self.optionIndex +=1
                 if self.optionIndex > len(sound_options)-1:
@@ -1276,10 +1296,8 @@ class ChooseMySounds(State):
                     pass
             else:
                 try:
-                    my_string = my_sound_options[self.optionIndex].replace("customers_owned_music_","")
-                    song_number = str(self.optionIndex+1)
-                    play_audio_0("/sd/mvc/song.wav")
-                    speak_this_string(song_number,False)
+                    #my_string = my_sound_options[self.optionIndex].replace("customers_owned_music_","")
+                    speak_song_number(str(self.optionIndex+1))
                     self.currentOption = self.optionIndex
                     self.optionIndex +=1
                     if self.optionIndex > len(my_sound_options)-1:
