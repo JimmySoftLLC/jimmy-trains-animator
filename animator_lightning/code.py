@@ -698,6 +698,17 @@ def no_user_soundtrack_found():
         if right_switch.fell:
             play_audio_0("/sd/menu_voice_commands/create_sound_track_files.wav")
             break
+
+def speak_webpage():
+    play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")
+    play_audio_0("/sd/menu_voice_commands/to_access_type.wav")
+    if config["HOST_NAME"]== "animator-lightning":
+        play_audio_0("/sd/menu_voice_commands/animator_dash_lightning.wav")
+        play_audio_0("/sd/menu_voice_commands/dot.wav")
+        play_audio_0("/sd/menu_voice_commands/local.wav")
+    else:
+        speak_this_string(config["HOST_NAME"], True)
+    play_audio_0("/sd/menu_voice_commands/in_your_browser.wav") 
         
 ################################################################################
 # animations
@@ -786,7 +797,6 @@ def animation_lightshow(file_name):
             flashTimeIndex += 1
             my_index = random.randint(rand_index_low, rand_index_high)
             while my_index == previous_index:
-                print("regenerating random selection")
                 my_index = random.randint(rand_index_low, rand_index_high)
             if my_index == 1:
                 rainbow(.005,duration)
@@ -795,10 +805,6 @@ def animation_lightshow(file_name):
                 sleepAndUpdateVolume(duration)
             elif my_index == 3:
                 candle(duration)
-            elif my_index == 4:   
-                christmas_multicolor(duration)
-            elif my_index == 5:
-                multicolor(duration)
             previous_index = my_index
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
@@ -948,36 +954,6 @@ def candle(duration):
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
-               
-def christmas_multicolor(duration):
-    startTime=time.monotonic()
-    ledStrip.brightness = 1.0
-
-    #Flicker, based on our initial RGB values
-    while True:
-        for i in range (0, num_pixels):
-            red = random.randint(0,255)
-            green = random.randint(0,255)
-            blue = random.randint(0,255)
-            whichColor = random.randint(0,1)
-            if whichColor == 0:
-                r1=red
-                g1=0
-                b1=0
-            elif whichColor == 1:
-                r1=0
-                g1=green
-                b1=0
-            elif whichColor == 2:
-                r1=0
-                g1=0
-                b1=blue
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
-        sleepAndUpdateVolume(random.uniform(.2,0.3))
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
-            return
 
 def multicolor(duration):
     startTime=time.monotonic()
@@ -1086,23 +1062,6 @@ def lightning():
         time.sleep(delay)
         ledStrip.fill((0, 0, 0))
         ledStrip.show()
-        
-def campfire(num_times):
-    ledStrip.brightness = 1.0
-    r = 226
-    g = 121
-    b = 35
-
-    #Flicker, based on our initial RGB values
-    for _ in range(num_times):
-        for i in range (0, num_pixels):
-            flicker = random.randint(0,110)
-            r1 = bounds(r-flicker, 0, 255)
-            g1 = bounds(g-flicker, 0, 255)
-            b1 = bounds(b-flicker, 0, 255)
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
-        sleepAndUpdateVolume(random.uniform(0.05,0.1))
          
 def bounds(my_color, lower, upper):
     if (my_color < lower): my_color = lower
@@ -1486,14 +1445,6 @@ class VolumeSettings(State):
                             play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
                             machine.go_to_state('base_state')
                             break
-                            if mixer.voice[0].playing:
-                                mixer.voice[0].stop()
-                                while mixer.voice[0].playing:
-                                    pass
-                            else:
-                                files.write_json_file("/sd/config_lightning.json",config)
-                                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                                machine.go_to_state('base_state')  
                         sleepAndUpdateVolume(0.1)
                         pass
                 elif selected_menu_item == "volume_pot_off":
@@ -1695,18 +1646,7 @@ pretty_state_machine.add_state(VolumeSettings())
 pretty_state_machine.add_state(WebOptions())
 pretty_state_machine.add_state(LightStringSetupMenu())
 
-audio_enable.value = True
-
-def speak_webpage():
-    play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")
-    play_audio_0("/sd/menu_voice_commands/to_access_type.wav")
-    if config["HOST_NAME"]== "animator-lightning":
-        play_audio_0("/sd/menu_voice_commands/animator_dash_lightning.wav")
-        play_audio_0("/sd/menu_voice_commands/dot.wav")
-        play_audio_0("/sd/menu_voice_commands/local.wav")
-    else:
-        speak_this_string(config["HOST_NAME"], True)
-    play_audio_0("/sd/menu_voice_commands/in_your_browser.wav")    
+audio_enable.value = True   
 
 if (serve_webpage):
     files.log_item("starting server...")
