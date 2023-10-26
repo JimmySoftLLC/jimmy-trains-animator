@@ -347,8 +347,8 @@ def Aa(file_name):
 	elif C==Ae:D=P(A4)-4;B=F.randint(0,D);A=A4[B];N(E+A4[B]);N(G+A)
 	if a:C9(A)
 	elif y in A:Ab(A)
-	elif A=='alien_lightshow':Ab(A)
-	elif A=='inspiring_cinematic_ambient_lightshow':Ab(A)
+	elif A=='alien lightshow':Ab(A)
+	elif A=='inspiring cinematic ambient lightshow':Ab(A)
 	else:CA(A)
 def Ab(file_name):
 	I=file_name;global a;S=1;U=3;V=y in I

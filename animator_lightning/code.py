@@ -725,9 +725,9 @@ def animation(file_name):
     else:
         if "customers_owned_music_" in current_option_selected:
             animation_lightshow(current_option_selected)
-        elif current_option_selected == "alien_lightshow":
+        elif current_option_selected == "alien lightshow":
             animation_lightshow(current_option_selected)
-        elif current_option_selected == "inspiring_cinematic_ambient_lightshow":
+        elif current_option_selected == "inspiring cinematic ambient lightshow":
             animation_lightshow(current_option_selected)
         else:
             thunder_once_played(current_option_selected)
