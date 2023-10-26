@@ -2,17 +2,17 @@ BX='right_held'
 BW='Choose sounds menu'
 BV='Select a program option'
 BU='left_held'
-BT='/sd/menu_voice_commands/animations_are_now_active.wav'
-BS='/sd/menu_voice_commands/create_sound_track_files.wav'
-BR='/sd/menu_voice_commands/local.wav'
-BQ='/sd/menu_voice_commands/dot.wav'
+BT='/sd/mvc/animations_are_now_active.wav'
+BS='/sd/mvc/create_sound_track_files.wav'
+BR='/sd/mvc/local.wav'
+BQ='/sd/mvc/dot.wav'
 BP='animator-lightning'
 BO='Utility: '
 BN='timestamp_mode_off'
-BM='/sd/menu_voice_commands/timestamp_mode_on.wav'
+BM='/sd/mvc/timestamp_mode_on.wav'
 BL='timestamp_mode_on'
-BK='/sd/menu_voice_commands/continuous_mode_deactivated.wav'
-BJ='/sd/menu_voice_commands/continuous_mode_activated.wav'
+BK='/sd/mvc/continuous_mode_deactivated.wav'
+BJ='/sd/mvc/continuous_mode_activated.wav'
 BI='wav/no_card.wav'
 BH=Exception
 Az='Set Web Options'
@@ -22,11 +22,11 @@ Aw='choose_my_sounds'
 Av='choose_sounds'
 Au='right'
 At='left'
-As='/sd/menu_voice_commands/option_selected.wav'
+As='/sd/mvc/option_selected.wav'
 Ar='volume_pot_on'
 Aq='volume_pot_off'
-Ap='/sd/menu_voice_commands/timestamp_mode_off.wav'
-Ao='/sd/menu_voice_commands/timestamp_instructions.wav'
+Ap='/sd/mvc/timestamp_mode_off.wav'
+Ao='/sd/mvc/timestamp_instructions.wav'
 An='alien_lightshow'
 Am='inspiring_cinematic_ambient_lightshow'
 Al='thunder_birds_rain'
@@ -53,12 +53,12 @@ s='customers_owned_music_'
 r=str
 o='HOST_NAME'
 k=property
-i='/sd/menu_voice_commands/'
+i='/sd/mvc/'
 h='volume'
 g=''
 d='rb'
 c=open
-a='/sd/menu_voice_commands/all_changes_complete.wav'
+a='/sd/mvc/all_changes_complete.wav'
 Z=range
 W='base_state'
 S='/sd/config_lightning.json'
@@ -121,7 +121,7 @@ except:
 		I.update()
 		if I.fell:
 			try:
-				AL=A_.SDCard(B4,B3);AM=AA.VfsFat(AL);AA.mount(AM,'/sd');B6=K;A4=b.WaveFile(c('/sd/menu_voice_commands/micro_sd_card_success.wav',d));B.voice[0].play(A4,loop=G)
+				AL=A_.SDCard(B4,B3);AM=AA.VfsFat(AL);AA.mount(AM,'/sd');B6=K;A4=b.WaveFile(c('/sd/mvc/micro_sd_card_success.wav',d));B.voice[0].play(A4,loop=G)
 				while B.voice[0].playing:0
 			except:
 				A4=b.WaveFile(c(BI,d));B.voice[0].play(A4,loop=G)
@@ -137,17 +137,17 @@ A5.extend(l)
 A5.extend(u)
 Bp=E.return_directory(g,'/sd/time_stamp_defaults',t)
 AB=A[Ae]
-Bq=E.read_json_file('/sd/menu_voice_commands/main_menu.json')
+Bq=E.read_json_file('/sd/mvc/main_menu.json')
 AN=Bq[Af]
-Br=E.read_json_file('/sd/menu_voice_commands/web_menu.json')
+Br=E.read_json_file('/sd/mvc/web_menu.json')
 AO=Br['web_menu']
-Bs=E.read_json_file('/sd/menu_voice_commands/light_string_menu.json')
+Bs=E.read_json_file('/sd/mvc/light_string_menu.json')
 AP=Bs['light_string_menu']
-Bt=E.read_json_file('/sd/menu_voice_commands/light_options.json')
+Bt=E.read_json_file('/sd/mvc/light_options.json')
 v=Bt['light_options']
-Bu=E.read_json_file('/sd/menu_voice_commands/volume_settings.json')
+Bu=E.read_json_file('/sd/mvc/volume_settings.json')
 AQ=Bu[AD]
-Bv=E.read_json_file('/sd/menu_voice_commands/add_sounds_animate.json')
+Bv=E.read_json_file('/sd/mvc/add_sounds_animate.json')
 AR=Bv[A8]
 U('config setup')
 q=G
@@ -237,7 +237,7 @@ if AB:
 		@V.route('/utilities',[j])
 		def n(request):
 			I='reset_to_defaults';H='speaker_test';F=request;global A;B=g;D=F.raw_request.decode(Ah)
-			if H in D:B=H;C('/sd/menu_voice_commands/left_speaker_right_speaker.wav')
+			if H in D:B=H;C('/sd/mvc/left_speaker_right_speaker.wav')
 			elif Aq in D:B=Aq;A[A1]=G;E.write_json_file(S,A);C(a)
 			elif Ar in D:B=Ar;A[A1]=K;E.write_json_file(S,A);C(a)
 			elif I in D:B=I;C0();E.write_json_file(S,A);C(a);f.go_to_state(W)
@@ -302,7 +302,7 @@ def Aa(action):
 		else:B+=10
 	if B>100:B=100
 	if B<1:B=1
-	A[h]=r(B);A[A1]=G;E.write_json_file(S,A);C('/sd/menu_voice_commands/volume.wav');AC(A[h],G)
+	A[h]=r(B);A[A1]=G;E.write_json_file(S,A);C('/sd/mvc/volume.wav');AC(A[h],G)
 def C(file_name):
 	if B.voice[0].playing:
 		B.voice[0].stop()
@@ -322,31 +322,31 @@ def AC(str_to_speak,addLocal):
 		if A=='.':A='dot'
 		C(i+A+Q)
 	if addLocal:C(BQ);C(BR)
-def C2():C('/sd/menu_voice_commands/sound_selection_menu.wav');z()
-def C3():C('/sd/menu_voice_commands/choose_my_sounds_menu.wav');z()
-def z():C('/sd/menu_voice_commands/press_left_button_right_button.wav')
-def C4():C('/sd/menu_voice_commands/main_menu.wav');z()
-def C5():C('/sd/menu_voice_commands/add_sounds_animate.wav');z()
-def A7():C('/sd/menu_voice_commands/web_menu.wav');z()
-def C6():C('/sd/menu_voice_commands/volume_settings_menu.wav');z()
-def C7():C('/sd/menu_voice_commands/light_string_setup_menu.wav');z()
-def C8():C('/sd/menu_voice_commands/string_instructions.wav')
+def C2():C('/sd/mvc/sound_selection_menu.wav');z()
+def C3():C('/sd/mvc/choose_my_sounds_menu.wav');z()
+def z():C('/sd/mvc/press_left_button_right_button.wav')
+def C4():C('/sd/mvc/main_menu.wav');z()
+def C5():C('/sd/mvc/add_sounds_animate.wav');z()
+def A7():C('/sd/mvc/web_menu.wav');z()
+def C6():C('/sd/mvc/volume_settings_menu.wav');z()
+def C7():C('/sd/mvc/light_string_setup_menu.wav');z()
+def C8():C('/sd/mvc/string_instructions.wav')
 def BE():C(As)
 def BF(play_intro):
-	if play_intro:C('/sd/menu_voice_commands/current_light_settings_are.wav')
+	if play_intro:C('/sd/mvc/current_light_settings_are.wav')
 	B=A[R].split(',')
-	for(D,E)in Ad(B):C('/sd/menu_voice_commands/position.wav');C(i+r(D+1)+Q);C('/sd/menu_voice_commands/is.wav');C(i+E+Q)
+	for(D,E)in Ad(B):C('/sd/mvc/position.wav');C(i+r(D+1)+Q);C('/sd/mvc/is.wav');C(i+E+Q)
 def C9():
-	C('/sd/menu_voice_commands/no_user_soundtrack_found.wav')
+	C('/sd/mvc/no_user_soundtrack_found.wav')
 	while K:
 		I.update();M.update()
 		if I.fell:break
 		if M.fell:C(BS);break
 def BG():
-	C('/sd/menu_voice_commands/animator_available_on_network.wav');C('/sd/menu_voice_commands/to_access_type.wav')
-	if A[o]==BP:C('/sd/menu_voice_commands/animator_dash_lightning.wav');C(BQ);C(BR)
+	C('/sd/mvc/animator_available_on_network.wav');C('/sd/mvc/to_access_type.wav')
+	if A[o]==BP:C('/sd/mvc/animator_dash_lightning.wav');C(BQ);C(BR)
 	else:AC(A[o],K)
-	C('/sd/menu_voice_commands/in_your_browser.wav')
+	C('/sd/mvc/in_your_browser.wav')
 def X(file_name):
 	G='Sound file: ';E='Random sound file: ';C=file_name;O(C);A=C
 	if C==Ai:D=P(u)-4;B=F.randint(0,D);A=u[B];O(E+u[B]);O(G+A)
@@ -358,37 +358,37 @@ def X(file_name):
 	elif A==Am:Ab(A)
 	else:CB(A)
 def Ab(file_name):
-	D=file_name;global m;R=1;S=3;U=s in D
-	if U:
-		D=D.replace(s,g)
-		try:V=E.read_json_file(AH+D+t)
+	H=file_name;global m;S=1;U=3;V=s in H
+	if V:
+		H=H.replace(s,g)
+		try:W=E.read_json_file(AH+H+t)
 		except:
-			C('/sd/menu_voice_commands/no_timestamp_file_found.wav')
+			C('/sd/mvc/no_timestamp_file_found.wav')
 			while K:
 				I.update();M.update()
 				if I.fell:m=G;return
 				if M.fell:m=K;C(Ao);return
-	else:V=E.read_json_file(A0+D+t)
-	J=V[A9];Z=P(J);A=0
-	if U:W=b.WaveFile(c(AH+D+Q,d))
-	else:W=b.WaveFile(c(A0+D+Q,d))
-	B.voice[0].play(W,loop=G);a=L.monotonic();H=0
+	else:W=E.read_json_file(A0+H+t)
+	N=W[A9];a=P(N);A=0
+	if V:X=b.WaveFile(c(AH+H+Q,d))
+	else:X=b.WaveFile(c(A0+H+Q,d))
+	B.voice[0].play(X,loop=G);e=L.monotonic();J=0
 	while K:
-		X=0;Y=L.monotonic()-a
-		if A<P(J)-2:N=J[A+1]-J[A]-.25
-		else:N=.25
-		if N<0:N=0
-		if Y>J[A]-.25:
-			O('time elasped: '+r(Y)+' Timestamp: '+r(J[A]));A+=1;H=F.randint(R,S)
-			while H==X:H=F.randint(R,S)
-			if H==1:CC(.005,N)
-			elif H==2:CE(.01);T(N)
-			elif H==3:CD(N)
-			X=H
-		if Z==A:A=0
+		Y=0;Z=L.monotonic()-e
+		if A<P(N)-2:R=N[A+1]-N[A]-.25
+		else:R=.25
+		if R<0:R=0
+		if Z>N[A]-.25:
+			O('time elasped: '+r(Z)+' Timestamp: '+r(N[A]));A+=1;J=F.randint(S,U)
+			while J==Y:J=F.randint(S,U)
+			if J==1:CC(.005,R)
+			elif J==2:CE(.01);T(R)
+			elif J==3:CD(R)
+			Y=J
+		if a==A:A=0
 		I.update()
 		if I.fell:B.voice[0].stop()
-		if not B.voice[0].playing:break
+		if not B.voice[0].playing:D.fill((0,0,0));D.show();break
 		T(.001)
 def CA(file_name):
 	A=file_name;O('time stamp mode');global m;H=s in A;F=E.read_json_file('/sd/time_stamp_defaults/timestamp_mode.json');F[A9]=[];A=A.replace(s,g)
@@ -403,7 +403,7 @@ def CA(file_name):
 			if H:E.write_json_file(AH+A+t,F)
 			else:E.write_json_file(A0+A+t,F)
 			break
-	m=G;C('/sd/menu_voice_commands/timestamp_saved.wav');C(Ap);C(BT)
+	m=G;C('/sd/mvc/timestamp_saved.wav');C(Ap);C(BT)
 def CB(file_name):
 	C=file_name;J=E.read_json_file(A0+C+t);D=J[A9];N=P(D);A=0;R=b.WaveFile(c(A0+C+Q,d));B.voice[0].play(R,loop=G);S=L.monotonic()
 	while K:
@@ -582,7 +582,7 @@ class CK(J):
 				while B.voice[0].playing:0
 			else:
 				try:
-					L=l[D.optionIndex].replace(s,g);J=r(D.optionIndex+1);C('/sd/menu_voice_commands/song.wav');AC(J,G);D.currentOption=D.optionIndex;D.optionIndex+=1
+					L=l[D.optionIndex].replace(s,g);J=r(D.optionIndex+1);C('/sd/mvc/song.wav');AC(J,G);D.currentOption=D.optionIndex;D.optionIndex+=1
 					if D.optionIndex>P(l)-1:D.optionIndex=0
 					while B.voice[0].playing:0
 				except:C9();F.go_to_state(W);return
@@ -639,7 +639,7 @@ class CM(J):
 		if M.fell:
 			H=AQ[D.selectedMenuIndex]
 			if H=='volume_level_adjustment':
-				C('/sd/menu_voice_commands/volume_adjustment_menu.wav')
+				C('/sd/mvc/volume_adjustment_menu.wav')
 				while K:
 					J=AZ.switch_state(I,M,T,3.)
 					if J==At:Aa('lower')
@@ -671,7 +671,7 @@ class CN(J):
 			if F=='web_on':A[Ae]=K;BE();A7()
 			elif F=='web_off':A[Ae]=G;BE();A7()
 			elif F=='hear_url':AC(A[o],K);A7()
-			elif F=='hear_instr_web':C('/sd/menu_voice_commands/web_instruct.wav');A7()
+			elif F=='hear_instr_web':C('/sd/mvc/web_instruct.wav');A7()
 			else:E.write_json_file(S,A);C(a);machine.go_to_state(W)
 class CO(J):
 	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0
@@ -691,11 +691,11 @@ class CO(J):
 		if M.fell:
 			F=AP[D.selectedMenuIndex]
 			if F=='hear_light_setup_instructions':C8()
-			elif F=='reset_lights_defaults':BD();C('/sd/menu_voice_commands/lights_reset_to.wav');BF(G)
+			elif F=='reset_lights_defaults':BD();C('/sd/mvc/lights_reset_to.wav');BF(G)
 			elif F=='hear_current_light_settings':BF(K)
-			elif F=='clear_light_string':A[R]=g;C('/sd/menu_voice_commands/lights_cleared.wav')
+			elif F=='clear_light_string':A[R]=g;C('/sd/mvc/lights_cleared.wav')
 			elif F=='add_lights':
-				C('/sd/menu_voice_commands/add_light_menu.wav')
+				C('/sd/mvc/add_light_menu.wav')
 				while K:
 					H=AZ.switch_state(I,M,T,3.)
 					if H==At:
@@ -721,7 +721,7 @@ class CO(J):
 						else:
 							if A[R]==g:A[R]=v[D.selectedMenuIndex]
 							else:A[R]=A[R]+','+v[D.selectedMenuIndex]
-							C(i+v[D.selectedMenuIndex]+Q);C('/sd/menu_voice_commands/added.wav')
+							C(i+v[D.selectedMenuIndex]+Q);C('/sd/mvc/added.wav')
 					elif H==BU:
 						if B.voice[0].playing:
 							B.voice[0].stop()
