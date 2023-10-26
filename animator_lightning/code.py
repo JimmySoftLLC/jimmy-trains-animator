@@ -345,49 +345,7 @@ if (serve_webpage):
             global config
             global continuous_run
             raw_text = request.raw_request.decode("utf8")
-            if "random_built_in" in raw_text: 
-                config["option_selected"] = "random_built_in"
-                animation(config["option_selected"])
-            elif "random_my" in raw_text: 
-                config["option_selected"] = "random_my"
-                animation(config["option_selected"])
-            elif "random_all" in raw_text: 
-                config["option_selected"] = "random_all"
-                animation(config["option_selected"])
-            elif "thunder_birds_rain" in raw_text: 
-                config["option_selected"] = "thunder_birds_rain"
-                animation(config["option_selected"])
-            elif "continuous_thunder" in raw_text: 
-                config["option_selected"] = "continuous_thunder"
-                animation(config["option_selected"])
-            elif "dark_thunder" in raw_text: 
-                config["option_selected"] = "dark_thunder"
-                animation(config["option_selected"])
-            elif "epic_thunder" in raw_text: 
-                config["option_selected"] = "epic_thunder"
-                animation(config["option_selected"])
-            elif "halloween_thunder" in raw_text: 
-                config["option_selected"] = "halloween_thunder"
-                animation(config["option_selected"])
-            elif "thunder_and_rain" in raw_text: 
-                config["option_selected"] = "thunder_and_rain"
-                animation(config["option_selected"])
-            elif "thunder_distant" in raw_text: 
-                config["option_selected"] = "thunder_distant"
-                animation(config["option_selected"])
-            elif "inspiring_cinematic_ambient_lightshow" in raw_text: 
-                config["option_selected"] = "inspiring_cinematic_ambient_lightshow"
-                animation(config["option_selected"])
-            elif "alien_lightshow" in raw_text: 
-                config["option_selected"] = "alien_lightshow"
-                animation(config["option_selected"])
-            elif "customers_owned_music_" in raw_text:
-                for my_sound_file in my_sound_options:
-                    if my_sound_file  in raw_text:
-                        config["option_selected"] = my_sound_file
-                        animation(config["option_selected"])
-                        break
-            elif "cont_mode_on" in raw_text: 
+            if "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/mvc/continuous_mode_activated.wav")
             elif "cont_mode_off" in raw_text: 
@@ -404,6 +362,18 @@ if (serve_webpage):
                 for time_stamp_file in time_stamp_jsons:
                     time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
                     files.write_json_file("/sd/lightning_sounds/"+time_stamp_file+".json",time_stamps)
+            elif "customers_owned_music_" in raw_text:
+                for my_sound_file in my_sound_options:
+                    if my_sound_file  in raw_text:
+                        config["option_selected"] = my_sound_file
+                        animation(config["option_selected"])
+                        break
+            else: # built in animations
+                for my_sound_file in time_stamp_jsons:
+                    if my_sound_file  in raw_text:
+                        config["option_selected"] = my_sound_file
+                        animation(config["option_selected"])
+                        break
             files.write_json_file("/sd/config_lightning.json",config)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
@@ -1103,11 +1073,7 @@ class StateMachine(object):
         self.state = self.states[state_name]
 
     def reset(self):
-        """As indicated, reset"""
-        self.firework_color = random_color()
-        self.burst_count = 0
-        self.shower_count = 0
-        self.firework_step_time = time.monotonic() + 0.05
+        reset_pico()
 
 ################################################################################
 # States
@@ -1434,7 +1400,8 @@ class VolumeSettings(State):
                 selected_menu_item = volume_settings[self.selectedMenuIndex]
                 if selected_menu_item == "volume_level_adjustment":
                     play_audio_0("/sd/mvc/volume_adjustment_menu.wav")
-                    while True: 
+                    done = False
+                    while not done: 
                         switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
                         if switch_state == "left":
                             changeVolume("lower")
@@ -1443,8 +1410,8 @@ class VolumeSettings(State):
                         elif switch_state == "right_held":
                             files.write_json_file("/sd/config_lightning.json",config)
                             play_audio_0("/sd/mvc/all_changes_complete.wav")
+                            done = True
                             machine.go_to_state('base_state')
-                            break
                         sleepAndUpdateVolume(0.1)
                         pass
                 elif selected_menu_item == "volume_pot_off":
