@@ -342,8 +342,7 @@ if (serve_webpage):
 
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
-            global config
-            global continuous_run
+            global config, continuous_run, time_stamp_mode
             raw_text = request.raw_request.decode("utf8")
             if "cont_mode_on" in raw_text: 
                 continuous_run = True
