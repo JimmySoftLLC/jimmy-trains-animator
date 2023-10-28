@@ -23,7 +23,6 @@ import rtc
 import microcontroller
 
 from analogio import AnalogIn
-from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
 
 def reset_pico():
@@ -147,8 +146,8 @@ sound_options.extend(rnd_options)
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 all_sound_options = []
-all_sound_options.extend(my_sound_options)
 all_sound_options.extend(sound_options)
+all_sound_options.extend(my_sound_options)
 
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
@@ -179,51 +178,42 @@ time_stamp_mode = False
 
 ################################################################################
 # Setup neo pixels
+from rainbowio import colorwheel
 bars = []
 bolts = []
-bar_led_starts = []
+bar_array = []
 bar_led_ends = []
-bolt_led_starts = []
+bolt_array = []
 bolt_led_ends = []
 
 num_pixels = 0
 
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 
-def return_bar_parts(part):
+def return_bar_array():
     my_indexes = []
     for bar in bars:
         for led_index in bar:
             start_index=led_index
             break
-        if part == "start":
-            for led_index in range(0,5):
-                my_indexes.append(led_index+start_index)
-        if part == "end":
-            for led_index in range(5,10):
-                my_indexes.append(led_index+start_index)
+        for led_index in range(0,10):
+            my_indexes.append(led_index+start_index)
     return my_indexes
 
-def return_bolt_parts(part):
+def return_bolt_array():
     my_indexes = []
     for bolt in bolts:
         for led_index in bolt:
             start_index=led_index
             break
-        if part == "start":
-            for led_index in range(0,2):
-                my_indexes.append(led_index+start_index)
-        if part == "end":
-            for led_index in range(2,4):
-                my_indexes.append(led_index+start_index)
+        for led_index in range(0,4):
+            my_indexes.append(led_index+start_index)
     return my_indexes
 
 def runLightTest():
-    global bar_led_starts, bar_led_ends,bolt_led_starts,bolt_led_ends
-    bar_led_starts = return_bar_parts("start")
-    bar_led_ends = return_bar_parts("end")
-    bolt_led_starts = return_bolt_parts("start")
-    bolt_led_ends = return_bolt_parts("end")
+    global bar_array, bar_led_ends,bolt_array,bolt_led_ends
+    bar_array = return_bar_array()
+    bolt_array = return_bolt_array()
     for bar in bars:
         for led_index in bar:
             ledStrip[led_index]=(50, 50, 50)
@@ -347,24 +337,7 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config, continuous_run, time_stamp_mode
             raw_text = request.raw_request.decode("utf8")
-            if "cont_mode_on" in raw_text: 
-                continuous_run = True
-                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" in raw_text: 
-                continuous_run = False
-                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
-            elif "timestamp_mode_on" in raw_text: 
-                time_stamp_mode = True
-                play_audio_0("/sd/mvc/timestamp_mode_on.wav")
-                play_audio_0("/sd/mvc/timestamp_instructions.wav")
-            elif "timestamp_mode_off" in raw_text: 
-                time_stamp_mode = False
-                play_audio_0("/sd/mvc/timestamp_mode_off.wav") 
-            elif "reset_animation_timing_to_defaults" in raw_text:
-                for time_stamp_file in time_stamp_jsons:
-                    time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
-                    files.write_json_file("/sd/lightning_sounds/"+time_stamp_file+".json",time_stamps)
-            elif "customers_owned_music_" in raw_text:
+            if "customers_owned_music_" in raw_text:
                 for sound_file in my_sound_options:
                     if sound_file in raw_text:
                         config["option_selected"] = sound_file
@@ -379,7 +352,52 @@ if (serve_webpage):
             files.write_json_file("/sd/config_lightning.json",config)
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
-        @server.route("/utilities", [POST])
+        @server.route("/defaults", [POST])
+        def buttonpress(request: Request):
+            global config
+            command_sent = ""
+            raw_text = request.raw_request.decode("utf8")
+            if "reset_animation_timing_to_defaults" in raw_text:
+                for time_stamp_file in time_stamp_jsons:
+                    time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
+                    files.write_json_file("/sd/lightning_sounds/"+time_stamp_file+".json",time_stamps)
+            elif "reset_to_defaults" in raw_text:
+                command_sent = "reset_to_defaults"
+                reset_to_defaults()      
+                files.write_json_file("/sd/config_lightning.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                ste_mach.go_to_state('base_state')
+            elif "reset_default_colors" in raw_text:
+                command_sent = "reset_default_colors"
+                reset_default_colors()    
+                files.write_json_file("/sd/config_lightning.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                my_string = files.json_stringify({"bars":config["bars"],"bolts":config["bolts"]})
+                ste_mach.go_to_state('base_state')
+                return Response(request, my_string)
+            return Response(request, "Utility: " + command_sent)
+        
+        @server.route("/mode", [POST])
+        def buttonpress(request: Request):
+            global config, continuous_run, time_stamp_mode
+            command_sent = ""
+            raw_text = request.raw_request.decode("utf8")
+            if "cont_mode_on" in raw_text: 
+                continuous_run = True
+                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
+            elif "cont_mode_off" in raw_text: 
+                continuous_run = False
+                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
+            elif "timestamp_mode_on" in raw_text: 
+                time_stamp_mode = True
+                play_audio_0("/sd/mvc/timestamp_mode_on.wav")
+                play_audio_0("/sd/mvc/timestamp_instructions.wav")
+            elif "timestamp_mode_off" in raw_text: 
+                time_stamp_mode = False
+                play_audio_0("/sd/mvc/timestamp_mode_off.wav") 
+            return Response(request, "Utility: " + command_sent)
+        
+        @server.route("/speaker", [POST])
         def buttonpress(request: Request):
             global config
             command_sent = ""
@@ -397,60 +415,42 @@ if (serve_webpage):
                 config["volume_pot"] = True
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-            elif "reset_to_defaults" in raw_text:
-                command_sent = "reset_to_defaults"
-                reset_to_defaults()      
-                files.write_json_file("/sd/config_lightning.json",config)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
-                pretty_state_machine.go_to_state('base_state')
             return Response(request, "Utility: " + command_sent)
         
         @server.route("/lights", [POST])
         def buttonpress(request: Request):
-            global config
-            command_sent = ""
             raw_text = request.raw_request.decode("utf8")
             if "set_to_red" in raw_text:
-                command_sent = "set_to_red"
                 ledStrip.fill((255, 0, 0))
                 ledStrip.show()
             elif "set_to_green" in raw_text:
-                command_sent = "set_to_green"
                 ledStrip.fill((0, 255, 0))
                 ledStrip.show()
             elif "set_to_blue" in raw_text:
-                command_sent = "set_to_blue"
                 ledStrip.fill((0, 0, 255))
                 ledStrip.show()
             elif "set_to_white" in raw_text:
-                command_sent = "set_to_white"
                 ledStrip.fill((255, 255, 255))
                 ledStrip.show()
             elif "set_to_0" in raw_text:
-                command_sent = "set_to_0"
                 ledStrip.brightness = 0.0
                 ledStrip.show()
             elif "set_to_20" in raw_text:
-                command_sent = "set_to_20"
                 ledStrip.brightness = 0.2
                 ledStrip.show()
             elif "set_to_40" in raw_text:
-                command_sent = "set_to_40"
                 ledStrip.brightness = 0.4
                 ledStrip.show()
             elif "set_to_60" in raw_text:
-                command_sent = "set_to_60"
                 ledStrip.brightness = 0.6
                 ledStrip.show()
             elif "set_to_80" in raw_text:
-                command_sent = "set_to_80"
                 ledStrip.brightness = 0.8
                 ledStrip.show()
             elif "set_to_100" in raw_text:
-                command_sent = "set_to_100"
                 ledStrip.brightness = 1.0
                 ledStrip.show()
-            return Response(request, "Utility: " + command_sent)
+            return Response(request, "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
         def buttonpress(request: Request):
@@ -516,6 +516,41 @@ if (serve_webpage):
             sounds.remove("random my")
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
+        
+        @server.route("/get-bar-colors", [POST])
+        def buttonpress(request: Request):
+            my_string = files.json_stringify(config["bars"])
+            return Response(request, my_string)
+        
+        @server.route("/get-bolt-colors", [POST])
+        def buttonpress(request: Request):
+            my_string = files.json_stringify(config["bolts"])
+            return Response(request, my_string)
+
+        @server.route("/set-lights", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            command_sent = "set-lights"
+            if data_object["item"] == "bars":
+                config["bars"] = { "r": data_object["r"], "g": data_object["g"], "b": data_object["b"] }
+                bar_indexes = []
+                bar_indexes.extend(bar_array)
+                bar_indexes.extend(bar_led_ends)
+                for i in bar_indexes:
+                    ledStrip[i] = (data_object["r"], data_object["g"], data_object["b"])
+                    ledStrip.show()        
+            elif data_object["item"] == "bolts":
+                config["bolts"] = { "r": data_object["r"], "g": data_object["g"], "b": data_object["b"] }
+                bolt_indexes = []
+                bolt_indexes.extend(bolt_array)
+                bolt_indexes.extend(bolt_led_ends)
+                for i in bolt_indexes:
+                    ledStrip[i] = (data_object["r"], data_object["g"], data_object["b"])
+                    ledStrip.show()
+            print (config)
+            files.write_json_file("/sd/config_lightning.json",config)
+            return Response(request, command_sent)
            
     except Exception as e:
         serve_webpage = False
@@ -548,13 +583,20 @@ def reset_lights_to_defaults():
     global config
     config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
 
+def reset_default_colors():
+    global config
+    config["bars"] = { "r": 60, "g": 18, "b": 5 }
+    config["bolts"] = { "r": 60, "g": 18, "b": 5 }
+
 def reset_to_defaults():
     global config
     config["volume_pot"] = True
     config["HOST_NAME"] = "animator-lightning"
     config["option_selected"] = "thunder_birds_rain"
-    config["volume"] = "30"
+    config["volume"] = "20"
+    config["can_cancel"] = True
     reset_lights_to_defaults()
+    reset_default_colors()
     
 def changeVolume(action):
     volume = int(config["volume"])
@@ -729,8 +771,10 @@ def animation(file_name):
             animation_lightshow(current_option_selected)
         elif current_option_selected == "inspiring cinematic ambient lightshow":
             animation_lightshow(current_option_selected)
+        elif current_option_selected == "fireworks":
+            animation_lightshow(current_option_selected)
         else:
-            thunder_once_played(current_option_selected)
+            thunder_and_lightning(current_option_selected)
          
 def animation_lightshow(file_name):
     global time_stamp_mode
@@ -772,14 +816,14 @@ def animation_lightshow(file_name):
     
     while True:
         previous_index=0
-        timeElasped = time.monotonic()-startTime
+        timeElapsed = time.monotonic()-startTime
         if flashTimeIndex < len(flashTime)-2:
             duration = flashTime[flashTimeIndex+1]-flashTime[flashTimeIndex]-0.25
         else:
             duration =  0.25
         if duration < 0: duration = 0
-        if timeElasped > flashTime[flashTimeIndex] - 0.25:
-            print("time elasped: " + str(timeElasped) + " Timestamp: " + str(flashTime[flashTimeIndex]))
+        if timeElapsed > flashTime[flashTimeIndex] - 0.25:
+            print("Time elapsed: " + str(timeElapsed) + " Timestamp: " + str(flashTime[flashTimeIndex]))
             flashTimeIndex += 1
             my_index = random.randint(rand_index_low, rand_index_high)
             while my_index == previous_index:
@@ -794,7 +838,7 @@ def animation_lightshow(file_name):
             previous_index = my_index
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
-        if left_switch.fell:
+        if left_switch.fell and config["can_cancel"]:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
             ledStrip.fill((0, 0, 0))
@@ -803,12 +847,12 @@ def animation_lightshow(file_name):
         sleepAndUpdateVolume(.001)
          
 def animation_timestamp(file_name):
-    print("time stamp mode")
+    print("Time stamp mode:")
     global time_stamp_mode
  
     customers_file = "customers_owned_music_" in file_name
     
-    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp_mode.json")
+    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp mode.json")
     my_time_stamps["flashTime"]=[]
     
     file_name = file_name.replace("customers_owned_music_","")
@@ -823,11 +867,11 @@ def animation_timestamp(file_name):
     sleepAndUpdateVolume(.1)
 
     while True:
-        time_elasped = time.monotonic()-startTime
+        time_elapsed = time.monotonic()-startTime
         right_switch.update()
         if right_switch.fell:
-            my_time_stamps["flashTime"].append(time_elasped) 
-            print(time_elasped)
+            my_time_stamps["flashTime"].append(time_elapsed) 
+            print(time_elapsed)
         if not mixer.voice[0].playing:
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
@@ -843,7 +887,7 @@ def animation_timestamp(file_name):
     play_audio_0("/sd/mvc/timestamp_mode_off.wav")
     play_audio_0("/sd/mvc/animations_are_now_active.wav")
 
-def thunder_once_played(file_name):
+def thunder_and_lightning(file_name):
     
     flash_time_dictionary = files.read_json_file("/sd/lightning_sounds/" + file_name + ".json")
     
@@ -858,16 +902,16 @@ def thunder_once_played(file_name):
 
     while True:
         sleepAndUpdateVolume(.1)
-        timeElasped = time.monotonic()-startTime
+        time_elapsed = time.monotonic()-startTime
         right_switch.update()
         if right_switch.fell:
-            print(timeElasped)
-        if timeElasped > flashTime[flashTimeIndex] - random.uniform(.5, 1): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
+            print(time_elapsed)
+        if time_elapsed > flashTime[flashTimeIndex] - random.uniform(.5, 1): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
             flashTimeIndex += 1
             lightning()
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
-        if left_switch.fell:
+        if left_switch.fell and config["can_cancel"]:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
             break
@@ -908,12 +952,12 @@ def candle(duration):
     startTime = time.monotonic()
     ledStrip.brightness = 1.0
 
-    fire_indexes = []
-    fire_indexes.extend(bar_led_starts)
-    fire_indexes.extend(bar_led_ends)
+    bar_indexes = []
+    bar_indexes.extend(bar_array)
+    bar_indexes.extend(bar_led_ends)
     
     bolt_indexes = []
-    bolt_indexes.extend(bolt_led_starts)
+    bolt_indexes.extend(bolt_array)
     bolt_indexes.extend(bolt_led_ends)
 
     r = random.randint(0,255)
@@ -929,7 +973,7 @@ def candle(duration):
 
     #Flicker, based on our initial RGB values
     while True:
-        for i in fire_indexes:
+        for i in bar_indexes:
             flicker = random.randint(0,110)
             r1 = bounds(r-flicker, 0, 255)
             g1 = bounds(g-flicker, 0, 255)
@@ -971,79 +1015,67 @@ def multicolor(duration):
         if timeElasped > duration:
             return
 
-def lightning():       
-    lightning_indexes = []
+def lightning():
+
+    # choose which bolt or no bolt to fire    
+    bolt_indexes = []
     which_bolt = random.randint(-1,(len(bolts)-1))
     if which_bolt!= -1:
         for index, my_array in enumerate(bolts):
             if index == which_bolt:
-                lightning_indexes.extend(my_array)
+                bolt_indexes.extend(my_array)
     
+    # choose which bar none to all to fire
+    bar_indexes = []
     for index, my_array in enumerate(bars):
         if index == random.randint(0,(len(bars)-1)):
-            lightning_indexes.extend(my_array)
-     
-    r = random.randint(40, 80)
-    g = random.randint(10, 25)
-    b = random.randint(0, 10)
+            bar_indexes.extend(my_array)
+
+    # set bolt base color    
+    l = config["bolts"]["r"] - 20
+    h = config["bolts"]["r"] + 20
+    bolt_r = random.randint(l, h) # r 40 80 60 +- 20
+    l = config["bolts"]["g"] - 8
+    h = config["bolts"]["g"] + 8
+    bolt_g = random.randint(l, h) # g 10 26 18 +- 8
+    l = config["bolts"]["b"] - 5
+    h = config["bolts"]["b"] + 5
+    bolt_b = random.randint(l, h) # b 0 10 5 +- 5
+
+    # set bar base color
+    l = config["bars"]["r"] - 20
+    h = config["bars"]["r"] + 20
+    bar_r = random.randint(l, h) # r 40 80 60 +- 20
+    l = config["bars"]["g"] - 8
+    h = config["bars"]["g"] + 8
+    bar_g = random.randint(l, h) # g 10 26 18 +- 8
+    l = config["bars"]["b"] - 5
+    h = config["bars"]["b"] + 5
+    bar_b = random.randint(l, h) # b 0 10 5 +- 5
 
     # number of flashes
     flashCount = random.randint (5, 10)
 
     # flash white brightness range - 0-255
-    flashBrightnessMin =  150
-    flashBrightnessMax =  255
-    flashBrightness = random.randint(flashBrightnessMin, flashBrightnessMax) / 255
-    ledStrip.brightness = flashBrightness
-
-    # flash off range - ms
-    flashOffsetMin = 0
-    flashOffsetMax = 75
-
-    # time to next flash range - ms
-    nextFlashDelayMin = 1
-    nextFlashDelayMax = 50
+    ledStrip.brightness = random.randint(150, 255) / 255
 
     for i in range(0,flashCount):
         color = random.randint(0, 50)
         if color < 0: color = 0
-        for led_index in lightning_indexes:
-            ledStrip[led_index]=(r + color, g + color, b + color)
-        ledStrip.show()
-        delay = random.randint(flashOffsetMin, flashOffsetMax)
-        delay = delay/1000
-        time.sleep(delay)
-        ledStrip.fill((0, 0, 0))
-        ledStrip.show()
+
+        for j in range(4):
+            for led_index in bolt_indexes:
+                ledStrip[led_index]=(bolt_r + color, bolt_g + color, bolt_b + color)
+            for led_index in bar_indexes:
+                ledStrip[led_index]=(bar_r + color, bar_g + color, bar_b + color)
+            ledStrip.show()
+            delay = random.randint(0, 75) # flash offset range - ms
+            delay = delay/1000
+            time.sleep(delay)
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
         
-        for led_index in lightning_indexes:
-            ledStrip[led_index]=(r + color, g + color, b + color)
-        ledStrip.show()
-        delay = random.randint(flashOffsetMin, flashOffsetMax)
-        delay = delay/1000
-        time.sleep(delay)
-        ledStrip.fill((0, 0, 0))
-        ledStrip.show()
-        
-        for led_index in lightning_indexes:
-            ledStrip[led_index]=(r + color, g + color, b + color)
-        ledStrip.show();
-        delay = random.randint(flashOffsetMin, flashOffsetMax)
-        delay = delay/1000
-        time.sleep(delay)
-        ledStrip.fill((0, 0, 0))
-        ledStrip.show()
-        
-        for led_index in lightning_indexes:
-            ledStrip[led_index]=(r + color, g + color, b + color)
-        ledStrip.show()
-        delay = random.randint(flashOffsetMin, flashOffsetMax)
-        delay = delay/1000
-        time.sleep(delay)
-        ledStrip.fill((0, 0, 0))
-        ledStrip.show()
-        
-        delay = random.randint(nextFlashDelayMin, nextFlashDelayMax)
+        delay = random.randint(1, 50) # time to next flash range - ms
         delay = delay/1000
         time.sleep(delay)
         ledStrip.fill((0, 0, 0))
@@ -1111,11 +1143,7 @@ class State(object):
         pass
 
     def update(self, machine):
-        if left_switch.fell:
-            machine.paused_state = machine.state.name
-            machine.pause()
-            return False
-        return True
+        pass
 
 class BaseState(State):
 
@@ -1190,8 +1218,6 @@ class MainMenu(State):
                 selected_menu_item = main_menu[self.selectedMenuIndex]
                 if selected_menu_item == "choose_sounds":
                     machine.go_to_state('choose_sounds')
-                elif selected_menu_item == "choose_my_sounds":
-                    machine.go_to_state('choose_my_sounds')
                 elif selected_menu_item == "add_sounds_animate":
                     machine.go_to_state('add_sounds_animate')  
                 elif selected_menu_item == "light_string_setup_menu":
@@ -1215,7 +1241,7 @@ class ChooseSounds(State):
         return 'choose_sounds'
 
     def enter(self, machine):
-        print('Select a program option')
+        print('Choose sounds')
         if mixer.voice[0].playing:
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -1238,13 +1264,13 @@ class ChooseSounds(State):
                     pass
             else:
                 try:
-                    wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav" , "rb"))
+                    wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + all_sound_options[self.optionIndex] + ".wav" , "rb"))
                     mixer.voice[0].play( wave0, loop=False )
                 except:
                     speak_song_number(str(self.optionIndex+1))
                 self.currentOption = self.optionIndex
                 self.optionIndex +=1
-                if self.optionIndex > len(sound_options)-1:
+                if self.optionIndex > len(all_sound_options)-1:
                     self.optionIndex = 0
                 while mixer.voice[0].playing:
                     pass
@@ -1254,77 +1280,13 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                config["option_selected"] = sound_options[self.currentOption]
+                config["option_selected"] = all_sound_options[self.currentOption]
                 files.write_json_file("/sd/config_lightning.json",config)
                 wave0 = audiocore.WaveFile(open("/sd/mvc/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
                     pass
             machine.go_to_state('base_state') 
-             
-class ChooseMySounds(State):
-
-    def __init__(self):
-        self.optionIndex = 0
-        self.currentOption = 0
-
-    @property
-    def name(self):
-        return 'choose_my_sounds'
-
-    def enter(self, machine):
-        print('Select a program option')
-        if mixer.voice[0].playing:
-            mixer.voice[0].stop()
-            while mixer.voice[0].playing:
-                pass
-        else:
-            files.log_item('Choose sounds menu')
-            selectMySoundMenuAnnouncement()
-        State.enter(self, machine)
-
-    def exit(self, machine):
-        State.exit(self, machine)
-
-    def update(self, machine):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                try:
-                    #my_string = my_sound_options[self.optionIndex].replace("customers_owned_music_","")
-                    speak_song_number(str(self.optionIndex+1))
-                    self.currentOption = self.optionIndex
-                    self.optionIndex +=1
-                    if self.optionIndex > len(my_sound_options)-1:
-                        self.optionIndex = 0
-                    while mixer.voice[0].playing:
-                        pass
-                except:
-                    no_user_soundtrack_found()
-                    machine.go_to_state('base_state')
-                    return
-        if right_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                try:
-                    config["option_selected"] = my_sound_options[self.currentOption]
-                    files.write_json_file("/sd/config_lightning.json",config)
-                    wave0 = audiocore.WaveFile(open("/sd/mvc/option_selected.wav", "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
-                    while mixer.voice[0].playing:
-                        pass
-                except:
-                    print("no sound track")
-            machine.go_to_state('base_state')
-
 class AddSoundsAnimate(State):
 
     def __init__(self):
@@ -1380,255 +1342,235 @@ class AddSoundsAnimate(State):
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')
 
-class VolumeSettings(State):
+# class VolumeSettings(State):
 
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+#     def __init__(self):
+#         self.menuIndex = 0
+#         self.selectedMenuIndex = 0
 
-    @property
-    def name(self):
-        return 'volume_settings'
+#     @property
+#     def name(self):
+#         return 'volume_settings'
 
-    def enter(self, machine):
-        files.log_item('Set Web Options')
-        volumeSettingsAnnouncement()
+#     def enter(self, machine):
+#         files.log_item('Set Web Options')
+#         volumeSettingsAnnouncement()
 
-        State.enter(self, machine)
+#         State.enter(self, machine)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+#     def exit(self, machine):
+#         State.exit(self, machine)
 
-    def update(self, machine):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/mvc/" + volume_settings[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(volume_settings)-1:
-                    self.menuIndex = 0
-        if right_switch.fell:
-                selected_menu_item = volume_settings[self.selectedMenuIndex]
-                if selected_menu_item == "volume_level_adjustment":
-                    play_audio_0("/sd/mvc/volume_adjustment_menu.wav")
-                    done = False
-                    while not done: 
-                        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
-                        if switch_state == "left":
-                            changeVolume("lower")
-                        elif switch_state == "right":
-                            changeVolume("raise")
-                        elif switch_state == "right_held":
-                            files.write_json_file("/sd/config_lightning.json",config)
-                            play_audio_0("/sd/mvc/all_changes_complete.wav")
-                            done = True
-                            machine.go_to_state('base_state')
-                        sleepAndUpdateVolume(0.1)
-                        pass
-                elif selected_menu_item == "volume_pot_off":
-                    config["volume_pot"] = False
-                    if config["volume"] == 0:
-                        config["volume"] = 10
-                    files.write_json_file("/sd/config_lightning.json",config)
-                    play_audio_0("/sd/mvc/all_changes_complete.wav")
-                    machine.go_to_state('base_state') 
-                elif selected_menu_item == "volume_pot_on":
-                    config["volume_pot"] = True
-                    files.write_json_file("/sd/config_lightning.json",config)
-                    play_audio_0("/sd/mvc/all_changes_complete.wav")
-                    machine.go_to_state('base_state') 
+#     def update(self, machine):
+#         left_switch.update()
+#         right_switch.update()
+#         if left_switch.fell:
+#             if mixer.voice[0].playing:
+#                 mixer.voice[0].stop()
+#                 while mixer.voice[0].playing:
+#                     pass
+#             else:
+#                 play_audio_0("/sd/mvc/" + volume_settings[self.menuIndex] + ".wav")
+#                 self.selectedMenuIndex = self.menuIndex
+#                 self.menuIndex +=1
+#                 if self.menuIndex > len(volume_settings)-1:
+#                     self.menuIndex = 0
+#         if right_switch.fell:
+#                 selected_menu_item = volume_settings[self.selectedMenuIndex]
+#                 if selected_menu_item == "volume_level_adjustment":
+#                     play_audio_0("/sd/mvc/volume_adjustment_menu.wav")
+#                     done = False
+#                     while not done: 
+#                         switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+#                         if switch_state == "left":
+#                             changeVolume("lower")
+#                         elif switch_state == "right":
+#                             changeVolume("raise")
+#                         elif switch_state == "right_held":
+#                             files.write_json_file("/sd/config_lightning.json",config)
+#                             play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                             done = True
+#                             machine.go_to_state('base_state')
+#                         sleepAndUpdateVolume(0.1)
+#                         pass
+#                 elif selected_menu_item == "volume_pot_off":
+#                     config["volume_pot"] = False
+#                     if config["volume"] == 0:
+#                         config["volume"] = 10
+#                     files.write_json_file("/sd/config_lightning.json",config)
+#                     play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                     machine.go_to_state('base_state') 
+#                 elif selected_menu_item == "volume_pot_on":
+#                     config["volume_pot"] = True
+#                     files.write_json_file("/sd/config_lightning.json",config)
+#                     play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                     machine.go_to_state('base_state') 
 
-class WebOptions(State):
+# class WebOptions(State):
 
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+#     def __init__(self):
+#         self.menuIndex = 0
+#         self.selectedMenuIndex = 0
 
-    @property
-    def name(self):
-        return 'web_options'
+#     @property
+#     def name(self):
+#         return 'web_options'
 
-    def enter(self, machine):
-        files.log_item('Set Web Options')
-        selectWebOptionsAnnouncement()
-        State.enter(self, machine)
+#     def enter(self, machine):
+#         files.log_item('Set Web Options')
+#         selectWebOptionsAnnouncement()
+#         State.enter(self, machine)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+#     def exit(self, machine):
+#         State.exit(self, machine)
 
-    def update(self, machine):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/mvc/" + web_menu[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(web_menu)-1:
-                    self.menuIndex = 0
-        if right_switch.fell:
-                selected_menu_item = web_menu[self.selectedMenuIndex]
-                if selected_menu_item == "web_on":
-                    config["serve_webpage"] = True
-                    option_selected_announcement()
-                    selectWebOptionsAnnouncement()
-                elif selected_menu_item == "web_off":
-                    config["serve_webpage"] = False
-                    option_selected_announcement()
-                    selectWebOptionsAnnouncement()
-                elif selected_menu_item == "hear_url":
-                    speak_this_string(config["HOST_NAME"], True)
-                    selectWebOptionsAnnouncement()
-                elif selected_menu_item == "hear_instr_web":
-                    play_audio_0("/sd/mvc/web_instruct.wav")
-                    selectWebOptionsAnnouncement()
-                else:
-                    files.write_json_file("/sd/config_lightning.json",config)
-                    play_audio_0("/sd/mvc/all_changes_complete.wav")
-                    machine.go_to_state('base_state')   
+#     def update(self, machine):
+#         left_switch.update()
+#         right_switch.update()
+#         if left_switch.fell:
+#             if mixer.voice[0].playing:
+#                 mixer.voice[0].stop()
+#                 while mixer.voice[0].playing:
+#                     pass
+#             else:
+#                 play_audio_0("/sd/mvc/" + web_menu[self.menuIndex] + ".wav")
+#                 self.selectedMenuIndex = self.menuIndex
+#                 self.menuIndex +=1
+#                 if self.menuIndex > len(web_menu)-1:
+#                     self.menuIndex = 0
+#         if right_switch.fell:
+#                 selected_menu_item = web_menu[self.selectedMenuIndex]
+#                 if selected_menu_item == "web_on":
+#                     config["serve_webpage"] = True
+#                     option_selected_announcement()
+#                     selectWebOptionsAnnouncement()
+#                 elif selected_menu_item == "web_off":
+#                     config["serve_webpage"] = False
+#                     option_selected_announcement()
+#                     selectWebOptionsAnnouncement()
+#                 elif selected_menu_item == "hear_url":
+#                     speak_this_string(config["HOST_NAME"], True)
+#                     selectWebOptionsAnnouncement()
+#                 elif selected_menu_item == "hear_instr_web":
+#                     play_audio_0("/sd/mvc/web_instruct.wav")
+#                     selectWebOptionsAnnouncement()
+#                 else:
+#                     files.write_json_file("/sd/config_lightning.json",config)
+#                     play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                     machine.go_to_state('base_state')   
 
-class LightStringSetupMenu(State):
+# class LightStringSetupMenu(State):
 
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+#     def __init__(self):
+#         self.menuIndex = 0
+#         self.selectedMenuIndex = 0
 
-    @property
-    def name(self):
-        return 'light_string_setup_menu'
+#     @property
+#     def name(self):
+#         return 'light_string_setup_menu'
 
-    def enter(self, machine):
-        files.log_item('Set Web Options')
-        lightStringSetupAnnouncement()
-        State.enter(self, machine)
+#     def enter(self, machine):
+#         files.log_item('Set Web Options')
+#         lightStringSetupAnnouncement()
+#         State.enter(self, machine)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+#     def exit(self, machine):
+#         State.exit(self, machine)
 
-    def update(self, machine):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(light_string_menu)-1:
-                    self.menuIndex = 0
-        if right_switch.fell:
-            selected_menu_item = light_string_menu[self.selectedMenuIndex]
-            if selected_menu_item == "hear_light_setup_instructions":
-                stringInstructions()
-            elif selected_menu_item == "reset_lights_defaults":
-                reset_lights_to_defaults()
-                play_audio_0("/sd/mvc/lights_reset_to.wav")
-                speak_light_string(False)
-            elif selected_menu_item == "hear_current_light_settings": 
-                speak_light_string(True)
-            elif selected_menu_item == "clear_light_string":
-                config["light_string"] = ""
-                play_audio_0("/sd/mvc/lights_cleared.wav") 
-            elif selected_menu_item == "add_lights":
-                play_audio_0("/sd/mvc/add_light_menu.wav")
-                while True:
-                    switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
-                    if switch_state == "left":
-                        if mixer.voice[0].playing:
-                            mixer.voice[0].stop()
-                            while mixer.voice[0].playing:
-                                pass
-                        else:
-                            self.menuIndex -=1
-                            if self.menuIndex < 0:
-                                self.menuIndex = len(light_options)-1
-                            self.selectedMenuIndex = self.menuIndex
-                            play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
-                    elif switch_state == "right":
-                        if mixer.voice[0].playing:
-                            mixer.voice[0].stop()
-                            while mixer.voice[0].playing:
-                                pass
-                        else:
-                            self.menuIndex +=1
-                            if self.menuIndex > len(light_options)-1:
-                                self.menuIndex = 0
-                            self.selectedMenuIndex = self.menuIndex
-                            play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
-                    elif switch_state == "right_held":
-                        if mixer.voice[0].playing:
-                            mixer.voice[0].stop()
-                            while mixer.voice[0].playing:
-                                pass
-                        else:
-                            if config["light_string"] == "":
-                                config["light_string"] = light_options[self.selectedMenuIndex]
-                            else:
-                                config["light_string"] = config["light_string"] + "," + light_options[self.selectedMenuIndex]
-                            play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
-                            play_audio_0("/sd/mvc/added.wav")
-                    elif switch_state == "left_held":
-                        if mixer.voice[0].playing:
-                            mixer.voice[0].stop()
-                            while mixer.voice[0].playing:
-                                pass
-                        else:
-                            files.write_json_file("/sd/config_lightning.json",config)
-                            play_audio_0("/sd/mvc/all_changes_complete.wav")
-                            updateLightString()
-                            machine.go_to_state('base_state')  
-                    sleepAndUpdateVolume(0.1)
-                    pass
-            else:
-                files.write_json_file("/sd/config_lightning.json",config)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
-                updateLightString()
-                machine.go_to_state('base_state') 
-
-# StateTemplate copy and add functionality
-class StateTemplate(State):
-
-    def __init__(self):
-        super().__init__()
-
-    @property
-    def name(self):
-        return 'example'
-
-    def enter(self, machine):
-        State.enter(self, machine)
-
-    def exit(self, machine):
-        State.exit(self, machine)
-
-    def update(self, machine):
-        State.update(self, machine)
+#     def update(self, machine):
+#         left_switch.update()
+#         right_switch.update()
+#         if left_switch.fell:
+#             if mixer.voice[0].playing:
+#                 mixer.voice[0].stop()
+#                 while mixer.voice[0].playing:
+#                     pass
+#             else:
+#                 play_audio_0("/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
+#                 self.selectedMenuIndex = self.menuIndex
+#                 self.menuIndex +=1
+#                 if self.menuIndex > len(light_string_menu)-1:
+#                     self.menuIndex = 0
+#         if right_switch.fell:
+#             selected_menu_item = light_string_menu[self.selectedMenuIndex]
+#             if selected_menu_item == "hear_light_setup_instructions":
+#                 stringInstructions()
+#             elif selected_menu_item == "reset_lights_defaults":
+#                 reset_lights_to_defaults()
+#                 play_audio_0("/sd/mvc/lights_reset_to.wav")
+#                 speak_light_string(False)
+#             elif selected_menu_item == "hear_current_light_settings": 
+#                 speak_light_string(True)
+#             elif selected_menu_item == "clear_light_string":
+#                 config["light_string"] = ""
+#                 play_audio_0("/sd/mvc/lights_cleared.wav") 
+#             elif selected_menu_item == "add_lights":
+#                 play_audio_0("/sd/mvc/add_light_menu.wav")
+#                 while True:
+#                     switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+#                     if switch_state == "left":
+#                         if mixer.voice[0].playing:
+#                             mixer.voice[0].stop()
+#                             while mixer.voice[0].playing:
+#                                 pass
+#                         else:
+#                             self.menuIndex -=1
+#                             if self.menuIndex < 0:
+#                                 self.menuIndex = len(light_options)-1
+#                             self.selectedMenuIndex = self.menuIndex
+#                             play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
+#                     elif switch_state == "right":
+#                         if mixer.voice[0].playing:
+#                             mixer.voice[0].stop()
+#                             while mixer.voice[0].playing:
+#                                 pass
+#                         else:
+#                             self.menuIndex +=1
+#                             if self.menuIndex > len(light_options)-1:
+#                                 self.menuIndex = 0
+#                             self.selectedMenuIndex = self.menuIndex
+#                             play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
+#                     elif switch_state == "right_held":
+#                         if mixer.voice[0].playing:
+#                             mixer.voice[0].stop()
+#                             while mixer.voice[0].playing:
+#                                 pass
+#                         else:
+#                             if config["light_string"] == "":
+#                                 config["light_string"] = light_options[self.selectedMenuIndex]
+#                             else:
+#                                 config["light_string"] = config["light_string"] + "," + light_options[self.selectedMenuIndex]
+#                             play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
+#                             play_audio_0("/sd/mvc/added.wav")
+#                     elif switch_state == "left_held":
+#                         if mixer.voice[0].playing:
+#                             mixer.voice[0].stop()
+#                             while mixer.voice[0].playing:
+#                                 pass
+#                         else:
+#                             files.write_json_file("/sd/config_lightning.json",config)
+#                             play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                             updateLightString()
+#                             machine.go_to_state('base_state')  
+#                     sleepAndUpdateVolume(0.1)
+#                     pass
+#             else:
+#                 files.write_json_file("/sd/config_lightning.json",config)
+#                 play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                 updateLightString()
+#                 machine.go_to_state('base_state') 
 
 ###############################################################################
 # Create the state machine
 
-pretty_state_machine = StateMachine()
-pretty_state_machine.add_state(BaseState())
-pretty_state_machine.add_state(MainMenu())
-pretty_state_machine.add_state(ChooseSounds())
-pretty_state_machine.add_state(ChooseMySounds())
-pretty_state_machine.add_state(AddSoundsAnimate())
-pretty_state_machine.add_state(VolumeSettings())
-pretty_state_machine.add_state(WebOptions())
-pretty_state_machine.add_state(LightStringSetupMenu())
+ste_mach = StateMachine()
+ste_mach.add_state(BaseState())
+ste_mach.add_state(MainMenu())
+ste_mach.add_state(ChooseSounds())
+ste_mach.add_state(AddSoundsAnimate())
+# ste_mach.add_state(VolumeSettings())
+# ste_mach.add_state(WebOptions())
+# ste_mach.add_state(LightStringSetupMenu())
 
 audio_enable.value = True   
 
@@ -1643,12 +1585,12 @@ if (serve_webpage):
         files.log_item("restarting...")
         reset_pico()
 
-pretty_state_machine.go_to_state('base_state')   
+ste_mach.go_to_state('base_state')   
 files.log_item("animator has started...")
 garbage_collect("animations started.")
 
 while True:
-    pretty_state_machine.update()
+    ste_mach.update()
     sleepAndUpdateVolume(.02)
     if (serve_webpage):
         try:

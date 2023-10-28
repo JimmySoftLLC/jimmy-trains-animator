@@ -46,11 +46,11 @@
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksContainer"></div>
             <h2>Animation settings:</h2>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/animation"
+            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
                 type="button">
                 Continuous Mode On
             </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/animation"
+            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
                 type="button">
                 Continuous Mode Off
             </button>
@@ -170,14 +170,28 @@
                     100
                 </button>
             </div>
+            <h2>Customize colors:</h2>
+            <div class="mui-textfield">
+                <label for="colorPickerBolts">Lightning color:</label>
+                <input type="color" id="colorPickerBolts" name="colorPickerBolts">
+            </div>
+            <div class="mui-textfield">
+                <label for="colorPickerBars">Bar color:</label>
+                <input type="color" id="colorPickerBars" name="colorPickerBars">
+            </div>
+            <button class="mui-btn mui-btn--primary" id = "resetDefaultColorsButton" data-value="reset_default_colors"
+                data-url="/defaults" type="button">
+                Reset to default colors
+            </button>
+        </button>
         </div>
         <div class="mui-tabs__pane" id="settings">
             <h2>Volume:</h2>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/utilities"
+            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
                 type="button">
                 Volume Pot On
             </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_off" data-url="/utilities"
+            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_off" data-url="/speaker"
                 type="button">
                 Volume Pot Off
             </button>
@@ -234,7 +248,7 @@
             </div>
 
             <p>
-                Valid volume levels are from 10 to 100
+                Valid volume levels are from 1 to 100
             </p>
 
             <h2>Animator web page name:</h2>
@@ -254,12 +268,12 @@
             </p>
 
             <h2>Utilities:</h2>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/utilities"
+            <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
                 type="button">
                 Speaker Test
             </button>
             <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults"
-                data-url="/utilities" type="button">
+                data-url="/defaults" type="button">
                 Reset to defaults
             </button>
             <h2>Animation timing:</h2>
@@ -272,17 +286,17 @@
             </p>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on"
-                    data-url="/animation" type="button">
+                    data-url="/mode" type="button">
                     Timestamp Mode On
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
-                    data-url="/animation" type="button">
+                    data-url="/mode" type="button">
                     Timestamp Mode Off
                 </button>
             </div>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="reset_animation_timing_to_defaults"
-                    data-url="/animation" type="button">
+                    data-url="/defaults" type="button">
                     Reset animation timing to factory defaults
                 </button>
             </div>
@@ -291,6 +305,10 @@
 </body>
 
 <script>
+    const colorPickerBolts = document.getElementById('colorPickerBolts');
+    const colorPickerBars = document.getElementById('colorPickerBars');
+    let isRequestInProgress = false;
+
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
         // get website url
@@ -322,23 +340,6 @@
             })
             .then(function (data) {
                 volume.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-
-        // get light string
-        fetch('/get-light-string', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                lightString.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
@@ -464,6 +465,55 @@
             })
             .catch(function (error) {
                 console.log(error);
+            });
+            
+        // get light string
+        fetch('/get-light-string', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lightString.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // Fetch the current bolt colors
+        fetch('/get-bolt-colors', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                const { r, g, b } = data;
+                colorPickerBolts.value = rgbToHex(r, g, b);
+            })
+            .catch(error => {
+                console.error('Error fetching default color:', error);
+            });
+
+        // Fetch the current bar colors
+        fetch('/get-bar-colors', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                const { r, g, b } = data;
+                colorPickerBars.value = rgbToHex(r, g, b);
+            })
+            .catch(error => {
+                console.error('Error fetching default color:', error);
             });
     });
 
@@ -622,6 +672,102 @@
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
     });
-</script>
 
-</html>
+    // Add click event listener to website submit button
+    var resetDefaultColorsButton = document.getElementById('resetDefaultColorsButton');
+    resetDefaultColorsButton.addEventListener('click', function () {
+        var url = resetDefaultColorsButton.getAttribute('data-url');
+        var animation = resetDefaultColorsButton.getAttribute('data-value');
+
+        // Create an object with the data to be sent in the request
+        var data = {
+            animation: animation,
+        };
+
+        resetDefaultColorsButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.json(); // assuming the response is json
+            })
+            .then(function (data) {
+                colorPickerBars.value = rgbToHex(data["bars"]["r"], data["bars"]["g"], data["bars"]["b"]);
+                colorPickerBolts.value = rgbToHex(data["bolts"]["r"], data["bolts"]["g"], data["bolts"]["b"]);
+                resetDefaultColorsButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                resetDefaultColorsButton.removeAttribute('disabled')
+            });
+    });
+
+    colorPickerBolts.addEventListener('input', function () {
+        const color = colorPickerBolts.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("bolts", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
+    colorPickerBars.addEventListener('input', function () {
+        const color = colorPickerBars.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("bars", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
+    function hexToRgb(hex) {
+        hex = hex.replace(/^#/, '');
+        const bigint = parseInt(hex, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b };
+    }
+
+    function rgbToHex(r, g, b) {
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase()}`;
+    }
+
+    function sendRGBValues(item, r, g, b) {
+        console.log(r)
+        console.log(g)
+        console.log(b)
+        const endpoint = "set-lights";
+        const data = {
+            item: item,
+            r: r,
+            g: g,
+            b: b
+        };
+
+        fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data)
+                isRequestInProgress = false; // Reset the flag after the request is completed
+            })
+            .catch(error => {
+                console.error('Error:', error)
+                isRequestInProgress = false; // Reset the flag in case of an error
+            });
+    }
+
+</script>
