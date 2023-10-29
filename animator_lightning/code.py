@@ -879,11 +879,9 @@ def thunder_and_lightning(file_name):
     while True:
         sleepAndUpdateVolume(.1)
         time_elapsed = time.monotonic()-startTime
-        right_switch.update()
-        if right_switch.fell:
-            print(time_elapsed)
-        if time_elapsed > flashTime[flashTimeIndex] - random.uniform(.5, 1): #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
-            print("Time elapsed: " + str(time_elapsed) + " Timestamp: " + str(flashTime[flashTimeIndex])+ " Dif: " + str(time_elapsed-flashTime[flashTimeIndex]))
+        rand_time = flashTime[flashTimeIndex] - random.uniform(.5, 1) #amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
+        if time_elapsed > rand_time:
+            print("Time elapsed: " + str(time_elapsed) + " Timestamp: " + str(rand_time)+ " Dif: " + str(time_elapsed-rand_time))
             flashTimeIndex += 1
             lightning()
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
