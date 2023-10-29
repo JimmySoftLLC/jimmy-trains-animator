@@ -650,13 +650,16 @@ def shortCircuitDialog():
         
 def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
-        if character == " ":
-            character = "space"
-        if character == "-":
-            character = "dash"
-        if character == ".":
-            character = "dot"
-        play_audio_0("/sd/mvc/" + character + ".wav")
+        try:
+            if character == " ":
+                character = "space"
+            if character == "-":
+                character = "dash"
+            if character == ".":
+                character = "dot"
+            play_audio_0("/sd/mvc/" + character + ".wav")
+        except:
+            print("invalid character in string to speak")
     if addLocal:
         play_audio_0("/sd/mvc/dot.wav")
         play_audio_0("/sd/mvc/local.wav")
