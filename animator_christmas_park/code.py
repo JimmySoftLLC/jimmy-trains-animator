@@ -142,14 +142,18 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 config = files.read_json_file("/sd/config_christmas_park.json")
 
 sound_options = files.return_directory("", "/sd/christmas_park_sounds", ".wav")
-rnd_options = ['random all','random built in','random my']
-sound_options.extend(rnd_options)
 
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 all_sound_options = []
 all_sound_options.extend(sound_options)
 all_sound_options.extend(my_sound_options)
+
+menu_sound_options = []
+menu_sound_options.extend(sound_options)
+rnd_options = ['random all','random built in','random my']
+menu_sound_options.extend(rnd_options)
+menu_sound_options.extend(my_sound_options)
 
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
@@ -389,7 +393,7 @@ if (serve_webpage):
                         animation(config["option_selected"])
                         break
             else: # built in animations
-                for sound_file in sound_options:
+                for sound_file in menu_sound_options:
                     if sound_file  in raw_text:
                         config["option_selected"] = sound_file
                         animation(config["option_selected"])
@@ -561,9 +565,6 @@ if (serve_webpage):
         def buttonpress(request: Request):
             sounds = []
             sounds.extend(sound_options)
-            sounds.remove("random all")
-            sounds.remove("random built in")
-            sounds.remove("random my")
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
            
@@ -732,7 +733,7 @@ def animation(file_name):
     current_option_selected = file_name
     try:
         if file_name == "random built in":
-            highest_index = len(sound_options) - 4
+            highest_index = len(sound_options) - 1
             sound_number = random.randint(0, highest_index)
             current_option_selected = sound_options[sound_number]
             print("Random sound file: " + sound_options[sound_number])
@@ -744,7 +745,7 @@ def animation(file_name):
             print("Random sound file: " + my_sound_options[sound_number])
             print("Sound file: " + current_option_selected)
         elif file_name == "random all":
-            highest_index = len(all_sound_options) - 4
+            highest_index = len(all_sound_options) - 1
             sound_number = random.randint(0, highest_index)
             current_option_selected = all_sound_options[sound_number]
             print("Random sound file: " + all_sound_options[sound_number])
@@ -830,6 +831,7 @@ def animation_light_show(file_name):
             previous_index = my_index
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
+        #if timeElasped > 5: mixer.voice[0].stop()
         if left_switch.fell:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
@@ -1198,11 +1200,11 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                wave0 = audiocore.WaveFile(open("/sd/christmas_park_options_voice_commands/option_" + sound_options[self.optionIndex] + ".wav" , "rb"))
+                wave0 = audiocore.WaveFile(open("/sd/christmas_park_options_voice_commands/option_" + menu_sound_options[self.optionIndex] + ".wav" , "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 self.currentOption = self.optionIndex
                 self.optionIndex +=1
-                if self.optionIndex > len(sound_options)-1:
+                if self.optionIndex > len(menu_sound_options)-1:
                     self.optionIndex = 0
                 while mixer.voice[0].playing:
                     pass
@@ -1212,7 +1214,7 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                config["option_selected"] = sound_options[self.currentOption]
+                config["option_selected"] = menu_sound_options[self.currentOption]
                 files.write_json_file("/sd/config_christmas_park.json",config)
                 wave0 = audiocore.WaveFile(open("/sd/mvc/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
