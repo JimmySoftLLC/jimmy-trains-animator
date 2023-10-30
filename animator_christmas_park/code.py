@@ -405,7 +405,7 @@ if (serve_webpage):
             if "reset_animation_timing_to_defaults" in raw_text:
                 for time_stamp_file in time_stamp_jsons:
                     time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
-                    files.write_json_file("/sd/lightning_sounds/"+time_stamp_file+".json",time_stamps)
+                    files.write_json_file("/sd/christmas_park_sounds/"+time_stamp_file+".json",time_stamps)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 command_sent = "reset_to_defaults"
@@ -727,6 +727,7 @@ def speak_webpage():
 # animations
      
 def animation(file_name):
+    global config
     print(file_name)
     current_option_selected = file_name
     if file_name == "random built in":
@@ -736,7 +737,12 @@ def animation(file_name):
             print("Random sound file: " + sound_options[sound_number])
             print("Sound file: " + current_option_selected)
     elif file_name == "random my":
-            highest_index = len(my_sound_options) - 1
+            my_song_numb =len(my_sound_options)
+            if my_song_numb == 0 : 
+                no_user_soundtrack_found()
+                config["option_selected"] = "random built in"
+                return
+            highest_index = my_song_numb - 1
             sound_number = random.randint(0, highest_index)
             current_option_selected = my_sound_options[sound_number]
             print("Random sound file: " + my_sound_options[sound_number])
