@@ -730,33 +730,34 @@ def animation(file_name):
     global config
     print(file_name)
     current_option_selected = file_name
-    if file_name == "random built in":
+    try:
+        if file_name == "random built in":
             highest_index = len(sound_options) - 4
             sound_number = random.randint(0, highest_index)
             current_option_selected = sound_options[sound_number]
             print("Random sound file: " + sound_options[sound_number])
             print("Sound file: " + current_option_selected)
-    elif file_name == "random my":
-            my_song_numb =len(my_sound_options)
-            if my_song_numb == 0 : 
-                no_user_soundtrack_found()
-                config["option_selected"] = "random built in"
-                return
-            highest_index = my_song_numb - 1
+        elif file_name == "random my":
+            highest_index = len(my_sound_options) - 1
             sound_number = random.randint(0, highest_index)
             current_option_selected = my_sound_options[sound_number]
             print("Random sound file: " + my_sound_options[sound_number])
             print("Sound file: " + current_option_selected)
-    elif file_name == "random all":
+        elif file_name == "random all":
             highest_index = len(all_sound_options) - 4
             sound_number = random.randint(0, highest_index)
             current_option_selected = all_sound_options[sound_number]
             print("Random sound file: " + all_sound_options[sound_number])
             print("Sound file: " + current_option_selected)
-    if time_stamp_mode:
-        animation_timestamp(current_option_selected)
-    else:
-        animation_light_show(current_option_selected)
+        if time_stamp_mode:
+            animation_timestamp(current_option_selected)
+        else:
+            animation_light_show(current_option_selected)
+    except:
+        no_user_soundtrack_found()
+        config["option_selected"] = "random built in"
+        return
+
     garbage_collect("Animation complete.")
          
 def animation_light_show(file_name):
