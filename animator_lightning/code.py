@@ -723,7 +723,12 @@ def animation(file_name):
             print("Random sound file: " + sound_options[sound_number])
             print("Sound file: " + current_option_selected)
     elif file_name == "random my":
-            highest_index = len(my_sound_options) - 1
+            my_song_numb =len(my_sound_options)
+            if my_song_numb == 0 : 
+                no_user_soundtrack_found()
+                config["option_selected"] = "random built in"
+                return
+            highest_index = my_song_numb - 1
             sound_number = random.randint(0, highest_index)
             current_option_selected = my_sound_options[sound_number]
             print("Random sound file: " + my_sound_options[sound_number])
