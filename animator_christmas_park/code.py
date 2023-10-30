@@ -726,29 +726,37 @@ def speak_webpage():
     play_audio_0("/sd/mvc/in_your_browser.wav") 
 ################################################################################
 # animations
+
+last_option = ""
      
 def animation(file_name):
-    global config
-    print(file_name)
+    global config, last_option
+    print("Filename: " + file_name)
     current_option_selected = file_name
     try:
         if file_name == "random built in":
             highest_index = len(sound_options) - 1
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = sound_options[sound_number]
-            print("Random sound file: " + sound_options[sound_number])
+            current_option_selected = sound_options[random.randint(0, highest_index)]
+            while last_option == current_option_selected and len(sound_options)>1:
+                current_option_selected = sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random my":
             highest_index = len(my_sound_options) - 1
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = my_sound_options[sound_number]
-            print("Random sound file: " + my_sound_options[sound_number])
+            current_option_selected = my_sound_options[random.randint(0, highest_index)]
+            while last_option == current_option_selected and len(my_sound_options)>1:
+                current_option_selected = my_sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random all":
             highest_index = len(all_sound_options) - 1
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = all_sound_options[sound_number]
-            print("Random sound file: " + all_sound_options[sound_number])
+            current_option_selected = all_sound_options[random.randint(0, highest_index)]
+            while last_option == current_option_selected and len(my_sound_options)>1:
+                current_option_selected = all_sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         if time_stamp_mode:
             animation_timestamp(current_option_selected)
@@ -831,12 +839,12 @@ def animation_light_show(file_name):
             previous_index = my_index
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
-        #if timeElasped > 5: mixer.voice[0].stop()
-        if left_switch.fell:
+        #if timeElasped > 2: mixer.voice[0].stop()
+        if left_switch.fell and config["can_cancel"]:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
-            #ledStrip.fill((0, 0, 0))
-            #ledStrip.show()
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
             break
         sleepAndUpdateVolume(.001)
          
