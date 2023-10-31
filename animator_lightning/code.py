@@ -17,12 +17,15 @@ import storage
 import busio
 import digitalio
 import board
-import neopixel
 import random
 import rtc
 import microcontroller
 
 from analogio import AnalogIn
+
+import neopixel
+from rainbowio import colorwheel
+
 from adafruit_debouncer import Debouncer
 
 def reset_pico():
@@ -139,14 +142,18 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 config = files.read_json_file("/sd/config_lightning.json")
 
 sound_options =  files.return_directory("", "/sd/lightning_sounds", ".wav")
-rnd_options = ['random all','random built in','random my']
-sound_options.extend(rnd_options)
 
 my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 all_sound_options = []
 all_sound_options.extend(sound_options)
 all_sound_options.extend(my_sound_options)
+
+menu_sound_options = []
+menu_sound_options.extend(sound_options)
+rnd_options = ['random all','random built in','random my']
+menu_sound_options.extend(rnd_options)
+menu_sound_options.extend(my_sound_options)
 
 time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
 
@@ -177,7 +184,7 @@ time_stamp_mode = False
 
 ################################################################################
 # Setup neo pixels
-from rainbowio import colorwheel
+
 bars = []
 bolts = []
 bar_array = []
@@ -341,7 +348,7 @@ if (serve_webpage):
                         animation(config["option_selected"])
                         break
             else: # built in animations
-                for sound_file in sound_options:
+                for sound_file in menu_sound_options:
                     if sound_file  in raw_text:
                         config["option_selected"] = sound_file
                         animation(config["option_selected"])
@@ -364,14 +371,14 @@ if (serve_webpage):
                 reset_to_defaults()      
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-                ste_mach.go_to_state('base_state')
+                state_machine.go_to_state('base_state')
             elif "reset_default_colors" in raw_text:
                 command_sent = "reset_default_colors"
                 reset_default_colors()    
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 my_string = files.json_stringify({"bars":config["bars"],"bolts":config["bolts"]})
-                ste_mach.go_to_state('base_state')
+                state_machine.go_to_state('base_state')
                 return Response(request, my_string)
             return Response(request, "Utility: " + command_sent)
         
@@ -509,9 +516,6 @@ if (serve_webpage):
         def buttonpress(request: Request):
             sounds = []
             sounds.extend(sound_options)
-            sounds.remove("random all")
-            sounds.remove("random built in")
-            sounds.remove("random my")
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
         
@@ -613,7 +617,6 @@ def changeVolume(action):
             volume += 1
         else:
             volume += 10
-
     if volume > 100:
         volume =100
     if volume < 1:
@@ -659,7 +662,7 @@ def speak_this_string(str_to_speak, addLocal):
                 character = "dot"
             play_audio_0("/sd/mvc/" + character + ".wav")
         except:
-            print("invalid character in string to speak")
+            print("Invalid character in string to speak")
     if addLocal:
         play_audio_0("/sd/mvc/dot.wav")
         play_audio_0("/sd/mvc/local.wav")
@@ -712,72 +715,49 @@ def speak_webpage():
         
 ################################################################################
 # animations
-     
-def animation(file_name):
-    print(file_name)
-    current_option_selected = file_name
-    try:
-        if file_name == "random built in":
-            highest_index = len(sound_options) - 4
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = sound_options[sound_number]
-            print("Random sound file: " + sound_options[sound_number])
-            print("Sound file: " + current_option_selected)
-        elif file_name == "random my":
-            highest_index = len(my_sound_options) - 1
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = my_sound_options[sound_number]
-            print("Random sound file: " + my_sound_options[sound_number])
-            print("Sound file: " + current_option_selected)
-        elif file_name == "random all":
-            highest_index = len(all_sound_options) - 4
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = all_sound_options[sound_number]
-            print("Random sound file: " + all_sound_options[sound_number])
-            print("Sound file: " + current_option_selected)
-        if time_stamp_mode:
-            animation_timestamp(current_option_selected)
-        else:
-            animation_light_show(current_option_selected)
-    except:
-        no_user_soundtrack_found()
-        config["option_selected"] = "random built in"
-        return
 
-     
+last_option = ""
+      
 def animation(file_name):
-    print(file_name)
+    global config, last_option
+    print("Filename: " + file_name)
     current_option_selected = file_name
     try:
         if file_name == "random built in":
-            highest_index = len(sound_options) - 4
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = sound_options[sound_number]
-            print("Random sound file: " + sound_options[sound_number])
+            highest_index = len(sound_options) - 1
+            current_option_selected = sound_options[random.randint(0, highest_index)]
+            while last_option == current_option_selected and len(sound_options)>1:
+                current_option_selected = sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random my":
             highest_index = len(my_sound_options) - 1
-            sound_number = random.randint(0, highest_index)
-            current_option_selected = my_sound_options[sound_number]
-            print("Random sound file: " + my_sound_options[sound_number])
+            current_option_selected = my_sound_options[random.randint(0, highest_index)]
+            while last_option == current_option_selected and len(my_sound_options)>1:
+                current_option_selected = my_sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random all":
-                highest_index = len(all_sound_options) - 4
-                sound_number = random.randint(0, highest_index)
-                current_option_selected = all_sound_options[sound_number]
-                print("Random sound file: " + all_sound_options[sound_number])
-                print("Sound file: " + current_option_selected)
+            highest_index = len(all_sound_options) - 1
+            current_option_selected = all_sound_options[random.randint(0, highest_index)]
+            while last_option == current_option_selected and len(all_sound_options)>1:
+                current_option_selected = all_sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
+            print("Sound file: " + current_option_selected)
         if time_stamp_mode:
                 animation_timestamp(current_option_selected)
         else:
             if "customers_owned_music_" in current_option_selected:
-                animation_lightshow(current_option_selected)
+                animation_light_show(current_option_selected)
             elif current_option_selected == "alien lightshow":
-                animation_lightshow(current_option_selected)
+                animation_light_show(current_option_selected)
             elif current_option_selected == "inspiring cinematic ambient lightshow":
-                animation_lightshow(current_option_selected)
+                animation_light_show(current_option_selected)
             elif current_option_selected == "fireworks":
-                animation_lightshow(current_option_selected)
+                animation_light_show(current_option_selected)
             else:
                 thunder_and_lightning(current_option_selected)
     except:
@@ -786,7 +766,7 @@ def animation(file_name):
         return
     garbage_collect("Animation complete.")
          
-def animation_lightshow(file_name):
+def animation_light_show(file_name):
     global time_stamp_mode
     rand_index_low = 1
     rand_index_high = 3
@@ -828,6 +808,7 @@ def animation_lightshow(file_name):
     startTime = time.monotonic()
     my_index = 0
     
+    multicolor(.01)
     while True:
         previous_index=0
         timeElapsed = time.monotonic()-startTime
@@ -854,6 +835,7 @@ def animation_lightshow(file_name):
             previous_index = my_index
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
+        #if timeElasped > 2: mixer.voice[0].stop()
         if left_switch.fell and config["can_cancel"]:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
@@ -1100,7 +1082,6 @@ def color_it(item, colorKey, addSub):
     return config[item][colorKey] + addSub
 
 def lightning():
-
     # choose which bolt or no bolt to fire    
     bolt_indexes = []
     which_bolt = random.randint(-1,(len(bolts)-1))
@@ -1309,6 +1290,7 @@ class ChooseSounds(State):
             while mixer.voice[0].playing:
                 pass
         else:
+            files.log_item('Choose sounds menu')
             play_audio_0("/sd/mvc/sound_selection_menu.wav")
             left_right_mouse_button()
         State.enter(self, machine)
@@ -1326,13 +1308,13 @@ class ChooseSounds(State):
                     pass
             else:
                 try:
-                    wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + all_sound_options[self.optionIndex] + ".wav" , "rb"))
+                    wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + menu_sound_options[self.optionIndex] + ".wav" , "rb"))
                     mixer.voice[0].play( wave0, loop=False )
                 except:
                     speak_song_number(str(self.optionIndex+1))
                 self.currentOption = self.optionIndex
                 self.optionIndex +=1
-                if self.optionIndex > len(all_sound_options)-1:
+                if self.optionIndex > len(menu_sound_options)-1:
                     self.optionIndex = 0
                 while mixer.voice[0].playing:
                     pass
@@ -1342,13 +1324,13 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                config["option_selected"] = all_sound_options[self.currentOption]
-                files.write_json_file("/sd/config_lightning.json",config)
+                config["option_selected"] = menu_sound_options[self.currentOption]
+                files.write_json_file("/sd/config_christmas_park.json",config)
                 wave0 = audiocore.WaveFile(open("/sd/mvc/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
                     pass
-            machine.go_to_state('base_state') 
+            machine.go_to_state('base_state')
             
 class AddSoundsAnimate(State):
 
@@ -1361,6 +1343,7 @@ class AddSoundsAnimate(State):
         return 'add_sounds_animate'
 
     def enter(self, machine):
+        files.log_item('Add sounds animate')
         play_audio_0("/sd/mvc/add_sounds_animate.wav")
         left_right_mouse_button()
         State.enter(self, machine)
@@ -1588,14 +1571,14 @@ class LightStringSetupMenu(State):
 ###############################################################################
 # Create the state machine
 
-ste_mach = StateMachine()
-ste_mach.add_state(BaseState())
-ste_mach.add_state(MainMenu())
-ste_mach.add_state(ChooseSounds())
-ste_mach.add_state(AddSoundsAnimate())
-ste_mach.add_state(VolumeSettings())
-ste_mach.add_state(WebOptions())
-ste_mach.add_state(LightStringSetupMenu())
+state_machine = StateMachine()
+state_machine.add_state(BaseState())
+state_machine.add_state(MainMenu())
+state_machine.add_state(ChooseSounds())
+state_machine.add_state(AddSoundsAnimate())
+state_machine.add_state(VolumeSettings())
+state_machine.add_state(WebOptions())
+state_machine.add_state(LightStringSetupMenu())
 
 audio_enable.value = True   
 
@@ -1610,12 +1593,12 @@ if (serve_webpage):
         files.log_item("restarting...")
         reset_pico()
 
-ste_mach.go_to_state('base_state')   
+state_machine.go_to_state('base_state')   
 files.log_item("animator has started...")
 garbage_collect("animations started.")
 
 while True:
-    ste_mach.update()
+    state_machine.update()
     sleepAndUpdateVolume(.02)
     if (serve_webpage):
         try:
