@@ -682,14 +682,18 @@ def speak_song_number(song_number):
     speak_this_string(song_number,False)
     
 def speak_light_string(play_intro):
-    if play_intro :
-        play_audio_0("/sd/mvc/current_light_settings_are.wav")
-    elements = config["light_string"].split(',')
-    for index, element in enumerate(elements):
-        play_audio_0("/sd/mvc/position.wav")
-        play_audio_0("/sd/mvc/" + str(index+1) + ".wav")
-        play_audio_0("/sd/mvc/is.wav")
-        play_audio_0("/sd/mvc/" + element + ".wav")
+    try:
+        elements = config["light_string"].split(',')
+        if play_intro :
+            play_audio_0("/sd/mvc/current_light_settings_are.wav")
+        for index, element in enumerate(elements):
+            play_audio_0("/sd/mvc/position.wav")
+            play_audio_0("/sd/mvc/" + str(index+1) + ".wav")
+            play_audio_0("/sd/mvc/is.wav")
+            play_audio_0("/sd/mvc/" + element + ".wav")
+    except:
+        play_audio_0("/sd/mvc/no_lights_in_light_string.wav")
+        return
 
 def no_user_soundtrack_found():
     play_audio_0("/sd/mvc/no_user_soundtrack_found.wav")

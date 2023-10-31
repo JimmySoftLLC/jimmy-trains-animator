@@ -450,12 +450,12 @@ if (serve_webpage):
             elif "volume_pot_off" in raw_text:
                 command_sent = "volume_pot_off"
                 config["volume_pot"] = False
-                files.write_json_file("/sd/config_lightning.json",config)
+                files.write_json_file("/sd/config_christmas_park.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 command_sent = "volume_pot_on"
                 config["volume_pot"] = True
-                files.write_json_file("/sd/config_lightning.json",config)
+                files.write_json_file("/sd/config_christmas_park.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             return Response(request, "Utility: " + command_sent)
         
@@ -682,14 +682,18 @@ def speak_song_number(song_number):
     speak_this_string(song_number,False)    
     
 def speak_light_string(play_intro):
-    if play_intro :
-        play_audio_0("/sd/mvc/current_light_settings_are.wav")
-    elements = config["light_string"].split(',')
-    for index, element in enumerate(elements):
-        play_audio_0("/sd/mvc/position.wav")
-        play_audio_0("/sd/mvc/" + str(index+1) + ".wav")
-        play_audio_0("/sd/mvc/is.wav")
-        play_audio_0("/sd/mvc/" + element + ".wav")
+    try:
+        elements = config["light_string"].split(',')
+        if play_intro :
+            play_audio_0("/sd/mvc/current_light_settings_are.wav")
+        for index, element in enumerate(elements):
+            play_audio_0("/sd/mvc/position.wav")
+            play_audio_0("/sd/mvc/" + str(index+1) + ".wav")
+            play_audio_0("/sd/mvc/is.wav")
+            play_audio_0("/sd/mvc/" + element + ".wav")
+    except:
+        play_audio_0("/sd/mvc/no_lights_in_light_string.wav")
+        return
         
 def no_user_soundtrack_found():
     play_audio_0("/sd/mvc/no_user_soundtrack_found.wav")
@@ -1164,14 +1168,9 @@ class ChooseSounds(State):
         return 'choose_sounds'
 
     def enter(self, machine):
-        if mixer.voice[0].playing:
-            mixer.voice[0].stop()
-            while mixer.voice[0].playing:
-                pass
-        else:
-            files.log_item('Choose sounds menu')
-            play_audio_0("/sd/mvc/sound_selection_menu.wav")
-            left_right_mouse_button()
+        files.log_item('Choose sounds menu')
+        play_audio_0("/sd/mvc/sound_selection_menu.wav")
+        left_right_mouse_button()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1187,7 +1186,7 @@ class ChooseSounds(State):
                     pass
             else:
                 try:
-                    wave0 = audiocore.WaveFile(open("/sd/lightning_options_voice_commands/option_" + menu_sound_options[self.optionIndex] + ".wav" , "rb"))
+                    wave0 = audiocore.WaveFile(open("/sd/christmas_park_options_voice_commands/option_" + menu_sound_options[self.optionIndex] + ".wav" , "rb"))
                     mixer.voice[0].play( wave0, loop=False )
                 except:
                     speak_song_number(str(self.optionIndex+1))
@@ -1431,7 +1430,7 @@ class LightStringSetupMenu(State):
                         play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
                         play_audio_0("/sd/mvc/added.wav")    
                     elif switch_state == "left_held":
-                        files.write_json_file("/sd/config_lightning.json",config)   
+                        files.write_json_file("/sd/config_christmas_park.json",config)   
                         updateLightString()
                         play_audio_0("/sd/mvc/all_changes_complete.wav")
                         adding = False
