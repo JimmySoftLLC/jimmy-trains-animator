@@ -752,7 +752,7 @@ def animation(file_name):
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         if time_stamp_mode:
-                animation_timestamp(current_option_selected)
+            animation_timestamp(current_option_selected)
         else:
             if "customers_owned_music_" in current_option_selected:
                 animation_light_show(current_option_selected)
@@ -1288,15 +1288,9 @@ class ChooseSounds(State):
         return 'choose_sounds'
 
     def enter(self, machine):
-        print('Choose sounds')
-        if mixer.voice[0].playing:
-            mixer.voice[0].stop()
-            while mixer.voice[0].playing:
-                pass
-        else:
-            files.log_item('Choose sounds menu')
-            play_audio_0("/sd/mvc/sound_selection_menu.wav")
-            left_right_mouse_button()
+        files.log_item('Choose sounds menu')
+        play_audio_0("/sd/mvc/sound_selection_menu.wav")
+        left_right_mouse_button()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1505,6 +1499,7 @@ class LightStringSetupMenu(State):
         return 'light_string_setup_menu'
 
     def enter(self, machine):
+        files.log_item('Light string menu')
         play_audio_0("/sd/mvc/light_string_setup_menu.wav")
         left_right_mouse_button()
         State.enter(self, machine)
