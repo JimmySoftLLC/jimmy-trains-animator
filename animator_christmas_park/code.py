@@ -765,7 +765,10 @@ def animation_light_show(file_name):
     global time_stamp_mode
     rand_index_low = 1
     rand_index_high = 3
-    if file_name == "silent_night":
+    if file_name == "silent night":
+        rand_index_low = 3
+        rand_index_high = 3
+    if file_name == "away in a manger":
         rand_index_low = 3
         rand_index_high = 3
 
