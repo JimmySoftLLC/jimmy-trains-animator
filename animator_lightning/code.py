@@ -1114,10 +1114,10 @@ def lightning():
     flashCount = random.randint (5, 10)
 
     # flash white brightness range - 0-255
-    ledStrip.brightness = random.randint(150, 255) / 255
+    ledStrip.brightness = random.randint(255, 255) / 255 #150 255, changed to full brightness
 
     for i in range(0,flashCount):
-        color = random.randint(0, 50)
+        color = random.randint(0, 50) # 0 50
         if color < 0: color = 0
 
         for j in range(4):
