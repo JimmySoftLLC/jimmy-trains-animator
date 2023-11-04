@@ -101,59 +101,46 @@ si = board.GP3
 so = board.GP4
 cs = board.GP5
 spi = busio.SPI(sck, si, so)
+
+# Setup the mixer it can play higher quality audio wav using larger wave files
+# wave files are less cpu intensive since they are not compressed
+num_voices = 2
+mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=4096)
+audio.play(mixer)
+
+volume = .2
+mixer.voice[0].level = volume
+mixer.voice[1].level = volume
+
 try:
   sdcard = sdcardio.SDCard(spi, cs)
   vfs = storage.VfsFat(sdcard)
   storage.mount(vfs, "/sd")
 except:
-  wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
-  audio.play(wave0)
-  while audio.playing:
-    pass
-  wave0.deinit()
-  garbage_collect("deinit wave0")
-  cardInserted = False
-  while not cardInserted:
-    left_switch.update()
-    if left_switch.fell:
-        try:
-            sdcard = sdcardio.SDCard(spi, cs)
-            vfs = storage.VfsFat(sdcard)
-            storage.mount(vfs, "/sd")
-            cardInserted = True
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_success.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
-            wave0.deinit()
-            garbage_collect("deinit wave0")
-        except:
-            wave0 = audiomp3.MP3Decoder(open("wav/micro_sd_card_not_inserted.mp3", "rb"))
-            audio.play(wave0)
-            while audio.playing:
-                pass
-            wave0.deinit()
-            garbage_collect("deinit wave0")
+    wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        pass
+    cardInserted = False
+    while not cardInserted:
+        left_switch.update()
+        if left_switch.fell:
+            try:
+                sdcard = sdcardio.SDCard(spi, cs)
+                vfs = storage.VfsFat(sdcard)
+                storage.mount(vfs, "/sd")
+                cardInserted = True
+                wave0 = audiocore.WaveFile(open("/sd/mvc/micro_sd_card_success.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
+            except:
+                wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+                mixer.voice[0].play( wave0, loop=False )
+                while mixer.voice[0].playing:
+                    pass
             
-audio.deinit()
 audio_enable.value = False
-
-garbage_collect("deinit audio")
-
-audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
-
-# Setup the mixer it can play higher quality audio wav using larger wave files
-# wave files are less cpu intensive since they are not compressed
-num_voices = 2
-mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                         bits_per_sample=16, samples_signed=True, buffer_size=4096)
-audio.play(mixer)
-
-garbage_collect("audio setup")
-        
-import utilities
-
-garbage_collect("animator_feller, utilities")
 
 ################################################################################
 # Global Variables
@@ -173,10 +160,10 @@ feller_max = 170
 if config["feller_rest_pos"] < feller_min or config["feller_rest_pos"] > feller_max: config["feller_rest_pos"] = feller_min
 if config["feller_chop_pos"] > feller_max or config["feller_chop_pos"] < feller_min: config["feller_chop_pos"] = feller_max
 
-config_main_menu = files.read_json_file("/sd/menu_voice_commands/main_menu.json")
+config_main_menu = files.read_json_file("/sd/mvc/main_menu.json")
 main_menu = config_main_menu["main_menu"]
 
-config_choose_sounds = files.read_json_file("/sd/menu_voice_commands/choose_sounds.json")
+config_choose_sounds = files.read_json_file("/sd/mvc/choose_sounds.json")
 feller_sound_options = config_choose_sounds["choose_sounds"]
 
 config_feller_dialog = files.read_json_file("/sd/feller_dialog/feller_dialog.json")
@@ -194,16 +181,16 @@ feller_buddy = config_feller_buddy["feller_buddy"]
 config_feller_girlfriend = files.read_json_file("/sd/feller_girlfriend/feller_girlfriend.json")
 feller_girlfriend = config_feller_girlfriend["feller_girlfriend"]
 
-config_adjust_feller_and_tree = files.read_json_file("/sd/menu_voice_commands/adjust_feller_and_tree.json")
+config_adjust_feller_and_tree = files.read_json_file("/sd/mvc/adjust_feller_and_tree.json")
 adjust_feller_and_tree = config_adjust_feller_and_tree["adjust_feller_and_tree"]
 
-config_move_feller_and_tree = files.read_json_file("/sd/menu_voice_commands/move_feller_and_tree.json")
+config_move_feller_and_tree = files.read_json_file("/sd/mvc/move_feller_and_tree.json")
 move_feller_and_tree = config_move_feller_and_tree["move_feller_and_tree"]
 
-config_dialog_selection_menu = files.read_json_file("/sd/menu_voice_commands/dialog_selection_menu.json")
+config_dialog_selection_menu = files.read_json_file("/sd/mvc/dialog_selection_menu.json")
 dialog_selection_menu = config_dialog_selection_menu["dialog_selection_menu"]
 
-config_web_menu = files.read_json_file("/sd/menu_voice_commands/web_menu.json")
+config_web_menu = files.read_json_file("/sd/mvc/web_menu.json")
 web_menu = config_web_menu["web_menu"]
 
 serve_webpage = config["serve_webpage"]
@@ -332,10 +319,10 @@ if (serve_webpage):
                 animateFeller()
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
-                play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
+                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
             elif "cont_mode_off" in raw_text: 
                 continuous_run = False
-                play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
+                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         @server.route("/feller", [POST])        
@@ -365,7 +352,7 @@ if (serve_webpage):
                 return Response(request, "Moved feller counter clockwise.")
             elif "feller_cal_saved" in raw_text:
                 write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
+                state_machine.go_to_state('base_state')
                 return Response(request, "Feller " + feller_movement_type + " cal saved.")
                 
         @server.route("/tree", [POST])        
@@ -395,7 +382,7 @@ if (serve_webpage):
                 return Response(request, "Moved tree down.")
             elif "tree_cal_saved" in raw_text:
                 write_calibrations_to_config_file()
-                pretty_state_machine.go_to_state('base_state')
+                state_machine.go_to_state('base_state')
                 return Response(request, "Tree " + tree_movement_type + " cal saved.")
             
         @server.route("/dialog", [POST])
@@ -415,7 +402,7 @@ if (serve_webpage):
                 config["feller_advice"] = False
                 
             files.write_json_file("/sd/config_feller.json",config)
-            play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+            play_audio_0("/sd/mvc/all_changes_complete.wav")
 
             return Response(request, "Dialog option cal saved.")
         
@@ -424,20 +411,20 @@ if (serve_webpage):
             global config
             raw_text = request.raw_request.decode("utf8")
             if "speaker_test" in raw_text: 
-                play_audio_0("/sd/menu_voice_commands/left_speaker_right_speaker.wav")
+                play_audio_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif "volume_pot_off" in raw_text:
                 config["volume_pot"] = False
                 files.write_json_file("/sd/config_feller.json",config)
-                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 config["volume_pot"] = True
                 files.write_json_file("/sd/config_feller.json",config)
-                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 reset_to_defaults()      
                 files.write_json_file("/sd/config_feller.json",config)
-                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                pretty_state_machine.go_to_state('base_state')
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                state_machine.go_to_state('base_state')
 
             return Response(request, "Dialog option cal saved.")
 
@@ -462,7 +449,7 @@ if (serve_webpage):
             config["volume"] = data_object["text"]
             config["volume_pot"] = False
             files.write_json_file("/sd/config_feller.json",config)
-            play_audio_0("/sd/menu_voice_commands/volume.wav")
+            play_audio_0("/sd/mvc/volume.wav")
             speak_this_string(config["volume"], False)
             return Response(request, config["volume"])
         
@@ -502,6 +489,10 @@ if (serve_webpage):
 
     
 garbage_collect("web server")
+
+import utilities
+
+garbage_collect("utilities")
 
 ################################################################################
 # Global Methods
@@ -561,62 +552,51 @@ def shortCircuitDialog():
         mixer.voice[0].stop()
 
 def left_right_mouse_button():
-    play_audio_0("/sd/menu_voice_commands/press_left_button_right_button.wav")
+    play_audio_0("/sd/mvc/press_left_button_right_button.wav")
 
 def option_selected_announcement():
-    play_audio_0("/sd/menu_voice_commands/option_selected.wav")
+    play_audio_0("/sd/mvc/option_selected.wav")
 
 def fellerCalAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/now_we_can_adjust_the_feller_position.wav")
-    play_audio_0("/sd/menu_voice_commands/to_exit_press_and_hold_button_down.wav")
+    play_audio_0("/sd/mvc/now_we_can_adjust_the_feller_position.wav")
+    play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
     
 def treeCalAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/now_we_can_adjust_the_tree_position.wav")
-    play_audio_0("/sd/menu_voice_commands/to_exit_press_and_hold_button_down.wav")
-    
-def mainMenuAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/main_menu.wav")
-    left_right_mouse_button()
- 
-def selectSoundMenuAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/sound_selection_menu.wav")
-    left_right_mouse_button()
-    
-def adjustFellerAndTreeMenuAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/adjust_feller_and_tree_menu.wav")
-    left_right_mouse_button()
-        
-def moveFellerAndTreeMenuAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/move_feller_and_tree_menu.wav")
-    left_right_mouse_button()
+    play_audio_0("/sd/mvc/now_we_can_adjust_the_tree_position.wav")
+    play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
 def selectDialogOptionsAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/dialog_selection_menu.wav")
+    play_audio_0("/sd/mvc/dialog_selection_menu.wav")
     left_right_mouse_button()
     
 def selectWebOptionsAnnouncement():
-    play_audio_0("/sd/menu_voice_commands/web_menu.wav")
+    play_audio_0("/sd/mvc/web_menu.wav")
     left_right_mouse_button()
  
 def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
-        play_audio_0("/sd/menu_voice_commands/limit_reached.wav")
+        play_audio_0("/sd/mvc/limit_reached.wav")
         return False
     if servo_pos > max_servo_pos:
-        play_audio_0("/sd/menu_voice_commands/limit_reached.wav")
+        play_audio_0("/sd/mvc/limit_reached.wav")
         return False
     return True
 
 def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
-        if character == "-":
-            character = "dash"
-        if character == ".":
-            character = "dot"
-        play_audio_0("/sd/menu_voice_commands/" + character + ".wav")
+        try:
+            if character == " ":
+                character = "space"
+            if character == "-":
+                character = "dash"
+            if character == ".":
+                character = "dot"
+            play_audio_0("/sd/mvc/" + character + ".wav")
+        except:
+            print("Invalid character in string to speak")
     if addLocal:
-        play_audio_0("/sd/menu_voice_commands/dot.wav")
-        play_audio_0("/sd/menu_voice_commands/local.wav")
+        play_audio_0("/sd/mvc/dot.wav")
+        play_audio_0("/sd/mvc/local.wav")
         
 garbage_collect("dialog methods")
 
@@ -640,7 +620,7 @@ def calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max
         config[movement_type] -= 1 * sign
         
 def write_calibrations_to_config_file():
-    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+    play_audio_0("/sd/mvc/all_changes_complete.wav")
     global config
     files.write_json_file("/sd/config_feller.json",config)
     
@@ -861,7 +841,7 @@ def animation_one():
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
                     pass
-                soundFile = "/sd/menu_voice_commands/animation_canceled.wav"
+                soundFile = "/sd/mvc/animation_canceled.wav"
                 wave0 = audiocore.WaveFile(open(soundFile, "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
@@ -884,7 +864,7 @@ def animation_one():
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
                     pass
-                soundFile = "/sd/menu_voice_commands/animation_canceled.wav"
+                soundFile = "/sd/mvc/animation_canceled.wav"
                 wave0 = audiocore.WaveFile(open(soundFile, "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
@@ -897,7 +877,7 @@ def animation_one():
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
                     pass
-                soundFile = "/sd/menu_voice_commands/animation_canceled.wav"
+                soundFile = "/sd/mvc/animation_canceled.wav"
                 wave0 = audiocore.WaveFile(open(soundFile, "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
@@ -967,11 +947,7 @@ class State(object):
         pass
 
     def update(self, machine):
-        if left_switch.fell:
-            machine.paused_state = machine.state.name
-            machine.pause()
-            return False
-        return True
+        pass
 
 class BaseState(State):
 
@@ -983,16 +959,10 @@ class BaseState(State):
         return 'base_state'
 
     def enter(self, machine):
-        sleepAndUpdateVolume(.1)
-        if mixer.voice[0].playing:
-            mixer.voice[0].stop()
-            while mixer.voice[0].playing:
-                pass
-        else:
-            # set servos to starting position
-            moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
-            moveTreeToPositionGently(config["tree_up_pos"], 0.01)
-            play_audio_0("/sd/menu_voice_commands/animations_are_now_active.wav")
+        # set servos to starting position
+        moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
+        moveTreeToPositionGently(config["tree_up_pos"], 0.01)
+        play_audio_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         State.enter(self, machine)
 
@@ -1005,10 +975,10 @@ class BaseState(State):
         if switch_state == "left_held":
             if continuous_run:
                 continuous_run = False
-                play_audio_0("/sd/menu_voice_commands/continuous_mode_deactivated.wav")
+                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 continuous_run = True
-                play_audio_0("/sd/menu_voice_commands/continuous_mode_activated.wav")
+                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
         elif switch_state == "left" or continuous_run:
             animateFeller()
         elif switch_state == "right":
@@ -1025,7 +995,8 @@ class MoveFellerAndTree(State):
 
     def enter(self, machine):
         files.log_item('Move feller and tree menu')
-        moveFellerAndTreeMenuAnnouncement()
+        play_audio_0("/sd/mvc/move_feller_and_tree_menu.wav")
+        left_right_mouse_button()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1035,7 +1006,7 @@ class MoveFellerAndTree(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/menu_voice_commands/" + move_feller_and_tree[self.menuIndex] + ".wav")
+            play_audio_0("/sd/mvc/" + move_feller_and_tree[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
             if self.menuIndex > len(move_feller_and_tree)-1:
@@ -1051,7 +1022,7 @@ class MoveFellerAndTree(State):
             elif selected_menu_item == "move_tree_to_fallen_position":
                 moveTreeToPositionGently(config["tree_down_pos"], 0.01)
             else:
-                play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
                      
 class AdjustFellerAndTree(State):
@@ -1066,7 +1037,8 @@ class AdjustFellerAndTree(State):
 
     def enter(self, machine):
         files.log_item('Adjust feller and tree menu')
-        adjustFellerAndTreeMenuAnnouncement()
+        play_audio_0("/sd/mvc/adjust_feller_and_tree_menu.wav")
+        left_right_mouse_button()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1076,16 +1048,11 @@ class AdjustFellerAndTree(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/menu_voice_commands/" + adjust_feller_and_tree[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(adjust_feller_and_tree)-1:
-                    self.menuIndex = 0
+            play_audio_0("/sd/mvc/" + adjust_feller_and_tree[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(adjust_feller_and_tree)-1:
+                self.menuIndex = 0
         if right_switch.fell:
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
@@ -1109,7 +1076,7 @@ class AdjustFellerAndTree(State):
                     calibratePosition(tree_servo, "tree_down_pos")
                     machine.go_to_state('base_state')
                 else:
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')
 
 class SetDialogOptions(State):
@@ -1134,38 +1101,33 @@ class SetDialogOptions(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/menu_voice_commands/" + dialog_selection_menu[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(dialog_selection_menu)-1:
-                    self.menuIndex = 0
+            play_audio_0("/sd/mvc/" + dialog_selection_menu[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(dialog_selection_menu)-1:
+                self.menuIndex = 0
         if right_switch.fell:
-                selected_menu_item = dialog_selection_menu[self.selectedMenuIndex]
-                if selected_menu_item == "opening_dialog_on":
-                    config["opening_dialog"] = True
-                    option_selected_announcement()
-                    selectDialogOptionsAnnouncement()
-                elif selected_menu_item == "opening_dialog_off":
-                    config["opening_dialog"] = False
-                    option_selected_announcement()
-                    selectDialogOptionsAnnouncement()
-                elif selected_menu_item == "lumberjack_advice_on":
-                    config["feller_advice"] = True
-                    option_selected_announcement()
-                    selectDialogOptionsAnnouncement()
-                elif selected_menu_item == "lumberjack_advice_off":
-                    config["feller_advice"] = False
-                    option_selected_announcement()
-                    selectDialogOptionsAnnouncement()
-                else:
-                    files.write_json_file("/sd/config_feller.json",config)
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                    machine.go_to_state('base_state')
+            selected_menu_item = dialog_selection_menu[self.selectedMenuIndex]
+            if selected_menu_item == "opening_dialog_on":
+                config["opening_dialog"] = True
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            elif selected_menu_item == "opening_dialog_off":
+                config["opening_dialog"] = False
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            elif selected_menu_item == "lumberjack_advice_on":
+                config["feller_advice"] = True
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            elif selected_menu_item == "lumberjack_advice_off":
+                config["feller_advice"] = False
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            else:
+                files.write_json_file("/sd/config_feller.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
                     
 class WebOptions(State):
 
@@ -1194,7 +1156,7 @@ class WebOptions(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                play_audio_0("/sd/menu_voice_commands/" + web_menu[self.menuIndex] + ".wav")
+                play_audio_0("/sd/mvc/" + web_menu[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
                 if self.menuIndex > len(web_menu)-1:
@@ -1213,11 +1175,11 @@ class WebOptions(State):
                     speak_this_string(config["HOST_NAME"], True)
                     selectWebOptionsAnnouncement()
                 elif selected_menu_item == "hear_instr_web":
-                    play_audio_0("/sd/menu_voice_commands/web_instruct.wav")
+                    play_audio_0("/sd/mvc/web_instruct.wav")
                     selectWebOptionsAnnouncement()
                 else:
                     files.write_json_file("/sd/config_feller.json",config)
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
+                    play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')   
                                      
 class ChooseSounds(State):
@@ -1232,7 +1194,8 @@ class ChooseSounds(State):
 
     def enter(self, machine):
         files.log_item('Choose sounds menu')
-        selectSoundMenuAnnouncement()
+        play_audio_0("/sd/mvc/sound_selection_menu.wav")
+        left_right_mouse_button()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1247,7 +1210,7 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                play_audio_0("/sd/menu_voice_commands/option_" + feller_sound_options[self.menuIndex] + ".wav")
+                play_audio_0("/sd/mvc/option_" + feller_sound_options[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
                 if self.menuIndex > len(feller_sound_options)-1:
@@ -1271,7 +1234,8 @@ class MainMenu(State):
 
     def enter(self, machine):
         files.log_item('Main menu')
-        mainMenuAnnouncement()
+        play_audio_0("/sd/mvc/main_menu.wav")
+        left_right_mouse_button()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1281,36 +1245,26 @@ class MainMenu(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/menu_voice_commands/" + main_menu[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(main_menu)-1:
-                    self.menuIndex = 0
+            play_audio_0("/sd/mvc/" + main_menu[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(main_menu)-1:
+                self.menuIndex = 0
         if right_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
+            selected_menu_item = main_menu[self.selectedMenuIndex]
+            if selected_menu_item == "choose_sounds":
+                machine.go_to_state('choose_sounds')
+            elif selected_menu_item == "adjust_feller_and_tree":
+                machine.go_to_state('adjust_feller_and_tree')
+            elif selected_menu_item == "move_feller_and_tree":
+                machine.go_to_state('move_feller_and_tree')
+            elif selected_menu_item == "set_dialog_options":
+                machine.go_to_state('set_dialog_options')
+            elif selected_menu_item == "web_options":
+                machine.go_to_state('web_options')
             else:
-                selected_menu_item = main_menu[self.selectedMenuIndex]
-                if selected_menu_item == "choose_sounds":
-                    machine.go_to_state('choose_sounds')
-                elif selected_menu_item == "adjust_feller_and_tree":
-                    machine.go_to_state('adjust_feller_and_tree')
-                elif selected_menu_item == "move_feller_and_tree":
-                    machine.go_to_state('move_feller_and_tree')
-                elif selected_menu_item == "set_dialog_options":
-                    machine.go_to_state('set_dialog_options')
-                elif selected_menu_item == "web_options":
-                    machine.go_to_state('web_options')
-                else:
-                    play_audio_0("/sd/menu_voice_commands/all_changes_complete.wav")
-                    machine.go_to_state('base_state')
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
                 
 # StateTemplate copy and add functionality
 class StateTemplate(State):
@@ -1336,25 +1290,25 @@ garbage_collect("state machine")
 ###############################################################################
 # Create the state machine
 
-pretty_state_machine = StateMachine()
-pretty_state_machine.add_state(BaseState())
-pretty_state_machine.add_state(MainMenu())
-pretty_state_machine.add_state(ChooseSounds())
-pretty_state_machine.add_state(AdjustFellerAndTree())
-pretty_state_machine.add_state(MoveFellerAndTree())
-pretty_state_machine.add_state(SetDialogOptions())
-pretty_state_machine.add_state(WebOptions())
+state_machine = StateMachine()
+state_machine.add_state(BaseState())
+state_machine.add_state(MainMenu())
+state_machine.add_state(ChooseSounds())
+state_machine.add_state(AdjustFellerAndTree())
+state_machine.add_state(MoveFellerAndTree())
+state_machine.add_state(SetDialogOptions())
+state_machine.add_state(WebOptions())
 
 audio_enable.value = True
 
 def speak_webpage():
-    play_audio_0("/sd/menu_voice_commands/animator_available_on_network.wav")
-    play_audio_0("/sd/menu_voice_commands/to_access_type.wav")
+    play_audio_0("/sd/mvc/animator_available_on_network.wav")
+    play_audio_0("/sd/mvc/to_access_type.wav")
     if config["HOST_NAME"]== "animator-feller":
-        play_audio_0("/sd/menu_voice_commands/animator_feller_local.wav")
+        play_audio_0("/sd/mvc/animator_feller_local.wav")
     else:
         speak_this_string(config["HOST_NAME"], True)
-    play_audio_0("/sd/menu_voice_commands/in_your_browser.wav")    
+    play_audio_0("/sd/mvc/in_your_browser.wav")    
 
 if (serve_webpage):
     files.log_item("starting server...")
@@ -1367,12 +1321,12 @@ if (serve_webpage):
         files.log_item("restarting...")
         reset_pico()
         
-pretty_state_machine.go_to_state('base_state')   
+state_machine.go_to_state('base_state')   
 files.log_item("animator has started...")
 garbage_collect("animations started.")
 
 while True:
-    pretty_state_machine.update()
+    state_machine.update()
     sleepAndUpdateVolume(.1)
     if (serve_webpage):
         try:
@@ -1380,3 +1334,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
