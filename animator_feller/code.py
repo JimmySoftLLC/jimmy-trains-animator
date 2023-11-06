@@ -11,7 +11,6 @@ garbage_collect("Imports gc, files")
 import sdcardio
 import storage
 
-import audiomp3
 import audiocore
 import audiomixer
 import audiobusio
@@ -145,6 +144,24 @@ audio_enable.value = False
 ################################################################################
 # Global Variables
 
+def returnMinChops(min_chops, max_chops):
+    if min_chops < 1 :
+        min_chops = 1
+    if min_chops > 20 :
+        min_chops = 20
+    if min_chops > max_chops :
+        min_chops = max_chops
+    return str(min_chops)
+
+def returnMaxChops(min_chops, max_chops):
+    if max_chops < 1 :
+        max_chops = 1
+    if max_chops > 20 :
+        max_chops = 20
+    if max_chops < min_chops :
+        max_chops = min_chops
+    return str(max_chops)
+
 # get the calibration settings from various json files which are stored on the sdCard
 config = files.read_json_file("/sd/config_feller.json")
 
@@ -199,9 +216,6 @@ feller_movement_type = "feller_rest_pos"
 tree_movement_type = "tree_up_pos"
 
 continuous_run = False
-
-config["min_chops"] = 2
-config["max_chops"] = 7
 
 garbage_collect("config setup")
 
@@ -280,43 +294,43 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")
             if "random" in raw_text: 
                 config["option_selected"] = "random"
-                animateFeller()
+                animate_feller()
             elif "forth_of_july" in raw_text: 
                 config["option_selected"] = "forth_of_july"
-                animateFeller()
+                animate_feller()
             elif "christmas" in raw_text: 
                 config["option_selected"] = "christmas"
-                animateFeller()
+                animate_feller()
             elif "halloween" in raw_text: 
                 config["option_selected"] = "halloween"
-                animateFeller()
+                animate_feller()
             elif "train" in raw_text: 
                 config["option_selected"] = "train"
-                animateFeller()
+                animate_feller()
             elif "alien" in raw_text: 
                 config["option_selected"] = "alien"
-                animateFeller()  
+                animate_feller()  
             elif "birds_dogs_short_version" in raw_text: 
                 config["option_selected"] = "birds_dogs_short_version"
-                animateFeller()
+                animate_feller()
             elif "birds_dogs" in raw_text: 
                 config["option_selected"] = "birds_dogs"
-                animateFeller()
+                animate_feller()
             elif "just_birds" in raw_text: 
                 config["option_selected"] = "just_birds"
-                animateFeller()
+                animate_feller()
             elif "machines" in raw_text: 
                 config["option_selected"] = "machines"
-                animateFeller()
+                animate_feller()
             elif "no_sounds" in raw_text: 
                 config["option_selected"] = "no_sounds"
-                animateFeller()
+                animate_feller()
             elif "owl" in raw_text: 
                 config["option_selected"] = "owl"
-                animateFeller()
+                animate_feller()
             elif "happy_birthday" in raw_text: 
                 config["option_selected"] = "happy_birthday"
-                animateFeller()
+                animate_feller()
             elif "cont_mode_on" in raw_text: 
                 continuous_run = True
                 play_audio_0("/sd/mvc/continuous_mode_activated.wav")
@@ -457,26 +471,28 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            config["min_chops"] = data_object["text"]
+            config["min_chops"] = returnMinChops(int(data_object["text"]),int(config["max_chops"]))
             files.write_json_file("/sd/config_feller.json",config)
             speak_this_string(config["min_chops"], False)
-            return Response(request, config["max_chops"])
+            return Response(request, config["min_chops"])
         
         @server.route("/get-min-chops", [POST])
         def buttonpress(request: Request):
+            print(config["min_chops"])
             return Response(request, config["min_chops"])
 
         @server.route("/update-max-chops", [POST])
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            config["max_chops"] = data_object["text"]
+            config["max_chops"] = returnMaxChops(int(config["min_chops"]),int(data_object["text"]))
             files.write_json_file("/sd/config_feller.json",config)
             speak_this_string(config["max_chops"], False)
             return Response(request, config["max_chops"])
         
         @server.route("/get-max-chops", [POST])
         def buttonpress(request: Request):
+            print(config["max_chops"])
             return Response(request, config["max_chops"])
            
     except Exception as e:
@@ -503,8 +519,10 @@ def reset_to_defaults():
     config["feller_advice"] = True
     config["HOST_NAME"] = "animator-feller"
     config["volume_pot"] = True
-    config["min_chops"] = 2
-    config["max_chops"] = 7
+    config["min_chops"] = "2"
+    config["max_chops"] = "7"
+    config["volume"] = "20"
+    config["can_cancel"] = True
 
 def changeVolume(action):
     volume = int(config["volume"])
@@ -718,9 +736,6 @@ def moveTreeServo (servo_pos):
     tree_servo.angle = servo_pos
     global tree_last_pos
     tree_last_pos = servo_pos
-    
-def animateFeller ():
-    animation_one()
 
 garbage_collect("servo helpers")
 
@@ -773,7 +788,7 @@ def play_sound(sound_files, folder):
     wave0.deinit()
     garbage_collect("deinit wave0")
     
-def animation_one():
+def animate_feller():
     
     sleepAndUpdateVolume(0.05)
     
@@ -788,7 +803,7 @@ def animation_one():
         if which_sound == 3:
             play_sound(feller_girlfriend, "feller_girlfriend")      
     chopNum = 1
-    chopNumber = random.randint(config["min_chops"], config["max_chops"])
+    chopNumber = random.randint(int(config["min_chops"]), int(config["max_chops"]))
     highest_index = len(feller_dialog) - 1
     what_to_speak = random.randint(0, highest_index)
     when_to_speak = random.randint(2, chopNumber)
@@ -1005,7 +1020,7 @@ class BaseState(State):
                 continuous_run = True
                 play_audio_0("/sd/mvc/continuous_mode_activated.wav")
         elif switch_state == "left" or continuous_run:
-            animateFeller()
+            animate_feller()
         elif switch_state == "right":
             machine.go_to_state('main_menu')
 class MoveFellerAndTree(State):

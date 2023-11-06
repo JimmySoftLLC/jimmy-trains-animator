@@ -438,7 +438,7 @@
         return response.text(); // assuming the response is plain text
       })
       .then(function (data) {
-        volume.value = data; // Set the value of the input field with the received data
+        minChops.value = data; // Set the value of the input field with the received data
       })
       .catch(function (error) {
         console.log(error);
@@ -455,7 +455,7 @@
         return response.text(); // assuming the response is plain text
       })
       .then(function (data) {
-        volume.value = data; // Set the value of the input field with the received data
+        maxChops.value = data; // Set the value of the input field with the received data
       })
       .catch(function (error) {
         console.log(error);
