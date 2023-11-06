@@ -446,11 +446,7 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            config["volume"] = data_object["text"]
-            config["volume_pot"] = False
-            files.write_json_file("/sd/config_feller.json",config)
-            play_audio_0("/sd/mvc/volume.wav")
-            speak_this_string(config["volume"], False)
+            changeVolume(data_object["action"])
             return Response(request, config["volume"])
         
         @server.route("/get-volume", [POST])
@@ -509,6 +505,35 @@ def reset_to_defaults():
     config["volume_pot"] = True
     config["min_chops"] = 2
     config["max_chops"] = 7
+
+def changeVolume(action):
+    volume = int(config["volume"])
+    if "volume" in action:
+        vol = action.split("volume")
+        volume = int(vol[1])
+    if action == "lower1":
+        volume -= 1
+    elif action == "raise1":
+        volume += 1
+    elif action == "lower":
+        if volume <= 10:
+            volume -= 1
+        else:
+            volume -= 10
+    elif action == "raise":
+        if volume < 10:
+            volume += 1
+        else:
+            volume += 10
+    if volume > 100:
+        volume =100
+    if volume < 1:
+        volume = 1
+    config["volume"] = str(volume)
+    config["volume_pot"] = False
+    files.write_json_file("/sd/config_lightning.json",config)
+    play_audio_0("/sd/mvc/volume.wav")
+    speak_this_string(config["volume"], False)
 
 def sleepAndUpdateVolume(seconds):
     if config["volume_pot"]:
@@ -1334,4 +1359,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-

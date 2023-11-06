@@ -125,7 +125,7 @@
             type="button">Save Tree Adjustment</button>
         </div>
     </div>
-    <div class="mui-tabs__pane" id="settings">
+    <div class="mui-tabs__pane" id="settings" style="padding-top:0.5rem;">
       <h2>Dialog options:</h2>
       <div>
         <button class="mui-btn mui-btn--primary animator-feller" data-value="opening_dialog_on" data-url="/dialog"
@@ -157,21 +157,63 @@
         Volume Pot Off
       </button>
       <div class="mui-textfield">
-        <input class="input" animator-feller" id="volume" type="number" min="0" max="100"
-          placeholder="Enter volume level">
-        <button id="volumeSubmitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-volume">
-          Set Volume Level
+        <input class="input" id="volume" type="number" disabled>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume10">
+          Volume 10
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume20">
+          Volume 20
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume30">
+          Volume 30
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume40">
+          Volume 40
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume50">
+          Volume 50
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume60">
+          Volume 60
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume70">
+          Volume 70
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume80">
+          Volume 80
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume90">
+          Volume 90
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume100">
+          Volume 100
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="lower1">
+          Lower Volume by 1
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="raise1">
+          Raise Volume by 1
         </button>
       </div>
-
       <p>
-        Valid volume levels are from 0 to 100
+        Valid volume levels are from 1 to 100
       </p>
 
       <h2>Chop Min Max Number:</h2>
       <div class="mui-textfield">
-        <input class="input" animator-feller" id="minChops" type="number" min="1" max="20"
-          placeholder="Enter Chop Min">
+        <input class="input" animator-feller" id="minChops" type="number" min="1" max="20" placeholder="Enter Chop Min">
         <button id="minChopsSubmitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-min-chops">
           Set Chop Min
         </button>
@@ -180,8 +222,7 @@
         Valid min chops are 1 to max chops
       </p>
       <div class="mui-textfield">
-        <input class="input" animator-feller" id="maxChops" type="number" min="1" max="20"
-          placeholder="Enter Chop Min">
+        <input class="input" animator-feller" id="maxChops" type="number" min="1" max="20" placeholder="Enter Chop Min">
         <button id="maxChopsSubmitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-max-chops">
           Set Chop Max
         </button>
@@ -257,34 +298,37 @@
       });
   });
 
-  volumeSubmitButton.addEventListener('click', function () {
-    var volume = document.getElementById('volume');
-    var url = this.getAttribute('data-url');
+  // Get all buttons with the 'animator-volume-update' class
+  // Add click event listener to each button
+  var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
+  volumeUpdateButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var url = this.getAttribute('data-url');
+      var action = this.getAttribute('data-action');
+      data = {
+        action: action
+      }
 
-    var data = {
-      text: volume.value,
-    };
-
-    volumeSubmitButton.setAttribute('disabled', 'true')
-
-    fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-      .then(function (response) {
-        return response.text(); // assuming the response is plain text
+      button.setAttribute('disabled', 'true')
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
       })
-      .then(function (data) {
-        volume.value = data; // Set the value of the input field with the received data
-        volumeSubmitButton.removeAttribute('disabled')
-      })
-      .catch(function (error) {
-        console.log(error);
-        volumeSubmitButton.removeAttribute('disabled')
-      });
+        .then(function (response) {
+          return response.text(); // assuming the response is plain text
+        })
+        .then(function (data) {
+          volume.value = data; // Set the value of the input field with the received data
+          button.removeAttribute('disabled')
+        })
+        .catch(function (error) {
+          console.log(error);
+          button.removeAttribute('disabled')
+        });
+    });
   });
 
   minChopsSubmitButton.addEventListener('click', function () {
@@ -460,4 +504,5 @@
     });
   });
 </script>
+
 </html>
