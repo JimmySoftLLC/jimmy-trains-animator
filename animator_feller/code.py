@@ -549,7 +549,7 @@ def changeVolume(action):
         volume = 1
     config["volume"] = str(volume)
     config["volume_pot"] = False
-    files.write_json_file("/sd/config_lightning.json",config)
+    files.write_json_file("/sd/config_feller.json",config)
     play_audio_0("/sd/mvc/volume.wav")
     speak_this_string(config["volume"], False)
 
