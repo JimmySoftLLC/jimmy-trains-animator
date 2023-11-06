@@ -806,7 +806,7 @@ def animate_feller():
     chopNumber = random.randint(int(config["min_chops"]), int(config["max_chops"]))
     highest_index = len(feller_dialog) - 1
     what_to_speak = random.randint(0, highest_index)
-    when_to_speak = random.randint(2, chopNumber)
+    when_to_speak = random.randint(1, chopNumber)
           
     files.log_item("Chop total: " + str(chopNumber) + " what to speak: " + str(what_to_speak) + " when to speak: " + str(when_to_speak))
     spoken = False
@@ -1374,3 +1374,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
