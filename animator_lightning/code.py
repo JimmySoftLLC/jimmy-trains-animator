@@ -184,7 +184,6 @@ time_stamp_mode = False
 
 ################################################################################
 # Setup neo pixels
-
 bars = []
 bolts = []
 bar_array = []
@@ -210,8 +209,12 @@ def return_bolt_array():
         for led_index in bolt:
             start_index=led_index
             break
-        for led_index in range(0,4):
-            my_indexes.append(led_index+start_index)
+        if len(bolt) == 4:
+            for led_index in range(0,4):
+                my_indexes.append(led_index+start_index)
+        if len(bolt) == 1:
+            for led_index in range(0,1):
+                my_indexes.append(led_index+start_index)
     return my_indexes
 
 def runLightTest():
@@ -244,11 +247,9 @@ def updateLightString():
 
     for element in elements:
         parts = element.split('-')
-
         if len(parts) == 2:
             lightning_type, quantity = parts
             quantity = int(quantity)
-
             if lightning_type == 'bar':
                 bar_sequence = list(range(num_pixels, num_pixels + quantity))
                 bars.append(bar_sequence)
@@ -1117,12 +1118,15 @@ def lightning():
     ledStrip.brightness = random.randint(255, 255) / 255 #150 255, changed to full brightness
 
     for i in range(0,flashCount):
-        color = random.randint(0, 50) # 0 50
+        color = random.randint(0, 100) # 0 50
         if color < 0: color = 0
 
         for j in range(4):
             for led_index in bolt_indexes:
-                ledStrip[led_index]=(bolt_r + color, bolt_g + color, bolt_b + color)
+                if len(bolt_indexes)==4:
+                    ledStrip[led_index]=(bolt_r + color, bolt_g + color, bolt_b + color)
+                if len(bolt_indexes)==1:
+                    ledStrip[led_index]=(155 + color, 155 + color, 155 + color)
             for led_index in bar_indexes:
                 ledStrip[led_index]=(bar_r + color, bar_g + color, bar_b + color)
             ledStrip.show()

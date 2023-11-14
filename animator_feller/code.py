@@ -103,13 +103,12 @@ spi = busio.SPI(sck, si, so)
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
-num_voices = 2
+num_voices = 1
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
 volume = .2
 mixer.voice[0].level = volume
-mixer.voice[1].level = volume
 
 try:
   sdcard = sdcardio.SDCard(spi, cs)
@@ -565,7 +564,6 @@ def sleepAndUpdateVolume(seconds):
         if volume < 0 or volume > 1:
             volume = .5
         mixer.voice[0].level = volume
-        mixer.voice[1].level = volume
         time.sleep(seconds)
 
 garbage_collect("global variable and methods")
@@ -837,7 +835,10 @@ def animate_feller():
             wave0.deinit()
             garbage_collect("deinit wave0")
             
-        wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chopNum) + ".wav", "rb"))
+        chop_track = random.randint(1,7)
+        print("Chop track: " + str(chop_track))
+            
+        wave0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chop_track) + ".wav", "rb"))
         chopNum += 1
         
         for feller_angle in range(config["feller_rest_pos"], config["feller_chop_pos"] + 5, 10):  # 0 - 180 degrees, 10 degrees at a time.
@@ -857,7 +858,7 @@ def animate_feller():
                 moveFellerServo( feller_angle )
                 sleepAndUpdateVolume(0.02)
     while mixer.voice[0].playing:
-        sleepAndUpdateVolume(0.1)     
+        pass
     mixer.voice[0].play( wave1, loop=False )
     for tree_angle in range(config["tree_up_pos"], config["tree_down_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
         moveTreeServo(tree_angle)
@@ -1374,4 +1375,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
