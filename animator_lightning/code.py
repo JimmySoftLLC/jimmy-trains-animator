@@ -36,8 +36,6 @@ garbage_collect("imports")
 ################################################################################
 # Setup hardware
 
-# Setup and analog pin to be used for volume control
-# the the volume control is digital by setting mixer voice levels
 analog_in = AnalogIn(board.A0)
 
 def get_voltage(pin, wait_for):
@@ -53,7 +51,7 @@ audio_enable = digitalio.DigitalInOut(board.GP28)
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
 
-# Setup the switches, there are two the Left and Right or Black and Red
+# Setup the switches
 SWITCH_1_PIN = board.GP6 #S1 on animator board
 SWITCH_2_PIN = board.GP7 #S2 on animator board
 
@@ -67,14 +65,7 @@ switch_io_2.direction = digitalio.Direction.INPUT
 switch_io_2.pull = digitalio.Pull.UP
 right_switch = Debouncer(switch_io_2)
 
-# setup audio on the i2s bus, the animator uses the MAX98357A
-# the animator can have one or two MAX98357As. one for mono two for stereo
-# both MAX98357As share the same bus
-# for mono the MAX98357A defaults to combine channels
-# for stereo the MAX98357A SD pin is connected to VCC for right and a resistor to VCC for left
-# the audio mixer is used so that volume can be control digitally it is set to stereo
-# the sample_rate of the audio mixer is set to 22050 hz.  This is the max the raspberry pi pico can handle
-# all files with be in the wave format instead of mp3.  This eliminates the need for decoding
+# setup audio on the i2s bus
 i2s_bclk = board.GP18   # BCLK on MAX98357A
 i2s_lrc = board.GP19  # LRC on MAX98357A
 i2s_din = board.GP20  # DIN on MAX98357A
@@ -82,9 +73,6 @@ i2s_din = board.GP20  # DIN on MAX98357A
 audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 
 # Setup sdCard
-# the sdCard holds all the media and calibration files
-# if the card is missing a voice command is spoken
-# the user inserts the card a presses the left button to move forward
 audio_enable.value = True
 sck = board.GP2
 si = board.GP3
@@ -92,15 +80,13 @@ so = board.GP4
 cs = board.GP5
 spi = busio.SPI(sck, si, so)
 
-# Setup the mixer it can play higher quality audio wav using larger wave files
-# wave files are less cpu intensive since they are not compressed
-num_voices = 2
+# Setup the mixer
+num_voices = 1
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
 volume = .2
 mixer.voice[0].level = volume
-mixer.voice[1].level = volume
 
 try:
   sdcard = sdcardio.SDCard(spi, cs)
@@ -1116,6 +1102,8 @@ def lightning():
 
     # flash white brightness range - 0-255
     ledStrip.brightness = random.randint(255, 255) / 255 #150 255, changed to full brightness
+    
+    bolt_inc = random.randint(0, 2)
 
     for i in range(0,flashCount):
         color = random.randint(0, 100) # 0 50
@@ -1126,7 +1114,9 @@ def lightning():
                 if len(bolt_indexes)==4:
                     ledStrip[led_index]=(bolt_r + color, bolt_g + color, bolt_b + color)
                 if len(bolt_indexes)==1:
-                    ledStrip[led_index]=(155 + color, 155 + color, 155 + color)
+                    if bolt_inc == 0 : ledStrip[led_index]=(155 + color, 155 + color, 0)
+                    if bolt_inc == 1 : ledStrip[led_index]=(0, 155 + color, 0)
+                    if bolt_inc == 2 : ledStrip[led_index]=(155 + color, 0, 0)
             for led_index in bar_indexes:
                 ledStrip[led_index]=(bar_r + color, bar_g + color, bar_b + color)
             ledStrip.show()
@@ -1267,16 +1257,11 @@ class MainMenu(State):
                 self.menuIndex = 0
         if right_switch.fell:
             selected_menu_item = main_menu[self.selectedMenuIndex]
-            if selected_menu_item == "choose_sounds":
-                machine.go_to_state('choose_sounds')
-            elif selected_menu_item == "add_sounds_animate":
-                machine.go_to_state('add_sounds_animate')  
-            elif selected_menu_item == "light_string_setup_menu":
-                machine.go_to_state('light_string_setup_menu')
-            elif selected_menu_item == "web_options":
-                machine.go_to_state('web_options') 
-            elif selected_menu_item == "volume_settings":
-                machine.go_to_state('volume_settings')                 
+            if selected_menu_item == "choose_sounds": machine.go_to_state('choose_sounds')
+            elif selected_menu_item == "add_sounds_animate": machine.go_to_state('add_sounds_animate')  
+            elif selected_menu_item == "light_string_setup_menu": machine.go_to_state('light_string_setup_menu')
+            elif selected_menu_item == "web_options": machine.go_to_state('web_options') 
+            elif selected_menu_item == "volume_settings": machine.go_to_state('volume_settings')                 
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
