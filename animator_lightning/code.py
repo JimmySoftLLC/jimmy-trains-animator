@@ -563,7 +563,6 @@ def sleepAndUpdateVolume(seconds):
         if volume < 0 or volume > 1:
             volume = .5
         mixer.voice[0].level = volume
-        mixer.voice[1].level = volume
         time.sleep(seconds)
 
 def reset_lights_to_defaults():
@@ -1312,7 +1311,7 @@ class ChooseSounds(State):
                     pass
             else:
                 config["option_selected"] = menu_sound_options[self.currentOption]
-                files.write_json_file("/sd/config_christmas_park.json",config)
+                files.write_json_file("/sd/config_lightning.json",config)
                 wave0 = audiocore.WaveFile(open("/sd/mvc/option_selected.wav", "rb"))
                 mixer.voice[0].play( wave0, loop=False )
                 while mixer.voice[0].playing:
