@@ -289,7 +289,7 @@ while True:
             binary_word2 = f'{word2:0>8b}'
             binary_word3 = f'{word3:0>8b}'
             
-            #print("Received command: " + str(received_data))
+            print("Received command: " + str(received_data))
             #print("Received 0: " + str(received_data[0]))
             #print("Received 1: " + str(received_data[1]))
             #print("Received 2: " + str(received_data[2]))
@@ -302,15 +302,15 @@ while True:
             uart.read(uart.in_waiting)
             
             # Reconstruct the command bytes
-            reconstructed_word1 = int(binary_word1, 2).to_bytes(2, 'big')
-            reconstructed_word2 = int(binary_word2, 2).to_bytes(2, 'big')
-            reconstructed_word3 = int(binary_word3, 2).to_bytes(2, 'big')
+            reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
+            reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
+            reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
             
             # Construct the command to send back
             reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
-            #print("Reconstructed command: " + str(reconstructed_command))
+            print("Reconstructed command: " + str(reconstructed_command))
             # Echo back the received command
-            #uart.write(reconstructed_command)  # Echo back the received command
+            # uart.write(reconstructed_command)  # Echo back the received command
         else:
             # Invalid command format, discard the data
             uart.read(uart.in_waiting)
