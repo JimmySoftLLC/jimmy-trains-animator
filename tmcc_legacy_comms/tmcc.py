@@ -233,9 +233,47 @@ def processCommand(response):
             play_audio_0("/sd/mvc/numeric_button.wav")
             binary_number = response["data"][1:5]
             decimal_number = int(binary_number, 2)
-            
+            speak_this_string(str(decimal_number),False)
+    if response["module"] == "engine":
+        if response["command"] == "extended" and response["data"] =="01011":
+            play_audio_0("/sd/mvc/engine.wav")
+            play_audio_0("/sd/mvc/set_to_id.wav")
+            speak_this_string(str(response["address"]),False)
+        elif response["command"] == "relative" and response["data"] =="00110":
+            play_audio_0("/sd/mvc/engine.wav")
+            speak_this_string(str(response["address"]),False) 
+            play_audio_0("/sd/mvc/trottle_up.wav")
+        elif response["command"] == "relative" and response["data"] =="00100":
+            play_audio_0("/sd/mvc/engine.wav")
+            speak_this_string(str(response["address"]),False) 
+            play_audio_0("/sd/mvc/trottle_down.wav")
+        elif response["command"] == "action" and response["data"][0:1] =="1":
+            play_audio_0("/sd/mvc/engine.wav")
+            speak_this_string(str(response["address"]),False) 
+            play_audio_0("/sd/mvc/numeric_button.wav")
+            binary_number = response["data"][1:5]
+            decimal_number = int(binary_number, 2)      
             speak_this_string(str(decimal_number),False) 
-            
+    if response["module"] == "switch":
+        if response["command"] == "extended" and response["data"] =="01011":
+            play_audio_0("/sd/mvc/switch.wav")
+            play_audio_0("/sd/mvc/set_to_id.wav")
+            speak_this_string(str(response["address"]),False)
+        elif response["command"] == "relative" and response["data"] =="00110":
+            play_audio_0("/sd/mvc/switch.wav")
+            speak_this_string(str(response["address"]),False) 
+            play_audio_0("/sd/mvc/trottle_up.wav")
+        elif response["command"] == "relative" and response["data"] =="00100":
+            play_audio_0("/sd/mvc/switch.wav")
+            speak_this_string(str(response["address"]),False) 
+            play_audio_0("/sd/mvc/trottle_down.wav")
+        elif response["command"] == "action" and response["data"][0:1] =="1":
+            play_audio_0("/sd/mvc/switch.wav")
+            speak_this_string(str(response["address"]),False) 
+            play_audio_0("/sd/mvc/numeric_button.wav")
+            binary_number = response["data"][1:5]
+            decimal_number = int(binary_number, 2)      
+            speak_this_string(str(decimal_number),False)          
         
 audio_enable.value = True
 
