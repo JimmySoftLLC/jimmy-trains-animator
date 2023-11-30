@@ -22,6 +22,7 @@ import pwmio
 from analogio import AnalogIn
 from adafruit_debouncer import Debouncer
 from adafruit_motor import servo
+import utilities
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -139,9 +140,11 @@ audio_enable.value = False
 # Sd card data Variables
 
 config = files.read_json_file("/sd/config_lightning.json")
+serve_webpage = config["serve_webpage"]
 
 ################################################################################
-# Global Methods
+# Dialog and sound play methods
+
 def sleepAndUpdateVolume(seconds):
     if config["volume_pot"]:
         volume = get_voltage(analog_in, seconds)
@@ -187,6 +190,119 @@ def speak_this_string(str_to_speak, addLocal):
     if addLocal:
         play_audio_0("/sd/mvc/dot.wav")
         play_audio_0("/sd/mvc/local.wav")
+        
+def speak_webpage():
+    play_audio_0("/sd/mvc/animator_available_on_network.wav")
+    play_audio_0("/sd/mvc/to_access_type.wav")
+    if config["HOST_NAME"]== "animator-lightning":
+        play_audio_0("/sd/mvc/animator_dash_lightning.wav")
+        play_audio_0("/sd/mvc/dot.wav")
+        play_audio_0("/sd/mvc/local.wav")
+    else:
+        speak_this_string(config["HOST_NAME"], True)
+    play_audio_0("/sd/mvc/in_your_browser.wav") 
+        
+################################################################################
+# Setup wifi and web server
+
+if (serve_webpage):
+    import socketpool
+    import mdns
+    import wifi
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST
+    import adafruit_requests
+    import ssl
+    import ipaddress
+    garbage_collect("config wifi imports")
+
+    files.log_item("Connecting to WiFi")
+
+    #default for manufacturing and shows
+    WIFI_SSID="jimmytrainsguest"
+    WIFI_PASSWORD=""
+
+    try:
+        env = files.read_json_file("/sd/env.json")
+        #WIFI_SSID = env["WIFI_SSID"]
+        #WIFI_PASSWORD = env["WIFI_PASSWORD"]
+        garbage_collect("wifi env")
+        print("Using env ssid and password")
+    except:
+        print("Using default ssid and password")
+
+    try:
+        # connect to your SSID
+        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+        garbage_collect("wifi connect")
+        
+        # setup mdns server
+        mdns_server = mdns.Server(wifi.radio)
+        mdns_server.hostname = config["HOST_NAME"]
+        mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
+        
+        # files.log_items MAC address to REPL
+        mystring = [hex(i) for i in wifi.radio.mac_address]
+        files.log_item("My MAC addr:" + str(mystring))
+
+        ip_address = str(wifi.radio.ipv4_address)
+
+        # files.log_items IP address to REPL
+        files.log_item("My IP address is " + ip_address)
+        files.log_item("Connected to WiFi")
+        
+        # set up server
+        pool = socketpool.SocketPool(wifi.radio)
+        requests = adafruit_requests.Session(pool, ssl.create_default_context())
+        server = Server(pool, "/static", debug=True)
+        
+        garbage_collect("wifi server")
+        
+        # jimmytrains animator URL
+        test_url_fast = "http://192.168.1.200/get-volume"
+        test_url = "http://tablet.local/get-volume"   
+        try:
+            print("Fetching text from %s" % test_url)
+            response = requests.post(test_url)
+            print("-" * 40)
+            print("Text Response: ", response.text)
+            print("-" * 40)
+            response.close()
+        except Exception as e:
+            print("Error:\n", str(e))
+            
+        try:
+            print("Fetching text from %s" % test_url_fast)
+            response = requests.post(test_url_fast)
+            print("-" * 40)
+            print("Text Response: ", response.text)
+            print("-" * 40)
+            response.close()
+        except Exception as e:
+            print("Error:\n", str(e))
+
+        garbage_collect("requests")
+        
+        ################################################################################
+        # Setup routes
+
+        @server.route("/")
+        def base(request: HTTPRequest):
+            garbage_collect("Home page.")
+            return FileResponse(request, "index.html", "/")
+        
+        @server.route("/mui.min.css")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "mui.min.css", "/")
+        
+        @server.route("/mui.min.js")
+        def base(request: HTTPRequest):
+            return FileResponse(request, "mui.min.js", "/")
+            
+    except Exception as e:
+        serve_webpage = False
+        files.log_item(e)
+ 
+garbage_collect("web server")
 
 ################################################################################
 # Tmcc, legacy and UART communications
@@ -308,8 +424,25 @@ def processCommand(response):
         
 audio_enable.value = True
 
+if (serve_webpage):
+    files.log_item("starting server...")
+    try:
+        server.start(str(wifi.radio.ipv4_address))
+        files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        speak_webpage()
+    except OSError:
+        time.sleep(5)
+        files.log_item("restarting...")
+        reset_pico()
+
 # the following is to help decode the lionel tmcc commands
 while True:
+    if (serve_webpage):
+        try:
+            server.poll()
+        except Exception as e:
+            files.log_item(e)
+            continue
     if uart.in_waiting >= 3:  # Check if at least 3 bytes are available to read
         received_data = uart.read(3)
         if len(received_data) == 3:
