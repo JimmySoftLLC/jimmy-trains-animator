@@ -18,8 +18,10 @@ import busio
 import digitalio
 import board
 import microcontroller
+import pwmio
 from analogio import AnalogIn
 from adafruit_debouncer import Debouncer
+from adafruit_motor import servo
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -45,7 +47,26 @@ audio_enable = digitalio.DigitalInOut(board.GP28)
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
 
-from analogio import AnalogIn
+# Setup the servo, this animation has two the feller and tree
+# also get the programmed values for position which is stored on the sdCard
+feller_pwm = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+tree_pwm = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+
+feller_servo = servo.Servo(feller_pwm)
+tree_servo = servo.Servo(tree_pwm)
+
+tree_last_pos = 120
+tree_min = 60
+tree_max = 180
+
+tree_servo.angle = tree_last_pos
+
+def moveTreeServo (servo_pos):
+    if servo_pos < tree_min: servo_pos = tree_min
+    if servo_pos > tree_max: servo_pos = tree_max
+    tree_servo.angle = servo_pos
+    global tree_last_pos
+    tree_last_pos = servo_pos
 
 # Setup the switches
 SWITCH_1_PIN = board.GP6 #S1 on animator board
@@ -213,20 +234,30 @@ def whatData(binary_word3):
     data = binary_word3[3:8]
     return data
 
+def scale_number(num, exponent):
+    if num < 0:
+        return int(-(-num) ** exponent)
+    else:
+        return int(num ** exponent)
+
 def processCommand(response):
     if response["module"] == "accessory":
         if response["command"] == "extended" and response["data"] =="01011":
             play_audio_0("/sd/mvc/accessory.wav")
             play_audio_0("/sd/mvc/set_to_id.wav")
             speak_this_string(str(response["address"]),False)
-        elif response["command"] == "relative" and response["data"] =="00110":
-            play_audio_0("/sd/mvc/accessory.wav")
-            speak_this_string(str(response["address"]),False) 
-            play_audio_0("/sd/mvc/trottle_up.wav")
-        elif response["command"] == "relative" and response["data"] =="00100":
-            play_audio_0("/sd/mvc/accessory.wav")
-            speak_this_string(str(response["address"]),False) 
-            play_audio_0("/sd/mvc/trottle_down.wav")
+        elif response["command"] == "relative":
+            binary_number = response["data"][1:5]
+            decimal_number = scale_number(5-int(binary_number, 2),2)
+            print(decimal_number)
+            moveTreeServo (tree_last_pos+decimal_number)
+            #play_audio_0("/sd/mvc/accessory.wav")
+            #speak_this_string(str(response["address"]),False) 
+            #play_audio_0("/sd/mvc/trottle_up.wav")
+            #moveTreeServo (tree_last_pos+1)
+            #play_audio_0("/sd/mvc/accessory.wav")
+            #speak_this_string(str(response["address"]),False) 
+            #play_audio_0("/sd/mvc/trottle_down.wav")
         elif response["command"] == "action" and response["data"][0:1] =="1":
             play_audio_0("/sd/mvc/accessory.wav")
             speak_this_string(str(response["address"]),False) 
@@ -289,7 +320,7 @@ while True:
             binary_word2 = f'{word2:0>8b}'
             binary_word3 = f'{word3:0>8b}'
             
-            print("Received command: " + str(received_data))
+            #print("Received command: " + str(received_data))
             #print("Received 0: " + str(received_data[0]))
             #print("Received 1: " + str(received_data[1]))
             #print("Received 2: " + str(received_data[2]))
@@ -298,17 +329,17 @@ while True:
             #print(f"Word 3: {binary_word3}\n")
             response = getCommandObject(binary_word2,binary_word3)
             processCommand(response)
-            print(response["module"],response["address"],response["command"],response["data"])
+            #print(response["module"],response["address"],response["command"],response["data"])
             uart.read(uart.in_waiting)
             
             # Reconstruct the command bytes
-            reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
-            reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
-            reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
+            #reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
+            #reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
+            #reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
             
             # Construct the command to send back
-            reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
-            print("Reconstructed command: " + str(reconstructed_command))
+            #reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
+            #print("Reconstructed command: " + str(reconstructed_command))
             # Echo back the received command
             # uart.write(reconstructed_command)  # Echo back the received command
         else:
