@@ -57,7 +57,7 @@ feller_servo = servo.Servo(feller_pwm)
 tree_servo = servo.Servo(tree_pwm)
 
 tree_last_pos = 120
-tree_min = 60
+tree_min = 0
 tree_max = 180
 
 tree_servo.angle = tree_last_pos
@@ -258,21 +258,12 @@ if (serve_webpage):
         garbage_collect("wifi server")
         
         # jimmytrains animator URL
+        
         test_url_fast = "http://192.168.1.200/get-volume"
         test_url = "http://tablet.local/get-volume"   
         try:
             print("Fetching text from %s" % test_url)
             response = requests.post(test_url)
-            print("-" * 40)
-            print("Text Response: ", response.text)
-            print("-" * 40)
-            response.close()
-        except Exception as e:
-            print("Error:\n", str(e))
-            
-        try:
-            print("Fetching text from %s" % test_url_fast)
-            response = requests.post(test_url_fast)
             print("-" * 40)
             print("Text Response: ", response.text)
             print("-" * 40)
