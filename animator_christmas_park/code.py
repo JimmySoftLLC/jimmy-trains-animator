@@ -187,6 +187,7 @@ time_stamp_mode = False
 
 grand_trees = []
 canes = []
+lights = []
 tree_ornaments = []
 tree_stars = []
 tree_branches  = []
@@ -282,6 +283,7 @@ def updateLightString():
     global grand_trees, canes, num_pixels, ledStrip, num_pixels
     grand_trees = []
     canes = []
+    lights = []
 
     num_pixels = 0
     
@@ -301,6 +303,10 @@ def updateLightString():
             elif christmas_park_type == 'cane':
                 cane_sequence = list(range(num_pixels, num_pixels + quantity))
                 canes.append(cane_sequence)
+                num_pixels += quantity
+            elif christmas_park_type == 'light':
+                light_sequence = list(range(num_pixels, num_pixels + quantity))
+                lights.append(light_sequence)
                 num_pixels += quantity
 
     print ("Number of pixels total: ", num_pixels)
@@ -1378,7 +1384,7 @@ class LightStringSetupMenu(State):
         return 'light_string_setup_menu'
 
     def enter(self, machine):
-        files.log_item('Light string menu')
+        files.log_item('Set Web Options')
         play_audio_0("/sd/mvc/light_string_setup_menu.wav")
         left_right_mouse_button()
         State.enter(self, machine)
