@@ -250,8 +250,6 @@ def show_lights_rgbw():
     ledStripRGB.show()
     ledStripRGBW.show()
 
-    
-
 def runLightTest():
     global tree_ornaments,tree_stars,tree_branches,cane_starts,cane_ends
     tree_ornaments = return_tree_parts("ornaments")
@@ -845,7 +843,8 @@ def animation(file_name):
             animation_timestamp(current_option_selected)
         else:
             animation_light_show(current_option_selected)
-    except:
+    except Exception as e:
+        print(f"An exception occurred: {e}")
         no_user_soundtrack_found()
         config["option_selected"] = "random built in"
         return
@@ -861,7 +860,7 @@ def animation_light_show(file_name):
     if file_name == "away in a manger":
         rand_index_low = 3
         rand_index_high = 3
-
+        
     customers_file = "customers_owned_music_" in file_name
     
     if customers_file:
@@ -895,7 +894,7 @@ def animation_light_show(file_name):
     startTime = time.monotonic()
     my_index = 0
     
-    multicolor(.01)
+    multicolor(.1)
     while True:
         previous_index=0
         timeElasped = time.monotonic()-startTime
@@ -930,7 +929,9 @@ def animation_light_show(file_name):
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
             ledStripRGB.fill((0, 0, 0))
+            ledStripRGBW.fill((0, 0, 0, 0))
             ledStripRGB.show()
+            ledStripRGBW.show()
             break
         sleepAndUpdateVolume(.001)
          
@@ -952,7 +953,7 @@ def animation_timestamp(file_name):
     mixer.voice[0].play( wave0, loop=False )
     
     startTime = time.monotonic()
-    sleepAndUpdateVolume(.1)
+    sleepAndUpdateVolume(.01)
 
     while True:
         time_elasped = time.monotonic()-startTime
@@ -979,14 +980,18 @@ def animation_timestamp(file_name):
 # Led color effects
         
 def change_color():
+    randSpot(0,0,0,255)
     ledStripRGB.brightness = 1.0
     color_r = random.randint(0, 255)
     color_g = random.randint(0, 255)
     color_b = random.randint(0, 255)     
     ledStripRGB.fill((color_r, color_g, color_b))
     ledStripRGB.show()
+    ledStripRGBW.fill((color_r, color_g, color_b, 0))
+    ledStripRGBW.show()
 
 def rainbow(speed,duration):
+    randSpot(0,0,0,255)
     startTime = time.monotonic()
     for j in range(0,255,1):
         for i in range(num_pixels_rgb):
@@ -1008,6 +1013,7 @@ def rainbow(speed,duration):
             return
 
 def fire(duration):
+    randSpot(0,0,0,255)
     startTime = time.monotonic()
     ledStripRGB.brightness = 1.0
 
@@ -1037,20 +1043,21 @@ def fire(duration):
 
     #Flicker, based on our initial RGB values
     while True:
-        #for i in range (0, num_pixels):
+        #for i in range (0, num_pixels_rgb):
         for i in fire_indexes:
             flicker = random.randint(0,110)
             r1 = bounds(r-flicker, 0, 255)
             g1 = bounds(g-flicker, 0, 255)
             b1 = bounds(b-flicker, 0, 255)
             ledStripRGB[i] = (r1,g1,b1)
-            ledStripRGB.show()
+        ledStripRGB.show()
         sleepAndUpdateVolume(random.uniform(0.05,0.1))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
                
 def christmas_fire(duration):
+    randSpot(0,0,0,255)
     startTime=time.monotonic()
     ledStripRGB.brightness = 1.0
 
@@ -1086,6 +1093,7 @@ def bounds(my_color, lower, upper):
     return my_color
 
 def multicolor(duration):
+    randSpot(0,0,0,255)
     startTime=time.monotonic()
     ledStripRGB.brightness = 1.0
 
@@ -1109,11 +1117,17 @@ def multicolor(duration):
                 g1=0
                 b1=blue
             ledStripRGB[i] = (r1,g1,b1)
-            ledStripRGB.show()
+        ledStripRGB.show()
         sleepAndUpdateVolume(random.uniform(.2,0.3))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
+        
+def randSpot (r,g,b,w):
+    spotnum=random.randint(0, num_pixels_rgbw-1)
+    ledStripRGBW.fill((0,0,0,0))
+    ledStripRGBW[spotnum]=(r,g,b,w)
+    ledStripRGBW.show()
  
 ################################################################################
 # State Machine
