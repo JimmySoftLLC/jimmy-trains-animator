@@ -232,7 +232,7 @@ def return_cane_parts(part):
                 my_indexes.append(led_index+start_index)
     return my_indexes
 
-def show_Lights():
+def show_lights_rgb():
     ledStripRGB.show()
     ledStripRGBW.show()
     time.sleep(.3)
@@ -240,6 +240,17 @@ def show_Lights():
     ledStripRGBW.fill((0, 0, 0, 0))
     ledStripRGB.show()
     ledStripRGBW.show()
+
+def show_lights_rgbw():
+    ledStripRGB.show()
+    ledStripRGBW.show()
+    time.sleep(.3)
+    ledStripRGB.fill((0, 0, 0))
+    ledStripRGBW.fill((0, 0, 0, 0))
+    ledStripRGB.show()
+    ledStripRGBW.show()
+
+    
 
 def runLightTest():
     global tree_ornaments,tree_stars,tree_branches,cane_starts,cane_ends
@@ -255,13 +266,13 @@ def runLightTest():
         ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 1:
-            show_Lights()
+            show_lights_rgb()
             count = 0
     for led_index in cane_ends:
         ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 1:
-            show_Lights()
+            show_lights_rgb()
             count = 0
 
     #tree test
@@ -270,44 +281,45 @@ def runLightTest():
         ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
-            show_Lights()
+            show_lights_rgb()
             count = 0
     for led_index in tree_stars:
         ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
-            show_Lights()
+            show_lights_rgb()
             count = 0
     for led_index in tree_branches:
         ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
-            show_Lights()
+            show_lights_rgb()
             count = 0
 
     #light test
     for light in lights:
         for led_index in light:
             ledStripRGB[led_index]=(50, 50, 50)
-        show_Lights()
+        show_lights_rgb()
 
     #spot test
     for spot in spots:
         for led_index in spot:
             ledStripRGBW[led_index]=(50, 50, 50, 50)
-        show_Lights()
+        show_lights_rgbw()
 
 
 def updateLightString():
-    global grand_trees, canes, num_pixels_rgb, ledStripRGB, num_pixels_rgb, ledStripRGBW, num_pixels_rgbw
+    global grand_trees, canes, lights, spots, num_pixels_rgb, ledStripRGB, num_pixels_rgb, ledStripRGBW, num_pixels_rgbw
     grand_trees = []
     canes = []
     lights = []
+    spots = []
 
     num_pixels_rgb = 0
     num_pixels_rgbw = 0
     
-    elements = config["light_string"].split(',')
+    elements = config["light_string_rgb"].split(',')
 
     for element in elements:
         parts = element.split('-')
@@ -328,7 +340,17 @@ def updateLightString():
                 light_sequence = list(range(num_pixels_rgb, num_pixels_rgb + quantity))
                 lights.append(light_sequence)
                 num_pixels_rgb += quantity
-            elif christmas_park_type == 'spot':
+
+    elements = config["light_string_rgbw"].split(',')
+
+    for element in elements:
+        parts = element.split('-')
+
+        if len(parts) == 2:
+            christmas_park_type, quantity = parts
+            quantity = int(quantity)
+
+        if christmas_park_type == 'spot':
                 spot_sequence = list(range(num_pixels_rgbw, num_pixels_rgbw + quantity))
                 spots.append(spot_sequence)
                 num_pixels_rgbw += quantity
@@ -564,30 +586,55 @@ if (serve_webpage):
         def buttonpress(request: Request):
             return Response(request, config["volume"])
         
-        @server.route("/update-light-string", [POST])
+        @server.route("/update-light-string-rgb", [POST])
         def buttonpress(request: Request):
             global config
             data_object = request.json()
             if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
-                config["light_string"] = data_object["text"]
-                print("action: " + data_object["action"]+ " data: " + config["light_string"])
+                config["light_string_rgb"] = data_object["text"]
+                print("action: " + data_object["action"]+ " data: " + config["light_string_rgb"])
                 files.write_json_file("/sd/config_christmas_park.json",config)
                 updateLightString()
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-                return Response(request, config["light_string"])
-            if config["light_string"] =="":
-                config["light_string"] = data_object["text"]
+                return Response(request, config["light_string_rgb"])
+            if config["light_string_rgb"] =="":
+                config["light_string_rgb"] = data_object["text"]
             else:
-                config["light_string"] = config["light_string"] + "," + data_object["text"]
-            print("action: " + data_object["action"]+ " data: " + config["light_string"])
+                config["light_string_rgb"] = config["light_string_rgb"] + "," + data_object["text"]
+            print("action: " + data_object["action"]+ " data: " + config["light_string_rgb"])
             files.write_json_file("/sd/config_christmas_park.json",config)
             updateLightString()
             play_audio_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, config["light_string"])
+            return Response(request, config["light_string_rgb"])
         
-        @server.route("/get-light-string", [POST])
+        @server.route("/update-light-string-rgbw", [POST])
         def buttonpress(request: Request):
-            return Response(request, config["light_string"])
+            global config
+            data_object = request.json()
+            if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
+                config["light_string_rgbw"] = data_object["text"]
+                print("action: " + data_object["action"]+ " data: " + config["light_string_rgbw"])
+                files.write_json_file("/sd/config_christmas_park.json",config)
+                updateLightString()
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                return Response(request, config["light_string_rgbw"])
+            if config["light_string_rgbw"] =="":
+                config["light_string_rgbw"] = data_object["text"]
+            else:
+                config["light_string_rgbw"] = config["light_string_rgbw"] + "," + data_object["text"]
+            print("action: " + data_object["action"]+ " data: " + config["light_string_rgbw"])
+            files.write_json_file("/sd/config_christmas_park.json",config)
+            updateLightString()
+            play_audio_0("/sd/mvc/all_changes_complete.wav")
+            return Response(request, config["light_string_rgbw"])
+        
+        @server.route("/get-light-string-rgb", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["light_string_rgb"])
+        
+        @server.route("/get-light-string-rgbw", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["light_string_rgbw"])
         
         @server.route("/get-customers-sound-tracks", [POST])
         def buttonpress(request: Request):

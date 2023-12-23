@@ -76,59 +76,81 @@
             </p>
         </div>
         <div class="mui-tabs__pane" id="lightning" style="padding-top:0.5rem;">
-            <h2>Setup light string:</h2>
+            <h2>Setup RGB light string:</h2>
             <div class="mui-textfield">
                 <p>
-                    Enter your light string in the order which each component is connected together by pressing cane-4,
-                    cane-4...
+                    Enter your RGB light string that is connected in M1 in the order which each component is connected together by pressing cane-4,
+                    cane-4, light-3...
                     When finished press "Save".
                 </p>
-                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
-                    data-url="/update-light-string">
+                <input class="input" id="lightStringRGB" type="text" disabled placeholder="No lights setup">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="save"
+                    data-url="/update-light-string-rgb">
                     Save
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="clear"
+                    data-url="/update-light-string-rgb">
                     Clear
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="defaults"
+                    data-url="/update-light-string-rgb">
                     Set to defaults
                 </button>
             </div>
             <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="cane-4"
+                    data-url="/update-light-string-rgb">
                     cane-4
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="grandtree-21"
+                    data-url="/update-light-string-rgb">
                     grandtree-21
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="spot-1"
-                    data-url="/update-light-string">
-                    spot-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="light-1"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="light-1"
+                    data-url="/update-light-string-rgb">
                     light-1
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="light-2"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="light-2"
+                    data-url="/update-light-string-rgb">
                     light-2
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="light-4"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="light-4"
+                    data-url="/update-light-string-rgb">
                     light-4
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="light-6"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="light-6"
+                    data-url="/update-light-string-rgb">
                     light-6
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="light-8"
-                    data-url="/update-light-string">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgb" type="button" data-action="light-8"
+                    data-url="/update-light-string-rgb">
                     light-8
+                </button>
+            </div>
+            <h2>Setup RGBW light string:</h2>
+            <div class="mui-textfield">
+                <p>
+                    Enter your light RGBW string that is connected in M2, in the order which each component is connected together by pressing spot-1, spot-2...
+                    When finished press "Save".
+                </p>
+                <input class="input" id="lightStringRGBW" type="text" disabled placeholder="No lights setup">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgbw" type="button" data-action="save"
+                    data-url="/update-light-string-rgbw">
+                    Save
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update-rgbw" type="button" data-action="clear"
+                    data-url="/update-light-string-rgbw">
+                    Clear
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update-rgbw" type="button" data-action="defaults"
+                    data-url="/update-light-string-rgbw">
+                    Set to defaults
+                </button>
+            </div>
+            <div class="mui-textfield">
+                <button class="mui-btn mui-btn--primary animator-light-update-rgbw" type="button" data-action="spot-1"
+                    data-url="/update-light-string-rgbw">
+                    spot-1
                 </button>
             </div>
             <h2>Test lights:</h2>
@@ -339,7 +361,7 @@
             });
 
         // get light string
-        fetch('/get-light-string', {
+        fetch('/get-light-string-rgb', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -349,12 +371,27 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                lightString.value = data; // Set the value of the input field with the received data
+                lightStringRGB.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
             });
 
+        fetch('/get-light-string-rgbw', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lightStringRGBW.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
 
         // get built in sound tracks
         fetch('/get-built-in-sound-tracks', {
@@ -518,21 +555,21 @@
         });
     });
 
-    // Get all buttons with the 'animator-light-update' class
+    // Get all buttons with the 'animator-light-update-rgb' class
     // Add click event listener to each button
-    var lightUpdateButtons = document.querySelectorAll('.animator-light-update');
+    var lightUpdateButtons = document.querySelectorAll('.animator-light-update-rgb');
     lightUpdateButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             var url = this.getAttribute('data-url');
             var action = this.getAttribute('data-action');
             var data = {}
             if (action == "save" || action == "clear" || action == "defaults") {
-                var lightStringElement = document.getElementById('lightString');
-                lightStringValue = lightStringElement.value
-                if (action == "defaults") lightStringValue = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
-                if (action == "clear") lightStringValue = ""
+                var lightStringRGBElement = document.getElementById('lightStringRGB');
+                lightStringRGBValue = lightStringRGBElement.value
+                if (action == "defaults") lightStringRGBValue = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
+                if (action == "clear") lightStringRGBValue = ""
                 data = {
-                    text: lightStringValue,
+                    text: lightStringRGBValue,
                     action: action
                 }
             } else {
@@ -553,7 +590,52 @@
                     return response.text(); // assuming the response is plain text
                 })
                 .then(function (data) {
-                    lightString.value = data; // Set the value of the input field with the received data
+                    lightStringRGB.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    // Get all buttons with the 'animator-light-update-rgbw' class
+    // Add click event listener to each button
+    var lightUpdateButtons = document.querySelectorAll('.animator-light-update-rgbw');
+    lightUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            var data = {}
+            if (action == "save" || action == "clear" || action == "defaults") {
+                var lightStringRGBWElement = document.getElementById('lightStringRGBW');
+                lightStringRGBWValue = lightStringRGBWElement.value
+                if (action == "defaults") lightStringRGBWValue = "spot-1,spot-1,spot-1,spot-1,spot-1"
+                if (action == "clear") lightStringRGBWValue = ""
+                data = {
+                    text: lightStringRGBWValue,
+                    action: action
+                }
+            } else {
+                data = {
+                    text: action,
+                    action: action
+                }
+            }
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    lightStringRGBW.value = data; // Set the value of the input field with the received data
                     button.removeAttribute('disabled')
                 })
                 .catch(function (error) {
