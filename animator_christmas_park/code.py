@@ -151,7 +151,7 @@ all_sound_options.extend(my_sound_options)
 
 menu_sound_options = []
 menu_sound_options.extend(sound_options)
-rnd_options = ['random all','random built in','random my']
+rnd_options = ['random all','random built in','random my','christmas show']
 menu_sound_options.extend(rnd_options)
 menu_sound_options.extend(my_sound_options)
 
@@ -839,6 +839,32 @@ def animation(file_name):
             last_option = current_option_selected
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
+        elif file_name == "christmas show":
+            lightSpot (0, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/charlie brown depressed.wav")
+            lightSpot (0, 0,0,0,0)
+            animation_light_show("customers_owned_music_blue christmas")
+            
+            lightSpot (0, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/my own dog gone commercial.wav")
+            lightSpot (0, 0,0,0,0)
+            animation_light_show("customers_owned_music_if it does not snow on christmas")
+            
+            lightSpot (0, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/schroeder lucy.wav")
+            lightSpot (0, 0,0,0,0)
+            animation_light_show("deck the halls jazzy version")
+            
+            lightSpot (0, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/schroeder lucy jingle bells.wav")
+            lightSpot (0, 0,0,0,0)
+            animation_light_show("jingle bells orchestra")
+
+            lightSpot (0, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/linus christmas all about.wav")
+            lightSpot (0, 0,0,0,0)
+            animation_light_show("silent night")
+            return
         if time_stamp_mode:
             animation_timestamp(current_option_selected)
         else:
@@ -941,7 +967,7 @@ def animation_timestamp(file_name):
  
     customers_file = "customers_owned_music_" in file_name
     
-    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp_mode.json")
+    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp mode.json")
     my_time_stamps["flashTime"]=[]
     
     file_name = file_name.replace("customers_owned_music_","")
@@ -1125,6 +1151,9 @@ def multicolor(duration):
         
 def randSpot (r,g,b,w):
     spotnum=random.randint(0, num_pixels_rgbw-1)
+    lightSpot (spotnum, r,g,b,w)
+
+def lightSpot (spotnum, r,g,b,w):
     ledStripRGBW.fill((0,0,0,0))
     ledStripRGBW[spotnum]=(r,g,b,w)
     ledStripRGBW.show()
