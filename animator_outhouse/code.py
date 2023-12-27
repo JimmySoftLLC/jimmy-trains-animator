@@ -724,14 +724,23 @@ def moveRoofToPositionGently (new_position, speed):
         moveRoofServo (roof_angle)
         time.sleep(speed)
     moveRoofServo (new_position)
-    
 
-while True:
+def explodeOuthouse():
+    print("hanging out")
+    ledStrip[0]=((255, 147, 41))
+    ledStrip.show()
+    moveDoorToPositionGently(20, .05)
+    moveGuyToPositionGently(170,0.05)
+    moveGuyToPositionGently(180,0.05)
+    ledStrip[0]=((0, 0, 0))
+    ledStrip.show()
+    time.sleep(2)
+
     delay_time = .05
-    print("forward")
+    print("explode")
     moveRoofServo(130)
-    moveGuyToPositionGently(0,0.001)
     moveDoorServo(20)
+    moveGuyToPositionGently(0,0.001)
     ledStrip[1]=(255, 0, 0)
     ledStrip.show()
     time.sleep(delay_time)
@@ -748,7 +757,7 @@ while True:
     ledStrip.show()
     time.sleep(2)
 
-    print("reverse")
+    print("reset")
     ledStrip.fill((0,0,0))
     ledStrip.show()
     moveDoorServo(120)
@@ -758,21 +767,5 @@ while True:
     moveRoofToPositionGently(55, .05)
     time.sleep(2)
     
-    print("hanging out")
-    ledStrip[0]=((255, 147, 41))
-    ledStrip.show()
-    moveDoorToPositionGently(20, .05)
-    moveGuyToPositionGently(170,0.05)
-    moveGuyToPositionGently(180,0.05)
-    moveGuyToPositionGently(170,0.05)
-    moveGuyToPositionGently(180,0.05)
-    moveGuyToPositionGently(170,0.05)
-    moveGuyToPositionGently(180,0.05)
-    moveGuyToPositionGently(170,0.05)
-    moveGuyToPositionGently(180,0.05)
-    moveGuyToPositionGently(170,0.05)
-    moveGuyToPositionGently(180,0.05)
-    ledStrip[0]=((0, 0, 0))
-    ledStrip.show()
-    time.sleep(2)
-
+while True:
+    explodeOuthouse()
