@@ -360,41 +360,6 @@ def moveRoofToPositionGently (new_position, speed):
         moveRoofServo (roof_angle)
         time.sleep(speed)
     moveRoofServo (new_position)
-    
-
-import gc
-import files
-
-def garbage_collect(collection_point):
-    gc.collect()
-    start_mem = gc.mem_free()
-    files.log_item( "Point " + collection_point + " Available memory: {} bytes".format(start_mem) )
-    
-garbage_collect("Imports gc, files")
-
-import time
-import audiocore
-import audiomixer
-import audiobusio
-import sdcardio
-import storage
-import busio
-import digitalio
-import board
-import microcontroller
-import pwmio
-from analogio import AnalogIn
-from adafruit_debouncer import Debouncer
-from adafruit_motor import servo
-import utilities
-import neopixel
-ledStrip = neopixel.NeoPixel(board.GP13, 7)
-
-def reset_pico():
-    microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
-    microcontroller.reset()
-    
-garbage_collect("imports")
 
 ################################################################################
 # Setup hardware
@@ -664,6 +629,416 @@ if (serve_webpage):
  
 garbage_collect("web server")
 
+################################################################################
+# State Machine
+
+class StateMachine(object):
+
+    def __init__(self):
+        self.state = None
+        self.states = {}
+        self.paused_state = None
+
+    def add_state(self, state):
+        self.states[state.name] = state
+
+    def go_to_state(self, state_name):
+        if self.state:
+            self.state.exit(self)
+        self.state = self.states[state_name]
+        self.state.enter(self)
+
+    def update(self):
+        if self.state:
+            self.state.update(self)
+
+    # When pausing, don't exit the state
+    def pause(self):
+        self.state = self.states['paused']
+        self.state.enter(self)
+
+    # When resuming, don't re-enter the state
+    def resume_state(self, state_name):
+        if self.state:
+            self.state.exit(self)
+        self.state = self.states[state_name]
+
+    def reset(self):
+        reset_pico()
+        
+################################################################################
+# States
+        
+# Abstract parent state class.
+class State(object):
+
+    def __init__(self):
+        pass
+
+    @property
+    def name(self):
+        return ''
+
+    def enter(self, machine):
+        pass
+
+    def exit(self, machine):
+        pass
+
+    def update(self, machine):
+        pass
+
+class BaseState(State):
+
+    def __init__(self):      
+        pass
+
+    @property
+    def name(self):
+        return 'base_state'
+
+    def enter(self, machine):
+        # set servos to starting position
+        moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
+        moveGuyToPositionGently(config["tree_up_pos"], 0.01)
+        play_audio_0("/sd/mvc/animations_are_now_active.wav")
+        files.log_item("Entered base state")
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        global continuous_run
+        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+        if switch_state == "left_held":
+            if continuous_run:
+                continuous_run = False
+                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
+            else:
+                continuous_run = True
+                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
+        elif switch_state == "left" or continuous_run:
+            animate_outhouse()
+        elif switch_state == "right":
+            machine.go_to_state('main_menu')
+class MoveRoofDoorElevator(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'move_feller_and_tree'
+
+    def enter(self, machine):
+        files.log_item('Move feller and tree menu')
+        play_audio_0("/sd/mvc/move_feller_and_tree_menu.wav")
+        left_right_mouse_button()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            play_audio_0("/sd/mvc/" + move_feller_and_tree[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(move_feller_and_tree)-1:
+                self.menuIndex = 0
+        if right_switch.fell:
+            selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
+            if selected_menu_item == "move_feller_to_rest_position":
+                moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
+            elif selected_menu_item == "move_feller_to_chop_position":
+                moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
+            elif selected_menu_item == "move_tree_to_upright_position":
+                moveGuyToPositionGently(config["tree_up_pos"], 0.01)
+            elif selected_menu_item == "move_tree_to_fallen_position":
+                moveGuyToPositionGently(config["tree_down_pos"], 0.01)
+            else:
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
+                     
+class AdjustRoofDoorElevator(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'adjust_feller_and_tree'
+
+    def enter(self, machine):
+        files.log_item('Adjust feller and tree menu')
+        play_audio_0("/sd/mvc/adjust_feller_and_tree_menu.wav")
+        left_right_mouse_button()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            play_audio_0("/sd/mvc/" + adjust_feller_and_tree[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(adjust_feller_and_tree)-1:
+                self.menuIndex = 0
+        if right_switch.fell:
+                selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
+                if selected_menu_item == "move_feller_to_rest_position":
+                    moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
+                    fellerCalAnnouncement()
+                    calibratePosition(feller_servo, "feller_rest_pos")
+                    machine.go_to_state('base_state')
+                elif selected_menu_item == "move_feller_to_chop_position":
+                    moveFellerToPositionGently(config["feller_chop_pos"], 0.01)
+                    fellerCalAnnouncement()
+                    calibratePosition(feller_servo, "feller_chop_pos")
+                    machine.go_to_state('base_state')
+                elif selected_menu_item == "move_tree_to_upright_position":
+                    moveTreeToPositionGently(config["tree_up_pos"], 0.01)
+                    treeCalAnnouncement()
+                    calibratePosition(tree_servo, "tree_up_pos")
+                    machine.go_to_state('base_state')
+                elif selected_menu_item == "move_tree_to_fallen_position":
+                    moveTreeToPositionGently(config["tree_down_pos"], 0.01)
+                    treeCalAnnouncement()
+                    calibratePosition(tree_servo, "tree_down_pos")
+                    machine.go_to_state('base_state')
+                else:
+                    play_audio_0("/sd/mvc/all_changes_complete.wav")
+                    machine.go_to_state('base_state')
+
+class SetDialogOptions(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'set_dialog_options'
+
+    def enter(self, machine):
+        files.log_item('Set Dialog Options')
+        selectDialogOptionsAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            play_audio_0("/sd/mvc/" + dialog_selection_menu[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(dialog_selection_menu)-1:
+                self.menuIndex = 0
+        if right_switch.fell:
+            selected_menu_item = dialog_selection_menu[self.selectedMenuIndex]
+            if selected_menu_item == "opening_dialog_on":
+                config["opening_dialog"] = True
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            elif selected_menu_item == "opening_dialog_off":
+                config["opening_dialog"] = False
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            elif selected_menu_item == "lumberjack_advice_on":
+                config["feller_advice"] = True
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            elif selected_menu_item == "lumberjack_advice_off":
+                config["feller_advice"] = False
+                option_selected_announcement()
+                selectDialogOptionsAnnouncement()
+            else:
+                files.write_json_file("/sd/config_feller.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
+                    
+class WebOptions(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'web_options'
+
+    def enter(self, machine):
+        files.log_item('Set Web Options')
+        selectWebOptionsAnnouncement()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/mvc/" + web_menu[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(web_menu)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+                selected_menu_item = web_menu[self.selectedMenuIndex]
+                if selected_menu_item == "web_on":
+                    config["serve_webpage"] = True
+                    option_selected_announcement()
+                    selectWebOptionsAnnouncement()
+                elif selected_menu_item == "web_off":
+                    config["serve_webpage"] = False
+                    option_selected_announcement()
+                    selectWebOptionsAnnouncement()
+                elif selected_menu_item == "hear_url":
+                    speak_this_string(config["HOST_NAME"], True)
+                    selectWebOptionsAnnouncement()
+                elif selected_menu_item == "hear_instr_web":
+                    play_audio_0("/sd/mvc/web_instruct.wav")
+                    selectWebOptionsAnnouncement()
+                else:
+                    files.write_json_file("/sd/config_feller.json",config)
+                    play_audio_0("/sd/mvc/all_changes_complete.wav")
+                    machine.go_to_state('base_state')   
+                                     
+class ChooseSounds(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'choose_sounds'
+
+    def enter(self, machine):
+        files.log_item('Choose sounds menu')
+        play_audio_0("/sd/mvc/sound_selection_menu.wav")
+        left_right_mouse_button()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/mvc/option_" + feller_sound_options[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(feller_sound_options)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+            config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
+            files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
+            files.write_json_file("/sd/config_feller.json",config)
+            option_selected_announcement()
+            machine.go_to_state('base_state')
+
+class MainMenu(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'main_menu'
+
+    def enter(self, machine):
+        files.log_item('Main menu')
+        play_audio_0("/sd/mvc/main_menu.wav")
+        left_right_mouse_button()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            play_audio_0("/sd/mvc/" + main_menu[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(main_menu)-1:
+                self.menuIndex = 0
+        if right_switch.fell:
+            selected_menu_item = main_menu[self.selectedMenuIndex]
+            if selected_menu_item == "choose_sounds":
+                machine.go_to_state('choose_sounds')
+            elif selected_menu_item == "adjust_feller_and_tree":
+                machine.go_to_state('adjust_feller_and_tree')
+            elif selected_menu_item == "move_feller_and_tree":
+                machine.go_to_state('move_feller_and_tree')
+            elif selected_menu_item == "set_dialog_options":
+                machine.go_to_state('set_dialog_options')
+            elif selected_menu_item == "web_options":
+                machine.go_to_state('web_options')
+            else:
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
+                
+# StateTemplate copy and add functionality
+class StateTemplate(State):
+
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def name(self):
+        return 'example'
+
+    def enter(self, machine):
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        State.update(self, machine)
+        
+garbage_collect("state machine")
+
+###############################################################################
+# Create the state machine
+
+state_machine = StateMachine()
+state_machine.add_state(BaseState())
+state_machine.add_state(MainMenu())
+state_machine.add_state(ChooseSounds())
+state_machine.add_state(AdjustRoofDoorElevator())
+state_machine.add_state(MoveRoofDoorElevator())
+state_machine.add_state(SetDialogOptions())
+state_machine.add_state(WebOptions())
+
+
 audio_enable.value = True
 
 if (serve_webpage):
@@ -676,96 +1051,7 @@ if (serve_webpage):
         time.sleep(5)
         files.log_item("restarting...")
         reset_pico
-
-def moveDoorServo (servo_pos):
-    if servo_pos < door_min: servo_pos = door_min
-    if servo_pos > door_max: servo_pos = door_max
-    door_servo.angle = servo_pos
-    global door_last_pos
-    door_last_pos = servo_pos
-
-def moveDoorToPositionGently (new_position, speed):
-    global door_last_pos
-    sign = 1
-    if door_last_pos > new_position: sign = - 1
-    for door_angle in range( door_last_pos, new_position, sign):
-        moveDoorServo (door_angle)
-        time.sleep(speed)
-    moveDoorServo (new_position)
-
-def moveGuyServo (servo_pos):
-    if servo_pos < guy_min: servo_pos = guy_min
-    if servo_pos > guy_max: servo_pos = guy_max
-    guy_servo.angle = servo_pos
-    global guy_last_pos
-    guy_last_pos = servo_pos
-
-def moveGuyToPositionGently (new_position, speed):
-    global guy_last_pos
-    sign = 1
-    if guy_last_pos > new_position: sign = - 1
-    for guy_angle in range( guy_last_pos, new_position, sign):
-        moveGuyServo (guy_angle)
-        time.sleep(speed)
-    moveGuyServo (new_position)
-
-def moveRoofServo (servo_pos):
-    if servo_pos < roof_min: servo_pos = roof_min
-    if servo_pos > roof_max: servo_pos = roof_max
-    roof_servo.angle = servo_pos
-    global roof_last_pos
-    roof_last_pos = servo_pos
-
-def moveRoofToPositionGently (new_position, speed):
-    global roof_last_pos
-    sign = 1
-    if roof_last_pos > new_position: sign = - 1
-    for roof_angle in range( roof_last_pos, new_position, sign):
-        moveRoofServo (roof_angle)
-        time.sleep(speed)
-    moveRoofServo (new_position)
-
-def explodeOuthouse():
-    print("hanging out")
-    ledStrip[0]=((255, 147, 41))
-    ledStrip.show()
-    moveDoorToPositionGently(20, .05)
-    moveGuyToPositionGently(170,0.05)
-    moveGuyToPositionGently(180,0.05)
-    ledStrip[0]=((0, 0, 0))
-    ledStrip.show()
-    time.sleep(2)
-
-    delay_time = .05
-    print("explode")
-    moveRoofServo(130)
-    moveDoorServo(20)
-    moveGuyToPositionGently(0,0.001)
-    ledStrip[1]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[2]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[3]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[4]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[5]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(2)
-
-    print("reset")
-    ledStrip.fill((0,0,0))
-    ledStrip.show()
-    moveDoorServo(120)
-    moveGuyToPositionGently(180,0.001)
-    time.sleep(.2)
-    moveRoofToPositionGently(70, .001)
-    moveRoofToPositionGently(55, .05)
-    time.sleep(2)
     
 while True:
     explodeOuthouse()
+    

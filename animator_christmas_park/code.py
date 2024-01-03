@@ -849,21 +849,23 @@ def animation(file_name):
             play_audio_0("/sd/christmas_show/charlie brown depressed.wav")
             lightSpot (0, 0,0,0,0)
             lightSpot (1, 0,0,0,0)
-            animation_light_show("customers_owned_music_home for the holidays")
+            animation_light_show("customers_owned_music_home for the holidays short")
             
             lightSpot (0, 0,0,0,255)
             play_audio_0("/sd/christmas_show/my own dog gone commercial.wav")
             lightSpot (0, 0,0,0,0)
-            animation_light_show("customers_owned_music_most wonderful time")
-            
-            lightSpot (2, 0,0,0,255)
-            play_audio_0("/sd/christmas_show/schroeder lucy.wav")
-            lightSpot (3, 0,0,0,0)
-            animation_light_show("deck the halls jazzy version")
+            animation_light_show("customers_owned_music_most wonderful time short")
             
             lightSpot (2, 0,0,0,255)
             lightSpot (3, 0,0,0,255)
-            play_audio_0("/sd/christmas_show/schroeder lucy jingle bells.wav")
+            play_audio_0("/sd/christmas_show/schroeder lucy.wav")
+            lightSpot (2, 0,0,0,0)
+            lightSpot (3, 0,0,0,0)
+            animation_light_show("deck the halls jazzy version short")
+            
+            lightSpot (2, 0,0,0,255)
+            lightSpot (3, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/schroeder lucy jingle bells short.wav")
             lightSpot (2, 0,0,0,0)
             lightSpot (3, 0,0,0,0)
             animation_light_show("jingle bells orchestra")
@@ -871,7 +873,12 @@ def animation(file_name):
             lightSpot (0, 0,0,0,255)
             animation_light_show("customers_owned_music_linus christmas all about")
             lightSpot (0, 0,0,0,0)
-            animation_light_show("silent night")
+            animation_light_show("silent night short")
+            
+            lightSpot (4, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/santa.wav")
+            lightSpot (4, 0,0,0,0)
+              
             return
         if time_stamp_mode:
             animation_timestamp(current_option_selected)
@@ -1179,6 +1186,7 @@ def lightSpotReset (spotnum, r,g,b,w):
     
 def lightSpot (spotnum, r,g,b,w):
     ledStripRGBW[spotnum]=(r,g,b,w)
+    ledStripRGBW.show()
     ledStripRGBW.show()
     
 def setAllLights (r,g,b,w):
