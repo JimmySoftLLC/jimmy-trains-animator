@@ -104,6 +104,10 @@
                     data-url="/update-light-string">
                     bolt-4
                 </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
+                    data-url="/update-light-string">
+                    bolt-1
+                </button>
                 <!-- <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="witch-2"
                     data-url="/update-light-string">
                     witch-2
@@ -179,11 +183,11 @@
                 <label for="colorPickerBars">Bar color:</label>
                 <input type="color" id="colorPickerBars" name="colorPickerBars">
             </div>
-            <button class="mui-btn mui-btn--primary" id = "resetDefaultColorsButton" data-value="reset_default_colors"
+            <button class="mui-btn mui-btn--primary" id="resetDefaultColorsButton" data-value="reset_default_colors"
                 data-url="/defaults" type="button">
                 Reset to default colors
             </button>
-        </button>
+            </button>
         </div>
         <div class="mui-tabs__pane" id="settings">
             <h2>Volume:</h2>
@@ -272,8 +276,8 @@
                 type="button">
                 Speaker Test
             </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults"
-                data-url="/defaults" type="button">
+            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
+                type="button">
                 Reset to defaults
             </button>
             <h2>Animation timing:</h2>
@@ -285,8 +289,8 @@
                 timestamp mode will be automatically turned off and your animation will be ready.
             </p>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on"
-                    data-url="/mode" type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
+                    type="button">
                     Timestamp Mode On
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
@@ -466,7 +470,7 @@
             .catch(function (error) {
                 console.log(error);
             });
-            
+
         // get light string
         fetch('/get-light-string', {
             method: 'POST',

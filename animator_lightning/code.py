@@ -1102,7 +1102,7 @@ def lightning():
     # flash white brightness range - 0-255
     ledStrip.brightness = random.randint(255, 255) / 255 #150 255, changed to full brightness
     
-    bolt_inc = random.randint(0, 2)
+    bolt_inc = random.randint(3, 3)
 
     for i in range(0,flashCount):
         color = random.randint(0, 100) # 0 50
@@ -1116,6 +1116,7 @@ def lightning():
                     if bolt_inc == 0 : ledStrip[led_index]=(155 + color, 155 + color, 0)
                     if bolt_inc == 1 : ledStrip[led_index]=(0, 155 + color, 0)
                     if bolt_inc == 2 : ledStrip[led_index]=(155 + color, 0, 0)
+                    if bolt_inc == 3 : ledStrip[led_index]=(155 + color, 155 + color, 155 + color)
             for led_index in bar_indexes:
                 ledStrip[led_index]=(bar_r + color, bar_g + color, bar_b + color)
             ledStrip.show()
