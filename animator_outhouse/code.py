@@ -206,6 +206,37 @@ def speak_webpage():
     else:
         speak_this_string(config["HOST_NAME"], True)
     play_audio_0("/sd/mvc/in_your_browser.wav") 
+
+def left_right_mouse_button():
+    play_audio_0("/sd/mvc/press_left_button_right_button.wav")
+
+def option_selected_announcement():
+    play_audio_0("/sd/mvc/option_selected.wav")
+
+def selectDialogOptionsAnnouncement():
+    play_audio_0("/sd/mvc/dialog_selection_menu.wav")
+    left_right_mouse_button()
+
+def fellerCalAnnouncement():
+    play_audio_0("/sd/mvc/now_we_can_adjust_the_feller_position.wav")
+    play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
+
+def treeCalAnnouncement():
+    play_audio_0("/sd/mvc/now_we_can_adjust_the_tree_position.wav")
+    play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
+
+def selectWebOptionsAnnouncement():
+    play_audio_0("/sd/mvc/web_menu.wav")
+    left_right_mouse_button()
+
+def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
+    if servo_pos < min_servo_pos:
+        play_audio_0("/sd/mvc/limit_reached.wav")
+        return False
+    if servo_pos > max_servo_pos:
+        play_audio_0("/sd/mvc/limit_reached.wav")
+        return False
+    return True
         
 ################################################################################
 # Setup wifi and web server
@@ -300,6 +331,9 @@ if (serve_webpage):
  
 garbage_collect("web server")
 
+################################################################################
+# Servo helpers
+
 def moveDoorServo (servo_pos):
     if servo_pos < door_min: servo_pos = door_min
     if servo_pos > door_max: servo_pos = door_max
@@ -348,9 +382,115 @@ def moveRoofToPositionGently (new_position, speed):
         time.sleep(speed)
     moveRoofServo (new_position)
 
+def calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos):
+    global config
+    config[movement_type] -= 1 * sign
+    if checkLimits(min_servo_pos, max_servo_pos, config[movement_type]):
+        servo.angle = config[movement_type]
+    else:
+        config[movement_type] += 1 * sign
+
+def calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos):
+    global config
+    config[movement_type] += 1 * sign
+    if checkLimits(min_servo_pos, max_servo_pos, config[movement_type]):
+        servo.angle = config[movement_type]
+    else:
+        config[movement_type] -= 1 * sign
+        
+def write_calibrations_to_config_file():
+    play_audio_0("/sd/mvc/all_changes_complete.wav")
+    global config
+    files.write_json_file("/sd/config_feller.json",config)
+
+def calibratePosition(servo, movement_type):  
+    if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
+        min_servo_pos = feller_min
+        max_servo_pos = feller_max
+        sign = 1
+    else:
+        min_servo_pos = tree_min
+        max_servo_pos = tree_max
+        sign = -1
+    calibrations_complete = False
+    while not calibrations_complete:
+        servo.angle = config[movement_type]
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
+        if right_switch.fell:
+            button_check = True
+            number_cycles = 0  
+            while button_check:
+                sleepAndUpdateVolume(.1)
+                right_switch.update()
+                number_cycles += 1
+                if number_cycles > 30:
+                    write_calibrations_to_config_file()
+                    button_check = False
+                    calibrations_complete = True 
+                if right_switch.rose:
+                    button_check = False           
+            if not calibrations_complete:
+                calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
+    if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
+        global feller_last_pos
+        feller_last_pos = config[movement_type]
+    else:
+        global tree_last_pos
+        tree_last_pos = config[movement_type]
+
+################################################################################
+# Animations
+    
+def animate_outhouse():
+    print("sitting down")
+    moveGuyToPositionGently(170,0.05)
+    ledStrip[0]=((255, 147, 41))
+    ledStrip.show()
+    ledStrip[0]=((255, 147, 41))
+    ledStrip.show()
+    moveDoorToPositionGently(20, .05)
+    moveGuyToPositionGently(180,0.05)
+    moveDoorToPositionGently(120, .05)
+    ledStrip[0]=((0, 0, 0))
+    ledStrip.show()
+    wave0 = audiocore.WaveFile(open("/sd/sounds_birds_dogs_short_version.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+
+    print("explosion")
+    wave0 = audiocore.WaveFile(open("/sd/sounds_birds_dogs_short_version.wav", "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    time.sleep(.1)
+    moveRoofServo(130)
+    moveGuyServo(0)
+    moveDoorServo(20)
+    delay_time = .05
+    for i in range(1, 6):
+        ledStrip[i]=(255, 0, 0)
+        ledStrip.show()
+        time.sleep(delay_time)
+    for _ in range(10):
+        moveGuyToPositionGently(20,0.01)
+        moveGuyToPositionGently(0,0.01)
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+
+    print("reset")
+    ledStrip.fill((0,0,0))
+    ledStrip.show()
+    moveDoorServo(120)
+    moveGuyToPositionGently(170,0.001)
+    time.sleep(.2)
+    moveRoofToPositionGently(70, .001)
+    moveRoofToPositionGently(45, .05)
+    time.sleep(2)
+
 ################################################################################
 # State Machine
-
 class StateMachine(object):
 
     def __init__(self):
@@ -441,7 +581,7 @@ class BaseState(State):
             animate_outhouse()
         elif switch_state == "right":
             machine.go_to_state('main_menu')
-class MoveRoofDoorElevator(State):
+class MoveRoofDoorGuy(State):
 
     def __init__(self):
         self.menuIndex = 0
@@ -483,7 +623,7 @@ class MoveRoofDoorElevator(State):
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
                      
-class AdjustRoofDoorElevator(State):
+class AdjustRoofDoorGuy(State):
 
     def __init__(self):
         self.menuIndex = 0
@@ -514,22 +654,22 @@ class AdjustRoofDoorElevator(State):
         if right_switch.fell:
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
-                    moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
+                    moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
                     fellerCalAnnouncement()
                     calibratePosition(feller_servo, "feller_rest_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_feller_to_chop_position":
-                    moveFellerToPositionGently(config["feller_chop_pos"], 0.01)
+                    moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
                     fellerCalAnnouncement()
                     calibratePosition(feller_servo, "feller_chop_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_upright_position":
-                    moveTreeToPositionGently(config["tree_up_pos"], 0.01)
+                    moveRoofToPositionGently(config["tree_up_pos"], 0.01)
                     treeCalAnnouncement()
                     calibratePosition(tree_servo, "tree_up_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_fallen_position":
-                    moveTreeToPositionGently(config["tree_down_pos"], 0.01)
+                    moveRoofToPositionGently(config["tree_down_pos"], 0.01)
                     treeCalAnnouncement()
                     calibratePosition(tree_servo, "tree_down_pos")
                     machine.go_to_state('base_state')
@@ -752,66 +892,10 @@ state_machine = StateMachine()
 state_machine.add_state(BaseState())
 state_machine.add_state(MainMenu())
 state_machine.add_state(ChooseSounds())
-state_machine.add_state(AdjustRoofDoorElevator())
-state_machine.add_state(MoveRoofDoorElevator())
+state_machine.add_state(AdjustRoofDoorGuy())
+state_machine.add_state(MoveRoofDoorGuy())
 state_machine.add_state(SetDialogOptions())
 state_machine.add_state(WebOptions())
-
-def explodeOuthouse():
-    print("sitting down")
-    moveGuyToPositionGently(170,0.05)
-    ledStrip[0]=((255, 147, 41))
-    ledStrip.show()
-    moveDoorToPositionGently(20, .05)
-    moveGuyToPositionGently(180,0.05)
-    moveDoorToPositionGently(120, .05)
-    ledStrip[0]=((0, 0, 0))
-    ledStrip.show()
-    time.sleep(2)
-    
-    delay_time = .05
-    print("explosion")
-    wave0 = audiocore.WaveFile(open("/sd/sounds_birds_dogs_short_version.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    time.sleep(.1)
-    moveRoofServo(130)
-    moveGuyServo(0)
-    moveDoorServo(20)
-    ledStrip[1]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[2]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[3]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[4]=(255, 0, 0)
-    ledStrip.show()
-    time.sleep(delay_time)
-    ledStrip[5]=(255, 0, 0)
-    ledStrip.show()
-    moveGuyToPositionGently(20,0.01)
-    moveGuyToPositionGently(0,0.01)
-    moveGuyToPositionGently(20,0.01)
-    moveGuyToPositionGently(0,0.01)
-    moveGuyToPositionGently(20,0.01)
-    moveGuyToPositionGently(0,0.01)
-    moveGuyToPositionGently(20,0.01)
-    moveGuyToPositionGently(0,0.01)
-    while mixer.voice[0].playing:
-        shortCircuitDialog()
-    #time.sleep(2)
-
-    print("reset")
-    ledStrip.fill((0,0,0))
-    ledStrip.show()
-    moveDoorServo(120)
-    moveGuyToPositionGently(170,0.001)
-    time.sleep(.2)
-    moveRoofToPositionGently(70, .001)
-    moveRoofToPositionGently(45, .05)
-    time.sleep(2)
 
 audio_enable.value = True
 
@@ -827,5 +911,5 @@ if (serve_webpage):
         reset_pico
     
 while True:
-    explodeOuthouse()
+    animate_outhouse()
     
