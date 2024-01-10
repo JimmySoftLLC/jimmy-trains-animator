@@ -144,8 +144,26 @@ audio_enable.value = False
 ################################################################################
 # Sd card data Variables
 
-config = files.read_json_file("/sd/config_lightning.json")
+config = files.read_json_file("/sd/config_outhouse.json")
+
 serve_webpage = config["serve_webpage"]
+
+#config_dialog_selection_menu = files.read_json_file("/sd/mvc/dialog_selection_menu.json")
+dialog_selection_menu = [] #config_dialog_selection_menu["dialog_selection_menu"]
+
+#config_move_guy_roof_door = files.read_json_file("/sd/mvc/move_guy_roof_door.json")
+move_guy_roof_door = []#config_move_guy_roof_door["move_guy_roof_door"]
+
+#config_adjust_guy_roof_door = files.read_json_file("/sd/mvc/adjust_guy_roof_door.json")
+adjust_guy_roof_door = [] #config_adjust_guy_roof_door["adjust_guy_roof_door"]
+
+config_web_menu = files.read_json_file("/sd/mvc/web_menu.json")
+web_menu = config_web_menu["web_menu"]
+
+#config_choose_sounds = files.read_json_file("/sd/mvc/choose_sounds.json")
+outhouse_sound_options = [] #config_choose_sounds["choose_sounds"]
+
+continuous_run = False
 
 ################################################################################
 # Dialog and sound play methods
@@ -401,16 +419,16 @@ def calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max
 def write_calibrations_to_config_file():
     play_audio_0("/sd/mvc/all_changes_complete.wav")
     global config
-    files.write_json_file("/sd/config_feller.json",config)
+    files.write_json_file("/sd/config_outhouse.json",config)
 
 def calibratePosition(servo, movement_type):  
     if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
-        min_servo_pos = feller_min
-        max_servo_pos = feller_max
+        min_servo_pos = guy_min
+        max_servo_pos = guy_max
         sign = 1
     else:
-        min_servo_pos = tree_min
-        max_servo_pos = tree_max
+        min_servo_pos = roof_min
+        max_servo_pos = roof_max
         sign = -1
     calibrations_complete = False
     while not calibrations_complete:
@@ -456,13 +474,13 @@ def animate_outhouse():
     moveDoorToPositionGently(120, .05)
     ledStrip[0]=((0, 0, 0))
     ledStrip.show()
-    wave0 = audiocore.WaveFile(open("/sd/sounds_birds_dogs_short_version.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    while mixer.voice[0].playing:
-        shortCircuitDialog()
+    #wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/sounds_birds_dogs_short_version.wav", "rb"))
+    #mixer.voice[0].play( wave0, loop=False )
+    #while mixer.voice[0].playing:
+    #    shortCircuitDialog()
 
     print("explosion")
-    wave0 = audiocore.WaveFile(open("/sd/sounds_birds_dogs_short_version.wav", "rb"))
+    wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/sounds_birds_dogs_short_version.wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     time.sleep(.1)
     moveRoofServo(130)
@@ -589,11 +607,11 @@ class MoveRoofDoorGuy(State):
 
     @property
     def name(self):
-        return 'move_feller_and_tree'
+        return 'move_guy_roof_door'
 
     def enter(self, machine):
         files.log_item('Move feller and tree menu')
-        play_audio_0("/sd/mvc/move_feller_and_tree_menu.wav")
+        play_audio_0("/sd/mvc/move_guy_roof_door_menu.wav")
         left_right_mouse_button()
         State.enter(self, machine)
 
@@ -604,13 +622,13 @@ class MoveRoofDoorGuy(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/mvc/" + move_feller_and_tree[self.menuIndex] + ".wav")
+            play_audio_0("/sd/mvc/" + move_guy_roof_door[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
-            if self.menuIndex > len(move_feller_and_tree)-1:
+            if self.menuIndex > len(move_guy_roof_door)-1:
                 self.menuIndex = 0
         if right_switch.fell:
-            selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
+            selected_menu_item = move_guy_roof_door[self.selectedMenuIndex]
             if selected_menu_item == "move_feller_to_rest_position":
                 moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
             elif selected_menu_item == "move_feller_to_chop_position":
@@ -631,11 +649,11 @@ class AdjustRoofDoorGuy(State):
 
     @property
     def name(self):
-        return 'adjust_feller_and_tree'
+        return 'adjust_guy_roof_door'
 
     def enter(self, machine):
         files.log_item('Adjust feller and tree menu')
-        play_audio_0("/sd/mvc/adjust_feller_and_tree_menu.wav")
+        play_audio_0("/sd/mvc/adjust_guy_roof_door_menu.wav")
         left_right_mouse_button()
         State.enter(self, machine)
 
@@ -646,32 +664,32 @@ class AdjustRoofDoorGuy(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/mvc/" + adjust_feller_and_tree[self.menuIndex] + ".wav")
+            play_audio_0("/sd/mvc/" + adjust_guy_roof_door[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
-            if self.menuIndex > len(adjust_feller_and_tree)-1:
+            if self.menuIndex > len(adjust_guy_roof_door)-1:
                 self.menuIndex = 0
         if right_switch.fell:
-                selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
+                selected_menu_item = adjust_guy_roof_door[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
                     moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
                     fellerCalAnnouncement()
-                    calibratePosition(feller_servo, "feller_rest_pos")
+                    calibratePosition(guy_servo, "feller_rest_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_feller_to_chop_position":
                     moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
                     fellerCalAnnouncement()
-                    calibratePosition(feller_servo, "feller_chop_pos")
+                    calibratePosition(guy_servo, "feller_chop_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_upright_position":
                     moveRoofToPositionGently(config["tree_up_pos"], 0.01)
                     treeCalAnnouncement()
-                    calibratePosition(tree_servo, "tree_up_pos")
+                    calibratePosition(door_servo, "tree_up_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_fallen_position":
                     moveRoofToPositionGently(config["tree_down_pos"], 0.01)
                     treeCalAnnouncement()
-                    calibratePosition(tree_servo, "tree_down_pos")
+                    calibratePosition(door_servo, "tree_down_pos")
                     machine.go_to_state('base_state')
                 else:
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
@@ -723,7 +741,7 @@ class SetDialogOptions(State):
                 option_selected_announcement()
                 selectDialogOptionsAnnouncement()
             else:
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/config_outhouse.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
                     
@@ -776,7 +794,7 @@ class WebOptions(State):
                     play_audio_0("/sd/mvc/web_instruct.wav")
                     selectWebOptionsAnnouncement()
                 else:
-                    files.write_json_file("/sd/config_feller.json",config)
+                    files.write_json_file("/sd/config_outhouse.json",config)
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')   
                                      
@@ -808,15 +826,15 @@ class ChooseSounds(State):
                 while mixer.voice[0].playing:
                     pass
             else:
-                play_audio_0("/sd/mvc/option_" + feller_sound_options[self.menuIndex] + ".wav")
+                play_audio_0("/sd/mvc/option_" + outhouse_sound_options[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex +=1
-                if self.menuIndex > len(feller_sound_options)-1:
+                if self.menuIndex > len(outhouse_sound_options)-1:
                     self.menuIndex = 0
         if right_switch.fell:
-            config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
+            config["option_selected"] = outhouse_sound_options[self.selectedMenuIndex]
             files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
-            files.write_json_file("/sd/config_feller.json",config)
+            files.write_json_file("/sd/config_outhouse.json",config)
             option_selected_announcement()
             machine.go_to_state('base_state')
 
@@ -852,10 +870,10 @@ class MainMenu(State):
             selected_menu_item = main_menu[self.selectedMenuIndex]
             if selected_menu_item == "choose_sounds":
                 machine.go_to_state('choose_sounds')
-            elif selected_menu_item == "adjust_feller_and_tree":
-                machine.go_to_state('adjust_feller_and_tree')
-            elif selected_menu_item == "move_feller_and_tree":
-                machine.go_to_state('move_feller_and_tree')
+            elif selected_menu_item == "adjust_guy_roof_door":
+                machine.go_to_state('adjust_guy_roof_door')
+            elif selected_menu_item == "move_guy_roof_door":
+                machine.go_to_state('move_guy_roof_door')
             elif selected_menu_item == "set_dialog_options":
                 machine.go_to_state('set_dialog_options')
             elif selected_menu_item == "web_options":
@@ -910,6 +928,16 @@ if (serve_webpage):
         files.log_item("restarting...")
         reset_pico
     
+state_machine.go_to_state('base_state')   
+files.log_item("animator has started...")
+garbage_collect("animations started.")
+
 while True:
-    animate_outhouse()
-    
+    state_machine.update()
+    sleepAndUpdateVolume(.1)
+    if (serve_webpage):
+        try:
+            server.poll()
+        except Exception as e:
+            files.log_item(e)
+            continue
