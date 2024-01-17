@@ -53,35 +53,19 @@ audio_enable.value = False
 
 # Setup the servo
 # also get the programmed values for position which is stored on the sdCard
-door_pwm = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
-guy_pwm = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
-roof_pwm = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
-plane_pwm = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
-plane_rotaton_pwm = pwmio.PWMOut(board.GP15, duty_cycle=2 ** 15, frequency=50)
+plane_pwm = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+plane_rotaton_pwm = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 
-door_servo = servo.Servo(door_pwm, min_pulse=500, max_pulse=2500)
-guy_servo = servo.Servo(guy_pwm, min_pulse=500, max_pulse=2500)
-roof_servo = servo.Servo(roof_pwm, min_pulse=500, max_pulse=2500)
 plane_servo = servo.Servo(plane_pwm, min_pulse=500, max_pulse=2500)
 plane_rotation_servo = servo.ContinuousServo(plane_rotaton_pwm, min_pulse=500, max_pulse=2500)
 
 zero_val = 0
 
-door_last_pos = 90
-door_min = 0
-door_max = 180
-
-guy_last_pos = 90
-guy_min = 0
-guy_max = 180
-
-roof_last_pos = 90
-roof_min = 0
-roof_max = 180
-
-plane_last_pos = 90
+plane_last_pos = 0
 plane_min = 0
 plane_max = 180
+
+plane_servo.angle = 180
 
 # Setup the switches
 SWITCH_1_PIN = board.GP6 #S1 on animator board
@@ -153,7 +137,7 @@ audio_enable.value = False
 ################################################################################
 # Sd card data Variables
 
-config = files.read_json_file("/sd/config_lightning.json")
+config = files.read_json_file("/sd/config_outhouse.json")
 serve_webpage = config["serve_webpage"]
 
 serve_webpage=False
@@ -323,54 +307,6 @@ if (serve_webpage):
         time.sleep(5)
         files.log_item("restarting...")
         reset_pico
-
-def moveDoorServo (servo_pos):
-    if servo_pos < door_min: servo_pos = door_min
-    if servo_pos > door_max: servo_pos = door_max
-    door_servo.angle = servo_pos
-    global door_last_pos
-    door_last_pos = servo_pos
-
-def moveDoorToPositionGently (new_position, speed):
-    global door_last_pos
-    sign = 1
-    if door_last_pos > new_position: sign = - 1
-    for door_angle in range( door_last_pos, new_position, sign):
-        moveDoorServo (door_angle)
-        time.sleep(speed)
-    moveDoorServo (new_position)
-
-def moveGuyServo (servo_pos):
-    if servo_pos < guy_min: servo_pos = guy_min
-    if servo_pos > guy_max: servo_pos = guy_max
-    guy_servo.angle = servo_pos
-    global guy_last_pos
-    guy_last_pos = servo_pos
-
-def moveGuyToPositionGently (new_position, speed):
-    global guy_last_pos
-    sign = 1
-    if guy_last_pos > new_position: sign = - 1
-    for guy_angle in range( guy_last_pos, new_position, sign):
-        moveGuyServo (guy_angle)
-        time.sleep(speed)
-    moveGuyServo (new_position)
-
-def moveRoofServo (servo_pos):
-    if servo_pos < roof_min: servo_pos = roof_min
-    if servo_pos > roof_max: servo_pos = roof_max
-    roof_servo.angle = servo_pos
-    global roof_last_pos
-    roof_last_pos = servo_pos
-
-def moveRoofToPositionGently (new_position, speed):
-    global roof_last_pos
-    sign = 1
-    if roof_last_pos > new_position: sign = - 1
-    for roof_angle in range( roof_last_pos, new_position, sign):
-        moveRoofServo (roof_angle)
-        time.sleep(speed)
-    moveRoofServo (new_position)
     
 def movePlaneServo (servo_pos):
     if servo_pos < plane_min: servo_pos = plane_min
@@ -388,15 +324,28 @@ def movePlaneToPositionGently (new_position, speed):
         time.sleep(speed)
     movePlaneServo (new_position)
     
+throttle_max = -.12
+throttle_min = -.05
+global throttle_range
+throttle_range = throttle_max-throttle_min
+global speed
+speed = 0
+global direction
+direction = 1
 
-plane_rotation_servo.throttle = -.07
+wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/plane.wav", "rb"))
+mixer.voice[0].play( wave0, loop=True )
+sleepAndUpdateVolume(.1)
 
 while True:
-    print("plane")
-    moveGuyToPositionGently(0,0.001)
+    if speed > 1: direction = -1
+    if speed < 0: direction = 1
+    speed = speed + direction *.1
+    plane_rotation_servo.throttle = throttle_min + throttle_range * speed
+    print (speed)
     plane_pos = 0
-    movePlaneToPositionGently(plane_pos, .05)
-    time.sleep(3)
-    plane_pos = 140
-    movePlaneToPositionGently(plane_pos, .05)
-    time.sleep(3)
+    movePlaneToPositionGently(plane_pos, .03)
+    sleepAndUpdateVolume(2)
+    plane_pos = 180
+    movePlaneToPositionGently(plane_pos, .03)
+    sleepAndUpdateVolume(2)
