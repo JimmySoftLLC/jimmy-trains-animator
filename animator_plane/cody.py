@@ -340,12 +340,12 @@ sleepAndUpdateVolume(.1)
 while True:
     if speed > 1: direction = -1
     if speed < 0: direction = 1
-    speed = speed + direction *.1
+    speed = speed + direction *.3
     plane_rotation_servo.throttle = throttle_min + throttle_range * speed
     print (speed)
     plane_pos = 0
-    movePlaneToPositionGently(plane_pos, .03)
-    sleepAndUpdateVolume(2)
+    movePlaneToPositionGently(plane_pos, .005)
+    sleepAndUpdateVolume(0)
     plane_pos = 180
-    movePlaneToPositionGently(plane_pos, .03)
-    sleepAndUpdateVolume(2)
+    movePlaneToPositionGently(plane_pos, .005)
+    sleepAndUpdateVolume(0)
