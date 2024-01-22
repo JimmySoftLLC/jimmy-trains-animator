@@ -47,7 +47,7 @@ def get_voltage(pin, wait_for):
         pin_value = pin_value / 10
     return (pin.value) / 65536
 
-audio_enable = digitalio.DigitalInOut(board.GP28)
+audio_enable = digitalio.DigitalInOut(board.GP22) # old board 28
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
 
@@ -343,9 +343,10 @@ while True:
     speed = speed + direction *.3
     plane_rotation_servo.throttle = throttle_min + throttle_range * speed
     print (speed)
-    plane_pos = 0
+    plane_pos = 20
     movePlaneToPositionGently(plane_pos, .005)
     sleepAndUpdateVolume(0)
     plane_pos = 180
     movePlaneToPositionGently(plane_pos, .005)
     sleepAndUpdateVolume(0)
+
