@@ -46,7 +46,8 @@ def get_voltage(pin, wait_for):
         pin_value = pin_value / 10
     return (pin.value) / 65536
 
-audio_enable = digitalio.DigitalInOut(board.GP28)
+# for animtor tiny use pin 22 for others use pin 28
+audio_enable = digitalio.DigitalInOut(board.GP22)
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
 

@@ -1,0 +1,11 @@
+Adjust roof or door.
+Move roof or door.
+Install a figure.
+Remove the figure and insert the figure you want to install.  When the figure is inserted press the right button to install.
+Press the right button to close the door more press the left button to open the door more.
+Press the right button to close the roof more press the right button to open the roof more.
+Roof open.
+Roof closes.
+Door open.
+Door closed.
+To save the changes press and hold the right button until you here all changes complete.
