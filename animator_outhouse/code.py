@@ -46,7 +46,6 @@ def get_voltage(pin, wait_for):
         pin_value = pin_value / 10
     return (pin.value) / 65536
 
-# for animtor tiny use pin 22 for others use pin 28
 audio_enable = digitalio.DigitalInOut(board.GP22)
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
@@ -109,7 +108,7 @@ num_voices = 1
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
-volume = .2
+volume = .6
 mixer.voice[0].level = volume
 
 try:
@@ -161,8 +160,13 @@ adjust_guy_roof_door = [] #config_adjust_guy_roof_door["adjust_guy_roof_door"]
 config_web_menu = files.read_json_file("/sd/mvc/web_menu.json")
 web_menu = config_web_menu["web_menu"]
 
-#config_choose_sounds = files.read_json_file("/sd/mvc/choose_sounds.json")
-outhouse_sound_options = [] #config_choose_sounds["choose_sounds"]
+config_main_menu = files.read_json_file("/sd/mvc/main_menu.json")
+main_menu = config_main_menu["main_menu"]
+
+print(main_menu)
+
+config_choose_sounds = files.read_json_file("/sd/mvc/choose_sounds.json")
+outhouse_sound_options = config_choose_sounds["choose_sounds"]
 
 continuous_run = False
 
@@ -188,10 +192,12 @@ def play_audio_0(file_name):
         mixer.voice[0].stop()
         while mixer.voice[0].playing:
             sleepAndUpdateVolume(0.02)
+    print("playing"+ file_name) 
     wave0 = audiocore.WaveFile(open(file_name, "rb"))
     mixer.voice[0].play( wave0, loop=False )
     while mixer.voice[0].playing:
         shortCircuitDialog()
+    print("done playing") 
 
 def shortCircuitDialog():
     sleepAndUpdateVolume(0.02)
@@ -916,7 +922,7 @@ state_machine.add_state(MoveRoofDoorGuy())
 state_machine.add_state(SetDialogOptions())
 state_machine.add_state(WebOptions())
 
-audio_enable.value = True
+audio_enable.value = False
 
 if (serve_webpage):
     files.log_item("starting server...")
