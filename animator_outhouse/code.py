@@ -166,6 +166,9 @@ main_menu = config_main_menu["main_menu"]
 config_choose_sounds = files.read_json_file("/sd/mvc/choose_sounds.json")
 outhouse_sound_options = config_choose_sounds["choose_sounds"]
 
+volume_settings_options = files.read_json_file("/sd/mvc/volume_settings.json")
+volume_settings = volume_settings_options["volume_settings"]
+
 continuous_run = False
 
 ################################################################################
@@ -184,6 +187,35 @@ def sleepAndUpdateVolume(seconds):
             volume = .5
         mixer.voice[0].level = volume
         time.sleep(seconds)
+        
+def changeVolume(action):
+    volume = int(config["volume"])
+    if "volume" in action:
+        vol = action.split("volume")
+        volume = int(vol[1])
+    if action == "lower1":
+        volume -= 1
+    elif action == "raise1":
+        volume += 1
+    elif action == "lower":
+        if volume <= 10:
+            volume -= 1
+        else:
+            volume -= 10
+    elif action == "raise":
+        if volume < 10:
+            volume += 1
+        else:
+            volume += 10
+    if volume > 100:
+        volume =100
+    if volume < 1:
+        volume = 1
+    config["volume"] = str(volume)
+    config["volume_pot"] = False
+    files.write_json_file("/sd/config_outhouse.json",config)
+    play_audio_0("/sd/mvc/volume.wav")
+    speak_this_string(config["volume"], False)
 
 def play_audio_0(file_name):
     if mixer.voice[0].playing:
@@ -703,8 +735,8 @@ class AdjustRoofDoorGuy(State):
                 else:
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')
-
-class SetDialogOptions(State):
+                    
+class VolumeSettings(State):
 
     def __init__(self):
         self.menuIndex = 0
@@ -712,11 +744,12 @@ class SetDialogOptions(State):
 
     @property
     def name(self):
-        return 'set_dialog_options'
+        return 'volume_settings'
 
     def enter(self, machine):
-        files.log_item('Set Dialog Options')
-        selectDialogOptionsAnnouncement()
+        files.log_item('Set Web Options')
+        play_audio_0("/sd/mvc/volume_settings_menu.wav")
+        left_right_mouse_button()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -726,34 +759,42 @@ class SetDialogOptions(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/mvc/" + dialog_selection_menu[self.menuIndex] + ".wav")
+            play_audio_0("/sd/mvc/" + volume_settings[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
-            if self.menuIndex > len(dialog_selection_menu)-1:
+            if self.menuIndex > len(volume_settings)-1:
                 self.menuIndex = 0
         if right_switch.fell:
-            selected_menu_item = dialog_selection_menu[self.selectedMenuIndex]
-            if selected_menu_item == "opening_dialog_on":
-                config["opening_dialog"] = True
-                option_selected_announcement()
-                selectDialogOptionsAnnouncement()
-            elif selected_menu_item == "opening_dialog_off":
-                config["opening_dialog"] = False
-                option_selected_announcement()
-                selectDialogOptionsAnnouncement()
-            elif selected_menu_item == "lumberjack_advice_on":
-                config["feller_advice"] = True
-                option_selected_announcement()
-                selectDialogOptionsAnnouncement()
-            elif selected_menu_item == "lumberjack_advice_off":
-                config["feller_advice"] = False
-                option_selected_announcement()
-                selectDialogOptionsAnnouncement()
-            else:
-                files.write_json_file("/sd/config_outhouse.json",config)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to_state('base_state')
-                    
+                selected_menu_item = volume_settings[self.selectedMenuIndex]
+                if selected_menu_item == "volume_level_adjustment":
+                    play_audio_0("/sd/mvc/volume_adjustment_menu.wav")
+                    done = False
+                    while not done: 
+                        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+                        if switch_state == "left":
+                            changeVolume("lower")
+                        elif switch_state == "right":
+                            changeVolume("raise")
+                        elif switch_state == "right_held":
+                            files.write_json_file("/sd/config_christmas_park.json",config)
+                            play_audio_0("/sd/mvc/all_changes_complete.wav")
+                            done = True
+                            machine.go_to_state('base_state')
+                        sleepAndUpdateVolume(0.1)
+                        pass
+                elif selected_menu_item == "volume_pot_off":
+                    config["volume_pot"] = False
+                    if config["volume"] == 0:
+                        config["volume"] = 10
+                    files.write_json_file("/sd/config_christmas_park.json",config)
+                    play_audio_0("/sd/mvc/all_changes_complete.wav")
+                    machine.go_to_state('base_state') 
+                elif selected_menu_item == "volume_pot_on":
+                    config["volume_pot"] = True
+                    files.write_json_file("/sd/config_christmas_park.json",config)
+                    play_audio_0("/sd/mvc/all_changes_complete.wav")
+                    machine.go_to_state('base_state') 
+
 class WebOptions(State):
 
     def __init__(self):
@@ -887,6 +928,8 @@ class MainMenu(State):
                 machine.go_to_state('set_dialog_options')
             elif selected_menu_item == "web_options":
                 machine.go_to_state('web_options')
+            elif selected_menu_item == "volume_settings":
+                machine.go_to_state('volume_settings')
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
@@ -921,8 +964,8 @@ state_machine.add_state(MainMenu())
 state_machine.add_state(ChooseSounds())
 state_machine.add_state(AdjustRoofDoorGuy())
 state_machine.add_state(MoveRoofDoorGuy())
-state_machine.add_state(SetDialogOptions())
 state_machine.add_state(WebOptions())
+state_machine.add_state(VolumeSettings())
 
 audio_enable.value = True
 
@@ -950,4 +993,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
