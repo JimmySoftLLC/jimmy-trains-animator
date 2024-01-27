@@ -108,7 +108,7 @@ num_voices = 1
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
-volume = .6
+volume = .1
 mixer.voice[0].level = volume
 
 try:
@@ -162,8 +162,6 @@ web_menu = config_web_menu["web_menu"]
 
 config_main_menu = files.read_json_file("/sd/mvc/main_menu.json")
 main_menu = config_main_menu["main_menu"]
-
-print(main_menu)
 
 config_choose_sounds = files.read_json_file("/sd/mvc/choose_sounds.json")
 outhouse_sound_options = config_choose_sounds["choose_sounds"]
@@ -583,8 +581,8 @@ class BaseState(State):
 
     def enter(self, machine):
         # set servos to starting position
-        moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
-        moveGuyToPositionGently(config["tree_up_pos"], 0.01)
+        # moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
+        # moveGuyToPositionGently(config["tree_up_pos"], 0.01)
         play_audio_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         State.enter(self, machine)
@@ -637,13 +635,17 @@ class MoveRoofDoorGuy(State):
         if right_switch.fell:
             selected_menu_item = move_guy_roof_door[self.selectedMenuIndex]
             if selected_menu_item == "move_feller_to_rest_position":
-                moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
+                print("here")
+                #moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
             elif selected_menu_item == "move_feller_to_chop_position":
-                moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
+                print("here")
+                #moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
             elif selected_menu_item == "move_tree_to_upright_position":
-                moveGuyToPositionGently(config["tree_up_pos"], 0.01)
+                print("here")
+                #moveGuyToPositionGently(config["tree_up_pos"], 0.01)
             elif selected_menu_item == "move_tree_to_fallen_position":
-                moveGuyToPositionGently(config["tree_down_pos"], 0.01)
+                print("here")
+                #moveGuyToPositionGently(config["tree_down_pos"], 0.01)
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
@@ -679,22 +681,22 @@ class AdjustRoofDoorGuy(State):
         if right_switch.fell:
                 selected_menu_item = adjust_guy_roof_door[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
-                    moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
+                    #moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
                     fellerCalAnnouncement()
                     calibratePosition(guy_servo, "feller_rest_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_feller_to_chop_position":
-                    moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
+                    #moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
                     fellerCalAnnouncement()
                     calibratePosition(guy_servo, "feller_chop_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_upright_position":
-                    moveRoofToPositionGently(config["tree_up_pos"], 0.01)
+                    #moveRoofToPositionGently(config["tree_up_pos"], 0.01)
                     treeCalAnnouncement()
                     calibratePosition(door_servo, "tree_up_pos")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "move_tree_to_fallen_position":
-                    moveRoofToPositionGently(config["tree_down_pos"], 0.01)
+                    #moveRoofToPositionGently(config["tree_down_pos"], 0.01)
                     treeCalAnnouncement()
                     calibratePosition(door_servo, "tree_down_pos")
                     machine.go_to_state('base_state')
@@ -922,7 +924,7 @@ state_machine.add_state(MoveRoofDoorGuy())
 state_machine.add_state(SetDialogOptions())
 state_machine.add_state(WebOptions())
 
-audio_enable.value = False
+audio_enable.value = True
 
 if (serve_webpage):
     files.log_item("starting server...")
@@ -948,3 +950,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
