@@ -24,7 +24,11 @@ from adafruit_debouncer import Debouncer
 from adafruit_motor import servo
 import utilities
 import neopixel
-ledStrip = neopixel.NeoPixel(board.GP13, 7)
+import random
+
+num_pixels = 7
+
+ledStrip = neopixel.NeoPixel(board.GP13, num_pixels)
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -511,10 +515,6 @@ def animate_outhouse():
     moveDoorToPositionGently(120, .05)
     ledStrip[0]=((0, 0, 0))
     ledStrip.show()
-    #wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/sounds_birds_dogs_short_version.wav", "rb"))
-    #mixer.voice[0].play( wave0, loop=False )
-    #while mixer.voice[0].playing:
-    #    shortCircuitDialog()
 
     print("explosion")
     wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/sounds_birds_dogs_short_version.wav", "rb"))
@@ -529,6 +529,7 @@ def animate_outhouse():
         ledStrip.show()
         time.sleep(delay_time)
     for _ in range(10):
+        fire(2)
         moveGuyToPositionGently(20,0.01)
         moveGuyToPositionGently(0,0.01)
     while mixer.voice[0].playing:
@@ -543,6 +544,33 @@ def animate_outhouse():
     moveRoofToPositionGently(70, .001)
     moveRoofToPositionGently(45, .05)
     time.sleep(2)
+
+def fire(duration):
+    startTime = time.monotonic()
+    ledStrip.brightness = 1.0
+ 
+    r = random.randint(0,255)
+    g = random.randint(0,255)
+    b = random.randint(0,255)
+
+    #Flicker, based on our initial RGB values
+    while True:
+        for i in range (0, num_pixels):
+            flicker = random.randint(0,110)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 255)
+            b1 = bounds(b-flicker, 0, 255)
+            ledStrip[i] = (r1,g1,b1)
+        ledStrip.show()
+        sleepAndUpdateVolume(random.uniform(0.05,0.1))
+        timeElasped = time.monotonic()-startTime
+        if timeElasped > duration:
+            return
+        
+def bounds(my_color, lower, upper):
+    if (my_color < lower): my_color = lower
+    if (my_color > upper): my_color = upper
+    return my_color
 
 ################################################################################
 # State Machine
