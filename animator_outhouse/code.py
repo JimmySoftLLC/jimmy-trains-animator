@@ -385,78 +385,6 @@ if (serve_webpage):
 garbage_collect("web server")
 
 ################################################################################
-# async methods
-
-# Create an event loop
-loop = asyncio.get_event_loop()
-
-async def sleepAndUpdateVolumeAsync(seconds):
-    if config["volume_pot"]: 
-        volume = analog_in.value / 65536
-        mixer.voice[0].level = volume
-        await asyncio.sleep(seconds)
-    else:
-        try:
-            volume = int(config["volume"]) / 100
-        except:
-            volume = .5
-        if volume < 0 or volume > 1:
-            volume = .5
-        mixer.voice[0].level = volume
-        await asyncio.sleep(seconds)
-
-async def fireAsync(duration):
-    startTime = time.monotonic()
-    ledStrip.brightness = 1.0
- 
-    r = random.randint(150,255)
-    g = 0 #random.randint(0,255)
-    b = 0 #random.randint(0,255)
-
-    #Flicker, based on our initial RGB values
-    while mixer.voice[0].playing:
-        for i in range (0, num_pixels):
-            flicker = random.randint(0,175)
-            r1 = bounds(r-flicker, 0, 255)
-            g1 = bounds(g-flicker, 0, 50)
-            b1 = bounds(b-flicker, 0, 50)
-            ledStrip[i] = (r1,g1,b1)
-        ledStrip.show()
-        await sleepAndUpdateVolumeAsync(random.uniform(0.05,0.1))
-        
-async def cycleGuyAsync(cycles, speed, pos_up, pos_down): 
-    global guy_last_pos
-    while mixer.voice[0].playing:
-        new_position = pos_up
-        sign = 1
-        if guy_last_pos > new_position: sign = - 1
-        for guy_angle in range( guy_last_pos, new_position, sign):
-            moveGuyServo (guy_angle)
-            await asyncio.sleep(speed)
-        new_position = pos_down
-        sign = 1
-        if guy_last_pos > new_position: sign = - 1
-        for guy_angle in range( guy_last_pos, new_position, sign):
-            moveGuyServo (guy_angle)
-            await asyncio.sleep(speed)
-
-async def main ():
-    cycle_guy = asyncio.create_task(cycleGuyAsync(10,0.01,20,0))
-    cycle_lights = asyncio.create_task(fireAsync(10))
-    await asyncio.gather(cycle_guy, cycle_lights)
-    while mixer.voice[0].playing:
-        shortCircuitDialog()
-    print("reset")
-    ledStrip.fill((0,0,0))
-    ledStrip.show()
-    moveDoorServo(120)
-    moveGuyToPositionGently(170,0.001)
-    time.sleep(.2)
-    moveRoofToPositionGently(70, .001)
-    moveRoofToPositionGently(45, .05)
-    time.sleep(2)
-
-################################################################################
 # Servo helpers
 
 def moveDoorServo (servo_pos):
@@ -567,6 +495,69 @@ def calibratePosition(servo, movement_type):
         tree_last_pos = config[movement_type]
 
 ################################################################################
+# async methods
+
+# Create an event loop
+loop = asyncio.get_event_loop()
+
+async def sleepAndUpdateVolumeAsync(seconds):
+    if config["volume_pot"]: 
+        volume = analog_in.value / 65536
+        mixer.voice[0].level = volume
+        await asyncio.sleep(seconds)
+    else:
+        try:
+            volume = int(config["volume"]) / 100
+        except:
+            volume = .5
+        if volume < 0 or volume > 1:
+            volume = .5
+        mixer.voice[0].level = volume
+        await asyncio.sleep(seconds)
+
+async def fireAsync(duration):
+    startTime = time.monotonic()
+    ledStrip.brightness = 1.0
+ 
+    r = random.randint(150,255)
+    g = 0 #random.randint(0,255)
+    b = 0 #random.randint(0,255)
+
+    #Flicker, based on our initial RGB values
+    while mixer.voice[0].playing:
+        for i in range (0, num_pixels):
+            flicker = random.randint(0,175)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 50)
+            b1 = bounds(b-flicker, 0, 50)
+            ledStrip[i] = (r1,g1,b1)
+        ledStrip.show()
+        await sleepAndUpdateVolumeAsync(random.uniform(0.05,0.1))
+        
+async def cycleGuyAsync(cycles, speed, pos_up, pos_down): 
+    global guy_last_pos
+    while mixer.voice[0].playing:
+        new_position = pos_up
+        sign = 1
+        if guy_last_pos > new_position: sign = - 1
+        for guy_angle in range( guy_last_pos, new_position, sign):
+            moveGuyServo (guy_angle)
+            await asyncio.sleep(speed)
+        new_position = pos_down
+        sign = 1
+        if guy_last_pos > new_position: sign = - 1
+        for guy_angle in range( guy_last_pos, new_position, sign):
+            moveGuyServo (guy_angle)
+            await asyncio.sleep(speed)
+
+async def runExplosion ():
+    cycle_guy = asyncio.create_task(cycleGuyAsync(10,0.01,20,0))
+    cycle_lights = asyncio.create_task(fireAsync(10))
+    await asyncio.gather(cycle_guy, cycle_lights)
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+
+################################################################################
 # Animations
     
 def animate_outhouse():
@@ -594,29 +585,17 @@ def animate_outhouse():
         ledStrip[i]=(255, 0, 0)
         ledStrip.show()
         time.sleep(delay_time)
-    asyncio.run(main())
+    asyncio.run(runExplosion())
 
-def fire(duration):
-    startTime = time.monotonic()
-    ledStrip.brightness = 1.0
- 
-    r = random.randint(0,255)
-    g = random.randint(0,255)
-    b = random.randint(0,255)
-
-    #Flicker, based on our initial RGB values
-    while True:
-        for i in range (0, num_pixels):
-            flicker = random.randint(0,110)
-            r1 = bounds(r-flicker, 0, 255)
-            g1 = bounds(g-flicker, 0, 255)
-            b1 = bounds(b-flicker, 0, 255)
-            ledStrip[i] = (r1,g1,b1)
-        ledStrip.show()
-        sleepAndUpdateVolume(random.uniform(0.05,0.1))
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
-            return
+    print("reset")
+    ledStrip.fill((0,0,0))
+    ledStrip.show()
+    moveDoorServo(120)
+    moveGuyToPositionGently(170,0.001)
+    time.sleep(.2)
+    moveRoofToPositionGently(70, .001)
+    moveRoofToPositionGently(45, .05)
+    time.sleep(2)
         
 def bounds(my_color, lower, upper):
     if (my_color < lower): my_color = lower
@@ -855,7 +834,7 @@ class VolumeSettings(State):
                         elif switch_state == "right":
                             changeVolume("raise")
                         elif switch_state == "right_held":
-                            files.write_json_file("/sd/config_christmas_park.json",config)
+                            files.write_json_file("/sd/config_outhouse.json",config)
                             play_audio_0("/sd/mvc/all_changes_complete.wav")
                             done = True
                             machine.go_to_state('base_state')
@@ -865,12 +844,12 @@ class VolumeSettings(State):
                     config["volume_pot"] = False
                     if config["volume"] == 0:
                         config["volume"] = 10
-                    files.write_json_file("/sd/config_christmas_park.json",config)
+                    files.write_json_file("/sd/config_outhouse.json",config)
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state') 
                 elif selected_menu_item == "volume_pot_on":
                     config["volume_pot"] = True
-                    files.write_json_file("/sd/config_christmas_park.json",config)
+                    files.write_json_file("/sd/config_outhouse.json",config)
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state') 
 
