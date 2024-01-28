@@ -25,6 +25,7 @@ from adafruit_motor import servo
 import utilities
 import neopixel
 import random
+import asyncio
 
 num_pixels = 7
 
@@ -41,14 +42,6 @@ garbage_collect("imports")
 
 analog_in = AnalogIn(board.A0)
 
-def get_voltage(pin, wait_for):
-    my_increment = wait_for/10
-    pin_value = 0
-    for _ in range(10):
-        time.sleep(my_increment)
-        pin_value += 1
-        pin_value = pin_value / 10
-    return (pin.value) / 65536
 
 audio_enable = digitalio.DigitalInOut(board.GP22)
 audio_enable.direction = digitalio.Direction.OUTPUT
@@ -180,8 +173,9 @@ continuous_run = False
 
 def sleepAndUpdateVolume(seconds):
     if config["volume_pot"]:
-        volume = get_voltage(analog_in, seconds)
+        volume = analog_in.value / 65536
         mixer.voice[0].level = volume
+        time.sleep(seconds)
     else:
         try:
             volume = int(config["volume"]) / 100
@@ -391,6 +385,78 @@ if (serve_webpage):
 garbage_collect("web server")
 
 ################################################################################
+# async methods
+
+# Create an event loop
+loop = asyncio.get_event_loop()
+
+async def sleepAndUpdateVolumeAsync(seconds):
+    if config["volume_pot"]: 
+        volume = analog_in.value / 65536
+        mixer.voice[0].level = volume
+        await asyncio.sleep(seconds)
+    else:
+        try:
+            volume = int(config["volume"]) / 100
+        except:
+            volume = .5
+        if volume < 0 or volume > 1:
+            volume = .5
+        mixer.voice[0].level = volume
+        await asyncio.sleep(seconds)
+
+async def fireAsync(duration):
+    startTime = time.monotonic()
+    ledStrip.brightness = 1.0
+ 
+    r = random.randint(150,255)
+    g = 0 #random.randint(0,255)
+    b = 0 #random.randint(0,255)
+
+    #Flicker, based on our initial RGB values
+    while mixer.voice[0].playing:
+        for i in range (0, num_pixels):
+            flicker = random.randint(0,175)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 50)
+            b1 = bounds(b-flicker, 0, 50)
+            ledStrip[i] = (r1,g1,b1)
+        ledStrip.show()
+        await sleepAndUpdateVolumeAsync(random.uniform(0.05,0.1))
+        
+async def cycleGuyAsync(cycles, speed, pos_up, pos_down): 
+    global guy_last_pos
+    while mixer.voice[0].playing:
+        new_position = pos_up
+        sign = 1
+        if guy_last_pos > new_position: sign = - 1
+        for guy_angle in range( guy_last_pos, new_position, sign):
+            moveGuyServo (guy_angle)
+            await asyncio.sleep(speed)
+        new_position = pos_down
+        sign = 1
+        if guy_last_pos > new_position: sign = - 1
+        for guy_angle in range( guy_last_pos, new_position, sign):
+            moveGuyServo (guy_angle)
+            await asyncio.sleep(speed)
+
+async def main ():
+    cycle_guy = asyncio.create_task(cycleGuyAsync(10,0.01,20,0))
+    cycle_lights = asyncio.create_task(fireAsync(10))
+    await asyncio.gather(cycle_guy, cycle_lights)
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+    print("reset")
+    ledStrip.fill((0,0,0))
+    ledStrip.show()
+    moveDoorServo(120)
+    moveGuyToPositionGently(170,0.001)
+    time.sleep(.2)
+    moveRoofToPositionGently(70, .001)
+    moveRoofToPositionGently(45, .05)
+    time.sleep(2)
+
+################################################################################
 # Servo helpers
 
 def moveDoorServo (servo_pos):
@@ -528,22 +594,7 @@ def animate_outhouse():
         ledStrip[i]=(255, 0, 0)
         ledStrip.show()
         time.sleep(delay_time)
-    for _ in range(10):
-        fire(2)
-        moveGuyToPositionGently(20,0.01)
-        moveGuyToPositionGently(0,0.01)
-    while mixer.voice[0].playing:
-        shortCircuitDialog()
-
-    print("reset")
-    ledStrip.fill((0,0,0))
-    ledStrip.show()
-    moveDoorServo(120)
-    moveGuyToPositionGently(170,0.001)
-    time.sleep(.2)
-    moveRoofToPositionGently(70, .001)
-    moveRoofToPositionGently(45, .05)
-    time.sleep(2)
+    asyncio.run(main())
 
 def fire(duration):
     startTime = time.monotonic()
@@ -1013,6 +1064,7 @@ files.log_item("animator has started...")
 garbage_collect("animations started.")
 
 while True:
+    loop.run_forever()
     state_machine.update()
     sleepAndUpdateVolume(.1)
     if (serve_webpage):
