@@ -148,11 +148,11 @@ serve_webpage = config["serve_webpage"]
 #config_dialog_selection_menu = files.read_json_file("/sd/mvc/dialog_selection_menu.json")
 dialog_selection_menu = [] #config_dialog_selection_menu["dialog_selection_menu"]
 
-#config_move_guy_roof_door = files.read_json_file("/sd/mvc/move_guy_roof_door.json")
-move_guy_roof_door = []#config_move_guy_roof_door["move_guy_roof_door"]
+config_move_roof_door = files.read_json_file("/sd/mvc/move_roof_door.json")
+move_roof_door = config_move_roof_door["move_roof_door"]
 
-#config_adjust_guy_roof_door = files.read_json_file("/sd/mvc/adjust_guy_roof_door.json")
-adjust_guy_roof_door = [] #config_adjust_guy_roof_door["adjust_guy_roof_door"]
+config_adjust_roof_door = files.read_json_file("/sd/mvc/adjust_roof_door.json")
+adjust_roof_door = config_adjust_roof_door["adjust_roof_door"]
 
 config_web_menu = files.read_json_file("/sd/mvc/web_menu.json")
 web_menu = config_web_menu["web_menu"]
@@ -270,11 +270,11 @@ def selectDialogOptionsAnnouncement():
     play_audio_0("/sd/mvc/dialog_selection_menu.wav")
     left_right_mouse_button()
 
-def fellerCalAnnouncement():
+def doorCalAnnouncement():
     play_audio_0("/sd/mvc/now_we_can_adjust_the_feller_position.wav")
     play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
-def treeCalAnnouncement():
+def roofCalAnnouncement():
     play_audio_0("/sd/mvc/now_we_can_adjust_the_tree_position.wav")
     play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
@@ -515,7 +515,7 @@ async def sleepAndUpdateVolumeAsync(seconds):
         mixer.voice[0].level = volume
         await asyncio.sleep(seconds)
 
-async def fireAsync(duration):
+async def fireAsync():
     startTime = time.monotonic()
     ledStrip.brightness = 1.0
  
@@ -534,7 +534,7 @@ async def fireAsync(duration):
         ledStrip.show()
         await sleepAndUpdateVolumeAsync(random.uniform(0.05,0.1))
         
-async def cycleGuyAsync(cycles, speed, pos_up, pos_down): 
+async def cycleGuyAsync(speed, pos_up, pos_down): 
     global guy_last_pos
     while mixer.voice[0].playing:
         new_position = pos_up
@@ -551,8 +551,8 @@ async def cycleGuyAsync(cycles, speed, pos_up, pos_down):
             await asyncio.sleep(speed)
 
 async def runExplosion ():
-    cycle_guy = asyncio.create_task(cycleGuyAsync(10,0.01,20,0))
-    cycle_lights = asyncio.create_task(fireAsync(10))
+    cycle_guy = asyncio.create_task(cycleGuyAsync(0.01,config["guy_up_position"]+20,config["guy_up_position"]))
+    cycle_lights = asyncio.create_task(fireAsync())
     await asyncio.gather(cycle_guy, cycle_lights)
     while mixer.voice[0].playing:
         shortCircuitDialog()
@@ -562,14 +562,14 @@ async def runExplosion ():
     
 def animate_outhouse():
     print("sitting down")
-    moveGuyToPositionGently(170,0.05)
+    moveGuyToPositionGently(config["guy_down_position"]-10,0.05)
     ledStrip[0]=((255, 147, 41))
     ledStrip.show()
     ledStrip[0]=((255, 147, 41))
     ledStrip.show()
-    moveDoorToPositionGently(20, .05)
-    moveGuyToPositionGently(180,0.05)
-    moveDoorToPositionGently(120, .05)
+    moveDoorToPositionGently(config["door_open_position"], .05)
+    moveGuyToPositionGently(config["guy_down_position"],0.05)
+    moveDoorToPositionGently(config["door_closed_position"], .05)
     ledStrip[0]=((0, 0, 0))
     ledStrip.show()
     play_audio_0("/sd/occ_statements/roses_light_a_match.wav")
@@ -596,11 +596,11 @@ def animate_outhouse():
     print("reset")
     ledStrip.fill((0,0,0))
     ledStrip.show()
-    moveDoorServo(120)
-    moveGuyToPositionGently(170,0.001)
+    moveDoorServo(config["door_closed_position"])
+    moveGuyToPositionGently(config["guy_down_position"]-10,0.001)
     time.sleep(.2)
-    moveRoofToPositionGently(70, .001)
-    moveRoofToPositionGently(45, .05)
+    moveRoofToPositionGently(config["roof_closed_position"]+30, .001)
+    moveRoofToPositionGently(config["roof_closed_position"], .05)
     time.sleep(2)
         
 def bounds(my_color, lower, upper):
@@ -677,8 +677,10 @@ class BaseState(State):
 
     def enter(self, machine):
         # set servos to starting position
-        # moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
-        # moveGuyToPositionGently(config["tree_up_pos"], 0.01)
+        moveGuyToPositionGently(200, 0.01)
+        moveDoorToPositionGently(config["door_closed_position"], 0.01)
+        moveRoofToPositionGently(config["roof_closed_position"], 0.01)
+        
         play_audio_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         State.enter(self, machine)
@@ -700,7 +702,8 @@ class BaseState(State):
             animate_outhouse()
         elif switch_state == "right":
             machine.go_to_state('main_menu')
-class MoveRoofDoorGuy(State):
+
+class MoveRoofDoor(State):
 
     def __init__(self):
         self.menuIndex = 0
@@ -708,11 +711,11 @@ class MoveRoofDoorGuy(State):
 
     @property
     def name(self):
-        return 'move_guy_roof_door'
+        return 'move_roof_door'
 
     def enter(self, machine):
-        files.log_item('Move feller and tree menu')
-        play_audio_0("/sd/mvc/move_guy_roof_door_menu.wav")
+        files.log_item('Move roof and door menu')
+        play_audio_0("/sd/mvc/move_roof_door.wav")
         left_right_mouse_button()
         State.enter(self, machine)
 
@@ -723,30 +726,26 @@ class MoveRoofDoorGuy(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/mvc/" + move_guy_roof_door[self.menuIndex] + ".wav")
+            play_audio_0("/sd/mvc/" + move_roof_door[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
-            if self.menuIndex > len(move_guy_roof_door)-1:
+            if self.menuIndex > len(move_roof_door)-1:
                 self.menuIndex = 0
         if right_switch.fell:
-            selected_menu_item = move_guy_roof_door[self.selectedMenuIndex]
-            if selected_menu_item == "move_feller_to_rest_position":
-                print("here")
-                #moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
-            elif selected_menu_item == "move_feller_to_chop_position":
-                print("here")
-                #moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
-            elif selected_menu_item == "move_tree_to_upright_position":
-                print("here")
-                #moveGuyToPositionGently(config["tree_up_pos"], 0.01)
-            elif selected_menu_item == "move_tree_to_fallen_position":
-                print("here")
-                #moveGuyToPositionGently(config["tree_down_pos"], 0.01)
+            selected_menu_item = move_roof_door[self.selectedMenuIndex]
+            if selected_menu_item == "move_door_open_position":
+                moveDoorToPositionGently(config["door_open_position"], 0.01)
+            elif selected_menu_item == "move_door_closed_position":
+                moveDoorToPositionGently(config["door_closed_position"], 0.01)
+            elif selected_menu_item == "move_roof_open_position":
+                moveGuyToPositionGently(config["roof_open_position"], 0.01)
+            elif selected_menu_item == "move_roof_closed_position":
+                moveGuyToPositionGently(config["roof_closed_position"], 0.01)
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
                      
-class AdjustRoofDoorGuy(State):
+class AdjustRoofDoor(State):
 
     def __init__(self):
         self.menuIndex = 0
@@ -754,11 +753,11 @@ class AdjustRoofDoorGuy(State):
 
     @property
     def name(self):
-        return 'adjust_guy_roof_door'
+        return 'adjust_roof_door'
 
     def enter(self, machine):
-        files.log_item('Adjust feller and tree menu')
-        play_audio_0("/sd/mvc/adjust_guy_roof_door_menu.wav")
+        files.log_item('Adjust roof door menu')
+        play_audio_0("/sd/mvc/adjust_roof_door.wav")
         left_right_mouse_button()
         State.enter(self, machine)
 
@@ -769,32 +768,32 @@ class AdjustRoofDoorGuy(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/mvc/" + adjust_guy_roof_door[self.menuIndex] + ".wav")
+            play_audio_0("/sd/mvc/" + adjust_roof_door[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
-            if self.menuIndex > len(adjust_guy_roof_door)-1:
+            if self.menuIndex > len(adjust_roof_door)-1:
                 self.menuIndex = 0
         if right_switch.fell:
-                selected_menu_item = adjust_guy_roof_door[self.selectedMenuIndex]
-                if selected_menu_item == "move_feller_to_rest_position":
-                    #moveDoorToPositionGently(config["feller_rest_pos"], 0.01)
-                    fellerCalAnnouncement()
-                    calibratePosition(guy_servo, "feller_rest_pos")
+                selected_menu_item = adjust_roof_door[self.selectedMenuIndex]
+                if selected_menu_item == "move_door_open_position":
+                    moveDoorToPositionGently(config["adjust_door_open_position"], 0.01)
+                    doorCalAnnouncement()
+                    calibratePosition(guy_servo, "door_open_position")
                     machine.go_to_state('base_state')
-                elif selected_menu_item == "move_feller_to_chop_position":
-                    #moveDoorToPositionGently(config["feller_chop_pos"], 0.01)
-                    fellerCalAnnouncement()
-                    calibratePosition(guy_servo, "feller_chop_pos")
+                elif selected_menu_item == "adjust_door_closed_position":
+                    moveDoorToPositionGently(config["door_closed_position"], 0.01)
+                    doorCalAnnouncement()
+                    calibratePosition(guy_servo, "door_closed_position")
                     machine.go_to_state('base_state')
-                elif selected_menu_item == "move_tree_to_upright_position":
-                    #moveRoofToPositionGently(config["tree_up_pos"], 0.01)
-                    treeCalAnnouncement()
-                    calibratePosition(door_servo, "tree_up_pos")
+                elif selected_menu_item == "adjust_roof_open_position":
+                    moveRoofToPositionGently(config["roof_open_position"], 0.01)
+                    roofCalAnnouncement()
+                    calibratePosition(door_servo, "roof_open_position")
                     machine.go_to_state('base_state')
-                elif selected_menu_item == "move_tree_to_fallen_position":
-                    #moveRoofToPositionGently(config["tree_down_pos"], 0.01)
-                    treeCalAnnouncement()
-                    calibratePosition(door_servo, "tree_down_pos")
+                elif selected_menu_item == "adjust_roof_closed_position":
+                    moveRoofToPositionGently(config["roof_closed_position"], 0.01)
+                    roofCalAnnouncement()
+                    calibratePosition(door_servo, "roof_closed_position")
                     machine.go_to_state('base_state')
                 else:
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
@@ -984,10 +983,10 @@ class MainMenu(State):
             selected_menu_item = main_menu[self.selectedMenuIndex]
             if selected_menu_item == "choose_sounds":
                 machine.go_to_state('choose_sounds')
-            elif selected_menu_item == "adjust_guy_roof_door":
-                machine.go_to_state('adjust_guy_roof_door')
-            elif selected_menu_item == "move_guy_roof_door":
-                machine.go_to_state('move_guy_roof_door')
+            elif selected_menu_item == "adjust_roof_door":
+                machine.go_to_state('adjust_roof_door')
+            elif selected_menu_item == "move_roof_door":
+                machine.go_to_state('move_roof_door')
             elif selected_menu_item == "set_dialog_options":
                 machine.go_to_state('set_dialog_options')
             elif selected_menu_item == "web_options":
@@ -1026,8 +1025,8 @@ state_machine = StateMachine()
 state_machine.add_state(BaseState())
 state_machine.add_state(MainMenu())
 state_machine.add_state(ChooseSounds())
-state_machine.add_state(AdjustRoofDoorGuy())
-state_machine.add_state(MoveRoofDoorGuy())
+state_machine.add_state(AdjustRoofDoor())
+state_machine.add_state(MoveRoofDoor())
 state_machine.add_state(WebOptions())
 state_machine.add_state(VolumeSettings())
 
