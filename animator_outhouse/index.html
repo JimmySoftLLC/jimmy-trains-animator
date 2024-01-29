@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Animator - Outhouse</title>
+  <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/mui.min.css" />
+  <script src="/mui.min.js"></script>
+</head>
+
+<body>
+  <div class="mui-container">
+    <h1>Animator - Feller</h1>
+    <p style="padding-top:0.5rem;">
+      Use this web app to control and calibrate your animator - outhouse
+      product. Have fun animating.
+    </p>
+    <ul class="mui-tabs__bar">
+      <li class="mui--is-active">
+        <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
+      </li>
+      <li>
+        <a data-mui-toggle="tab" data-mui-controls="adjustments">Adjustments</a>
+      </li>
+      <li>
+        <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
+      </li>
+    </ul>
+    <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="random" data-url="/animation" type="button">
+        Random
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse disabled" data-value="explosions" data-url="/animation"
+        type="button">
+        Explosions
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="humor" data-url="/animation"
+        type="button">
+        Humor
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="objectionable" data-url="/animation"
+        type="button">
+        Objectionable
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="thoughts on the toilet" data-url="/animation"
+        type="button">
+        thoughts on the toilet
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="waiting crowd"
+        data-url="/animation" type="button">
+        waiting crowd
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="home life" data-url="/animation"
+        type="button">
+        home life
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="cont_mode_on" data-url="/animation"
+        type="button">
+        Continuous Mode On
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="cont_mode_off" data-url="/animation"
+        type="button">
+        Continuous Mode Off
+      </button>
+    </div>
+    <div class="mui-tabs__pane" id="adjustments" style="padding-top:0.5rem;">
+      <p">Use the buttons below to adjust the roof and door. Press the position you want to calibrate
+        and then adjust. When finished press Save.</p>
+        <h2>Roof - Positions and adjustments</h2>
+        <div>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_open_pos" data-url="/feller"
+            type="button">Open</button>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_closed_pos" data-url="/feller"
+            type="button">Closed</button>
+        </div>
+        <div>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_open_more" data-url="/feller"
+            type="button">Open more</button>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_close_more"
+            data-url="/feller" type="button">Close more</button>
+        </div>
+        <div>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_cal_saved" data-url="/feller"
+            type="button">Save Roof Adjustment</button>
+        </div>
+
+        <h2>Door - Positions and adjustments</h2>
+        <div>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="door_open_pos" data-url="/tree"
+            type="button">Open</button>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="door_closed_pos" data-url="/tree"
+            type="button">Closed</button>
+        </div>
+        <div>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="door_open_more" data-url="/tree"
+            type="button">Up</button>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="door_close_more" data-url="/tree"
+            type="button">Down</button>
+        </div>
+        <div>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="door_cal_saved" data-url="/tree"
+            type="button">Save Door Adjustment</button>
+        </div>
+    </div>
+    <div class="mui-tabs__pane" id="settings" style="padding-top:0.5rem;">
+      <h2>Volume:</h2>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="volume_pot_on" data-url="/utilities"
+        type="button">
+        Volume Pot On
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="volume_pot_off" data-url="/utilities"
+        type="button">
+        Volume Pot Off
+      </button>
+      <div class="mui-textfield">
+        <input class="input" id="volume" type="number" disabled>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume10">
+          Volume 10
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume20">
+          Volume 20
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume30">
+          Volume 30
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume40">
+          Volume 40
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume50">
+          Volume 50
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume60">
+          Volume 60
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume70">
+          Volume 70
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume80">
+          Volume 80
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume90">
+          Volume 90
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="volume100">
+          Volume 100
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="lower1">
+          Lower Volume by 1
+        </button>
+        <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+          data-action="raise1">
+          Raise Volume by 1
+        </button>
+      </div>
+      <p>
+        Valid volume levels are from 1 to 100
+      </p>
+
+      <h2>Animator web page name:</h2>
+
+      <div class="mui-textfield">
+        <input class="input" animator-outhouse" id="webSiteName" type="text" placeholder="Enter website name">
+        <button id="submitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-host-name">
+          Change
+        </button>
+      </div>
+
+      <p>
+        Use alphanumerics and dashes only. All names are automatically
+        appended with .local. So your website url will be something like
+        "website-name.local"
+      </p>
+
+      <h2>Utilities:</h2>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="speaker_test" data-url="/utilities"
+        type="button">
+        Speaker Test
+      </button>
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="reset_to_defaults" data-url="/utilities"
+        type="button">
+        Reset to defaults
+      </button>
+    </div>
+  </div>
+</body>
+
+<script>
+  var submitButton = document.getElementById('submitButton');
+  var volumeSubmitButton = document.getElementById('volumeSubmitButton');
+
+  // Get all buttons with the 'animator-outhouse' class
+  var buttons = document.querySelectorAll('.animator-outhouse');
+
+  submitButton.addEventListener('click', function () {
+    var webSiteName = document.getElementById('webSiteName');
+    var url = this.getAttribute('data-url');
+
+    var data = {
+      text: webSiteName.value,
+    };
+
+    submitButton.setAttribute('disabled', 'true')
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        webSiteName.value = data; // Set the value of the input field with the received data
+        submitButton.removeAttribute('disabled')
+      })
+      .catch(function (error) {
+        console.log(error);
+        submitButton.removeAttribute('disabled')
+      });
+  });
+
+  // Get all buttons with the 'animator-volume-update' class
+  // Add click event listener to each button
+  var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
+  volumeUpdateButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var url = this.getAttribute('data-url');
+      var action = this.getAttribute('data-action');
+      data = {
+        action: action
+      }
+
+      button.setAttribute('disabled', 'true')
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+        .then(function (response) {
+          return response.text(); // assuming the response is plain text
+        })
+        .then(function (data) {
+          volume.value = data; // Set the value of the input field with the received data
+          button.removeAttribute('disabled')
+        })
+        .catch(function (error) {
+          console.log(error);
+          button.removeAttribute('disabled')
+        });
+    });
+  });
+
+  // Load initial data
+  document.addEventListener('DOMContentLoaded', function () {
+    // get website url
+    fetch('/get-host-name', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        webSiteName.value = data; // Set the value of the input field with the received data
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+
+    // get volume
+    fetch('/get-volume', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        volume.value = data; // Set the value of the input field with the received data
+      })
+      .catch(function (error) {
+        console.log(error);
+      });
+  });
+
+  // Restrict input to letters, numbers, and hyphens only
+  webSiteName.addEventListener('input', function () {
+    var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
+    this.value = validatedValue;
+  });
+
+  // Add click event listener to each button
+  buttons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var animation = this.getAttribute('data-value');
+      var url = this.getAttribute('data-url');
+      var redirectUrl = this.getAttribute('data-redirect');
+      if (!redirectUrl) button.setAttribute('disabled', 'true');
+
+      // Create an object with the data to be sent in the request
+      var data = {
+        animation: animation,
+      };
+
+      // Make a POST request using fetch
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+        .then(function (response) {
+          // Handle the response from the server
+          if (redirectUrl) {
+            window.location.href = redirectUrl;
+          } else {
+            button.removeAttribute('disabled');
+          }
+        })
+        .catch(function (error) {
+          button.removeAttribute('disabled');
+          alert('Try Again');
+        });
+    });
+  });
+</script>
+
+</html>

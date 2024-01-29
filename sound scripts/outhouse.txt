@@ -26,6 +26,13 @@ Adjust roof or door menu.
 Now we can adjust the door position. Press the left button to open more and the right button to close more.
 Now we can adjust the roof position. Press the left button to open more and the right button to close more.
 
+explosions.
+humour.
+objectionable.
+thoughts on the toilet.
+waiting crowd.
+home life.
+
 Waiting persons
 Oh! I have to go so bad! Hurry up!
 
