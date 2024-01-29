@@ -145,9 +145,6 @@ config = files.read_json_file("/sd/config_outhouse.json")
 
 serve_webpage = config["serve_webpage"]
 
-#config_dialog_selection_menu = files.read_json_file("/sd/mvc/dialog_selection_menu.json")
-dialog_selection_menu = [] #config_dialog_selection_menu["dialog_selection_menu"]
-
 config_move_roof_door = files.read_json_file("/sd/mvc/move_roof_door.json")
 move_roof_door = config_move_roof_door["move_roof_door"]
 
@@ -165,6 +162,9 @@ outhouse_sound_options = config_choose_sounds["choose_sounds"]
 
 volume_settings_options = files.read_json_file("/sd/mvc/volume_settings.json")
 volume_settings = volume_settings_options["volume_settings"]
+
+config_install_menu = files.read_json_file("/sd/mvc/install_menu.json")
+install_figure_menu = config_install_menu["install_menu"]
 
 continuous_run = False
 
@@ -265,10 +265,6 @@ def left_right_mouse_button():
 
 def option_selected_announcement():
     play_audio_0("/sd/mvc/option_selected.wav")
-
-def selectDialogOptionsAnnouncement():
-    play_audio_0("/sd/mvc/dialog_selection_menu.wav")
-    left_right_mouse_button()
 
 def doorCalAnnouncement():
     play_audio_0("/sd/mvc/adjust_the_door_position_instruct.wav")
@@ -580,7 +576,9 @@ def animate_outhouse():
     time.sleep(.5)
     
     print("explosion")
-    wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/sounds_birds_dogs_short_version.wav", "rb"))
+    current_option_selected = config["option_selected"]
+    print("Sound file: " + current_option_selected)
+    wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/" + current_option_selected + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     time.sleep(.1)
     moveRoofServo(130)
@@ -950,6 +948,94 @@ class ChooseSounds(State):
             files.write_json_file("/sd/config_outhouse.json",config)
             option_selected_announcement()
             machine.go_to_state('base_state')
+            
+class ChooseSounds(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'choose_sounds'
+
+    def enter(self, machine):
+        files.log_item('Choose sounds menu')
+        play_audio_0("/sd/mvc/sound_selection_menu.wav")
+        left_right_mouse_button()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            if mixer.voice[0].playing:
+                mixer.voice[0].stop()
+                while mixer.voice[0].playing:
+                    pass
+            else:
+                play_audio_0("/sd/mvc/option_" + outhouse_sound_options[self.menuIndex] + ".wav")
+                self.selectedMenuIndex = self.menuIndex
+                self.menuIndex +=1
+                if self.menuIndex > len(outhouse_sound_options)-1:
+                    self.menuIndex = 0
+        if right_switch.fell:
+            config["option_selected"] = outhouse_sound_options[self.selectedMenuIndex]
+            files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
+            files.write_json_file("/sd/config_outhouse.json",config)
+            option_selected_announcement()
+            machine.go_to_state('base_state')
+            
+class InstallFigure(State):
+
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
+
+    @property
+    def name(self):
+        return 'install_figure'
+
+    def enter(self, machine):
+        files.log_item('Choose sounds menu')
+        play_audio_0("/sd/mvc/install_figure_menu.wav")
+        left_right_mouse_button()
+        State.enter(self, machine)
+
+    def exit(self, machine):
+        State.exit(self, machine)
+
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            play_audio_0("/sd/mvc/" + install_figure_menu[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(main_menu)-1:
+                self.menuIndex = 0
+        if right_switch.fell:
+            selected_menu_item = install_figure_menu[self.selectedMenuIndex]
+            if selected_menu_item == "man":
+                print("man")
+            elif selected_menu_item == "woman":
+                print("woman")
+            elif selected_menu_item == "bear":
+                print("bear")
+            elif selected_menu_item == "dog":
+                print("dog")
+            elif selected_menu_item == "santa":
+                print("santa")
+            elif selected_menu_item == "alien":
+                print("alien")
+            elif selected_menu_item == "witch":
+                print("witch")
+            else:
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
 
 class MainMenu(State):
 
@@ -993,6 +1079,8 @@ class MainMenu(State):
                 machine.go_to_state('web_options')
             elif selected_menu_item == "volume_settings":
                 machine.go_to_state('volume_settings')
+            elif selected_menu_item == "install_figure":
+                machine.go_to_state('install_figure')    
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
@@ -1029,6 +1117,7 @@ state_machine.add_state(AdjustRoofDoor())
 state_machine.add_state(MoveRoofDoor())
 state_machine.add_state(WebOptions())
 state_machine.add_state(VolumeSettings())
+state_machine.add_state(InstallFigure())
 
 audio_enable.value = True
 
@@ -1057,3 +1146,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
+
