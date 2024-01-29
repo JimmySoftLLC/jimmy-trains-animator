@@ -10,6 +10,21 @@ Open door.
 Close door.
 To save the changes press and hold the right button until you here all changes complete.
 
+Move door to open position.
+Move door to closed position.
+Move roof to open position.
+Move roof to closed position.
+
+Adjust door open position.
+Adjust door closed position.
+Adjust roof open position.
+Adjust roof closed position.
+
+Move roof or door menu.
+Adjust roof or door menu.
+
+Now we can adjust the door position. Press the left button to open more and the right button to close more.
+Now we can adjust the roof position. Press the left button to open more and the right button to close more.
 
 Waiting persons
 Oh! I have to go so bad! Hurry up!
@@ -28,3 +43,4 @@ Oh my butt is on fire! Can someone save me?
 
 Jokes
 Someone sprayed air freshener in the outhouse, now it smells like shitrus.
+

@@ -271,11 +271,11 @@ def selectDialogOptionsAnnouncement():
     left_right_mouse_button()
 
 def doorCalAnnouncement():
-    play_audio_0("/sd/mvc/now_we_can_adjust_the_feller_position.wav")
+    play_audio_0("/sd/mvc/adjust_the_door_position_instruct.wav")
     play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
 def roofCalAnnouncement():
-    play_audio_0("/sd/mvc/now_we_can_adjust_the_tree_position.wav")
+    play_audio_0("/sd/mvc/adjust_the_roof_position_instruct.wav")
     play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
 def selectWebOptionsAnnouncement():
@@ -457,13 +457,13 @@ def write_calibrations_to_config_file():
     files.write_json_file("/sd/config_outhouse.json",config)
 
 def calibratePosition(servo, movement_type):  
-    if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
-        min_servo_pos = guy_min
-        max_servo_pos = guy_max
+    if movement_type == "door_close_position" or movement_type == "door_open_position" :
+        min_servo_pos = 0
+        max_servo_pos = 180
         sign = 1
     else:
-        min_servo_pos = roof_min
-        max_servo_pos = roof_max
+        min_servo_pos = 0
+        max_servo_pos = 180
         sign = -1
     calibrations_complete = False
     while not calibrations_complete:
@@ -487,12 +487,12 @@ def calibratePosition(servo, movement_type):
                     button_check = False           
             if not calibrations_complete:
                 calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
-    if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
-        global feller_last_pos
-        feller_last_pos = config[movement_type]
+    if movement_type == "door_close_position" or movement_type == "door_open_position" :
+        global door_last_pos
+        door_last_pos = config[movement_type]
     else:
-        global tree_last_pos
-        tree_last_pos = config[movement_type]
+        global roof_last_pos
+        roof_last_pos = config[movement_type]
 
 ################################################################################
 # async methods
@@ -714,8 +714,8 @@ class MoveRoofDoor(State):
         return 'move_roof_door'
 
     def enter(self, machine):
-        files.log_item('Move roof and door menu')
-        play_audio_0("/sd/mvc/move_roof_door.wav")
+        files.log_item('Move roof or door menu')
+        play_audio_0("/sd/mvc/move_roof_or_door_menu.wav")
         left_right_mouse_button()
         State.enter(self, machine)
 
@@ -738,9 +738,9 @@ class MoveRoofDoor(State):
             elif selected_menu_item == "move_door_closed_position":
                 moveDoorToPositionGently(config["door_closed_position"], 0.01)
             elif selected_menu_item == "move_roof_open_position":
-                moveGuyToPositionGently(config["roof_open_position"], 0.01)
+                moveRoofToPositionGently(config["roof_open_position"], 0.01)
             elif selected_menu_item == "move_roof_closed_position":
-                moveGuyToPositionGently(config["roof_closed_position"], 0.01)
+                moveRoofToPositionGently(config["roof_closed_position"], 0.01)
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
@@ -756,8 +756,8 @@ class AdjustRoofDoor(State):
         return 'adjust_roof_door'
 
     def enter(self, machine):
-        files.log_item('Adjust roof door menu')
-        play_audio_0("/sd/mvc/adjust_roof_door.wav")
+        files.log_item('Adjust roof or door menu')
+        play_audio_0("/sd/mvc/adjust_roof_or_door_menu.wav")
         left_right_mouse_button()
         State.enter(self, machine)
 
@@ -775,25 +775,25 @@ class AdjustRoofDoor(State):
                 self.menuIndex = 0
         if right_switch.fell:
                 selected_menu_item = adjust_roof_door[self.selectedMenuIndex]
-                if selected_menu_item == "move_door_open_position":
-                    moveDoorToPositionGently(config["adjust_door_open_position"], 0.01)
+                if selected_menu_item == "adjust_door_open_position":
+                    moveDoorToPositionGently(config["door_open_position"], 0.01)
                     doorCalAnnouncement()
-                    calibratePosition(guy_servo, "door_open_position")
+                    calibratePosition(door_servo, "door_open_position")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "adjust_door_closed_position":
                     moveDoorToPositionGently(config["door_closed_position"], 0.01)
                     doorCalAnnouncement()
-                    calibratePosition(guy_servo, "door_closed_position")
+                    calibratePosition(door_servo, "door_closed_position")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "adjust_roof_open_position":
                     moveRoofToPositionGently(config["roof_open_position"], 0.01)
                     roofCalAnnouncement()
-                    calibratePosition(door_servo, "roof_open_position")
+                    calibratePosition(roof_servo, "roof_open_position")
                     machine.go_to_state('base_state')
                 elif selected_menu_item == "adjust_roof_closed_position":
                     moveRoofToPositionGently(config["roof_closed_position"], 0.01)
                     roofCalAnnouncement()
-                    calibratePosition(door_servo, "roof_closed_position")
+                    calibratePosition(roof_servo, "roof_closed_position")
                     machine.go_to_state('base_state')
                 else:
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
