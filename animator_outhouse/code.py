@@ -572,7 +572,13 @@ def animate_outhouse():
     moveDoorToPositionGently(120, .05)
     ledStrip[0]=((0, 0, 0))
     ledStrip.show()
-
+    play_audio_0("/sd/occ_statements/roses_light_a_match.wav")
+    play_audio_0("/sd/match_fails/fail1.wav")
+    play_audio_0("/sd/match_fails/fail2.wav")
+    play_audio_0("/sd/match_fails/fail1.wav")
+    play_audio_0("/sd/match_lit/lit3.wav")
+    time.sleep(.5)
+    
     print("explosion")
     wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/sounds_birds_dogs_short_version.wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
