@@ -373,6 +373,135 @@ if (serve_webpage):
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
             return FileResponse(request, "mui.min.js", "/")
+        
+        @server.route("/animation", [POST])
+        def buttonpress(request: Request):
+            global config
+            global continuous_run
+            raw_text = request.raw_request.decode("utf8")
+            if "random" in raw_text: 
+                config["option_selected"] = "random"
+                animate_outhouse()
+            elif "explosions" in raw_text: 
+                config["option_selected"] = "explosions"
+                animate_outhouse()
+            elif "humor" in raw_text:
+                config["option_selected"] = "humor"
+                animate_outhouse()
+            elif "objectionable" in raw_text: 
+                config["option_selected"] = "objectionable"
+                animate_outhouse()
+            elif "thoughts on the toilet" in raw_text: 
+                config["option_selected"] = "thoughts on the toilet"
+                animate_outhouse()
+            elif "waiting crowd" in raw_text: 
+                config["option_selected"] = "waiting crowd"
+                animate_outhouse()
+            elif "home life" in raw_text: 
+                config["option_selected"] = "home life"
+                animate_outhouse()
+            elif "cont_mode_on" in raw_text: 
+                continuous_run = True
+                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
+            elif "cont_mode_off" in raw_text: 
+                continuous_run = False
+                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
+            return Response(request, "Animation " + config["option_selected"] + " started.")
+        
+        @server.route("/utilities", [POST])
+        def buttonpress(request: Request):
+            global config
+            raw_text = request.raw_request.decode("utf8")
+            if "speaker_test" in raw_text: 
+                play_audio_0("/sd/mvc/left_speaker_right_speaker.wav")
+            elif "volume_pot_off" in raw_text:
+                config["volume_pot"] = False
+                files.write_json_file("/sd/config_feller.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+            elif "volume_pot_on" in raw_text:
+                config["volume_pot"] = True
+                files.write_json_file("/sd/config_feller.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+            elif "reset_to_defaults" in raw_text:
+                reset_to_defaults()      
+                files.write_json_file("/sd/config_feller.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                state_machine.go_to_state('base_state')
+
+            return Response(request, "Dialog option cal saved.")
+
+        @server.route("/update-host-name", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["HOST_NAME"] = data_object["text"]  
+            files.write_json_file("/sd/config_feller.json",config)       
+            mdns_server.hostname = config["HOST_NAME"]
+            speak_webpage()
+            return Response(request, config["HOST_NAME"])
+        
+        @server.route("/get-host-name", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["HOST_NAME"])
+        
+        @server.route("/update-volume", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            changeVolume(data_object["action"])
+            return Response(request, config["volume"])
+        
+        @server.route("/get-volume", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["volume"])
+        
+        @server.route("/roof", [POST])        
+        def buttonpress(request: Request):
+            global config
+            global roof_movement_type
+            raw_text = request.raw_request.decode("utf8")    
+            if "roof_open_pos" in raw_text:
+                roof_movement_type="roof_open_position"
+                moveRoofToPositionGently(config[roof_movement_type], 0.01)
+                return Response(request, "Moved to roof open position.")
+            elif "roof_closed_pos" in raw_text:
+                roof_movement_type="roof_closed_position"
+                moveRoofToPositionGently(config[roof_movement_type], 0.01)
+                return Response(request, "Moved to roof closed position.")
+            elif "roof_open_more" in raw_text:
+                calibrationLeftButtonPressed(roof_servo, roof_movement_type, -1, 0, 180)
+                return Response(request, "Moved door open more.")
+            elif "roof_close_more" in raw_text:
+                calibrationRightButtonPressed(roof_servo, roof_movement_type, -1, 0, 180)
+                return Response(request, "Moved door close more.")
+            elif "roof_cal_saved" in raw_text:
+                write_calibrations_to_config_file()
+                state_machine.go_to_state('base_state')
+                return Response(request, "Tree " + roof_movement_type + " cal saved.")
+            
+        @server.route("/door", [POST])        
+        def buttonpress(request: Request):
+            global config
+            global door_movement_type
+            raw_text = request.raw_request.decode("utf8")    
+            if "door_open_pos" in raw_text:
+                door_movement_type="door_open_position"
+                moveDoorToPositionGently(config[door_movement_type], 0.01)
+                return Response(request, "Moved to door open position.")
+            elif "door_closed_pos" in raw_text:
+                door_movement_type="door_closed_position"
+                moveDoorToPositionGently(config[door_movement_type], 0.01)
+                return Response(request, "Moved to door closed position.")
+            elif "door_open_more" in raw_text:
+                calibrationLeftButtonPressed(door_servo, door_movement_type, 1, 0, 180)
+                return Response(request, "Moved door open more.")
+            elif "door_close_more" in raw_text:
+                calibrationRightButtonPressed(door_servo, door_movement_type, 1, 0, 180)
+                return Response(request, "Moved door close more.")
+            elif "door_cal_saved" in raw_text:
+                write_calibrations_to_config_file()
+                state_machine.go_to_state('base_state')
+                return Response(request, "Tree " + door_movement_type + " cal saved.")  
             
     except Exception as e:
         serve_webpage = False
@@ -1119,6 +1248,7 @@ state_machine.add_state(WebOptions())
 state_machine.add_state(VolumeSettings())
 state_machine.add_state(InstallFigure())
 
+sleepAndUpdateVolume(.1)
 audio_enable.value = True
 
 if (serve_webpage):
@@ -1146,5 +1276,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
-
