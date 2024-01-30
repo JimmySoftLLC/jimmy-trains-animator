@@ -225,8 +225,26 @@ def play_audio_0(file_name):
     mixer.voice[0].play( wave0, loop=False )
     while mixer.voice[0].playing:
         shortCircuitDialog()
-    print("done playing") 
-
+    print("done playing")
+    
+def play_audio_0_lit(file_name, match_time):
+    if mixer.voice[0].playing:
+        mixer.voice[0].stop()
+        while mixer.voice[0].playing:
+            sleepAndUpdateVolume(0.02)
+    print("playing"+ file_name) 
+    wave0 = audiocore.WaveFile(open(file_name, "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    time.sleep(match_time)
+    ledStrip[0]=((255, 0, 0))
+    ledStrip.show()
+    time.sleep(.1)
+    ledStrip[0]=((0, 0, 0))
+    ledStrip.show()
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+    print("done playing")    
+    
 def shortCircuitDialog():
     sleepAndUpdateVolume(0.02)
     left_switch.update()
@@ -653,9 +671,7 @@ async def fireAsync():
         for i in range (0, num_pixels):
             flicker = random.randint(0,175)
             r1 = bounds(r-flicker, 0, 255)
-            g1 = bounds(g-flicker, 0, 50)
-            b1 = bounds(b-flicker, 0, 50)
-            ledStrip[i] = (r1,g1,b1)
+            ledStrip[i] = (r1,0,0)
         ledStrip.show()
         await sleepAndUpdateVolumeAsync(random.uniform(0.05,0.1))
         
@@ -698,11 +714,10 @@ def animate_outhouse():
     ledStrip[0]=((0, 0, 0))
     ledStrip.show()
     play_audio_0("/sd/occ_statements/roses_light_a_match.wav")
-    play_audio_0("/sd/match_fails/fail1.wav")
-    play_audio_0("/sd/match_fails/fail2.wav")
-    play_audio_0("/sd/match_fails/fail1.wav")
-    play_audio_0("/sd/match_lit/lit3.wav")
-    time.sleep(.5)
+    play_audio_0_lit("/sd/match_fails/fail1.wav",.1)
+    play_audio_0_lit("/sd/match_fails/fail1.wav",.1)
+    play_audio_0_lit("/sd/match_fails/fail1.wav",.1)
+    play_audio_0_lit("/sd/match_lit/lit3.wav",.4)
     
     print("explosion")
     current_option_selected = config["option_selected"]
@@ -1276,3 +1291,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
