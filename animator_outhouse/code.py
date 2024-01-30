@@ -227,24 +227,6 @@ def play_audio_0(file_name):
         shortCircuitDialog()
     print("done playing")
     
-def play_audio_0_lit(file_name, match_time):
-    if mixer.voice[0].playing:
-        mixer.voice[0].stop()
-        while mixer.voice[0].playing:
-            sleepAndUpdateVolume(0.02)
-    print("playing"+ file_name) 
-    wave0 = audiocore.WaveFile(open(file_name, "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    time.sleep(match_time)
-    ledStrip[0]=((255, 0, 0))
-    ledStrip.show()
-    time.sleep(.1)
-    ledStrip[0]=((0, 0, 0))
-    ledStrip.show()
-    while mixer.voice[0].playing:
-        shortCircuitDialog()
-    print("done playing")    
-    
 def shortCircuitDialog():
     sleepAndUpdateVolume(0.02)
     left_switch.update()
@@ -700,6 +682,24 @@ async def runExplosion ():
 
 ################################################################################
 # Animations
+        
+def play_audio_0_lit(file_name, match_start, match_time):
+    if mixer.voice[0].playing:
+        mixer.voice[0].stop()
+        while mixer.voice[0].playing:
+            sleepAndUpdateVolume(0.02)
+    print("playing"+ file_name) 
+    wave0 = audiocore.WaveFile(open(file_name, "rb"))
+    mixer.voice[0].play( wave0, loop=False )
+    time.sleep(match_start)
+    ledStrip[0]=((255, 0, 0))
+    ledStrip.show()
+    time.sleep(match_time)
+    ledStrip[0]=((0, 0, 0))
+    ledStrip.show()
+    while mixer.voice[0].playing:
+        shortCircuitDialog()
+    print("done playing")    
     
 def animate_outhouse():
     print("sitting down")
@@ -714,10 +714,10 @@ def animate_outhouse():
     ledStrip[0]=((0, 0, 0))
     ledStrip.show()
     play_audio_0("/sd/occ_statements/roses_light_a_match.wav")
-    play_audio_0_lit("/sd/match_fails/fail1.wav",.1)
-    play_audio_0_lit("/sd/match_fails/fail1.wav",.1)
-    play_audio_0_lit("/sd/match_fails/fail1.wav",.1)
-    play_audio_0_lit("/sd/match_lit/lit3.wav",.4)
+    play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
+    play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
+    play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
+    play_audio_0_lit("/sd/match_lit/lit3.wav",.4,.4)
     
     print("explosion")
     current_option_selected = config["option_selected"]
