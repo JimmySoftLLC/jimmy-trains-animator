@@ -253,8 +253,8 @@ def speak_this_string(str_to_speak, addLocal):
 def speak_webpage():
     play_audio_0("/sd/mvc/animator_available_on_network.wav")
     play_audio_0("/sd/mvc/to_access_type.wav")
-    if config["HOST_NAME"]== "animator-lightning":
-        play_audio_0("/sd/mvc/animator_dash_lightning.wav")
+    if config["HOST_NAME"]== "animator-outhouse":
+        play_audio_0("/sd/mvc/animator_dash_outhouse.wav")
         play_audio_0("/sd/mvc/dot.wav")
         play_audio_0("/sd/mvc/local.wav")
     else:
@@ -723,7 +723,7 @@ def animate_outhouse():
     moveDoorToPositionGently(config["door_closed_position"], .05)
     ledStripFront[0]=((0, 0, 0))
     ledStripBack.show()
-    play_audio_0("/sd/occ_statements/roses_light_a_match.wav")
+    play_audio_0("/sd/occ_statements/man_2_roses_light_a_match.wav")
     play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
     play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
     play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
@@ -1076,46 +1076,6 @@ class WebOptions(State):
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')   
                                      
-class ChooseSounds(State):
-
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
-
-    @property
-    def name(self):
-        return 'choose_sounds'
-
-    def enter(self, machine):
-        files.log_item('Choose sounds menu')
-        play_audio_0("/sd/mvc/sound_selection_menu.wav")
-        left_right_mouse_button()
-        State.enter(self, machine)
-
-    def exit(self, machine):
-        State.exit(self, machine)
-
-    def update(self, machine):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                play_audio_0("/sd/mvc/option_" + outhouse_sound_options[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex +=1
-                if self.menuIndex > len(outhouse_sound_options)-1:
-                    self.menuIndex = 0
-        if right_switch.fell:
-            config["option_selected"] = outhouse_sound_options[self.selectedMenuIndex]
-            files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
-            files.write_json_file("/sd/config_outhouse.json",config)
-            option_selected_announcement()
-            machine.go_to_state('base_state')
-            
 class ChooseSounds(State):
 
     def __init__(self):
