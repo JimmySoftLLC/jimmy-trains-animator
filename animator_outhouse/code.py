@@ -27,9 +27,10 @@ import neopixel
 import random
 import asyncio
 
-num_pixels = 7
+num_pixels = 6
 
-ledStrip = neopixel.NeoPixel(board.GP13, num_pixels)
+ledStripBack = neopixel.NeoPixel(board.GP15, num_pixels)
+ledStripFront = neopixel.NeoPixel(board.GP16, 1)
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -501,7 +502,19 @@ if (serve_webpage):
             elif "door_cal_saved" in raw_text:
                 write_calibrations_to_config_file()
                 state_machine.go_to_state('base_state')
-                return Response(request, "Tree " + door_movement_type + " cal saved.")  
+                return Response(request, "Tree " + door_movement_type + " cal saved.")
+            
+        @server.route("/install-figure", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            if data_object["action"] == "man":
+                install_figure(False)
+            if data_object["action"] == "right":
+                moveGuyToPositionGently(config["guy_down_position"], 0.01)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                state_machine.go_to_state('base_state')
+            return Response(request, config["volume"])
             
     except Exception as e:
         serve_webpage = False
@@ -641,8 +654,7 @@ async def sleepAndUpdateVolumeAsync(seconds):
         await asyncio.sleep(seconds)
 
 async def fireAsync():
-    startTime = time.monotonic()
-    ledStrip.brightness = 1.0
+    ledStripBack.brightness = 1.0
  
     r = random.randint(150,255)
     g = 0 #random.randint(0,255)
@@ -653,8 +665,8 @@ async def fireAsync():
         for i in range (0, num_pixels):
             flicker = random.randint(0,175)
             r1 = bounds(r-flicker, 0, 255)
-            ledStrip[i] = (r1,0,0)
-        ledStrip.show()
+            ledStripBack[i] = (r1,0,0)
+        ledStripBack.show()
         await sleepAndUpdateVolumeAsync(random.uniform(0.05,0.1))
         
 async def cycleGuyAsync(speed, pos_up, pos_down): 
@@ -692,11 +704,11 @@ def play_audio_0_lit(file_name, match_start, match_time):
     wave0 = audiocore.WaveFile(open(file_name, "rb"))
     mixer.voice[0].play( wave0, loop=False )
     time.sleep(match_start)
-    ledStrip[0]=((255, 0, 0))
-    ledStrip.show()
+    ledStripBack[0]=((255, 0, 0))
+    ledStripBack.show()
     time.sleep(match_time)
-    ledStrip[0]=((0, 0, 0))
-    ledStrip.show()
+    ledStripBack[0]=((0, 0, 0))
+    ledStripBack.show()
     while mixer.voice[0].playing:
         shortCircuitDialog()
     print("done playing")    
@@ -704,15 +716,13 @@ def play_audio_0_lit(file_name, match_start, match_time):
 def animate_outhouse():
     print("sitting down")
     moveGuyToPositionGently(config["guy_down_position"]-10,0.05)
-    ledStrip[0]=((255, 147, 41))
-    ledStrip.show()
-    ledStrip[0]=((255, 147, 41))
-    ledStrip.show()
+    ledStripFront[0]=((255, 147, 41))
+    ledStripFront.show()
     moveDoorToPositionGently(config["door_open_position"], .05)
     moveGuyToPositionGently(config["guy_down_position"],0.05)
     moveDoorToPositionGently(config["door_closed_position"], .05)
-    ledStrip[0]=((0, 0, 0))
-    ledStrip.show()
+    ledStripFront[0]=((0, 0, 0))
+    ledStripBack.show()
     play_audio_0("/sd/occ_statements/roses_light_a_match.wav")
     play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
     play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
@@ -729,15 +739,15 @@ def animate_outhouse():
     moveGuyServo(0)
     moveDoorServo(20)
     delay_time = .05
-    for i in range(1, 6):
-        ledStrip[i]=(255, 0, 0)
-        ledStrip.show()
+    for i in range(0, 6):
+        ledStripBack[i]=(255, 0, 0)
+        ledStripBack.show()
         time.sleep(delay_time)
     asyncio.run(runExplosion())
 
     print("reset")
-    ledStrip.fill((0,0,0))
-    ledStrip.show()
+    ledStripBack.fill((0,0,0))
+    ledStripBack.show()
     moveDoorServo(config["door_closed_position"])
     moveGuyToPositionGently(config["guy_down_position"]-10,0.001)
     time.sleep(.2)
@@ -750,6 +760,19 @@ def bounds(my_color, lower, upper):
     if (my_color > upper): my_color = upper
     return my_color
 
+def install_figure(wait_for_button):
+    moveRoofToPositionGently(config["roof_open_position"], 0.01)
+    moveDoorToPositionGently(config["door_open_position"], 0.01)
+    moveGuyToPositionGently(config["guy_up_position"], 0.01)
+    play_audio_0("/sd/mvc/install_figure_instructions.wav")
+    while wait_for_button:
+        left_switch.update()
+        right_switch.update()
+        if right_switch.fell:
+            moveGuyToPositionGently(config["guy_down_position"], 0.01)
+            play_audio_0("/sd/mvc/all_changes_complete.wav")
+            break
+        
 ################################################################################
 # State Machine
 class StateMachine(object):
@@ -819,7 +842,7 @@ class BaseState(State):
 
     def enter(self, machine):
         # set servos to starting position
-        moveGuyToPositionGently(200, 0.01)
+        moveGuyToPositionGently(config["guy_down_position"], 0.01)
         moveDoorToPositionGently(config["door_closed_position"], 0.01)
         moveRoofToPositionGently(config["roof_closed_position"], 0.01)
         
@@ -1163,7 +1186,7 @@ class InstallFigure(State):
                 self.menuIndex = 0
         if right_switch.fell:
             selected_menu_item = install_figure_menu[self.selectedMenuIndex]
-            if selected_menu_item == "man":
+            if selected_menu_item == "man": 
                 print("man")
             elif selected_menu_item == "woman":
                 print("woman")
@@ -1180,6 +1203,8 @@ class InstallFigure(State):
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
+            install_figure()
+            machine.go_to_state('base_state')
 
 class MainMenu(State):
 
@@ -1291,4 +1316,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
