@@ -102,6 +102,15 @@
           <button class="mui-btn mui-btn--primary animator-outhouse" data-value="door_cal_saved" data-url="/door"
             type="button">Save Door Adjustment</button>
         </div>
+        <h2>Install figure</h2>
+        <button class="mui-btn mui-btn--primary animator-install-figure" type="button" data-url="/install-figure"
+          data-action="man">
+          Man
+        </button>
+        <button class="mui-btn mui-btn--primary animator-install-figure" type="button" data-url="/install-figure"
+          data-action="right">
+          Right Button
+        </button>
     </div>
     <div class="mui-tabs__pane" id="settings" style="padding-top:0.5rem;">
       <h2>Volume:</h2>
@@ -265,6 +274,40 @@
         });
     });
   });
+  
+  // Get all buttons with the 'animator-install-figure' class
+  // Add click event listener to each button
+  var installFigureButtons = document.querySelectorAll('.animator-install-figure');
+  installFigureButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      var url = this.getAttribute('data-url');
+      var action = this.getAttribute('data-action');
+      data = {
+        action: action
+      }
+
+      button.setAttribute('disabled', 'true')
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+        .then(function (response) {
+          return response.text(); // assuming the response is plain text
+        })
+        .then(function (data) {
+          volume.value = data; // Set the value of the input field with the received data
+          button.removeAttribute('disabled')
+        })
+        .catch(function (error) {
+          console.log(error);
+          button.removeAttribute('disabled')
+        });
+    });
+  });
+  
 
   // Load initial data
   document.addEventListener('DOMContentLoaded', function () {
