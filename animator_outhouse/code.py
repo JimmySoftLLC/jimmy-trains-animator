@@ -417,15 +417,15 @@ if (serve_webpage):
                 play_audio_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif "volume_pot_off" in raw_text:
                 config["volume_pot"] = False
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/config_outhouse.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 config["volume_pot"] = True
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/config_outhouse.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 reset_to_defaults()      
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/config_outhouse.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 state_machine.go_to_state('base_state')
 
@@ -436,7 +436,7 @@ if (serve_webpage):
             global config
             data_object = request.json()
             config["HOST_NAME"] = data_object["text"]  
-            files.write_json_file("/sd/config_feller.json",config)       
+            files.write_json_file("/sd/config_outhouse.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
             speak_webpage()
             return Response(request, config["HOST_NAME"])
@@ -659,7 +659,7 @@ async def fireAsync():
     r = random.randint(150,255)
     g = 0 #random.randint(0,255)
     b = 0 #random.randint(0,255)
-
+    
     #Flicker, based on our initial RGB values
     while mixer.voice[0].playing:
         for i in range (0, num_pixels):
@@ -668,6 +668,29 @@ async def fireAsync():
             ledStripBack[i] = (r1,0,0)
         ledStripBack.show()
         await sleepAndUpdateVolumeAsync(random.uniform(0.05,0.1))
+    ledStripFront[0] = (0,0,0)
+    ledStripFront.show()
+        
+def fire():
+    ledStripBack.brightness = 1.0
+ 
+    r = random.randint(0,0)
+    g = random.randint(150,255)
+    b = random.randint(0,0)
+
+    #Flicker, based on our initial RGB values
+    while mixer.voice[0].playing:
+        for i in range (0, 3):
+            flicker = random.randint(0,175)
+            r1 = bounds(r-flicker, 0, 255)
+            g1 = bounds(g-flicker, 0, 255)
+            b1 = bounds(b-flicker, 0, 255)
+            ledStripBack[i] = (r1,g1,b1)
+            ledStripBack.show()
+            sleepAndUpdateVolume(random.uniform(0.05,0.1))
+        for i in range (0, 3):
+            ledStripBack[i] = (0,0,0)
+        ledStripBack.show()
         
 async def cycleGuyAsync(speed, pos_up, pos_down): 
     global guy_last_pos
@@ -711,23 +734,36 @@ def play_audio_0_lit(file_name, match_start, match_time):
     ledStripBack.show()
     while mixer.voice[0].playing:
         shortCircuitDialog()
-    print("done playing")    
-    
-def animate_outhouse():
+    print("done playing")
+
+def sitting_down():
     print("sitting down")
     moveGuyToPositionGently(config["guy_down_position"]-10,0.05)
     ledStripFront[0]=((255, 147, 41))
     ledStripFront.show()
     moveDoorToPositionGently(config["door_open_position"], .05)
-    moveGuyToPositionGently(config["guy_down_position"],0.05)
-    moveDoorToPositionGently(config["door_closed_position"], .05)
-    ledStripFront[0]=((0, 0, 0))
-    ledStripBack.show()
-    play_audio_0("/sd/occ_statements/man_2_roses_light_a_match.wav")
-    play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
-    play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
-    play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
-    play_audio_0_lit("/sd/match_lit/lit3.wav",.4,.4)
+    if config["figure"] == "alien":
+        wave0 = audiocore.WaveFile(open("/sd/occ_statements/alien_1_unusual_space_portal.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        fire()
+        wave0 = audiocore.WaveFile(open("/sd/occ_statements/alien_1_lets_get_seated.wav", "rb"))
+        mixer.voice[0].play( wave0, loop=False )
+        fire()
+        moveGuyToPositionGently(config["guy_down_position"],0.05)
+        moveDoorToPositionGently(config["door_closed_position"], .05)
+        play_audio_0("/sd/occ_statements/alien_1_communication.wav")
+    elif config["figure"] == "man":
+        moveGuyToPositionGently(config["guy_down_position"],0.05)
+        moveDoorToPositionGently(config["door_closed_position"], .05)
+        ledStripFront[0]=((0, 0, 0))
+        play_audio_0("/sd/occ_statements/man_2_roses_light_a_match.wav")
+        play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
+        play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
+        play_audio_0_lit("/sd/match_fails/fail1.wav",.1,.1)
+        play_audio_0_lit("/sd/match_lit/lit3.wav",.4,.4)
+    
+def animate_outhouse():
+    sitting_down()
     
     print("explosion")
     current_option_selected = config["option_selected"]
@@ -735,10 +771,12 @@ def animate_outhouse():
     wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/" + current_option_selected + ".wav", "rb"))
     mixer.voice[0].play( wave0, loop=False )
     time.sleep(.1)
-    moveRoofServo(130)
-    moveGuyServo(0)
-    moveDoorServo(20)
+    moveRoofServo(config["roof_open_position"])
+    moveGuyServo(config["guy_up_position"])
+    moveDoorServo(config["door_open_position"])
     delay_time = .05
+    ledStripFront[0] = (0,255,0)
+    ledStripFront.show()
     for i in range(0, 6):
         ledStripBack[i]=(255, 0, 0)
         ledStripBack.show()
@@ -751,7 +789,7 @@ def animate_outhouse():
     moveDoorServo(config["door_closed_position"])
     moveGuyToPositionGently(config["guy_down_position"]-10,0.001)
     time.sleep(.2)
-    moveRoofToPositionGently(config["roof_closed_position"]+30, .001)
+    moveRoofToPositionGently(config["roof_closed_position"]+20, .001)
     moveRoofToPositionGently(config["roof_closed_position"], .05)
     time.sleep(2)
         
@@ -770,6 +808,7 @@ def install_figure(wait_for_button):
         right_switch.update()
         if right_switch.fell:
             moveGuyToPositionGently(config["guy_down_position"], 0.01)
+            files.write_json_file("/sd/config_outhouse.json",config)
             play_audio_0("/sd/mvc/all_changes_complete.wav")
             break
         
@@ -1136,6 +1175,7 @@ class InstallFigure(State):
         State.exit(self, machine)
 
     def update(self, machine):
+        global config
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
@@ -1146,24 +1186,8 @@ class InstallFigure(State):
                 self.menuIndex = 0
         if right_switch.fell:
             selected_menu_item = install_figure_menu[self.selectedMenuIndex]
-            if selected_menu_item == "man": 
-                print("man")
-            elif selected_menu_item == "woman":
-                print("woman")
-            elif selected_menu_item == "bear":
-                print("bear")
-            elif selected_menu_item == "dog":
-                print("dog")
-            elif selected_menu_item == "santa":
-                print("santa")
-            elif selected_menu_item == "alien":
-                print("alien")
-            elif selected_menu_item == "witch":
-                print("witch")
-            else:
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to_state('base_state')
-            install_figure()
+            config["figure"] = selected_menu_item
+            install_figure(True)
             machine.go_to_state('base_state')
 
 class MainMenu(State):
