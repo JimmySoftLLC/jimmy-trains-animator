@@ -377,7 +377,7 @@ if (serve_webpage):
                 reset_default_colors()    
                 files.write_json_file("/sd/config_lightning.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-                my_string = files.json_stringify({"bars":config["bars"],"bolts":config["bolts"]})
+                my_string = files.json_stringify({"bars":config["bars"],"bolts":config["bolts"],"variation":config["variation"]})
                 state_machine.go_to_state('base_state')
                 return Response(request, my_string)
             return Response(request, "Utility: " + command_sent)
@@ -528,6 +528,11 @@ if (serve_webpage):
         def buttonpress(request: Request):
             my_string = files.json_stringify(config["bolts"])
             return Response(request, my_string)
+        
+        @server.route("/get-color-variation", [POST])
+        def buttonpress(request: Request):
+            my_string = files.json_stringify(config["variation"])
+            return Response(request, my_string)
 
         @server.route("/set-lights", [POST])
         def buttonpress(request: Request):
@@ -548,7 +553,11 @@ if (serve_webpage):
                 for i in bolt_indexes:
                     ledStrip[i] = (data_object["r"], data_object["g"], data_object["b"])
                     ledStrip.show()
-            print (config)
+            elif data_object["item"] == "variationBolt":
+                print(data_object)
+                config["variation"] = { "r1": data_object["r"], "g1": data_object["g"], "b1": data_object["b"], "r2": config["variation"]["r2"], "g2": config["variation"]["g2"], "b2": config["variation"]["b2"] }
+            elif data_object["item"] == "variationBar":
+                config["variation"] = { "r1": config["variation"]["r1"], "g1": config["variation"]["g1"], "b1": config["variation"]["b1"],"r2": data_object["r"], "g2": data_object["g"], "b2": data_object["b"] }
             files.write_json_file("/sd/config_lightning.json",config)
             return Response(request, command_sent)
            
@@ -581,11 +590,13 @@ def sleepAndUpdateVolume(seconds):
 def reset_lights_to_defaults():
     global config
     config["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+    
 
 def reset_default_colors():
     global config
     config["bars"] = { "r": 60, "g": 18, "b": 5 }
     config["bolts"] = { "r": 60, "g": 18, "b": 5 }
+    config["variation"] = { "r1": 20, "g1": 8, "b1": 5 , "r2": 20, "g2": 8, "b2": 5 }
 
 def reset_to_defaults():
     global config
@@ -1113,16 +1124,22 @@ def lightning():
             bolt_indexes = []
         else:
             nood_indexes = []
-
-    # set bolt base color    
-    bolt_r = random.randint(color_it("bolts","r",-20), color_it("bolts","r",+20)) # r 40 80 60 +- 20
-    bolt_g = random.randint(color_it("bolts","g",-8), color_it("bolts","g",+8)) # g 10 26 18 +- 8
-    bolt_b = random.randint(color_it("bolts","b",-5), color_it("bolts","b",+5)) # b 0 10 5 +- 5
+            
+    # set bolt base color
+    r = int(config["variation"]["r1"])
+    g = int(config["variation"]["r1"])
+    b = int(config["variation"]["r1"])
+    bolt_r = random.randint(color_it("bolts","r",-r), color_it("bolts","r",r)) # r 40 80 60 +- 20
+    bolt_g = random.randint(color_it("bolts","g",-g), color_it("bolts","g",g)) # g 10 26 18 +- 8
+    bolt_b = random.randint(color_it("bolts","b",-b), color_it("bolts","b",b)) # b 0 10 5 +- 5
     
     # set bar base color
-    bar_r = random.randint(color_it("bars","r",-20), color_it("bars","r",+20)) # r 40 80 60 +- 20
-    bar_g = random.randint(color_it("bars","g",-8), color_it("bars","g",+8)) # g 10 26 18 +- 8
-    bar_b = random.randint(color_it("bars","b",-5), color_it("bars","b",+5)) # b 0 10 5 +- 5
+    r = int(config["variation"]["r2"])
+    g = int(config["variation"]["r2"])
+    b = int(config["variation"]["r2"])
+    bar_r = random.randint(color_it("bolts","r",-r), color_it("bolts","r",r)) # r 40 80 60 +- 20
+    bar_g = random.randint(color_it("bolts","g",-g), color_it("bolts","g",g)) # g 10 26 18 +- 8
+    bar_b = random.randint(color_it("bolts","b",-b), color_it("bolts","b",b)) # b 0 10 5 +- 5
 
     # number of flashes
     flashCount = random.randint (5, 10)
@@ -1130,11 +1147,19 @@ def lightning():
     # flash white brightness range - 0-255
     ledStrip.brightness = random.randint(255, 255) / 255 #150 255, changed to full brightness
     
-    bolt_inc = random.randint(3, 3)
-    
-    l1=1
-    l2=1
-    l3=1
+    if len(nood_indexes) > 0:
+        if nood_indexes[1] == 1:
+            l1=1
+            l2=0
+            l3=0
+        if nood_indexes[1] == 2:
+            l1=random.randint(0, 1)
+            l2=random.randint(0, 1)
+            l3=0
+        if nood_indexes[1] == 3:
+            l1=random.randint(0, 1)
+            l2=random.randint(0, 1)
+            l3=random.randint(0, 1)  
     
     for i in range(0,flashCount):
         color = random.randint(0, 100) # 0 50
