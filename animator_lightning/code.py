@@ -47,7 +47,7 @@ def get_voltage(pin, wait_for):
         pin_value = pin_value / 10
     return (pin.value) / 65536
 
-audio_enable = digitalio.DigitalInOut(board.GP22) #22 animator tiny, #28 standard size
+audio_enable = digitalio.DigitalInOut(board.GP28) #22 animator tiny, #28 standard size
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
 
@@ -261,7 +261,7 @@ def updateLightString():
     print ("Number of pixels total: ", num_pixels)
     ledStrip.deinit()
     garbage_collect("Deinit ledStrip")
-    ledStrip = neopixel.NeoPixel(board.GP13, num_pixels) #GP10 is M1, GP13 is M4, GP15 is M6
+    ledStrip = neopixel.NeoPixel(board.GP10, num_pixels) #GP10 is M1, GP13 is M4, GP15 is M6
     ledStrip.auto_write = False
     ledStrip.brightness = 1.0
     runLightTest()
@@ -736,48 +736,48 @@ def animation(file_name):
     global config, last_option
     print("Filename: " + file_name)
     current_option_selected = file_name
-    #try:
-    if file_name == "random built in":
-        highest_index = len(sound_options) - 1
-        current_option_selected = sound_options[random.randint(0, highest_index)]
-        while last_option == current_option_selected and len(sound_options)>1:
+    try:
+        if file_name == "random built in":
+            highest_index = len(sound_options) - 1
             current_option_selected = sound_options[random.randint(0, highest_index)]
-        last_option = current_option_selected
-        print("Random sound option: " + file_name)
-        print("Sound file: " + current_option_selected)
-    elif file_name == "random my":
-        highest_index = len(my_sound_options) - 1
-        current_option_selected = my_sound_options[random.randint(0, highest_index)]
-        while last_option == current_option_selected and len(my_sound_options)>1:
+            while last_option == current_option_selected and len(sound_options)>1:
+                current_option_selected = sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
+            print("Sound file: " + current_option_selected)
+        elif file_name == "random my":
+            highest_index = len(my_sound_options) - 1
             current_option_selected = my_sound_options[random.randint(0, highest_index)]
-        last_option = current_option_selected
-        print("Random sound option: " + file_name)
-        print("Sound file: " + current_option_selected)
-    elif file_name == "random all":
-        highest_index = len(all_sound_options) - 1
-        current_option_selected = all_sound_options[random.randint(0, highest_index)]
-        while last_option == current_option_selected and len(all_sound_options)>1:
+            while last_option == current_option_selected and len(my_sound_options)>1:
+                current_option_selected = my_sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
+            print("Sound file: " + current_option_selected)
+        elif file_name == "random all":
+            highest_index = len(all_sound_options) - 1
             current_option_selected = all_sound_options[random.randint(0, highest_index)]
-        last_option = current_option_selected
-        print("Random sound option: " + file_name)
-        print("Sound file: " + current_option_selected)
-    if time_stamp_mode:
-        animation_timestamp(current_option_selected)
-    else:
-        if "customers_owned_music_" in current_option_selected:
-            animation_light_show(current_option_selected)
-        elif current_option_selected == "alien lightshow":
-            animation_light_show(current_option_selected)
-        elif current_option_selected == "inspiring cinematic ambient lightshow":
-            animation_light_show(current_option_selected)
-        elif current_option_selected == "fireworks":
-            animation_light_show(current_option_selected)
+            while last_option == current_option_selected and len(all_sound_options)>1:
+                current_option_selected = all_sound_options[random.randint(0, highest_index)]
+            last_option = current_option_selected
+            print("Random sound option: " + file_name)
+            print("Sound file: " + current_option_selected)
+        if time_stamp_mode:
+            animation_timestamp(current_option_selected)
         else:
-            thunder_and_lightning(current_option_selected)
-    #except:
-    #    no_user_soundtrack_found()
-    #    config["option_selected"] = "random built in"
-    #    return
+            if "customers_owned_music_" in current_option_selected:
+                animation_light_show(current_option_selected)
+            elif current_option_selected == "alien lightshow":
+                animation_light_show(current_option_selected)
+            elif current_option_selected == "inspiring cinematic ambient lightshow":
+                animation_light_show(current_option_selected)
+            elif current_option_selected == "fireworks":
+                animation_light_show(current_option_selected)
+            else:
+                thunder_and_lightning(current_option_selected)
+    except:
+       no_user_soundtrack_found()
+       config["option_selected"] = "random built in"
+       return
     garbage_collect("Animation complete.")
          
 def animation_light_show(file_name):
@@ -1154,8 +1154,8 @@ def lightning():
             l3=0
         if nood_indexes[1] == 2:
             l1=random.randint(0, 1)
-            l2=random.randint(0, 1)
-            l3=0
+            l2=0
+            l3=random.randint(0, 1)
         if nood_indexes[1] == 3:
             l1=random.randint(0, 1)
             l2=random.randint(0, 1)
@@ -1370,56 +1370,56 @@ class ChooseSounds(State):
                     pass
             machine.go_to_state('base_state')
             
-class AddSoundsAnimate(State):
+# class AddSoundsAnimate(State):
 
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+#     def __init__(self):
+#         self.menuIndex = 0
+#         self.selectedMenuIndex = 0
 
-    @property
-    def name(self):
-        return 'add_sounds_animate'
+#     @property
+#     def name(self):
+#         return 'add_sounds_animate'
 
-    def enter(self, machine):
-        files.log_item('Add sounds animate')
-        play_audio_0("/sd/mvc/add_sounds_animate.wav")
-        left_right_mouse_button()
-        State.enter(self, machine)
+#     def enter(self, machine):
+#         files.log_item('Add sounds animate')
+#         play_audio_0("/sd/mvc/add_sounds_animate.wav")
+#         left_right_mouse_button()
+#         State.enter(self, machine)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+#     def exit(self, machine):
+#         State.exit(self, machine)
 
-    def update(self, machine):
-        global time_stamp_mode
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            play_audio_0("/sd/mvc/" + add_sounds_animate[self.menuIndex] + ".wav")
-            self.selectedMenuIndex = self.menuIndex
-            self.menuIndex +=1
-            if self.menuIndex > len(add_sounds_animate)-1:
-                self.menuIndex = 0
-        if right_switch.fell:
-            if mixer.voice[0].playing:
-                mixer.voice[0].stop()
-                while mixer.voice[0].playing:
-                    pass
-            else:
-                selected_menu_item = add_sounds_animate[self.selectedMenuIndex]
-                if selected_menu_item == "hear_instructions":
-                    play_audio_0("/sd/mvc/create_sound_track_files.wav")
-                elif selected_menu_item == "timestamp_mode_on":
-                    time_stamp_mode = True
-                    play_audio_0("/sd/mvc/timestamp_mode_on.wav")
-                    play_audio_0("/sd/mvc/timestamp_instructions.wav")
-                    machine.go_to_state('base_state') 
-                elif selected_menu_item == "timestamp_mode_off":
-                    time_stamp_mode = False
-                    play_audio_0("/sd/mvc/timestamp_mode_off.wav")
+#     def update(self, machine):
+#         global time_stamp_mode
+#         left_switch.update()
+#         right_switch.update()
+#         if left_switch.fell:
+#             play_audio_0("/sd/mvc/" + add_sounds_animate[self.menuIndex] + ".wav")
+#             self.selectedMenuIndex = self.menuIndex
+#             self.menuIndex +=1
+#             if self.menuIndex > len(add_sounds_animate)-1:
+#                 self.menuIndex = 0
+#         if right_switch.fell:
+#             if mixer.voice[0].playing:
+#                 mixer.voice[0].stop()
+#                 while mixer.voice[0].playing:
+#                     pass
+#             else:
+#                 selected_menu_item = add_sounds_animate[self.selectedMenuIndex]
+#                 if selected_menu_item == "hear_instructions":
+#                     play_audio_0("/sd/mvc/create_sound_track_files.wav")
+#                 elif selected_menu_item == "timestamp_mode_on":
+#                     time_stamp_mode = True
+#                     play_audio_0("/sd/mvc/timestamp_mode_on.wav")
+#                     play_audio_0("/sd/mvc/timestamp_instructions.wav")
+#                     machine.go_to_state('base_state') 
+#                 elif selected_menu_item == "timestamp_mode_off":
+#                     time_stamp_mode = False
+#                     play_audio_0("/sd/mvc/timestamp_mode_off.wav")
                             
-                else:
-                    play_audio_0("/sd/mvc/all_changes_complete.wav")
-                    machine.go_to_state('base_state')
+#                 else:
+#                     play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                     machine.go_to_state('base_state')
 
 class VolumeSettings(State):
 
@@ -1528,84 +1528,84 @@ class WebOptions(State):
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')   
 
-# class LightStringSetupMenu(State):
+class LightStringSetupMenu(State):
 
-#     def __init__(self):
-#         self.menuIndex = 0
-#         self.selectedMenuIndex = 0
+    def __init__(self):
+        self.menuIndex = 0
+        self.selectedMenuIndex = 0
 
-#     @property
-#     def name(self):
-#         return 'light_string_setup_menu'
+    @property
+    def name(self):
+        return 'light_string_setup_menu'
 
-#     def enter(self, machine):
-#         files.log_item('Light string menu')
-#         play_audio_0("/sd/mvc/light_string_setup_menu.wav")
-#         left_right_mouse_button()
-#         State.enter(self, machine)
+    def enter(self, machine):
+        files.log_item('Light string menu')
+        play_audio_0("/sd/mvc/light_string_setup_menu.wav")
+        left_right_mouse_button()
+        State.enter(self, machine)
 
-#     def exit(self, machine):
-#         State.exit(self, machine)
+    def exit(self, machine):
+        State.exit(self, machine)
 
-#     def update(self, machine):
-#         left_switch.update()
-#         right_switch.update()
-#         if left_switch.fell:
-#             play_audio_0("/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
-#             self.selectedMenuIndex = self.menuIndex
-#             self.menuIndex +=1
-#             if self.menuIndex > len(light_string_menu)-1:
-#                 self.menuIndex = 0
-#         if right_switch.fell:
-#             selected_menu_item = light_string_menu[self.selectedMenuIndex]
-#             if selected_menu_item == "hear_light_setup_instructions":
-#                 play_audio_0("/sd/mvc/string_instructions.wav")  
-#             elif selected_menu_item == "reset_lights_defaults":
-#                 reset_lights_to_defaults()
-#                 play_audio_0("/sd/mvc/lights_reset_to.wav")
-#                 speak_light_string(False)
-#             elif selected_menu_item == "hear_current_light_settings": 
-#                 speak_light_string(True)
-#             elif selected_menu_item == "clear_light_string":
-#                 config["light_string"] = ""
-#                 play_audio_0("/sd/mvc/lights_cleared.wav") 
-#             elif selected_menu_item == "add_lights":
-#                 play_audio_0("/sd/mvc/add_light_menu.wav")
-#                 adding = True
-#                 while adding:
-#                     switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
-#                     if switch_state == "left":
-#                         self.menuIndex -=1
-#                         if self.menuIndex < 0:
-#                             self.menuIndex = len(light_options)-1
-#                         self.selectedMenuIndex = self.menuIndex
-#                         play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
-#                     elif switch_state == "right":
-#                         self.menuIndex +=1
-#                         if self.menuIndex > len(light_options)-1:
-#                             self.menuIndex = 0
-#                         self.selectedMenuIndex = self.menuIndex
-#                         play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
-#                     elif switch_state == "right_held":
-#                         if config["light_string"] == "":
-#                             config["light_string"] = light_options[self.selectedMenuIndex]
-#                         else:
-#                             config["light_string"] = config["light_string"] + "," + light_options[self.selectedMenuIndex]
-#                         play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
-#                         play_audio_0("/sd/mvc/added.wav")    
-#                     elif switch_state == "left_held":
-#                         files.write_json_file("/sd/config_lightning.json",config)   
-#                         updateLightString()
-#                         play_audio_0("/sd/mvc/all_changes_complete.wav")
-#                         adding = False
-#                         machine.go_to_state('base_state')  
-#                     sleepAndUpdateVolume(0.1)
-#                     pass
-#             else:
-#                 files.write_json_file("/sd/config_lightning.json",config)
-#                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-#                 updateLightString()
-#                 machine.go_to_state('base_state') 
+    def update(self, machine):
+        left_switch.update()
+        right_switch.update()
+        if left_switch.fell:
+            play_audio_0("/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
+            self.selectedMenuIndex = self.menuIndex
+            self.menuIndex +=1
+            if self.menuIndex > len(light_string_menu)-1:
+                self.menuIndex = 0
+        if right_switch.fell:
+            selected_menu_item = light_string_menu[self.selectedMenuIndex]
+            if selected_menu_item == "hear_light_setup_instructions":
+                play_audio_0("/sd/mvc/string_instructions.wav")  
+            elif selected_menu_item == "reset_lights_defaults":
+                reset_lights_to_defaults()
+                play_audio_0("/sd/mvc/lights_reset_to.wav")
+                speak_light_string(False)
+            elif selected_menu_item == "hear_current_light_settings": 
+                speak_light_string(True)
+            elif selected_menu_item == "clear_light_string":
+                config["light_string"] = ""
+                play_audio_0("/sd/mvc/lights_cleared.wav") 
+            elif selected_menu_item == "add_lights":
+                play_audio_0("/sd/mvc/add_light_menu.wav")
+                adding = True
+                while adding:
+                    switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+                    if switch_state == "left":
+                        self.menuIndex -=1
+                        if self.menuIndex < 0:
+                            self.menuIndex = len(light_options)-1
+                        self.selectedMenuIndex = self.menuIndex
+                        play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
+                    elif switch_state == "right":
+                        self.menuIndex +=1
+                        if self.menuIndex > len(light_options)-1:
+                            self.menuIndex = 0
+                        self.selectedMenuIndex = self.menuIndex
+                        play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
+                    elif switch_state == "right_held":
+                        if config["light_string"] == "":
+                            config["light_string"] = light_options[self.selectedMenuIndex]
+                        else:
+                            config["light_string"] = config["light_string"] + "," + light_options[self.selectedMenuIndex]
+                        play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
+                        play_audio_0("/sd/mvc/added.wav")    
+                    elif switch_state == "left_held":
+                        files.write_json_file("/sd/config_lightning.json",config)   
+                        updateLightString()
+                        play_audio_0("/sd/mvc/all_changes_complete.wav")
+                        adding = False
+                        machine.go_to_state('base_state')  
+                    sleepAndUpdateVolume(0.1)
+                    pass
+            else:
+                files.write_json_file("/sd/config_lightning.json",config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                updateLightString()
+                machine.go_to_state('base_state') 
 
 ###############################################################################
 # Create the state machine
@@ -1614,10 +1614,10 @@ state_machine = StateMachine()
 state_machine.add_state(BaseState())
 state_machine.add_state(MainMenu())
 state_machine.add_state(ChooseSounds())
-state_machine.add_state(AddSoundsAnimate())
+#state_machine.add_state(AddSoundsAnimate())
 state_machine.add_state(VolumeSettings())
 state_machine.add_state(WebOptions())
-#state_machine.add_state(LightStringSetupMenu())
+state_machine.add_state(LightStringSetupMenu())
 
 audio_enable.value = True   
 
