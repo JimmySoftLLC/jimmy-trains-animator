@@ -60,4 +60,14 @@ Have you been good this year?  I haven't been and Mrs Clause has made me use the
 Have you been good this year?  Mrs Clause has made me use the outdoor John, she decided to have the one inside renovated.
 
 
-https://d1uzcg9xibmb7f.cloudfront.net/public/<files>
+https://d1uzcg9xibmb7f.cloudfront.net/public/pico feller rev 2.zip
+https://d1uzcg9xibmb7f.cloudfront.net/public/sd card feller rev 2.zip
+
+https://d1uzcg9xibmb7f.cloudfront.net/public/pico lightning rev 1.zip
+https://d1uzcg9xibmb7f.cloudfront.net/public/sd card lightning rev 1.zip
+
+https://d1uzcg9xibmb7f.cloudfront.net/public/sd card christmas in the park rev 0.zip
+
+https://d1uzcg9xibmb7f.cloudfront.net/public/code christmas in the park rev 0.zip
+
+https://d1uzcg9xibmb7f.cloudfront.net/public/adafruit-circuitpython-raspberry_pi_pico_w-en_US-8.1.0.uf2
