@@ -343,22 +343,6 @@ if (serve_webpage):
         
         garbage_collect("wifi server")
         
-        # jimmytrains animator URL
-        
-        test_url_fast = "http://192.168.1.200/get-volume"
-        test_url = "http://tablet.local/get-volume"   
-        try:
-            print("Fetching text from %s" % test_url)
-            response = requests.post(test_url)
-            print("-" * 40)
-            print("Text Response: ", response.text)
-            print("-" * 40)
-            response.close()
-        except Exception as e:
-            print("Error:\n", str(e))
-
-        garbage_collect("requests")
-        
         ################################################################################
         # Setup routes
 
@@ -508,10 +492,13 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             data_object = request.json()
-            if data_object["action"] == "man":
+            if data_object["action"] != "right":
+                config["figure"] = data_object["action"]
+                print (config["figure"])
                 install_figure(False)
             if data_object["action"] == "right":
                 moveGuyToPositionGently(config["guy_down_position"], 0.01)
+                files.write_json_file("/sd/config_outhouse.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 state_machine.go_to_state('base_state')
             return Response(request, config["volume"])
@@ -742,6 +729,7 @@ def sitting_down():
     ledStripFront[0]=((255, 147, 41))
     ledStripFront.show()
     moveDoorToPositionGently(config["door_open_position"], .05)
+    print (config["figure"])
     if config["figure"] == "alien":
         wave0 = audiocore.WaveFile(open("/sd/occ_statements/alien_1_unusual_space_portal.wav", "rb"))
         mixer.voice[0].play( wave0, loop=False )
