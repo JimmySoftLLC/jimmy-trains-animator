@@ -1,515 +1,561 @@
-Ba='right_held'
-BZ='Set Web Options'
-BY='left_held'
-BX='/sd/mvc/animations_are_now_active.wav'
-BW=' Dif: '
-BV=' Timestamp: '
-BU='Time elapsed: '
-BT='fireworks'
-BS='/sd/mvc/create_sound_track_files.wav'
-BR='/sd/mvc/option_selected.wav'
-BQ='/sd/mvc/local.wav'
-BP='/sd/mvc/dot.wav'
-BO='animator-lightning'
-BN='timestamp_mode_off'
-BM='/sd/mvc/timestamp_mode_on.wav'
-BL='timestamp_mode_on'
-BK='/sd/mvc/continuous_mode_deactivated.wav'
-BJ='/sd/mvc/continuous_mode_activated.wav'
-BI='wav/no_card.wav'
-BH=Exception
-Ay='web_options'
-Ax='light_string_setup_menu'
-Aw='choose_sounds'
-Av='right'
-Au='left'
-At='can_cancel'
-As='volume_pot_on'
-Ar='volume_pot_off'
-Aq='/sd/mvc/timestamp_mode_off.wav'
-Ap='/sd/mvc/timestamp_instructions.wav'
-Ao='Utility: '
-An='config wifi imports'
-Am='main_menu'
-Al='serve_webpage'
-Ak='random my'
-Aj='random built in'
-Ai='random all'
-AQ='/sd/customers_owned_music/'
-AP='text'
-AO='add_sounds_animate'
-AN='volume_settings'
-AM=enumerate
-AE='flashTime'
-AD='utf8'
-A8='action'
-A5='volume_pot'
-A4='/sd/lightning_sounds/'
-A3='customers_owned_music_'
-z='option_selected'
-y='.json'
-x=property
-t='HOST_NAME'
-r='/sd/mvc/'
-q='volume'
-p='rb'
-o=open
-l='b'
-k='g'
-j='r'
-i='bolts'
-h='bars'
+Bg='right_held'
+Bf='Set Web Options'
+Be='left_held'
+Bd='/sd/mvc/animations_are_now_active.wav'
+Bc=' Dif: '
+Bb=' Timestamp: '
+Ba='Time elapsed: '
+BZ='fireworks'
+BY='/sd/mvc/option_selected.wav'
+BX='/sd/mvc/local.wav'
+BW='/sd/mvc/dot.wav'
+BV='animator-lightning'
+BU='/sd/mvc/timestamp_mode_off.wav'
+BT='/sd/mvc/timestamp_instructions.wav'
+BS='/sd/mvc/continuous_mode_deactivated.wav'
+BR='/sd/mvc/continuous_mode_activated.wav'
+BQ='random my'
+BP='random all'
+BO='wav/no_card.wav'
+BN=Exception
+B3='web_options'
+B2='light_string_setup_menu'
+B1='choose_sounds'
+B0='right'
+A_='left'
+Az='can_cancel'
+Ay='volume_pot_on'
+Ax='volume_pot_off'
+Aw='Utility: '
+Av='config wifi imports'
+Au='add_sounds_animate'
+At='main_menu'
+As='serve_webpage'
+Ar='random built in'
+Aa='/sd/customers_owned_music/'
+AZ='b2'
+AY='g2'
+AX='b1'
+AW='g1'
+AV='text'
+AU='volume_settings'
+AM='flashTime'
+AL='utf8'
+AK=enumerate
+AE='action'
+AD='bars'
+AA='r2'
+A9='r1'
+A8='volume_pot'
+A7='/sd/lightning_sounds/'
+A6='customers_owned_music_'
+A5=property
+z='.json'
+v='option_selected'
+u='HOST_NAME'
+s='/sd/mvc/'
+r=int
+o='volume'
+n='rb'
+m=open
+k='base_state'
+j=str
 g=''
-f=str
-c=range
-Z='base_state'
-Y='/sd/mvc/all_changes_complete.wav'
+e='b'
+d='g'
+c='r'
+b='/sd/mvc/all_changes_complete.wav'
+a=range
+V='variation'
+U='bolts'
 T='light_string'
-S='/sd/config_lightning.json'
-R=print
-P='.wav'
-N=len
-H=True
+S='.wav'
+R='/sd/config_lightning.json'
+Q=print
+I=True
+H=len
 G=False
 import gc,files as D
-def V(collection_point):gc.collect();A=gc.mem_free();D.log_item('Point '+collection_point+' Available memory: {} bytes'.format(A))
-V('Imports gc, files')
-import time as J,audiocore as m,audiomixer as Bb,audiobusio as Bc,sdcardio as Az,storage as AF,busio,digitalio as u,board as a,neopixel as A_,random as F,rtc,microcontroller as AR
-from analogio import AnalogIn as Bd
-from adafruit_debouncer import Debouncer as B0
-def B1():AR.on_next_reset(AR.RunMode.NORMAL);AR.reset()
-V('imports')
-Be=Bd(a.A0)
-def Bf(pin,wait_for):
-	B=wait_for/10;A=0
-	for C in c(10):J.sleep(B);A+=1;A=A/10
-	return pin.value/65536
-A9=u.DigitalInOut(a.GP28)
-A9.direction=u.Direction.OUTPUT
-A9.value=G
-Bg=a.GP6
-Bh=a.GP7
-AS=u.DigitalInOut(Bg)
-AS.direction=u.Direction.INPUT
-AS.pull=u.Pull.UP
-I=B0(AS)
-AT=u.DigitalInOut(Bh)
-AT.direction=u.Direction.INPUT
-AT.pull=u.Pull.UP
-K=B0(AT)
-Bi=a.GP18
-Bj=a.GP19
-Bk=a.GP20
-Bl=Bc.I2SOut(bit_clock=Bi,word_select=Bj,data=Bk)
-A9.value=H
-Bm=a.GP2
-Bn=a.GP3
-Bo=a.GP4
-B2=a.GP5
-B3=busio.SPI(Bm,Bn,Bo)
-Bp=2
-E=Bb.Mixer(voice_count=Bp,sample_rate=22050,channel_count=2,bits_per_sample=16,samples_signed=H,buffer_size=4096)
-Bl.play(E)
-B4=.2
-E.voice[0].level=B4
-E.voice[1].level=B4
-try:AU=Az.SDCard(B3,B2);AV=AF.VfsFat(AU);AF.mount(AV,'/sd')
-except:
-	AA=m.WaveFile(o(BI,p));E.voice[0].play(AA,loop=G)
-	while E.voice[0].playing:0
-	B5=G
-	while not B5:
-		I.update()
-		if I.fell:
-			try:
-				AU=Az.SDCard(B3,B2);AV=AF.VfsFat(AU);AF.mount(AV,'/sd');B5=H;AA=m.WaveFile(o('/sd/mvc/micro_sd_card_success.wav',p));E.voice[0].play(AA,loop=G)
-				while E.voice[0].playing:0
-			except:
-				AA=m.WaveFile(o(BI,p));E.voice[0].play(AA,loop=G)
-				while E.voice[0].playing:0
-A9.value=G
-Bq=rtc.RTC()
-Bq.datetime=J.struct_time((2019,5,29,15,14,15,0,-1,-1))
-A=D.read_json_file(S)
-A0=D.return_directory(g,'/sd/lightning_sounds',P)
-Br=[Ai,Aj,Ak]
-A0.extend(Br)
-A6=D.return_directory(A3,'/sd/customers_owned_music',P)
-v=[]
-v.extend(A0)
-v.extend(A6)
-Bs=D.return_directory(g,'/sd/time_stamp_defaults',y)
-AG=A[Al]
-Bt=D.read_json_file('/sd/mvc/main_menu.json')
-AW=Bt[Am]
-Bu=D.read_json_file('/sd/mvc/web_menu.json')
-AX=Bu['web_menu']
-Bv=D.read_json_file('/sd/mvc/light_string_menu.json')
-AY=Bv['light_string_menu']
-Bw=D.read_json_file('/sd/mvc/light_options.json')
-A1=Bw['light_options']
-Bx=D.read_json_file('/sd/mvc/volume_settings.json')
-AZ=Bx[AN]
-By=D.read_json_file('/sd/mvc/add_sounds_animate.json')
-Aa=By[AO]
-V('sd card variables')
-s=G
-b=G
+def Y(collection_point):gc.collect();A=gc.mem_free();D.log_item('Point '+collection_point+' Available memory: {} bytes'.format(A))
+Y('Imports gc, files')
+import time as J,audiocore as l,audiomixer as Bh,audiobusio as Bi,sdcardio as B4,storage as AN,busio,digitalio as w,board as f,random as E,rtc,microcontroller as Ab
+from analogio import AnalogIn as Bj
+import neopixel as B5
 from rainbowio import colorwheel as B6
-d=[]
-w=[]
-AH=[]
-AI=[]
-O=0
-C=A_.NeoPixel(a.GP10,O)
-def Bz():
+from adafruit_debouncer import Debouncer as B7
+def B8():Ab.on_next_reset(Ab.RunMode.NORMAL);Ab.reset()
+Y('imports')
+Bk=Bj(f.A0)
+def Bl(pin,wait_for):
+	B=wait_for/10;A=0
+	for C in a(10):J.sleep(B);A+=1;A=A/10
+	return pin.value/65536
+AF=w.DigitalInOut(f.GP28)
+AF.direction=w.Direction.OUTPUT
+AF.value=G
+Bm=f.GP6
+Bn=f.GP7
+Ac=w.DigitalInOut(Bm)
+Ac.direction=w.Direction.INPUT
+Ac.pull=w.Pull.UP
+K=B7(Ac)
+Ad=w.DigitalInOut(Bn)
+Ad.direction=w.Direction.INPUT
+Ad.pull=w.Pull.UP
+N=B7(Ad)
+Bo=f.GP18
+Bp=f.GP19
+Bq=f.GP20
+Br=Bi.I2SOut(bit_clock=Bo,word_select=Bp,data=Bq)
+AF.value=I
+Bs=f.GP2
+Bt=f.GP3
+Bu=f.GP4
+B9=f.GP5
+BA=busio.SPI(Bs,Bt,Bu)
+Bv=1
+F=Bh.Mixer(voice_count=Bv,sample_rate=22050,channel_count=2,bits_per_sample=16,samples_signed=I,buffer_size=4096)
+Br.play(F)
+Bw=.2
+F.voice[0].level=Bw
+try:Ae=B4.SDCard(BA,B9);Af=AN.VfsFat(Ae);AN.mount(Af,'/sd')
+except:
+	AG=l.WaveFile(m(BO,n));F.voice[0].play(AG,loop=G)
+	while F.voice[0].playing:0
+	BB=G
+	while not BB:
+		K.update()
+		if K.fell:
+			try:
+				Ae=B4.SDCard(BA,B9);Af=AN.VfsFat(Ae);AN.mount(Af,'/sd');BB=I;AG=l.WaveFile(m('/sd/mvc/micro_sd_card_success.wav',n));F.voice[0].play(AG,loop=G)
+				while F.voice[0].playing:0
+			except:
+				AG=l.WaveFile(m(BO,n));F.voice[0].play(AG,loop=G)
+				while F.voice[0].playing:0
+AF.value=G
+Bx=rtc.RTC()
+Bx.datetime=J.struct_time((2019,5,29,15,14,15,0,-1,-1))
+A=D.read_json_file(R)
+A0=D.return_directory(g,'/sd/lightning_sounds',S)
+x=D.return_directory(A6,'/sd/customers_owned_music',S)
+AB=[]
+AB.extend(A0)
+AB.extend(x)
+A1=[]
+A1.extend(A0)
+By=[BP,Ar,BQ]
+A1.extend(By)
+A1.extend(x)
+Bz=D.return_directory(g,'/sd/time_stamp_defaults',z)
+AO=A[As]
+B_=D.read_json_file('/sd/mvc/main_menu.json')
+Ag=B_[At]
+C0=D.read_json_file('/sd/mvc/web_menu.json')
+Ah=C0['web_menu']
+C1=D.read_json_file('/sd/mvc/light_string_menu.json')
+Ai=C1['light_string_menu']
+C2=D.read_json_file('/sd/mvc/light_options.json')
+A2=C2['light_options']
+C3=D.read_json_file('/sd/mvc/volume_settings.json')
+Aj=C3[AU]
+C4=D.read_json_file('/sd/mvc/add_sounds_animate.json')
+CU=C4[Au]
+Y('sd card variables')
+t=G
+p=G
+h=[]
+y=[]
+AC=[]
+AP=[]
+AQ=[]
+M=0
+B=B5.NeoPixel(f.GP10,M)
+def C5():
 	B=[]
-	for C in d:
+	for C in h:
 		for A in C:D=A;break
-		for A in c(0,10):B.append(A+D)
+		for A in a(0,10):B.append(A+D)
 	return B
-def B_():
+def C6():
 	B=[]
-	for C in w:
+	for C in y:
 		for A in C:D=A;break
-		for A in c(0,4):B.append(A+D)
+		if H(C)==4:
+			for A in a(0,4):B.append(A+D)
+		if H(C)==1:
+			for A in a(0,1):B.append(A+D)
 	return B
-def C0():
-	global AH,AI;AH=Bz();AI=B_()
-	for B in d:
-		for A in B:C[A]=50,50,50
-		C.show();J.sleep(.3);C.fill((0,0,0));C.show()
-	for D in w:
-		for A in D:C[A]=50,50,50
-		C.show();J.sleep(.3);C.fill((0,0,0));C.show()
-def AB():
-	global d,w,O,C,O;d=[];w=[];O=0;F=A[T].split(',')
-	for H in F:
-		D=H.split('-')
-		if N(D)==2:
-			E,B=D;B=int(B)
-			if E=='bar':I=list(c(O,O+B));d.append(I);O+=B
-			elif E=='bolt':J=list(c(O,O+B));w.append(J);O+=B
-	R('Number of pixels total: ',O);C.deinit();V('Deinit ledStrip');C=A_.NeoPixel(a.GP10,O);C.auto_write=G;C.brightness=1.;C0()
-AB()
-V('Neopixels setup')
-if AG:
-	import socketpool as C1,mdns;V(An);import wifi as A2;V(An);from adafruit_httpserver import Server,Request,FileResponse as Ab,Response as Q,POST as W;V(An);D.log_item('Connecting to WiFi');B7='jimmytrainsguest';B8=g
-	try:B9=D.read_json_file('/sd/env.json');B7=B9['WIFI_SSID'];B8=B9['WIFI_PASSWORD'];V('wifi env');R('Using env ssid and password')
-	except:R('Using default ssid and password')
+def C7():
+	global AP,AQ;AP=C5();AQ=C6()
+	for C in h:
+		for A in C:B[A]=50,50,50
+		B.show();J.sleep(.3);B.fill((0,0,0));B.show()
+	for D in y:
+		for A in D:B[A]=50,50,50
+		B.show();J.sleep(.3);B.fill((0,0,0));B.show()
+	for E in AC:B[E[0]]=50,50,50;B.show();J.sleep(.3);B.fill((0,0,0));B.show()
+def AH():
+	I='bolt';global h,y,AC,M,B,M;h=[];y=[];AC=[];M=0;J=A[T].split(',')
+	for K in J:
+		F=K.split('-')
+		if H(F)==2:
+			E,C=F;C=r(C)
+			if E=='bar':D=list(a(M,M+C));h.append(D);M+=C
+			elif E==I and C<4:D=[M,C];AC.append(D);M+=1
+			elif E==I and C==4:D=list(a(M,M+C));y.append(D);M+=C
+	Q('Number of pixels total: ',M);B.deinit();Y('Deinit ledStrip');B=B5.NeoPixel(f.GP10,M);B.auto_write=G;B.brightness=1.;C7()
+AH()
+Y('Neopixels setup')
+if AO:
+	import socketpool as C8,mdns;Y(Av);import wifi as A3;Y(Av);from adafruit_httpserver import Server,Request,FileResponse as Ak,Response as O,POST as W;Y(Av);D.log_item('Connecting to WiFi');BC='jimmytrainsguest';BD=g
+	try:BE=D.read_json_file('/sd/env.json');BC=BE['WIFI_SSID'];BD=BE['WIFI_PASSWORD'];Y('wifi env');Q('Using env ssid and password')
+	except:Q('Using default ssid and password')
 	try:
-		A2.radio.connect(B7,B8);V('wifi connect');Ac=mdns.Server(A2.radio);Ac.hostname=A[t];Ac.advertise_service(service_type='_http',protocol='_tcp',port=80);C2=[hex(A)for A in A2.radio.mac_address];D.log_item('My MAC addr:'+f(C2));C3=f(A2.radio.ipv4_address);D.log_item('My IP address is'+C3);D.log_item('Connected to WiFi');C4=C1.SocketPool(A2.radio);L=Server(C4,'/static',debug=H);V('wifi server')
+		A3.radio.connect(BC,BD);Y('wifi connect');Al=mdns.Server(A3.radio);Al.hostname=A[u];Al.advertise_service(service_type='_http',protocol='_tcp',port=80);C9=[hex(A)for A in A3.radio.mac_address];D.log_item('My MAC addr:'+j(C9));CA=j(A3.radio.ipv4_address);D.log_item('My IP address is'+CA);D.log_item('Connected to WiFi');CB=C8.SocketPool(A3.radio);L=Server(CB,'/static',debug=I);Y('wifi server')
 		@L.route('/')
-		def BA(request):V('Home page.');return Ab(request,'index.html','/')
+		def BF(request):Y('Home page.');return Ak(request,'index.html','/')
 		@L.route('/mui.min.css')
-		def BA(request):return Ab(request,'mui.min.css','/')
+		def BF(request):return Ak(request,'mui.min.css','/')
 		@L.route('/mui.min.js')
-		def BA(request):return Ab(request,'mui.min.js','/')
+		def BF(request):return Ak(request,'mui.min.js','/')
 		@L.route('/animation',[W])
-		def X(request):
-			E=request;global A,s,b;C=E.raw_request.decode(AD)
-			if A3 in C:
-				for B in A6:
-					if B in C:A[z]=B;Ag(A[z]);break
+		def Z(request):
+			E=request;global A,t,p;C=E.raw_request.decode(AL)
+			if A6 in C:
+				for B in x:
+					if B in C:A[v]=B;Ap(A[v]);break
 			else:
-				for B in A0:
-					if B in C:A[z]=B;Ag(A[z]);break
-			D.write_json_file(S,A);return Q(E,'Animation '+A[z]+' started.')
+				for B in A1:
+					if B in C:A[v]=B;Ap(A[v]);break
+			D.write_json_file(R,A);return O(E,'Animation '+A[v]+' started.')
 		@L.route('/defaults',[W])
-		def X(request):
-			I='reset_default_colors';H='reset_to_defaults';C=request;global A;E=g;F=C.raw_request.decode(AD)
+		def Z(request):
+			I='reset_default_colors';H='reset_to_defaults';B=request;global A;E=g;F=B.raw_request.decode(AL)
 			if'reset_animation_timing_to_defaults'in F:
-				for G in Bs:J=D.read_json_file('/sd/time_stamp_defaults/'+G+y);D.write_json_file(A4+G+y,J)
-				B(Y)
-			elif H in F:E=H;C5();D.write_json_file(S,A);B(Y);n.go_to_state(Z)
-			elif I in F:E=I;BC();D.write_json_file(S,A);B(Y);K=D.json_stringify({h:A[h],i:A[i]});n.go_to_state(Z);return Q(C,K)
-			return Q(C,Ao+E)
+				for G in Bz:J=D.read_json_file('/sd/time_stamp_defaults/'+G+z);D.write_json_file(A7+G+z,J)
+				C(b)
+			elif H in F:E=H;CC();D.write_json_file(R,A);C(b);q.go_to_state(k)
+			elif I in F:E=I;BH();D.write_json_file(R,A);C(b);K=D.json_stringify({AD:A[AD],U:A[U],V:A[V]});q.go_to_state(k);return O(B,K)
+			return O(B,Aw+E)
 		@L.route('/mode',[W])
-		def X(request):
-			D=request;global A,s,b;E=g;C=D.raw_request.decode(AD)
-			if'cont_mode_on'in C:s=H;B(BJ)
-			elif'cont_mode_off'in C:s=G;B(BK)
-			elif BL in C:b=H;B(BM);B(Ap)
-			elif BN in C:b=G;B(Aq)
-			return Q(D,Ao+E)
+		def Z(request):
+			D=request;global A,t,p;E=g;B=D.raw_request.decode(AL)
+			if'cont_mode_on'in B:t=I;C(BR)
+			elif'cont_mode_off'in B:t=G;C(BS)
+			elif'timestamp_mode_on'in B:p=I;C('/sd/mvc/timestamp_mode_on.wav');C(BT)
+			elif'timestamp_mode_off'in B:p=G;C(BU)
+			return O(D,Aw+E)
 		@L.route('/speaker',[W])
-		def X(request):
-			I='speaker_test';F=request;global A;C=g;E=F.raw_request.decode(AD)
-			if I in E:C=I;B('/sd/mvc/left_speaker_right_speaker.wav')
-			elif Ar in E:C=Ar;A[A5]=G;D.write_json_file(S,A);B(Y)
-			elif As in E:C=As;A[A5]=H;D.write_json_file(S,A);B(Y)
-			return Q(F,Ao+C)
+		def Z(request):
+			H='speaker_test';F=request;global A;B=g;E=F.raw_request.decode(AL)
+			if H in E:B=H;C('/sd/mvc/left_speaker_right_speaker.wav')
+			elif Ax in E:B=Ax;A[A8]=G;D.write_json_file(R,A);C(b)
+			elif Ay in E:B=Ay;A[A8]=I;D.write_json_file(R,A);C(b)
+			return O(F,Aw+B)
 		@L.route('/lights',[W])
-		def X(request):
-			B=request;A=B.raw_request.decode(AD)
-			if'set_to_red'in A:C.fill((255,0,0));C.show()
-			elif'set_to_green'in A:C.fill((0,255,0));C.show()
-			elif'set_to_blue'in A:C.fill((0,0,255));C.show()
-			elif'set_to_white'in A:C.fill((255,255,255));C.show()
-			elif'set_to_0'in A:C.brightness=.0;C.show()
-			elif'set_to_20'in A:C.brightness=.2;C.show()
-			elif'set_to_40'in A:C.brightness=.4;C.show()
-			elif'set_to_60'in A:C.brightness=.6;C.show()
-			elif'set_to_80'in A:C.brightness=.8;C.show()
-			elif'set_to_100'in A:C.brightness=1.;C.show()
-			return Q(B,'Utility: set lights')
+		def Z(request):
+			C=request;A=C.raw_request.decode(AL)
+			if'set_to_red'in A:B.fill((255,0,0));B.show()
+			elif'set_to_green'in A:B.fill((0,255,0));B.show()
+			elif'set_to_blue'in A:B.fill((0,0,255));B.show()
+			elif'set_to_white'in A:B.fill((255,255,255));B.show()
+			elif'set_to_0'in A:B.brightness=.0;B.show()
+			elif'set_to_20'in A:B.brightness=.2;B.show()
+			elif'set_to_40'in A:B.brightness=.4;B.show()
+			elif'set_to_60'in A:B.brightness=.6;B.show()
+			elif'set_to_80'in A:B.brightness=.8;B.show()
+			elif'set_to_100'in A:B.brightness=1.;B.show()
+			return O(C,'Utility: set lights')
 		@L.route('/update-host-name',[W])
-		def X(request):B=request;global A;C=B.json();A[t]=C[AP];D.write_json_file(S,A);Ac.hostname=A[t];BF();return Q(B,A[t])
+		def Z(request):B=request;global A;C=B.json();A[u]=C[AV];D.write_json_file(R,A);Al.hostname=A[u];BK();return O(B,A[u])
 		@L.route('/get-host-name',[W])
-		def X(request):return Q(request,A[t])
+		def Z(request):return O(request,A[u])
 		@L.route('/update-volume',[W])
-		def X(request):B=request;global A;C=B.json();Af(C[A8]);return Q(B,A[q])
+		def Z(request):B=request;global A;C=B.json();Ao(C[AE]);return O(B,A[o])
 		@L.route('/get-volume',[W])
-		def X(request):return Q(request,A[q])
+		def Z(request):return O(request,A[o])
 		@L.route('/update-light-string',[W])
-		def X(request):
-			G=' data: ';F='action: ';E=request;global A;C=E.json()
-			if C[A8]=='save'or C[A8]=='clear'or C[A8]=='defaults':A[T]=C[AP];R(F+C[A8]+G+A[T]);D.write_json_file(S,A);AB();B(Y);return Q(E,A[T])
-			if A[T]==g:A[T]=C[AP]
-			else:A[T]=A[T]+','+C[AP]
-			R(F+C[A8]+G+A[T]);D.write_json_file(S,A);AB();B(Y);return Q(E,A[T])
+		def Z(request):
+			G=' data: ';F='action: ';E=request;global A;B=E.json()
+			if B[AE]=='save'or B[AE]=='clear'or B[AE]=='defaults':A[T]=B[AV];Q(F+B[AE]+G+A[T]);D.write_json_file(R,A);AH();C(b);return O(E,A[T])
+			if A[T]==g:A[T]=B[AV]
+			else:A[T]=A[T]+','+B[AV]
+			Q(F+B[AE]+G+A[T]);D.write_json_file(R,A);AH();C(b);return O(E,A[T])
 		@L.route('/get-light-string',[W])
-		def X(request):return Q(request,A[T])
+		def Z(request):return O(request,A[T])
 		@L.route('/get-customers-sound-tracks',[W])
-		def X(request):A=D.json_stringify(A6);return Q(request,A)
+		def Z(request):A=D.json_stringify(x);return O(request,A)
 		@L.route('/get-built-in-sound-tracks',[W])
-		def X(request):A=[];A.extend(A0);A.remove(Ai);A.remove(Aj);A.remove(Ak);B=D.json_stringify(A);return Q(request,B)
+		def Z(request):A=[];A.extend(A0);B=D.json_stringify(A);return O(request,B)
 		@L.route('/get-bar-colors',[W])
-		def X(request):B=D.json_stringify(A[h]);return Q(request,B)
+		def Z(request):B=D.json_stringify(A[AD]);return O(request,B)
 		@L.route('/get-bolt-colors',[W])
-		def X(request):B=D.json_stringify(A[i]);return Q(request,B)
+		def Z(request):B=D.json_stringify(A[U]);return O(request,B)
+		@L.route('/get-color-variation',[W])
+		def Z(request):B=D.json_stringify(A[V]);return O(request,B)
 		@L.route('/set-lights',[W])
-		def X(request):
-			I='item';F=request;global A;B=F.json();J='set-lights'
-			if B[I]==h:
-				A[h]={j:B[j],k:B[k],l:B[l]};G=[];G.extend(AH)
-				for E in G:C[E]=B[j],B[k],B[l];C.show()
-			elif B[I]==i:
-				A[i]={j:B[j],k:B[k],l:B[l]};H=[];H.extend(AI)
-				for E in H:C[E]=B[j],B[k],B[l];C.show()
-			R(A);D.write_json_file(S,A);return Q(F,J)
-	except BH as Ad:AG=G;D.log_item(Ad)
-V('web server')
-import utilities as Ae
-V('utilities')
-def U(seconds):
+		def Z(request):
+			G=request;E='item';global A;C=G.json();J='set-lights'
+			if C[E]==AD:
+				A[AD]={c:C[c],d:C[d],e:C[e]};H=[];H.extend(AP)
+				for F in H:B[F]=C[c],C[d],C[e];B.show()
+			elif C[E]==U:
+				A[U]={c:C[c],d:C[d],e:C[e]};I=[];I.extend(AQ)
+				for F in I:B[F]=C[c],C[d],C[e];B.show()
+			elif C[E]=='variationBolt':Q(C);A[V]={A9:C[c],AW:C[d],AX:C[e],AA:A[V][AA],AY:A[V][AY],AZ:A[V][AZ]}
+			elif C[E]=='variationBar':A[V]={A9:A[V][A9],AW:A[V][AW],AX:A[V][AX],AA:C[c],AY:C[d],AZ:C[e]}
+			D.write_json_file(R,A);return O(G,J)
+	except BN as Am:AO=G;D.log_item(Am)
+Y('web server')
+import utilities as An
+Y('utilities')
+def X(seconds):
 	C=seconds
-	if A[A5]:B=Bf(Be,C);E.voice[0].level=B
+	if A[A8]:B=Bl(Bk,C);F.voice[0].level=B
 	else:
-		try:B=int(A[q])/100
+		try:B=r(A[o])/100
 		except:B=.5
 		if B<0 or B>1:B=.5
-		E.voice[0].level=B;E.voice[1].level=B;J.sleep(C)
-def BB():global A;A[T]='bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4'
-def BC():global A;A[h]={j:60,k:18,l:5};A[i]={j:60,k:18,l:5}
-def C5():global A;A[A5]=H;A[t]=BO;A[z]='thunder birds rain';A[q]='20';A[At]=H;BB();BC()
-def Af(action):
-	E=action;C=int(A[q])
-	if q in E:F=E.split(q);C=int(F[1])
-	if E=='lower1':C-=1
-	elif E=='raise1':C+=1
+		F.voice[0].level=B;J.sleep(C)
+def BG():global A;A[T]='bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4'
+def BH():global A;A[AD]={c:60,d:18,e:5};A[U]={c:60,d:18,e:5};A[V]={A9:20,AW:8,AX:5,AA:20,AY:8,AZ:5}
+def CC():global A;A[A8]=I;A[u]=BV;A[v]='thunder birds rain';A[o]='20';A[Az]=I;BG();BH()
+def Ao(action):
+	E=action;B=r(A[o])
+	if o in E:F=E.split(o);B=r(F[1])
+	if E=='lower1':B-=1
+	elif E=='raise1':B+=1
 	elif E=='lower':
-		if C<=10:C-=1
-		else:C-=10
+		if B<=10:B-=1
+		else:B-=10
 	elif E=='raise':
-		if C<10:C+=1
-		else:C+=10
-	if C>100:C=100
-	if C<1:C=1
-	A[q]=f(C);A[A5]=G;D.write_json_file(S,A);B('/sd/mvc/volume.wav');AJ(A[q],G)
-def B(file_name):
-	if E.voice[0].playing:
-		E.voice[0].stop()
-		while E.voice[0].playing:U(.02)
-	A=m.WaveFile(o(file_name,p));E.voice[0].play(A,loop=G)
-	while E.voice[0].playing:C6()
-def CO():
-	E.voice[0].stop()
-	while E.voice[0].playing:0
-def C6():
-	U(.02);I.update()
-	if I.fell:E.voice[0].stop()
-def AJ(str_to_speak,addLocal):
+		if B<10:B+=1
+		else:B+=10
+	if B>100:B=100
+	if B<1:B=1
+	A[o]=j(B);A[A8]=G;D.write_json_file(R,A);C('/sd/mvc/volume.wav');AR(A[o],G)
+def C(file_name):
+	if F.voice[0].playing:
+		F.voice[0].stop()
+		while F.voice[0].playing:X(.02)
+	A=l.WaveFile(m(file_name,n));F.voice[0].play(A,loop=G)
+	while F.voice[0].playing:CD()
+def CV():
+	F.voice[0].stop()
+	while F.voice[0].playing:0
+def CD():
+	X(.02);K.update()
+	if K.fell:F.voice[0].stop()
+def AR(str_to_speak,addLocal):
 	for A in str_to_speak:
-		if A==' ':A='space'
-		if A=='-':A='dash'
-		if A=='.':A='dot'
-		B(r+A+P)
-	if addLocal:B(BP);B(BQ)
-def A7():B('/sd/mvc/press_left_button_right_button.wav')
-def AC():B('/sd/mvc/web_menu.wav');A7()
-def BD():B(BR)
-def C7(song_number):B('/sd/mvc/song.wav');AJ(song_number,G)
-def BE(play_intro):
-	if play_intro:B('/sd/mvc/current_light_settings_are.wav')
-	C=A[T].split(',')
-	for(D,E)in AM(C):B('/sd/mvc/position.wav');B(r+f(D+1)+P);B('/sd/mvc/is.wav');B(r+E+P)
-def CP():
-	B('/sd/mvc/no_user_soundtrack_found.wav')
-	while H:
-		I.update();K.update()
-		if I.fell:break
-		if K.fell:B(BS);break
-def BF():
-	B('/sd/mvc/animator_available_on_network.wav');B('/sd/mvc/to_access_type.wav')
-	if A[t]==BO:B('/sd/mvc/animator_dash_lightning.wav');B(BP);B(BQ)
-	else:AJ(A[t],H)
-	B('/sd/mvc/in_your_browser.wav')
-def Ag(file_name):
-	G='Sound file: ';E='Random sound file: ';C=file_name;R(C);A=C
-	if C==Aj:D=N(A0)-4;B=F.randint(0,D);A=A0[B];R(E+A0[B]);R(G+A)
-	elif C==Ak:D=N(A6)-1;B=F.randint(0,D);A=A6[B];R(E+A6[B]);R(G+A)
-	elif C==Ai:D=N(v)-4;B=F.randint(0,D);A=v[B];R(E+v[B]);R(G+A)
-	if b:C8(A)
-	elif A3 in A:AK(A)
-	elif A=='alien lightshow':AK(A)
-	elif A=='inspiring cinematic ambient lightshow':AK(A)
-	elif A==BT:AK(A)
-	else:C9(A)
-	V('Animation complete.')
-def AK(file_name):
-	M=file_name;global b;T=1;V=3
-	if M==BT:T=4;V=4
-	X=A3 in M
-	if X:
-		M=M.replace(A3,g)
-		try:Y=D.read_json_file(AQ+M+y)
+		try:
+			if A==' ':A='space'
+			if A=='-':A='dash'
+			if A=='.':A='dot'
+			C(s+A+S)
+		except:Q('Invalid character in string to speak')
+	if addLocal:C(BW);C(BX)
+def AI():C('/sd/mvc/press_left_button_right_button.wav')
+def AJ():C('/sd/mvc/web_menu.wav');AI()
+def BI():C(BY)
+def CE(song_number):C('/sd/mvc/song.wav');AR(song_number,G)
+def BJ(play_intro):
+	try:
+		B=A[T].split(',')
+		if play_intro:C('/sd/mvc/current_light_settings_are.wav')
+		for(D,E)in AK(B):C('/sd/mvc/position.wav');C(s+j(D+1)+S);C('/sd/mvc/is.wav');C(s+E+S)
+	except:C('/sd/mvc/no_lights_in_light_string.wav');return
+def CF():
+	C('/sd/mvc/no_user_soundtrack_found.wav')
+	while I:
+		K.update();N.update()
+		if K.fell:break
+		if N.fell:C('/sd/mvc/create_sound_track_files.wav');break
+def BK():
+	C('/sd/mvc/animator_available_on_network.wav');C('/sd/mvc/to_access_type.wav')
+	if A[u]==BV:C('/sd/mvc/animator_dash_lightning.wav');C(BW);C(BX)
+	else:AR(A[u],I)
+	C('/sd/mvc/in_your_browser.wav')
+A4=g
+def Ap(file_name):
+	G='Sound file: ';F='Random sound option: ';C=file_name;global A,A4;Q('Filename: '+C);B=C
+	try:
+		if C==Ar:
+			D=H(A0)-1;B=A0[E.randint(0,D)]
+			while A4==B and H(A0)>1:B=A0[E.randint(0,D)]
+			A4=B;Q(F+C);Q(G+B)
+		elif C==BQ:
+			D=H(x)-1;B=x[E.randint(0,D)]
+			while A4==B and H(x)>1:B=x[E.randint(0,D)]
+			A4=B;Q(F+C);Q(G+B)
+		elif C==BP:
+			D=H(AB)-1;B=AB[E.randint(0,D)]
+			while A4==B and H(AB)>1:B=AB[E.randint(0,D)]
+			A4=B;Q(F+C);Q(G+B)
+		if p:CG(B)
+		elif A6 in B:AS(B)
+		elif B=='alien lightshow':AS(B)
+		elif B=='inspiring cinematic ambient lightshow':AS(B)
+		elif B==BZ:AS(B)
+		else:CH(B)
+	except:CF();A[v]=Ar;return
+	Y('Animation complete.')
+def AS(file_name):
+	M=file_name;global p;T=1;U=3
+	if M==BZ:T=4;U=4
+	W=A6 in M
+	if W:
+		M=M.replace(A6,g)
+		try:Y=D.read_json_file(Aa+M+z)
 		except:
-			B('/sd/mvc/no_timestamp_file_found.wav')
-			while H:
-				I.update();K.update()
-				if I.fell:b=G;return
-				if K.fell:b=H;B(Ap);return
-	else:Y=D.read_json_file(A4+M+y)
-	Q=Y[AE];c=N(Q);L=0
-	if X:Z=m.WaveFile(o(AQ+M+P,p))
-	else:Z=m.WaveFile(o(A4+M+P,p))
-	E.voice[0].play(Z,loop=G);d=J.monotonic();O=0
-	while H:
-		a=0;W=J.monotonic()-d
-		if L<N(Q)-2:S=Q[L+1]-Q[L]-.25
-		else:S=.25
-		if S<0:S=0
-		if W>Q[L]-.25:
-			R(BU+f(W)+BV+f(Q[L])+BW+f(W-Q[L]));L+=1;O=F.randint(T,V)
-			while O==a:O=F.randint(T,V)
-			if O==1:CA(.005,S)
-			elif O==2:CE(.01);U(S)
-			elif O==3:CB(S)
-			elif O==4:CD(S)
+			C('/sd/mvc/no_timestamp_file_found.wav')
+			while I:
+				K.update();N.update()
+				if K.fell:p=G;return
+				if N.fell:p=I;C(BT);return
+	else:Y=D.read_json_file(A7+M+z)
+	P=Y[AM];b=H(P);L=0
+	if W:Z=l.WaveFile(m(Aa+M+S,n))
+	else:Z=l.WaveFile(m(A7+M+S,n))
+	F.voice[0].play(Z,loop=G);c=J.monotonic();O=0;BM(.01)
+	while I:
+		a=0;V=J.monotonic()-c
+		if L<H(P)-2:R=P[L+1]-P[L]-.25
+		else:R=.25
+		if R<0:R=0
+		if V>P[L]-.25:
+			Q(Ba+j(V)+Bb+j(P[L])+Bc+j(V-P[L]));L+=1;O=E.randint(T,U)
+			while O==a:O=E.randint(T,U)
+			if O==1:CI(.005,R)
+			elif O==2:BM(.01);X(R)
+			elif O==3:CJ(R)
+			elif O==4:CL(R)
 			a=O
-		if c==L:L=0
-		I.update()
-		if I.fell and A[At]:E.voice[0].stop()
-		if not E.voice[0].playing:C.fill((0,0,0));C.show();break
-		U(.001)
-def C8(file_name):
-	A=file_name;R('Time stamp mode:');global b;I=A3 in A;F=D.read_json_file('/sd/time_stamp_defaults/timestamp mode.json');F[AE]=[];A=A.replace(A3,g)
-	if I:L=m.WaveFile(o(AQ+A+P,p))
-	else:L=m.WaveFile(o(A4+A+P,p))
-	E.voice[0].play(L,loop=G);N=J.monotonic();U(.1)
-	while H:
-		M=J.monotonic()-N;K.update()
-		if K.fell:F[AE].append(M);R(M)
-		if not E.voice[0].playing:
-			C.fill((0,0,0));C.show();F[AE].append(5000)
-			if I:D.write_json_file(AQ+A+y,F)
-			else:D.write_json_file(A4+A+y,F)
+		if b==L:L=0
+		K.update()
+		if K.fell and A[Az]:F.voice[0].stop()
+		if not F.voice[0].playing:B.fill((0,0,0));B.show();break
+		X(.001)
+def CG(file_name):
+	A=file_name;Q('Time stamp mode:');global p;H=A6 in A;E=D.read_json_file('/sd/time_stamp_defaults/timestamp mode.json');E[AM]=[];A=A.replace(A6,g)
+	if H:K=l.WaveFile(m(Aa+A+S,n))
+	else:K=l.WaveFile(m(A7+A+S,n))
+	F.voice[0].play(K,loop=G);M=J.monotonic();X(.1)
+	while I:
+		L=J.monotonic()-M;N.update()
+		if N.fell:E[AM].append(L);Q(L)
+		if not F.voice[0].playing:
+			B.fill((0,0,0));B.show();E[AM].append(5000)
+			if H:D.write_json_file(Aa+A+z,E)
+			else:D.write_json_file(A7+A+z,E)
 			break
-	b=G;B('/sd/mvc/timestamp_saved.wav');B(Aq);B(BX)
-def C9(file_name):
-	L=file_name;O=D.read_json_file(A4+L+y);M=O[AE];Q=N(M);B=0;S=m.WaveFile(o(A4+L+P,p));E.voice[0].play(S,loop=G);T=J.monotonic()
-	while H:
-		U(.1);C=J.monotonic()-T;K=M[B]-F.uniform(.5,1)
-		if C>K:R(BU+f(C)+BV+f(K)+BW+f(C-K));B+=1;CF()
-		if Q==B:B=0
-		I.update()
-		if I.fell and A[At]:E.voice[0].stop()
-		if not E.voice[0].playing:break
-def CA(speed,duration):
+	p=G;C('/sd/mvc/timestamp_saved.wav');C(BU);C(Bd)
+def CH(file_name):
+	M=file_name;O=D.read_json_file(A7+M+z);N=O[AM];P=H(N);B=0;R=l.WaveFile(m(A7+M+S,n));F.voice[0].play(R,loop=G);T=J.monotonic()
+	while I:
+		X(.1);C=J.monotonic()-T;L=N[B]-E.uniform(.5,1)
+		if C>L:Q(Ba+j(C)+Bb+j(L)+Bc+j(C-L));B+=1;CM()
+		if P==B:B=0
+		K.update()
+		if K.fell and A[Az]:F.voice[0].stop()
+		if not F.voice[0].playing:break
+def CI(speed,duration):
 	G=duration;F=speed;H=J.monotonic()
-	for B in c(0,255,1):
-		for A in c(O):D=A*256//O+B;C[A]=B6(D&255)
-		C.show();U(F);E=J.monotonic()-H
+	for C in a(0,255,1):
+		for A in a(M):D=A*256//M+C;B[A]=B6(D&255)
+		B.show();X(F);E=J.monotonic()-H
 		if E>G:return
-	for B in reversed(c(0,255,1)):
-		for A in c(O):D=A*256//O+B;C[A]=B6(D&255)
-		C.show();U(F);E=J.monotonic()-H
+	for C in reversed(a(0,255,1)):
+		for A in a(M):D=A*256//M+C;B[A]=B6(D&255)
+		B.show();X(F);E=J.monotonic()-H
 		if E>G:return
-def CB(duration):
-	L=J.monotonic();C.brightness=1.;I=[];I.extend(AH);K=[];K.extend(AI);A=F.randint(0,255);B=F.randint(0,255);D=F.randint(0,255)
-	for E in K:C[E]=A,B,D
-	A=F.randint(0,255);B=F.randint(0,255);D=F.randint(0,255)
-	while H:
-		for E in I:G=F.randint(0,110);M=Ah(A-G,0,255);N=Ah(B-G,0,255);O=Ah(D-G,0,255);C[E]=M,N,O;C.show()
-		U(F.uniform(.05,.1));P=J.monotonic()-L
+def CJ(duration):
+	L=J.monotonic();B.brightness=1.;H=[];H.extend(AP);K=[];K.extend(AQ);A=E.randint(0,255);C=E.randint(0,255);D=E.randint(0,255)
+	for F in K:B[F]=A,C,D
+	A=E.randint(0,255);C=E.randint(0,255);D=E.randint(0,255)
+	while I:
+		for F in H:G=E.randint(0,110);M=Aq(A-G,0,255);N=Aq(C-G,0,255);O=Aq(D-G,0,255);B[F]=M,N,O;B.show()
+		X(E.uniform(.05,.1));P=J.monotonic()-L
 		if P>duration:return
-def CC(arr):
-	A=arr;B=N(A)//2
-	for C in c(B):D=B-1-C;E=B+C;yield(A[D],A[E])
-def AL():
-	for A in d:
-		for B in A:C[B]=0,0,0
-def BG():
-	A=F.randint(0,2)
+def CK(arr):
+	A=arr;B=H(A)//2
+	for C in a(B):D=B-1-C;E=B+C;yield(A[D],A[E])
+def AT():
+	for A in h:
+		for C in A:B[C]=0,0,0
+def BL():
+	A=E.randint(0,2)
 	if A==0:B=255;C=255;D=255
 	if A==1:B=255;C=0;D=0
 	if A==2:B=0;C=0;D=255
 	return B,C,D
-def CD(duration):
-	K=duration;L=J.monotonic();C.brightness=1.;B=[]
-	for(D,V)in AM(d):
-		if D==F.randint(0,N(d)-1):B.append(D)
-	if N(B)==0:D==F.randint(0,N(d)-1);B.append(D)
-	for M in w:
-		E,H,I=BG()
-		for O in M:C[O]=E,H,I
+def CL(duration):
+	L=duration;M=J.monotonic();B.brightness=1.;C=[]
+	for(D,U)in AK(h):
+		if D==E.randint(0,H(h)-1):C.append(D)
+	if H(C)==0:D==E.randint(0,H(h)-1);C.append(D)
+	for N in y:
+		F,I,K=BL()
+		for O in N:B[O]=F,I,K
 	P=G
 	while not P:
-		for Q in B:
-			E,H,I=BG();R=CC(d[Q])
+		for Q in C:
+			F,I,K=BL();R=CK(h[Q])
 			for(S,T)in R:
-				AL();C[S]=E,H,I;C[T]=E,H,I;C.show();U(.1);A=J.monotonic()-L
-				if A>K:AL();C.show();break
-			C.show();A=J.monotonic()-L
-			if A>K:AL();C.show();break
-		A=J.monotonic()-L
-		if A>K:AL();C.show();return
-def CE(duration):
-	G=J.monotonic();C.brightness=1.
-	while H:
-		for I in c(0,O):
-			K=F.randint(128,255);L=F.randint(128,255);M=F.randint(128,255);A=F.randint(0,2)
-			if A==0:B=K;D=0;E=0
-			elif A==1:B=0;D=L;E=0
-			elif A==2:B=0;D=0;E=M
-			C[I]=B,D,E;C.show()
-		U(F.uniform(.2,.3));N=J.monotonic()-G
-		if N>duration:return
-def e(item,colorKey,addSub):return A[item][colorKey]+addSub
-def CF():
-	H=[];I=F.randint(-1,N(w)-1)
-	if I!=-1:
-		for(D,E)in AM(w):
-			if D==I:H.extend(E)
-	K=[]
-	for(D,E)in AM(d):
-		if D==F.randint(0,N(d)-1):K.extend(E)
-	L=F.randint(e(i,j,-20),e(i,j,+20));M=F.randint(e(i,k,-8),e(i,k,+8));O=F.randint(e(i,l,-5),e(i,l,+5));P=F.randint(e(h,j,-20),e(h,j,+20));Q=F.randint(e(h,k,-8),e(h,k,+8));R=F.randint(e(h,l,-5),e(h,l,+5));S=F.randint(5,10);C.brightness=F.randint(150,255)/255
-	for T in c(0,S):
-		A=F.randint(0,50)
-		if A<0:A=0
-		for U in c(4):
-			for G in H:C[G]=L+A,M+A,O+A
-			for G in K:C[G]=P+A,Q+A,R+A
-			C.show();B=F.randint(0,75);B=B/1000;J.sleep(B);C.fill((0,0,0));C.show()
-		B=F.randint(1,50);B=B/1000;J.sleep(B);C.fill((0,0,0));C.show()
-def Ah(my_color,lower,upper):
+				AT();B[S]=F,I,K;B[T]=F,I,K;B.show();X(.1);A=J.monotonic()-M
+				if A>L:AT();B.show();break
+			B.show();A=J.monotonic()-M
+			if A>L:AT();B.show();break
+		A=J.monotonic()-M
+		if A>L:AT();B.show();return
+def BM(duration):
+	G=J.monotonic();B.brightness=1.
+	while I:
+		for H in a(0,M):
+			K=E.randint(128,255);L=E.randint(128,255);N=E.randint(128,255);A=E.randint(0,2)
+			if A==0:C=K;D=0;F=0
+			elif A==1:C=0;D=L;F=0
+			elif A==2:C=0;D=0;F=N
+			B[H]=C,D,F;B.show()
+		X(E.uniform(.2,.3));O=J.monotonic()-G
+		if O>duration:return
+def i(item,colorKey,addSub):return A[item][colorKey]+addSub
+def CM():
+	N=[];O=E.randint(-1,H(y)-1)
+	if O!=-1:
+		for(G,I)in AK(y):
+			if G==O:N.extend(I)
+	T=[]
+	for(G,I)in AK(h):
+		if G==E.randint(0,H(h)-1):T.extend(I)
+	D=[];W=E.randint(-1,H(AC)-1)
+	if W!=-1:
+		for(G,I)in AK(AC):
+			if G==W:D.extend(I)
+	if H(D)>0 and H(N)>0:
+		O=E.randint(0,1)
+		if O==0:N=[]
+		else:D=[]
+	K=r(A[V][A9]);L=r(A[V][A9]);M=r(A[V][A9]);X=E.randint(i(U,c,-K),i(U,c,K));Y=E.randint(i(U,d,-L),i(U,d,L));Z=E.randint(i(U,e,-M),i(U,e,M));K=r(A[V][AA]);L=r(A[V][AA]);M=r(A[V][AA]);b=E.randint(i(U,c,-K),i(U,c,K));f=E.randint(i(U,d,-L),i(U,d,L));g=E.randint(i(U,e,-M),i(U,e,M));j=E.randint(5,10);B.brightness=E.randint(255,255)/255
+	if H(D)>0:
+		if D[1]==1:P=1;Q=0;R=0
+		if D[1]==2:P=E.randint(0,1);Q=0;R=E.randint(0,1)
+		if D[1]==3:P=E.randint(0,1);Q=E.randint(0,1);R=E.randint(0,1)
+	for k in a(0,j):
+		C=E.randint(0,100)
+		if C<0:C=0
+		for l in a(4):
+			if H(D)>0:B[D[0]]=(155+C)*Q,(155+C)*P,(155+C)*R
+			for S in N:B[S]=X+C,Y+C,Z+C
+			for S in T:B[S]=b+C,f+C,g+C
+			B.show();F=E.randint(0,75);F=F/1000;J.sleep(F);B.fill((0,0,0));B.show()
+		F=E.randint(1,50);F=F/1000;J.sleep(F);B.fill((0,0,0));B.show()
+def Aq(my_color,lower,upper):
 	C=upper;B=lower;A=my_color
 	if A<B:A=B
 	if A>C:A=C
 	return A
-class CG:
+class CN:
 	def __init__(A):A.state=None;A.states={};A.paused_state=None
 	def add_state(B,state):A=state;B.states[A.name]=A
 	def go_to_state(A,state_name):
@@ -521,197 +567,169 @@ class CG:
 	def resume_state(A,state_name):
 		if A.state:A.state.exit(A)
 		A.state=A.states[state_name]
-	def reset(A):B1()
-class M:
+	def reset(A):B8()
+class P:
 	def __init__(A):0
-	@x
+	@A5
 	def name(self):return g
 	def enter(A,machine):0
 	def exit(A,machine):0
 	def update(A,machine):0
-class CH(M):
+class CO(P):
 	def __init__(A):0
-	@x
-	def name(self):return Z
-	def enter(A,machine):B(BX);D.log_item('Entered base state');M.enter(A,machine)
-	def exit(A,machine):M.exit(A,machine)
+	@A5
+	def name(self):return k
+	def enter(A,machine):C(Bd);D.log_item('Entered base state');P.enter(A,machine)
+	def exit(A,machine):P.exit(A,machine)
 	def update(D,machine):
-		global s;C=Ae.switch_state(I,K,U,3.)
-		if C==BY:
-			if s:s=G;B(BK)
-			else:s=H;B(BJ)
-		elif C==Au or s:Ag(A[z])
-		elif C==Av:machine.go_to_state(Am)
-class CI(M):
+		global t;B=An.switch_state(K,N,X,3.)
+		if B==Be:
+			if t:t=G;C(BS)
+			else:t=I;C(BR)
+		elif B==A_ or t:Ap(A[v])
+		elif B==B0:machine.go_to_state(At)
+class CP(P):
 	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0
-	@x
-	def name(self):return Am
-	def enter(A,machine):B('/sd/mvc/main_menu.wav');A7();M.enter(A,machine)
-	def exit(A,machine):M.exit(A,machine)
+	@A5
+	def name(self):return At
+	def enter(A,machine):C('/sd/mvc/main_menu.wav');AI();P.enter(A,machine)
+	def exit(A,machine):P.exit(A,machine)
 	def update(A,machine):
-		C=machine;I.update();K.update()
-		if I.fell:
-			B(r+AW[A.menuIndex]+P);A.selectedMenuIndex=A.menuIndex;A.menuIndex+=1
-			if A.menuIndex>N(AW)-1:A.menuIndex=0
+		B=machine;K.update();N.update()
 		if K.fell:
-			D=AW[A.selectedMenuIndex]
-			if D==Aw:C.go_to_state(Aw)
-			elif D==AO:C.go_to_state(AO)
-			elif D==Ax:C.go_to_state(Ax)
-			elif D==Ay:C.go_to_state(Ay)
-			elif D==AN:C.go_to_state(AN)
-			else:B(Y);C.go_to_state(Z)
-class CJ(M):
+			C(s+Ag[A.menuIndex]+S);A.selectedMenuIndex=A.menuIndex;A.menuIndex+=1
+			if A.menuIndex>H(Ag)-1:A.menuIndex=0
+		if N.fell:
+			D=Ag[A.selectedMenuIndex]
+			if D==B1:B.go_to_state(B1)
+			elif D==Au:B.go_to_state(Au)
+			elif D==B2:B.go_to_state(B2)
+			elif D==B3:B.go_to_state(B3)
+			elif D==AU:B.go_to_state(AU)
+			else:C(b);B.go_to_state(k)
+class CQ(P):
 	def __init__(A):A.optionIndex=0;A.currentOption=0
-	@x
-	def name(self):return Aw
-	def enter(A,machine):
-		R('Choose sounds')
-		if E.voice[0].playing:
-			E.voice[0].stop()
-			while E.voice[0].playing:0
-		else:B('/sd/mvc/sound_selection_menu.wav');A7()
-		M.enter(A,machine)
-	def exit(A,machine):M.exit(A,machine)
+	@A5
+	def name(self):return B1
+	def enter(A,machine):D.log_item('Choose sounds menu');C('/sd/mvc/sound_selection_menu.wav');AI();P.enter(A,machine)
+	def exit(A,machine):P.exit(A,machine)
 	def update(B,machine):
-		I.update();K.update()
-		if I.fell:
-			if E.voice[0].playing:
-				E.voice[0].stop()
-				while E.voice[0].playing:0
+		K.update();N.update()
+		if K.fell:
+			if F.voice[0].playing:
+				F.voice[0].stop()
+				while F.voice[0].playing:0
 			else:
-				try:C=m.WaveFile(o('/sd/lightning_options_voice_commands/option_'+v[B.optionIndex]+P,p));E.voice[0].play(C,loop=G)
-				except:C7(f(B.optionIndex+1))
+				try:C=l.WaveFile(m('/sd/lightning_options_voice_commands/option_'+A1[B.optionIndex]+S,n));F.voice[0].play(C,loop=G)
+				except:CE(j(B.optionIndex+1))
 				B.currentOption=B.optionIndex;B.optionIndex+=1
-				if B.optionIndex>N(v)-1:B.optionIndex=0
-				while E.voice[0].playing:0
-		if K.fell:
-			if E.voice[0].playing:
-				E.voice[0].stop()
-				while E.voice[0].playing:0
+				if B.optionIndex>H(A1)-1:B.optionIndex=0
+				while F.voice[0].playing:0
+		if N.fell:
+			if F.voice[0].playing:
+				F.voice[0].stop()
+				while F.voice[0].playing:0
 			else:
-				A[z]=v[B.currentOption];D.write_json_file(S,A);C=m.WaveFile(o(BR,p));E.voice[0].play(C,loop=G)
-				while E.voice[0].playing:0
-			machine.go_to_state(Z)
-class CK(M):
+				A[v]=A1[B.currentOption];D.write_json_file(R,A);C=l.WaveFile(m(BY,n));F.voice[0].play(C,loop=G)
+				while F.voice[0].playing:0
+			machine.go_to_state(k)
+class CR(P):
 	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0
-	@x
-	def name(self):return AO
-	def enter(A,machine):B('/sd/mvc/add_sounds_animate.wav');A7();M.enter(A,machine)
-	def exit(A,machine):M.exit(A,machine)
-	def update(A,machine):
-		D=machine;global b;I.update();K.update()
-		if I.fell:
-			B(r+Aa[A.menuIndex]+P);A.selectedMenuIndex=A.menuIndex;A.menuIndex+=1
-			if A.menuIndex>N(Aa)-1:A.menuIndex=0
+	@A5
+	def name(self):return AU
+	def enter(A,machine):D.log_item(Bf);C('/sd/mvc/volume_settings_menu.wav');AI();P.enter(A,machine)
+	def exit(A,machine):P.exit(A,machine)
+	def update(B,machine):
+		E=machine;K.update();N.update()
 		if K.fell:
-			if E.voice[0].playing:
-				E.voice[0].stop()
-				while E.voice[0].playing:0
-			else:
-				C=Aa[A.selectedMenuIndex]
-				if C=='hear_instructions':B(BS)
-				elif C==BL:b=H;B(BM);B(Ap);D.go_to_state(Z)
-				elif C==BN:b=G;B(Aq)
-				else:B(Y);D.go_to_state(Z)
-class CL(M):
-	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0
-	@x
-	def name(self):return AN
-	def enter(A,machine):D.log_item(BZ);B('/sd/mvc/volume_settings_menu.wav');A7();M.enter(A,machine)
-	def exit(A,machine):M.exit(A,machine)
-	def update(C,machine):
-		E=machine;I.update();K.update()
-		if I.fell:
-			B(r+AZ[C.menuIndex]+P);C.selectedMenuIndex=C.menuIndex;C.menuIndex+=1
-			if C.menuIndex>N(AZ)-1:C.menuIndex=0
-		if K.fell:
-			F=AZ[C.selectedMenuIndex]
+			C(s+Aj[B.menuIndex]+S);B.selectedMenuIndex=B.menuIndex;B.menuIndex+=1
+			if B.menuIndex>H(Aj)-1:B.menuIndex=0
+		if N.fell:
+			F=Aj[B.selectedMenuIndex]
 			if F=='volume_level_adjustment':
-				B('/sd/mvc/volume_adjustment_menu.wav');L=G
+				C('/sd/mvc/volume_adjustment_menu.wav');L=G
 				while not L:
-					J=Ae.switch_state(I,K,U,3.)
-					if J==Au:Af('lower')
-					elif J==Av:Af('raise')
-					elif J==Ba:D.write_json_file(S,A);B(Y);L=H;E.go_to_state(Z)
-					U(.1)
-			elif F==Ar:
-				A[A5]=G
-				if A[q]==0:A[q]=10
-				D.write_json_file(S,A);B(Y);E.go_to_state(Z)
-			elif F==As:A[A5]=H;D.write_json_file(S,A);B(Y);E.go_to_state(Z)
-class CM(M):
+					J=An.switch_state(K,N,X,3.)
+					if J==A_:Ao('lower')
+					elif J==B0:Ao('raise')
+					elif J==Bg:D.write_json_file(R,A);C(b);L=I;E.go_to_state(k)
+					X(.1)
+			elif F==Ax:
+				A[A8]=G
+				if A[o]==0:A[o]=10
+				D.write_json_file(R,A);C(b);E.go_to_state(k)
+			elif F==Ay:A[A8]=I;D.write_json_file(R,A);C(b);E.go_to_state(k)
+class CS(P):
 	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0
-	@x
-	def name(self):return Ay
-	def enter(A,machine):D.log_item(BZ);AC();M.enter(A,machine)
-	def exit(A,machine):M.exit(A,machine)
-	def update(C,machine):
-		I.update();K.update()
-		if I.fell:
-			B(r+AX[C.menuIndex]+P);C.selectedMenuIndex=C.menuIndex;C.menuIndex+=1
-			if C.menuIndex>N(AX)-1:C.menuIndex=0
+	@A5
+	def name(self):return B3
+	def enter(A,machine):D.log_item(Bf);AJ();P.enter(A,machine)
+	def exit(A,machine):P.exit(A,machine)
+	def update(B,machine):
+		K.update();N.update()
 		if K.fell:
-			E=AX[C.selectedMenuIndex]
-			if E=='web_on':A[Al]=H;BD();AC()
-			elif E=='web_off':A[Al]=G;BD();AC()
-			elif E=='hear_url':AJ(A[t],H);AC()
-			elif E=='hear_instr_web':B('/sd/mvc/web_instruct.wav');AC()
-			else:D.write_json_file(S,A);B(Y);machine.go_to_state(Z)
-class CN(M):
+			C(s+Ah[B.menuIndex]+S);B.selectedMenuIndex=B.menuIndex;B.menuIndex+=1
+			if B.menuIndex>H(Ah)-1:B.menuIndex=0
+		if N.fell:
+			E=Ah[B.selectedMenuIndex]
+			if E=='web_on':A[As]=I;BI();AJ()
+			elif E=='web_off':A[As]=G;BI();AJ()
+			elif E=='hear_url':AR(A[u],I);AJ()
+			elif E=='hear_instr_web':C('/sd/mvc/web_instruct.wav');AJ()
+			else:D.write_json_file(R,A);C(b);machine.go_to_state(k)
+class CT(P):
 	def __init__(A):A.menuIndex=0;A.selectedMenuIndex=0
-	@x
-	def name(self):return Ax
-	def enter(A,machine):B('/sd/mvc/light_string_setup_menu.wav');A7();M.enter(A,machine)
-	def exit(A,machine):M.exit(A,machine)
-	def update(C,machine):
-		J=machine;I.update();K.update()
-		if I.fell:
-			B(r+AY[C.menuIndex]+P);C.selectedMenuIndex=C.menuIndex;C.menuIndex+=1
-			if C.menuIndex>N(AY)-1:C.menuIndex=0
+	@A5
+	def name(self):return B2
+	def enter(A,machine):D.log_item('Light string menu');C('/sd/mvc/light_string_setup_menu.wav');AI();P.enter(A,machine)
+	def exit(A,machine):P.exit(A,machine)
+	def update(B,machine):
+		J=machine;K.update();N.update()
 		if K.fell:
-			E=AY[C.selectedMenuIndex]
-			if E=='hear_light_setup_instructions':B('/sd/mvc/string_instructions.wav')
-			elif E=='reset_lights_defaults':BB();B('/sd/mvc/lights_reset_to.wav');BE(G)
-			elif E=='hear_current_light_settings':BE(H)
-			elif E=='clear_light_string':A[T]=g;B('/sd/mvc/lights_cleared.wav')
+			C(s+Ai[B.menuIndex]+S);B.selectedMenuIndex=B.menuIndex;B.menuIndex+=1
+			if B.menuIndex>H(Ai)-1:B.menuIndex=0
+		if N.fell:
+			E=Ai[B.selectedMenuIndex]
+			if E=='hear_light_setup_instructions':C('/sd/mvc/string_instructions.wav')
+			elif E=='reset_lights_defaults':BG();C('/sd/mvc/lights_reset_to.wav');BJ(G)
+			elif E=='hear_current_light_settings':BJ(I)
+			elif E=='clear_light_string':A[T]=g;C('/sd/mvc/lights_cleared.wav')
 			elif E=='add_lights':
-				B('/sd/mvc/add_light_menu.wav');L=H
+				C('/sd/mvc/add_light_menu.wav');L=I
 				while L:
-					F=Ae.switch_state(I,K,U,3.)
-					if F==Au:
-						C.menuIndex-=1
-						if C.menuIndex<0:C.menuIndex=N(A1)-1
-						C.selectedMenuIndex=C.menuIndex;B(r+A1[C.menuIndex]+P)
-					elif F==Av:
-						C.menuIndex+=1
-						if C.menuIndex>N(A1)-1:C.menuIndex=0
-						C.selectedMenuIndex=C.menuIndex;B(r+A1[C.menuIndex]+P)
-					elif F==Ba:
-						if A[T]==g:A[T]=A1[C.selectedMenuIndex]
-						else:A[T]=A[T]+','+A1[C.selectedMenuIndex]
-						B(r+A1[C.selectedMenuIndex]+P);B('/sd/mvc/added.wav')
-					elif F==BY:D.write_json_file(S,A);AB();B(Y);L=G;J.go_to_state(Z)
-					U(.1)
-			else:D.write_json_file(S,A);B(Y);AB();J.go_to_state(Z)
-n=CG()
-n.add_state(CH())
-n.add_state(CI())
-n.add_state(CJ())
-n.add_state(CK())
-n.add_state(CL())
-n.add_state(CM())
-n.add_state(CN())
-A9.value=H
-if AG:
+					F=An.switch_state(K,N,X,3.)
+					if F==A_:
+						B.menuIndex-=1
+						if B.menuIndex<0:B.menuIndex=H(A2)-1
+						B.selectedMenuIndex=B.menuIndex;C(s+A2[B.menuIndex]+S)
+					elif F==B0:
+						B.menuIndex+=1
+						if B.menuIndex>H(A2)-1:B.menuIndex=0
+						B.selectedMenuIndex=B.menuIndex;C(s+A2[B.menuIndex]+S)
+					elif F==Bg:
+						if A[T]==g:A[T]=A2[B.selectedMenuIndex]
+						else:A[T]=A[T]+','+A2[B.selectedMenuIndex]
+						C(s+A2[B.selectedMenuIndex]+S);C('/sd/mvc/added.wav')
+					elif F==Be:D.write_json_file(R,A);AH();C(b);L=G;J.go_to_state(k)
+					X(.1)
+			else:D.write_json_file(R,A);C(b);AH();J.go_to_state(k)
+q=CN()
+q.add_state(CO())
+q.add_state(CP())
+q.add_state(CQ())
+q.add_state(CR())
+q.add_state(CS())
+q.add_state(CT())
+AF.value=I
+if AO:
 	D.log_item('starting server...')
-	try:L.start(f(A2.radio.ipv4_address));D.log_item('Listening on http://%s:80'%A2.radio.ipv4_address);BF()
-	except OSError:J.sleep(5);D.log_item('restarting...');B1()
-n.go_to_state(Z)
+	try:L.start(j(A3.radio.ipv4_address));D.log_item('Listening on http://%s:80'%A3.radio.ipv4_address);BK()
+	except OSError:J.sleep(5);D.log_item('restarting...');B8()
+q.go_to_state(k)
 D.log_item('animator has started...')
-V('animations started.')
-while H:
-	n.update();U(.02)
-	if AG:
+Y('animations started.')
+while I:
+	q.update();X(.02)
+	if AO:
 		try:L.poll()
-		except BH as Ad:D.log_item(Ad);continue
+		except BN as Am:D.log_item(Am);continue
