@@ -927,8 +927,12 @@ def rainbow(speed,duration):
     for j in range(0,255,1):
         for i in range(num_pixels):
             pixel_index = (i * 256 // num_pixels) + j
+            ledStripLeft[i] = colorwheel(pixel_index & 255)
             ledStripMiddle[i] = colorwheel(pixel_index & 255)
+            ledStripRight[i] = colorwheel(pixel_index & 255)
+        ledStripLeft.show()
         ledStripMiddle.show()
+        ledStripRight.show()
         sleepAndUpdateVolume(speed)
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
@@ -936,8 +940,12 @@ def rainbow(speed,duration):
     for j in reversed(range(0,255,1)):
         for i in range(num_pixels):
             pixel_index = (i * 256 // num_pixels) + j
+            ledStripLeft[i] = colorwheel(pixel_index & 255)
             ledStripMiddle[i] = colorwheel(pixel_index & 255)
+            ledStripRight[i] = colorwheel(pixel_index & 255)
+        ledStripLeft.show()
         ledStripMiddle.show()
+        ledStripRight.show()
         sleepAndUpdateVolume(speed)
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
