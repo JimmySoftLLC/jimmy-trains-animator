@@ -25,7 +25,8 @@ from adafruit_motor import servo
 import utilities
 import neopixel
 import random
-ledStrip = neopixel.NeoPixel(board.GP13, 7)
+from rainbowio import colorwheel
+ledStrip = neopixel.NeoPixel(board.GP15, 7)
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -47,7 +48,7 @@ def get_voltage(pin, wait_for):
         pin_value = pin_value / 10
     return (pin.value) / 65536
 
-audio_enable = digitalio.DigitalInOut(board.GP22) # old board 28
+audio_enable = digitalio.DigitalInOut(board.GP22)
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
 
@@ -70,6 +71,7 @@ plane_servo.angle = 180
 # Setup the switches
 SWITCH_1_PIN = board.GP6 #S1 on animator board
 SWITCH_2_PIN = board.GP7 #S2 on animator board
+SWITCH_3_PIN = board.GP8 #S2 on animator board
 
 switch_io_1 = digitalio.DigitalInOut(SWITCH_1_PIN)
 switch_io_1.direction = digitalio.Direction.INPUT
@@ -80,6 +82,11 @@ switch_io_2 = digitalio.DigitalInOut(SWITCH_2_PIN)
 switch_io_2.direction = digitalio.Direction.INPUT
 switch_io_2.pull = digitalio.Pull.UP
 right_switch = Debouncer(switch_io_2)
+
+switch_io_3 = digitalio.DigitalInOut(SWITCH_3_PIN)
+switch_io_3.direction = digitalio.Direction.INPUT
+switch_io_3.pull = digitalio.Pull.UP
+home_switch = Debouncer(switch_io_3)
 
 # setup audio on the i2s bus
 i2s_bclk = board.GP18   # BCLK on MAX98357A
@@ -97,12 +104,13 @@ cs = board.GP5
 spi = busio.SPI(sck, si, so)
 
 # Setup the mixer
-num_voices = 1
-mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=4096)
+num_voices = 2
+mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=32768)
 audio.play(mixer)
 
 volume = .2
 mixer.voice[0].level = volume
+mixer.voice[1].level = volume
 
 try:
   sdcard = sdcardio.SDCard(spi, cs)
@@ -137,7 +145,7 @@ audio_enable.value = False
 ################################################################################
 # Sd card data Variables
 
-config = files.read_json_file("/sd/config_outhouse.json")
+config = files.read_json_file("/sd/config_plane.json")
 serve_webpage = config["serve_webpage"]
 
 serve_webpage=False
@@ -149,6 +157,7 @@ def sleepAndUpdateVolume(seconds):
     if config["volume_pot"]:
         volume = get_voltage(analog_in, seconds)
         mixer.voice[0].level = volume
+        mixer.voice[1].level = volume
     else:
         try:
             volume = int(config["volume"]) / 100
@@ -157,6 +166,7 @@ def sleepAndUpdateVolume(seconds):
         if volume < 0 or volume > 1:
             volume = .5
         mixer.voice[0].level = volume
+        mixer.voice[1].level = volume
         time.sleep(seconds)
 
 def play_audio_0(file_name):
@@ -324,8 +334,8 @@ def movePlaneToPositionGently (new_position, speed):
         time.sleep(speed)
     movePlaneServo (new_position)
     
-throttle_max = -.12
-throttle_min = -.05
+throttle_max = -.1 #1563
+throttle_min = -.1 #06
 global throttle_range
 throttle_range = throttle_max-throttle_min
 global speed
@@ -333,20 +343,35 @@ speed = 0
 global direction
 direction = 1
 
-wave0 = audiocore.WaveFile(open("/sd/outhouse_sounds/plane.wav", "rb"))
+wave0 = audiocore.WaveFile(open("/sd/plane_sounds/plane.wav", "rb"))
 mixer.voice[0].play( wave0, loop=True )
 sleepAndUpdateVolume(.1)
+       
+plane_up = False
 
 while True:
     if speed > 1: direction = -1
     if speed < 0: direction = 1
-    speed = speed + direction *.3
-    plane_rotation_servo.throttle = throttle_min + throttle_range * speed
-    print (speed)
-    plane_pos = 20
-    movePlaneToPositionGently(plane_pos, .005)
-    sleepAndUpdateVolume(0)
-    plane_pos = 180
-    movePlaneToPositionGently(plane_pos, .005)
-    sleepAndUpdateVolume(0)
-
+    speed = speed + direction *.02
+    current_throttle = throttle_min + throttle_range * speed
+    #print (current_throttle)
+    plane_rotation_servo.throttle = current_throttle
+    #print (speed)
+    if switch_io_3.value == False:
+        ledStrip.fill((255, 255, 255))
+        ledStrip.show()
+        if mixer.voice[1].playing == False:
+            wave1 = audiocore.WaveFile(open("/sd/plane_sounds/missle.wav", "rb"))
+            #wave1 = audiocore.WaveFile(open("wav/missle.wav", "rb"))
+            mixer.voice[1].play( wave1, loop=False )
+        sleepAndUpdateVolume(.5)
+        ledStrip.fill((0, 0, 0))
+        ledStrip.show()
+        if plane_up == False:
+            plane_pos = 20
+            movePlaneToPositionGently(plane_pos, .01)
+            plane_up = True
+        else:
+            plane_pos = 180
+            movePlaneToPositionGently(plane_pos, .01)
+            plane_up = False
