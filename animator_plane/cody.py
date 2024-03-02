@@ -66,7 +66,7 @@ plane_last_pos = 0
 plane_min = 0
 plane_max = 180
 
-plane_servo.angle = 180
+plane_servo.angle = 20
 
 # Setup the switches
 SWITCH_1_PIN = board.GP6 #S1 on animator board
@@ -104,13 +104,14 @@ cs = board.GP5
 spi = busio.SPI(sck, si, so)
 
 # Setup the mixer
-num_voices = 2
-mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=32768)
+num_voices = 3
+mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=16384)
 audio.play(mixer)
 
 volume = .2
 mixer.voice[0].level = volume
 mixer.voice[1].level = volume
+mixer.voice[2].level = volume
 
 try:
   sdcard = sdcardio.SDCard(spi, cs)
@@ -158,6 +159,7 @@ def sleepAndUpdateVolume(seconds):
         volume = get_voltage(analog_in, seconds)
         mixer.voice[0].level = volume
         mixer.voice[1].level = volume
+        mixer.voice[2].level = volume
     else:
         try:
             volume = int(config["volume"]) / 100
@@ -167,6 +169,7 @@ def sleepAndUpdateVolume(seconds):
             volume = .5
         mixer.voice[0].level = volume
         mixer.voice[1].level = volume
+        mixer.voice[2].level = volume
         time.sleep(seconds)
 
 def play_audio_0(file_name):
@@ -267,22 +270,6 @@ if (serve_webpage):
         
         garbage_collect("wifi server")
         
-        # jimmytrains animator URL
-        
-        test_url_fast = "http://192.168.1.200/get-volume"
-        test_url = "http://tablet.local/get-volume"   
-        try:
-            print("Fetching text from %s" % test_url)
-            response = requests.post(test_url)
-            print("-" * 40)
-            print("Text Response: ", response.text)
-            print("-" * 40)
-            response.close()
-        except Exception as e:
-            print("Error:\n", str(e))
-
-        garbage_collect("requests")
-        
         ################################################################################
         # Setup routes
 
@@ -331,23 +318,26 @@ def movePlaneToPositionGently (new_position, speed):
     if plane_last_pos > new_position: sign = - 1
     for plane_angle in range( plane_last_pos, new_position, sign):
         movePlaneServo (plane_angle)
-        time.sleep(speed)
+        sleepAndUpdateVolume(speed)
     movePlaneServo (new_position)
     
-throttle_max = -.1 #1563
-throttle_min = -.1 #06
+throttle_max = -.09 #1563
+throttle_min = -.09 #06
 global throttle_range
 throttle_range = throttle_max-throttle_min
 global speed
 speed = 0
 global direction
-direction = 1
+direction = 1      
 
 wave0 = audiocore.WaveFile(open("/sd/plane_sounds/plane.wav", "rb"))
+wave1 = audiocore.WaveFile(open("/sd/plane_sounds/missle.wav", "rb"))
+wave2 = audiocore.WaveFile(open("/sd/plane_sounds/missle.wav", "rb"))
 mixer.voice[0].play( wave0, loop=True )
 sleepAndUpdateVolume(.1)
        
 plane_up = False
+number_rotations = 0
 
 while True:
     if speed > 1: direction = -1
@@ -358,20 +348,22 @@ while True:
     plane_rotation_servo.throttle = current_throttle
     #print (speed)
     if switch_io_3.value == False:
-        ledStrip.fill((255, 255, 255))
-        ledStrip.show()
-        if mixer.voice[1].playing == False:
-            wave1 = audiocore.WaveFile(open("/sd/plane_sounds/missle.wav", "rb"))
-            #wave1 = audiocore.WaveFile(open("wav/missle.wav", "rb"))
+        if mixer.voice[1].playing == False and plane_up == True:
+            garbage_collect("Grabage collect sounds")
             mixer.voice[1].play( wave1, loop=False )
-        sleepAndUpdateVolume(.5)
-        ledStrip.fill((0, 0, 0))
-        ledStrip.show()
+            ledStrip.fill((255, 255, 255))
+            ledStrip.show()
+            sleepAndUpdateVolume(.5)
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
         if plane_up == False:
             plane_pos = 20
             movePlaneToPositionGently(plane_pos, .01)
-            plane_up = True
-        else:
+            plane_up = True   
+        elif number_rotations > 10:
             plane_pos = 180
             movePlaneToPositionGently(plane_pos, .01)
             plane_up = False
+            number_rotations = 0
+        number_rotations +=1
+        
