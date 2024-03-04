@@ -207,8 +207,8 @@ def speak_this_string(str_to_speak, addLocal):
 def speak_webpage():
     play_audio_0("/sd/mvc/animator_available_on_network.wav")
     play_audio_0("/sd/mvc/to_access_type.wav")
-    if config["HOST_NAME"]== "animator-lightning":
-        play_audio_0("/sd/mvc/animator_dash_lightning.wav")
+    if config["HOST_NAME"]== "animator-plane":
+        play_audio_0("/sd/mvc/animator_dash_plane.wav")
         play_audio_0("/sd/mvc/dot.wav")
         play_audio_0("/sd/mvc/local.wav")
     else:
@@ -280,11 +280,11 @@ if (serve_webpage):
         
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.css", "/")
+            return FileResponse(request, "/sd/webpage/mui.min.css", "/")
         
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.js", "/")
+            return FileResponse(request, "/sd/webpage/mui.min.js", "/")
             
     except Exception as e:
         serve_webpage = False
@@ -321,8 +321,8 @@ def movePlaneToPositionGently (new_position, speed):
         sleepAndUpdateVolume(speed)
     movePlaneServo (new_position)
     
-throttle_max = -.09 #1563
-throttle_min = -.09 #06
+throttle_max = -.11 #1563
+throttle_min = -.11 #06
 global throttle_range
 throttle_range = throttle_max-throttle_min
 global speed
@@ -330,12 +330,20 @@ speed = 0
 global direction
 direction = 1      
 
+while False:
+    sleepAndUpdateVolume(.02)
+    if (serve_webpage):
+        try:
+            server.poll()
+        except Exception as e:
+            files.log_item(e)
+            continue
+        
 wave0 = audiocore.WaveFile(open("/sd/plane_sounds/plane.wav", "rb"))
-wave1 = audiocore.WaveFile(open("/sd/plane_sounds/missle.wav", "rb"))
-wave2 = audiocore.WaveFile(open("/sd/plane_sounds/missle.wav", "rb"))
+wave1 = audiocore.WaveFile(open("wav/missle.wav", "rb"))
 mixer.voice[0].play( wave0, loop=True )
 sleepAndUpdateVolume(.1)
-       
+              
 plane_up = False
 number_rotations = 0
 
@@ -356,14 +364,14 @@ while True:
             sleepAndUpdateVolume(.5)
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
+            number_rotations +=1
         if plane_up == False:
             plane_pos = 20
             movePlaneToPositionGently(plane_pos, .01)
             plane_up = True   
-        elif number_rotations > 10:
+        elif number_rotations > 3:
             plane_pos = 180
             movePlaneToPositionGently(plane_pos, .01)
             plane_up = False
             number_rotations = 0
-        number_rotations +=1
-        
+            
