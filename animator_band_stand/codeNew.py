@@ -351,7 +351,7 @@ if (serve_webpage):
     garbage_collect("config wifi imports")
     import wifi
     garbage_collect("config wifi imports")
-    from adafruit_httpserver import Server, Request, FileResponse, Response, POST
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
     garbage_collect("config wifi imports")
 
     files.log_item("Connecting to WiFi")
@@ -585,6 +585,28 @@ if (serve_webpage):
             sounds.extend(sound_options)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
+        
+        @server.route("/get-directory", [POST])
+        def buttonpress(request: Request):
+            global config
+            data_object = request.json()
+            config["HOST_NAME"] = data_object["text"]
+            fakeData = [
+                {"id": 1, "name": "John Doe", "email": "john@example.com"},
+                {"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
+                {"id": 3, "name": "Robert Johnson", "email": "robert@example.com"}
+            ]
+            fakeDataJson = files.json_stringify(fakeData)
+            return JSONResponse(request, fakeData)
+               
+        @server.route("/save-data", [POST])
+        def buttonpress(request: Request):
+            data_object = request.json()
+            print(data_object[0])
+            print(data_object[1])
+            print(data_object[2])
+            garbage_collect("Save Data.")
+            return Response(request, "success")
            
     except Exception as e:
         serve_webpage = False
