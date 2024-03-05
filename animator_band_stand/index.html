@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - Christmas in the park</title>
+    <title>Animator - Bandstand</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
@@ -11,9 +11,9 @@
 
 <body>
     <div class="mui-container">
-        <h1>Animator - Christmas in the park</h1>
+        <h1>Animator - Bandstand</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your animator - Christmas in the park
+            Use this web app to control and setup your animator - Bandstand
             product. Have fun animating.
         </p>
         <ul class="mui-tabs__bar">
@@ -694,7 +694,7 @@
         } else if (target.classList.contains("delete-row-btn")) {
             deleteRow(target.parentNode.parentNode);
         } else if (target.classList.contains("add-row-btn")) {
-            deleteRow(target.parentNode.parentNode);
+            addRow(target.parentNode.parentNode);
         }
     });
 
@@ -764,17 +764,18 @@
         row.parentNode.removeChild(row);
     }
 
-    function insertRow(row) {
+    function addRow(row) {
         var newRow = createDataRow({ ts: "", an: "" });
         dataTableBody.insertBefore(newRow, row.nextSibling);
     }
 
-    function addRow(row) {
+    function insertRow(row) {
         var newRow = createDataRow({ ts: "", an: "" });
-        dataTableBody.insertAfter(newRow, row.nextSibling);
+        dataTableBody.insertBefore(newRow, row);
     }
 
     function saveData() {
+        saveDataButton.setAttribute("disabled", "true");
         var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
@@ -807,8 +808,9 @@
         })
             .then(function (response) {
                 if (response.ok) {
-                    alert("Data saved successfully!");
+                    saveDataButton.removeAttribute('disabled')
                 } else {
+                    saveDataButton.removeAttribute('disabled')
                     alert("Error saving data. Please try again.");
                 }
             })
