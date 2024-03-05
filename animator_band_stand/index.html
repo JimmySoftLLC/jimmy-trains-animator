@@ -274,7 +274,17 @@
 
         </div>
         <div class="mui-tabs__pane" id="tables">
-            <h2>Animation table:</h2>
+            <h2>Animation scripts:</h2>
+            <p>
+                Animation scripts run the animation. To load the script press the button for the sound track you want to
+                modify.
+                Modify the script as needed and press save to save the script.
+            </p>
+            <h2>Built in sound tracks:</h2>
+            <div id="builtInTracksScriptContainer"></div>
+            <h2>My sound tracks:</h2>
+            <div id="myTracksScriptContainer"></div>
+            <h2>Animation script table:</h2>
             <div id="betaDev">
                 <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Fetch Data</button>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Data</button>
@@ -347,7 +357,6 @@
                 console.log(error);
             });
 
-
         // get built in sound tracks
         fetch('/get-built-in-sound-tracks', {
             method: 'POST',
@@ -360,50 +369,8 @@
             })
             .then(function (data) {
                 my_data = JSON.parse(data)
-                // Loop through the data and create a button for each item
-
-                my_data.forEach((item) => {
-                    const button = document.createElement("button");
-                    button.textContent = item;
-                    button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                    button.setAttribute("data-value", item);
-                    button.setAttribute("data-url", "/animation");
-                    button.setAttribute("type", "button");
-                    button.addEventListener('click', function () {
-                        var url = button.getAttribute('data-url');
-                        var animation = button.getAttribute('data-value');
-                        var redirectUrl = button.getAttribute('data-redirect');
-
-                        // Create an object with the data to be sent in the request
-                        var data = {
-                            animation: animation,
-                        };
-
-                        button.setAttribute('disabled', 'true')
-
-                        // Make a POST request using fetch
-                        fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(data),
-                        })
-                            .then(function (response) {
-                                // Handle the response from the server
-                                if (redirectUrl) {
-                                    window.location.href = redirectUrl;
-                                } else {
-                                    button.removeAttribute('disabled');
-                                }
-                            })
-                            .catch(function (error) {
-                                button.removeAttribute('disabled');
-                                alert('Try Again');
-                            });
-                    });
-                    builtInTracksContainer.appendChild(button);
-                });
+                setBuiltInSoundTrackButtons(my_data)
+                setBuiltInSoundTrackScriptButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -421,55 +388,199 @@
             })
             .then(function (data) {
                 my_data = JSON.parse(data)
-                // Loop through the data and create a button for each item
-
-                my_data.forEach((item) => {
-                    const button = document.createElement("button");
-                    button.textContent = item.replace("customers_owned_music_", "");
-                    button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                    button.setAttribute("data-value", item);
-                    button.setAttribute("data-url", "/animation");
-                    button.setAttribute("type", "button");
-                    button.addEventListener('click', function () {
-                        var url = button.getAttribute('data-url');
-                        var animation = button.getAttribute('data-value');
-                        var redirectUrl = button.getAttribute('data-redirect');
-
-                        // Create an object with the data to be sent in the request
-                        var data = {
-                            animation: animation,
-                        };
-
-                        button.setAttribute('disabled', 'true')
-
-                        // Make a POST request using fetch
-                        fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(data),
-                        })
-                            .then(function (response) {
-                                // Handle the response from the server
-                                if (redirectUrl) {
-                                    window.location.href = redirectUrl;
-                                } else {
-                                    button.removeAttribute('disabled');
-                                }
-                            })
-                            .catch(function (error) {
-                                button.removeAttribute('disabled');
-                                alert('Try Again');
-                            });
-                    });
-                    myTracksContainer.appendChild(button);
-                });
+                setCustomersSoundTrackButtons(my_data)
+                setCustomersSoundTrackScriptButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
             });
     });
+
+    function setBuiltInSoundTrackButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item;
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    animation: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            button.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled');
+                        alert('Try Again');
+                    });
+            });
+            builtInTracksContainer.appendChild(button);
+        });
+    }
+
+    function setBuiltInSoundTrackScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item;
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    animation: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        console.log(myData)
+                        populateTable(myData["flashTime"]);
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                        button.removeAttribute('disabled')
+                    });
+            });
+            builtInTracksScriptContainer.appendChild(button);
+        });
+    }
+
+    function setCustomersSoundTrackButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("customers_owned_music_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    animation: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            button.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled');
+                        alert('Try Again');
+                    });
+            });
+            myTracksContainer.appendChild(button);
+        });
+    }
+
+    function setCustomersSoundTrackScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("customers_owned_music_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    animation: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        console.log(myData)
+                        populateTable(myData["flashTime"]);
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                        button.removeAttribute('disabled')
+                    });
+            });
+            myTracksScriptContainer.appendChild(button);
+        });
+    }
 
     // Get all buttons with the 'animator-action' class
     // Add click event listener to each button
@@ -700,12 +811,20 @@
 
     function createDataRow(rowData) {
         var row = document.createElement("tr");
+        
+        if (rowData.ts==undefined){
+            var tsCell = createEditableCell(rowData);
+        }else{
+            var tsCell = createEditableCell(rowData.ts);
+        }
+        row.appendChild(tsCell);
 
-        var nameCell = createEditableCell(rowData.ts);
-        row.appendChild(nameCell);
-
-        var emailCell = createEditableCell(rowData.an);
-        row.appendChild(emailCell);
+        if (rowData.an==undefined){
+            var anCell = createEditableCell("");
+        }else{
+            var anCell = createEditableCell(rowData.an);
+        }
+        row.appendChild(anCell);
 
         var actionCell = document.createElement("td");
 

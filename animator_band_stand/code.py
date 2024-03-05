@@ -572,6 +572,25 @@ if (serve_webpage):
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
         
+        @server.route("/get-animation", [POST])
+        def buttonpress(request: Request):
+            global config, continuous_run, time_stamp_mode
+            raw_text = request.raw_request.decode("utf8")
+            if "customers_owned_music_" in raw_text:
+                for sound_file in my_sound_options:
+                    if sound_file in raw_text:
+                        config["option_selected"] = sound_file
+                        sound_file=sound_file.replace("customers_owned_music_","")
+                        myData = files.read_json_file("/sd/customers_owned_music/" + sound_file + ".json")
+                        break
+            else: # built in animations
+                for sound_file in menu_sound_options:
+                    if sound_file  in raw_text:
+                        config["option_selected"] = sound_file
+                        myData = files.read_json_file("/sd/christmas_park_sounds/" + sound_file + ".json")
+                        break
+            return JSONResponse(request, myData)
+                
         @server.route("/get-directory", [POST])
         def buttonpress(request: Request):
             data_object = request.json()
@@ -609,7 +628,6 @@ def sleepAndUpdateVolume(seconds):
         if volume < 0 or volume > 1:
             volume = .5
         mixer.voice[0].level = volume
-        
         time.sleep(seconds)
 
 def reset_lights_to_defaults():
@@ -1523,6 +1541,8 @@ while True:
     if (serve_webpage):
         try:
             server.poll()
+            gc.collect()
         except Exception as e:
             files.log_item(e)
             continue
+   
