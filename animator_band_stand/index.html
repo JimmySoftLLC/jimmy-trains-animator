@@ -29,6 +29,9 @@
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
             </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
+            </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random built in" data-url="/animation"
@@ -154,21 +157,6 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="settings">
-            <h2>Animation table:</h2>
-            <div id="betaDev">
-                <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Fetch Data</button>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Data</button>
-                <table id="dataTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>TimeStamp</th>
-                            <th>Animation</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
             <h2>Volume:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
                 type="button">
@@ -284,6 +272,23 @@
                 </button>
             </div>
 
+        </div>
+        <div class="mui-tabs__pane" id="tables">
+            <h2>Animation table:</h2>
+            <div id="betaDev">
+                <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Fetch Data</button>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Data</button>
+                <table id="dataTable" class="mui-table">
+                    <thead>
+                        <tr>
+                            <th>TimeStamp</th>
+                            <th>Animation</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </body>
@@ -682,15 +687,15 @@
         fetchDataButton.removeAttribute("disabled");
     }
 
-    dataTableBody.addEventListener("click", function(event) {
-      var target = event.target;
-      if (target.classList.contains("insert-row-btn")) {
-        insertRow(target.parentNode.parentNode);
-      } else if (target.classList.contains("delete-row-btn")) {
-        deleteRow(target.parentNode.parentNode);
-      } else if (target.classList.contains("add-row-btn")) {
-        deleteRow(target.parentNode.parentNode);
-      }
+    dataTableBody.addEventListener("click", function (event) {
+        var target = event.target;
+        if (target.classList.contains("insert-row-btn")) {
+            insertRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("delete-row-btn")) {
+            deleteRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("add-row-btn")) {
+            deleteRow(target.parentNode.parentNode);
+        }
     });
 
     function createDataRow(rowData) {
@@ -760,12 +765,12 @@
     }
 
     function insertRow(row) {
-        var newRow = createDataRow({ts: "", an: ""});
+        var newRow = createDataRow({ ts: "", an: "" });
         dataTableBody.insertBefore(newRow, row.nextSibling);
     }
 
     function addRow(row) {
-        var newRow = createDataRow({ts: "", an: ""});
+        var newRow = createDataRow({ ts: "", an: "" });
         dataTableBody.insertAfter(newRow, row.nextSibling);
     }
 
@@ -782,14 +787,14 @@
             });
             return values;
         });
-        
+
         myData = []
-        
+
         for (let i = 0; i < data.length; i++) {
-          myInstance = {"ts": data[i][0],"an": data[i][1]}
-          myData.push(myInstance)
+            myInstance = { "ts": data[i][0], "an": data[i][1] }
+            myData.push(myInstance)
         }
-        
+
         console.log(myData)
 
         // Send data to the server
