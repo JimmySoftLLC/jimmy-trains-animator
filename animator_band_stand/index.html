@@ -761,7 +761,7 @@
 
         let myData = []
 
-        fetch("/get-directory", {
+        fetch("/get-data", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -811,18 +811,19 @@
 
     function createDataRow(rowData) {
         var row = document.createElement("tr");
+        myRowDataSplit = rowData.split("|")
         
-        if (rowData.ts==undefined){
-            var tsCell = createEditableCell(rowData);
+        if (myRowDataSplit[0]){
+            var tsCell = createEditableCell(myRowDataSplit[0]);
         }else{
-            var tsCell = createEditableCell(rowData.ts);
+            var tsCell = createEditableCell("");
         }
         row.appendChild(tsCell);
 
-        if (rowData.an==undefined){
-            var anCell = createEditableCell("");
+        if (myRowDataSplit[1]){
+            var anCell = createEditableCell(myRowDataSplit[1]);
         }else{
-            var anCell = createEditableCell(rowData.an);
+            var anCell = createEditableCell("");
         }
         row.appendChild(anCell);
 
@@ -884,12 +885,12 @@
     }
 
     function addRow(row) {
-        var newRow = createDataRow({ ts: "", an: "" });
+        var newRow = createDataRow("|");
         dataTableBody.insertBefore(newRow, row.nextSibling);
     }
 
     function insertRow(row) {
-        var newRow = createDataRow({ ts: "", an: "" });
+        var newRow = createDataRow("|");
         dataTableBody.insertBefore(newRow, row);
     }
 
@@ -902,7 +903,6 @@
             var cells = Array.from(row.querySelectorAll("td"));
             var values = cells.map(function (cell) {
                 const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
-                console.log(cellValue)
                 return cellValue;
             });
             return values;
@@ -911,11 +911,11 @@
         myData = []
 
         for (let i = 0; i < data.length; i++) {
-            myInstance = { "ts": data[i][0], "an": data[i][1] }
-            myData.push(myInstance)
+            console.log(data[i][0])
+            myData.push(data[i][0]+"|"+data[i][1])
         }
 
-        console.log(myData)
+        // console.log(myData)
 
         // Send data to the server
         fetch("/save-data", {

@@ -210,7 +210,7 @@ cane_ends  = []
 
 num_pixels = 0
 
-ledStripMiddle = neopixel.NeoPixel(board.GP17, num_pixels)
+ledStripMiddle = neopixel.NeoPixel(board.GP15, num_pixels)
 
 def return_tree_parts(part):
     my_indexes = []
@@ -320,7 +320,7 @@ def updateLightString():
     print ("Number of pixels total: ", num_pixels)
     ledStripMiddle.deinit()
     garbage_collect("Deinit ledStrip")
-    ledStripMiddle = neopixel.NeoPixel(board.GP17, num_pixels)
+    ledStripMiddle = neopixel.NeoPixel(board.GP15, num_pixels)
     ledStripMiddle.auto_write = False
     ledStripMiddle.brightness = 1.0
     runLightTest()
@@ -582,20 +582,24 @@ if (serve_webpage):
                         config["option_selected"] = sound_file
                         sound_file=sound_file.replace("customers_owned_music_","")
                         myData = files.read_json_file("/sd/customers_owned_music/" + sound_file + ".json")
+                        for i in range(int(len(myData["flashTime"]))):
+                            myData["flashTime"][i] = str(round(myData["flashTime"][i], 1))
                         break
             else: # built in animations
                 for sound_file in menu_sound_options:
                     if sound_file  in raw_text:
                         config["option_selected"] = sound_file
                         myData = files.read_json_file("/sd/christmas_park_sounds/" + sound_file + ".json")
+                        for i in range(int(len(myData["flashTime"]))):
+                            myData["flashTime"][i] = str(round(myData["flashTime"][i], 1))
                         break
             return JSONResponse(request, myData)
                 
-        @server.route("/get-directory", [POST])
+        @server.route("/get-data", [POST])
         def buttonpress(request: Request):
             data_object = request.json()
-            myData = files.read_json_file("/sd/config_timestamps.json")
-            return JSONResponse(request, myData)
+            garbage_collect("web server")
+            return FileResponse(request, "/sd/config_timestamps.json", "/")
                
         @server.route("/save-data", [POST])
         def buttonpress(request: Request):
@@ -869,8 +873,8 @@ def animation_light_show(file_name):
             duration =  0.25
         if duration < 0: duration = 0
         if timeElasped > flashTime[flashTimeIndex] - 0.25:
-            move_servos(0)
-            sleepAndUpdateVolume(2)
+            #move_servos(0)
+            #sleepAndUpdateVolume(2)
             print("time elasped: " + str(timeElasped) + " Timestamp: " + str(flashTime[flashTimeIndex]))
             flashTimeIndex += 1
             my_index = random.randint(rand_index_low, rand_index_high)
@@ -889,8 +893,8 @@ def animation_light_show(file_name):
             elif my_index == 5:
                 multicolor(duration)
             previous_index = my_index
-            move_servos(180)
-            sleepAndUpdateVolume(2)
+            #move_servos(180)
+            #sleepAndUpdateVolume(2)
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
         #if timeElasped > 2: mixer.voice[0].stop()
