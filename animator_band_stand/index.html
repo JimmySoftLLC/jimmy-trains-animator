@@ -285,9 +285,14 @@
             <h2>My sound tracks:</h2>
             <div id="myTracksScriptContainer"></div>
             <h2>Animation script table:</h2>
-            <div id="betaDev">
-                <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Fetch Data</button>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Data</button>
+            <div class="mui-textfield">
+                <input class="input" id="animationName" type="text" disabled>
+            </div>
+            <div>
+                <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Get Animations</button>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Play</button>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
                 <table id="dataTable" class="mui-table">
                     <thead>
                         <tr>
@@ -477,6 +482,7 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         console.log(myData)
+                        animationName.value = animation
                         populateTable(myData["flashTime"]);
                         button.removeAttribute('disabled')
                     })
@@ -570,6 +576,7 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         console.log(myData)
+                        animationName.value = animation
                         populateTable(myData["flashTime"]);
                         button.removeAttribute('disabled')
                     })
@@ -814,16 +821,16 @@
         myRowDataSplit = rowData.split("|")
         
         if (myRowDataSplit[0]){
-            var tsCell = createEditableCell(myRowDataSplit[0]);
+            var tsCell = createEditableCell(myRowDataSplit[0], "80px");
         }else{
-            var tsCell = createEditableCell("");
+            var tsCell = createEditableCell("", "80px");
         }
         row.appendChild(tsCell);
 
         if (myRowDataSplit[1]){
-            var anCell = createEditableCell(myRowDataSplit[1]);
+            var anCell = createEditableCell(myRowDataSplit[1], "600px");
         }else{
-            var anCell = createEditableCell("");
+            var anCell = createEditableCell("", "600px");
         }
         row.appendChild(anCell);
 
@@ -843,12 +850,15 @@
         return row;
     }
 
-    function createEditableCell(value) {
+    function createEditableCell(value, widthVal) {
         var cell = document.createElement("td");
         var input = document.createElement("input");
         input.type = "text";
         input.className = "pure-input-rounded";
         input.value = value;
+        input.style.width = widthVal
+        input.style.whiteSpace = "pre-wrap";
+        input.style.overflow = "visible";
         var div = document.createElement("div");
         div.className = "mui-textfield";
         div.appendChild(input);
