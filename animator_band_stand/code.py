@@ -600,11 +600,23 @@ if (serve_webpage):
             data_object = request.json()
             garbage_collect("web server")
             return FileResponse(request, "/sd/config_timestamps.json", "/")
+        
+        data_stuff = []
                
         @server.route("/save-data", [POST])
         def buttonpress(request: Request):
+            global data_stuff
             data_object = request.json()
-            files.write_json_file("/sd/config_timestamps.json",data_object)
+            if data_object[0] == 0:
+                data_stuff = []
+            try:
+                data_stuff.extend(data_object[2])
+                if data_object[0] == data_object[1]:
+                    files.write_json_file("/sd/config_timestamps.json",data_stuff)
+                    data_stuff = []
+            except:
+                data_stuff = []
+                return Response(request, "out of memory")
             garbage_collect("Save Data.")
             return Response(request, "success")
            

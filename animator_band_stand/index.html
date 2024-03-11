@@ -819,17 +819,17 @@
     function createDataRow(rowData) {
         var row = document.createElement("tr");
         myRowDataSplit = rowData.split("|")
-        
-        if (myRowDataSplit[0]){
+
+        if (myRowDataSplit[0]) {
             var tsCell = createEditableCell(myRowDataSplit[0], "80px");
-        }else{
+        } else {
             var tsCell = createEditableCell("", "80px");
         }
         row.appendChild(tsCell);
 
-        if (myRowDataSplit[1]){
+        if (myRowDataSplit[1]) {
             var anCell = createEditableCell(myRowDataSplit[1], "600px");
-        }else{
+        } else {
             var anCell = createEditableCell("", "600px");
         }
         row.appendChild(anCell);
@@ -918,34 +918,53 @@
             return values;
         });
 
-        myData = []
+        combinedData = []
 
         for (let i = 0; i < data.length; i++) {
             console.log(data[i][0])
-            myData.push(data[i][0]+"|"+data[i][1])
+            combinedData.push(data[i][0] + "|" + data[i][1])
         }
 
-        // console.log(myData)
+        const blockSize = 5;
+        const totalBlocks = Math.ceil(combinedData.length / blockSize);
 
-        // Send data to the server
-        fetch("/save-data", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(myData)
-        })
-            .then(function (response) {
-                if (response.ok) {
-                    saveDataButton.removeAttribute('disabled')
-                } else {
-                    saveDataButton.removeAttribute('disabled')
-                    alert("Error saving data. Please try again.");
-                }
+        // Function to send each block sequentially
+        function sendBlockSequentially(index) {
+            if (index >= totalBlocks) {
+                // All blocks have been sent, enable the button
+                saveDataButton.removeAttribute('disabled');
+                return;
+            }
+
+            const startIdx = index * blockSize;
+            const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
+            const block = combinedData.slice(startIdx, endIdx);
+            const myObject = [index,totalBlocks-1,block]
+
+            // Send data to the server
+            fetch("/save-data", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(myObject)
             })
-            .catch(function (error) {
-                alert("An error occurred. Please try again later.");
-            });
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("Error saving data. Please try again.");
+                    }
+                    // Send the next block sequentially
+                    sendBlockSequentially(index + 1);
+                })
+                .catch(function (error) {
+                    alert(error.message);
+                    // Enable the button even if an error occurs
+                    saveDataButton.removeAttribute('disabled');
+                });
+        }
+
+        // Start sending blocks sequentially
+        sendBlockSequentially(0);
     }
 
 </script>
