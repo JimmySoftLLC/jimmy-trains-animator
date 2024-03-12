@@ -297,6 +297,7 @@
                     <thead>
                         <tr>
                             <th>TimeStamp</th>
+                            <th>TimeCode</th>
                             <th>Animation</th>
                             <th>Action</th>
                         </tr>
@@ -481,7 +482,6 @@
                     })
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
-                        console.log(myData)
                         animationName.value = animation
                         populateTable(myData["flashTime"]);
                         button.removeAttribute('disabled')
@@ -575,7 +575,6 @@
                     })
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
-                        console.log(myData)
                         animationName.value = animation
                         populateTable(myData["flashTime"]);
                         button.removeAttribute('disabled')
@@ -780,7 +779,6 @@
             })
             .then(function (data) {
                 myData = JSON.parse(data); // Set the value of the input field with the received data
-                console.log(myData)
                 populateTable(myData);
                 fetchDataButton.removeAttribute('disabled')
             })
@@ -792,8 +790,6 @@
     }
 
     function populateTable(data) {
-        console.log(data)
-
         // Clear existing table rows
         dataTableBody.innerHTML = "";
 
@@ -826,6 +822,14 @@
             var tsCell = createEditableCell("", "80px");
         }
         row.appendChild(tsCell);
+
+        if (myRowDataSplit[0]) {
+            var timeCode = secondsToResolveTimeStamp(myRowDataSplit[0])
+            var tcCell = createEditableCell(timeCode, "110px");
+        } else {
+            var tcCell = createEditableCell("", "110px");
+        }
+        row.appendChild(tcCell);
 
         if (myRowDataSplit[1]) {
             var anCell = createEditableCell(myRowDataSplit[1], "600px");
@@ -921,8 +925,8 @@
         combinedData = []
 
         for (let i = 0; i < data.length; i++) {
-            console.log(data[i][0])
-            combinedData.push(data[i][0] + "|" + data[i][1])
+            var secondsConverted = resolveTimeStampToSeconds(data[i][1])
+            combinedData.push(secondsConverted + "|" + data[i][2])
         }
 
         const blockSize = 5;
@@ -939,8 +943,11 @@
             const startIdx = index * blockSize;
             const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
             const block = combinedData.slice(startIdx, endIdx);
-            const myObject = [index,totalBlocks-1,block]
-
+            let myObject = [index, totalBlocks - 1, block]
+            if (startIdx == 0){
+                myObject = [index, totalBlocks - 1, block, animationName.value]
+            }
+          
             // Send data to the server
             fetch("/save-data", {
                 method: "POST",
@@ -965,6 +972,32 @@
 
         // Start sending blocks sequentially
         sendBlockSequentially(0);
+    }
+
+    // Function to convert DaVinci Resolve timestamp to seconds
+    function resolveTimeStampToSeconds(timestamp) {
+        var parts = timestamp.split(':');
+        var hours = parseInt(parts[0]);
+        var minutes = parseInt(parts[1]);
+        var seconds = parseInt(parts[2]);
+        var frames = parseInt(parts[3]);
+        
+        hours -= 1
+
+        var totalSeconds = hours * 3600 + minutes * 60 + seconds + frames / 24;
+
+        return totalSeconds.toFixed(1);
+    }
+
+    // Function to convert seconds to DaVinci Resolve timestamp
+    function secondsToResolveTimeStamp(seconds) {
+        var hours = Math.floor(seconds / 3600) + 1;
+        seconds %= 3600;
+        var minutes = Math.floor(seconds / 60);
+        seconds %= 60;
+        var frames = Math.round((seconds - Math.floor(seconds)) * 24);
+
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
     }
 
 </script>
