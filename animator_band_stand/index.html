@@ -809,8 +809,46 @@
             deleteRow(target.parentNode.parentNode);
         } else if (target.classList.contains("add-row-btn")) {
             addRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("test-row-btn")) {
+            const trElement = target.parentNode.parentNode; // Assuming target is defined elsewhere
+            const thirdInputText = getTextOfThirdInput(trElement);
+            testAnimation(thirdInputText)
         }
     });
+
+    function testAnimation (thirdInputText) {
+        var url = "/test-animation";
+
+        var data = {
+            text: thirdInputText,
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log (data);
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
+    
+    function getTextOfThirdInput(trElement) {
+        const inputElements = trElement.querySelectorAll('input');
+        if (inputElements.length >= 3) {
+            return inputElements[2].value;
+        } else {
+            return "";
+        }
+    }
 
     function createDataRow(rowData) {
         var row = document.createElement("tr");
@@ -832,13 +870,16 @@
         row.appendChild(tcCell);
 
         if (myRowDataSplit[1]) {
-            var anCell = createEditableCell(myRowDataSplit[1], "600px");
+            var anCell = createEditableCell(myRowDataSplit[1], "550px");
         } else {
-            var anCell = createEditableCell("", "600px");
+            var anCell = createEditableCell("", "550px");
         }
         row.appendChild(anCell);
 
         var actionCell = document.createElement("td");
+        
+        var testButton = createTestButton();
+        actionCell.appendChild(testButton);
 
         var insertButton = createInsertButton();
         actionCell.appendChild(insertButton);
@@ -870,11 +911,19 @@
         return cell;
     }
 
+    function createTestButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary test-row-btn";
+        button.innerHTML = 'Tst';
+        return button;
+    }
+
     function createDeleteButton() {
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary delete-row-btn";
-        button.innerHTML = 'Delete';
+        button.innerHTML = 'Del';
         return button;
     }
 
@@ -882,7 +931,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary insert-row-btn";
-        button.innerHTML = 'Insert';
+        button.innerHTML = 'Ins';
         return button;
     }
 

@@ -72,7 +72,7 @@ spi = busio.SPI(sck, si, so)
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 num_voices = 1
-mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2, bits_per_sample=16, samples_signed=True, buffer_size=8192)
+mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2, bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
 volume = .2
@@ -109,29 +109,31 @@ except:
 audio_enable.value = False
 
 # Setup the servo
-back_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
-back_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
-back_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
+s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 
-back_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
-front_5 = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
-front_1 = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
+s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
+s_5 = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
+s_6 = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
 
-back_1_servo = servo.Servo(back_1, min_pulse=500, max_pulse=2500)
-back_2_servo = servo.Servo(back_2, min_pulse=500, max_pulse=2500)
-back_3_servo = servo.Servo(back_3, min_pulse=500, max_pulse=2500)
+servo_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+servo_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
+servo_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
 
-back_4_servo = servo.Servo(back_4, min_pulse=500, max_pulse=2500)
-back_5_servo = servo.Servo(front_5, min_pulse=500, max_pulse=2500)
-front_1_servo = servo.Servo(front_1, min_pulse=500, max_pulse=2500)
+servo_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
+servo_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
+servo_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
 
-back_1_servo.angle = 90
-back_2_servo.angle = 90
-back_3_servo.angle = 90
+servo_array = [servo_1, servo_2, servo_3, servo_4, servo_5, servo_6]
 
-back_4_servo.angle = 90
-back_5_servo.angle = 90
-front_1_servo.angle = 90
+servo_1.angle = 90
+servo_2.angle = 90
+servo_3.angle = 90
+
+servo_4.angle = 90
+servo_5.angle = 90
+servo_6.angle = 90
 
 # Setup the switches, there are two the Left and Right or Black and Red
 SWITCH_1_PIN = board.GP6 #S1 on animator board
@@ -210,7 +212,7 @@ cane_ends  = []
 
 num_pixels = 0
 
-ledStripMiddle = neopixel.NeoPixel(board.GP15, num_pixels)
+ledStrip = neopixel.NeoPixel(board.GP15, num_pixels)
 
 def return_tree_parts(part):
     my_indexes = []
@@ -244,10 +246,10 @@ def return_cane_parts(part):
     return my_indexes
 
 def show_Lights():
-    ledStripMiddle.show()
+    ledStrip.show()
     time.sleep(.3)
-    ledStripMiddle.fill((0, 0, 0))
-    ledStripMiddle.show()
+    ledStrip.fill((0, 0, 0))
+    ledStrip.show()
 
 def runLightTest():
     global tree_ornaments,tree_stars,tree_branches,cane_starts,cane_ends
@@ -259,13 +261,13 @@ def runLightTest():
 
     count = 0
     for led_index in cane_starts:
-        ledStripMiddle[led_index]=(50, 50, 50)
+        ledStrip[led_index]=(50, 50, 50)
         count+=1
         if count > 1:
             show_Lights()
             count = 0
     for led_index in cane_ends:
-        ledStripMiddle[led_index]=(50, 50, 50)
+        ledStrip[led_index]=(50, 50, 50)
         count+=1
         if count > 1:
             show_Lights()
@@ -274,26 +276,26 @@ def runLightTest():
     #tree test
     count = 0
     for led_index in tree_ornaments:
-        ledStripMiddle[led_index]=(50, 50, 50)
+        ledStrip[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
             show_Lights()
             count = 0
     for led_index in tree_stars:
-        ledStripMiddle[led_index]=(50, 50, 50)
+        ledStrip[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
             show_Lights()
             count = 0
     for led_index in tree_branches:
-        ledStripMiddle[led_index]=(50, 50, 50)
+        ledStrip[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
             show_Lights()
             count = 0
 
 def updateLightString():
-    global grand_trees, canes, num_pixels, ledStripMiddle, num_pixels
+    global grand_trees, canes, num_pixels, ledStrip, num_pixels
     grand_trees = []
     canes = []
 
@@ -318,11 +320,11 @@ def updateLightString():
                 num_pixels += quantity
 
     print ("Number of pixels total: ", num_pixels)
-    ledStripMiddle.deinit()
+    ledStrip.deinit()
     garbage_collect("Deinit ledStrip")
-    ledStripMiddle = neopixel.NeoPixel(board.GP15, num_pixels)
-    ledStripMiddle.auto_write = False
-    ledStripMiddle.brightness = 1.0
+    ledStrip = neopixel.NeoPixel(board.GP15, num_pixels)
+    ledStrip.auto_write = False
+    ledStrip.brightness = 1.0
     runLightTest()
     
 updateLightString()
@@ -479,35 +481,35 @@ if (serve_webpage):
             command_sent = ""
             raw_text = request.raw_request.decode("utf8")
             if "set_to_red" in raw_text:
-                ledStripMiddle.fill((255, 0, 0))
-                ledStripMiddle.show()
+                ledStrip.fill((255, 0, 0))
+                ledStrip.show()
             elif "set_to_green" in raw_text:
-                ledStripMiddle.fill((0, 255, 0))
-                ledStripMiddle.show()
+                ledStrip.fill((0, 255, 0))
+                ledStrip.show()
             elif "set_to_blue" in raw_text:
-                ledStripMiddle.fill((0, 0, 255))
-                ledStripMiddle.show()
+                ledStrip.fill((0, 0, 255))
+                ledStrip.show()
             elif "set_to_white" in raw_text:
-                ledStripMiddle.fill((255, 255, 255))
-                ledStripMiddle.show()
+                ledStrip.fill((255, 255, 255))
+                ledStrip.show()
             elif "set_to_0" in raw_text:
-                ledStripMiddle.brightness = 0.0
-                ledStripMiddle.show()
+                ledStrip.brightness = 0.0
+                ledStrip.show()
             elif "set_to_20" in raw_text:
-                ledStripMiddle.brightness = 0.2
-                ledStripMiddle.show()
+                ledStrip.brightness = 0.2
+                ledStrip.show()
             elif "set_to_40" in raw_text:
-                ledStripMiddle.brightness = 0.4
-                ledStripMiddle.show()
+                ledStrip.brightness = 0.4
+                ledStrip.show()
             elif "set_to_60" in raw_text:
-                ledStripMiddle.brightness = 0.6
-                ledStripMiddle.show()
+                ledStrip.brightness = 0.6
+                ledStrip.show()
             elif "set_to_80" in raw_text:
-                ledStripMiddle.brightness = 0.8
-                ledStripMiddle.show()
+                ledStrip.brightness = 0.8
+                ledStrip.show()
             elif "set_to_100" in raw_text:
-                ledStripMiddle.brightness = 1.0
-                ledStripMiddle.show()
+                ledStrip.brightness = 1.0
+                ledStrip.show()
             return Response(request, "Utility: " + "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
@@ -571,6 +573,14 @@ if (serve_webpage):
             sounds.extend(sound_options)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
+        
+        @server.route("/test-animation", [POST])
+        def buttonpress(request: Request):
+            data_object = request.json()
+            print (data_object["text"])
+            garbage_collect("Save Data.")
+            set_spotlights(data_object["text"])
+            return Response(request, "success")
         
         @server.route("/get-animation", [POST])
         def buttonpress(request: Request):
@@ -823,13 +833,13 @@ def animation(file_name):
     garbage_collect("Animation complete.")
 
 def move_servos(position):
-    back_1_servo.angle = position
-    back_2_servo.angle = position
-    back_3_servo.angle = position
+    servo_1.angle = position
+    servo_2.angle = position
+    servo_3.angle = position
 
-    back_4_servo.angle = position
-    back_5_servo.angle = position
-    front_1_servo.angle = position
+    servo_4.angle = position
+    servo_5.angle = position
+    servo_6.angle = position
          
 def animation_light_show(file_name):
     global time_stamp_mode
@@ -894,16 +904,7 @@ def animation_light_show(file_name):
                 print("regenerating random selection")
                 my_index = random.randint(rand_index_low, rand_index_high)
             if my_index == 1:
-                rainbow(.005,duration)
-            elif my_index == 2:
-                multicolor(.01)
-                sleepAndUpdateVolume(duration)
-            elif my_index == 3:
-                fire(duration)
-            elif my_index == 4:   
-                christmas_fire(duration)
-            elif my_index == 5:
-                multicolor(duration)
+                spotLight(commands)
             previous_index = my_index
             #move_servos(180)
             #sleepAndUpdateVolume(2)
@@ -913,8 +914,8 @@ def animation_light_show(file_name):
         if left_switch.fell and config["can_cancel"]:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
-            ledStripMiddle.fill((0, 0, 0))
-            ledStripMiddle.show()
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
             break
         sleepAndUpdateVolume(.001)
          
@@ -945,8 +946,8 @@ def animation_timestamp(file_name):
             my_time_stamps["flashTime"].append(time_elasped) 
             print(time_elasped)
         if not mixer.voice[0].playing:
-            ledStripMiddle.fill((0, 0, 0))
-            ledStripMiddle.show()
+            ledStrip.fill((0, 0, 0))
+            ledStrip.show()
             my_time_stamps["flashTime"].append(5000)
             if customers_file:
                 files.write_json_file("/sd/customers_owned_music/" + file_name + ".json",my_time_stamps)
@@ -962,142 +963,53 @@ def animation_timestamp(file_name):
 ##############################
 # Led color effects
         
-def change_color():
-    ledStripMiddle.brightness = 1.0
+def spotLights():
+    ledStrip.brightness = 1.0
     color_r = random.randint(0, 255)
     color_g = random.randint(0, 255)
     color_b = random.randint(0, 255)     
-    ledStripMiddle.fill((color_r, color_g, color_b))
-    ledStripMiddle.show()
+    ledStrip.fill((color_r, color_g, color_b))
+    ledStrip.show()
 
-def rainbow(speed,duration):
-    startTime = time.monotonic()
-    for j in range(0,255,1):
-        for i in range(num_pixels):
-            pixel_index = (i * 256 // num_pixels) + j
-            ledStripMiddle[i] = colorwheel(pixel_index & 255)
-        ledStripMiddle.show()
-        sleepAndUpdateVolume(speed)
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
-            return
-    for j in reversed(range(0,255,1)):
-        for i in range(num_pixels):
-            pixel_index = (i * 256 // num_pixels) + j
-            ledStripMiddle[i] = colorwheel(pixel_index & 255)
-        ledStripMiddle.show()
-        sleepAndUpdateVolume(speed)
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
-            return
+spotlights = [0,0,0,0,0,0]
 
-def fire(duration):
-    startTime = time.monotonic()
-    ledStripMiddle.brightness = 1.0
+def set_spotlights(input_string):
+    global spotlights
+    # Split the input string into segments
+    segments = input_string.split(",")
 
-    fire_indexes = []
-    
-    fire_indexes.extend(tree_ornaments)
-    fire_indexes.extend(cane_starts)
-    fire_indexes.extend(cane_ends)
-    
-    star_indexes = []
-    star_indexes.extend(tree_stars)
-    
-    for i in star_indexes:
-        ledStripMiddle[i] = (255,255,255)
-        
-    branches_indexes = []
-    branches_indexes.extend((tree_branches))
-    
-    for i in branches_indexes:
-        ledStripMiddle[i] = (50,50,50)
-    
-    r = random.randint(0,255)
-    g = random.randint(0,255)
-    b = random.randint(0,255)
-    
-    print (len(fire_indexes))
-
-    #Flicker, based on our initial RGB values
-    while True:
-        #for i in range (0, num_pixels):
-        for i in fire_indexes:
-            flicker = random.randint(0,110)
-            r1 = bounds(r-flicker, 0, 255)
-            g1 = bounds(g-flicker, 0, 255)
-            b1 = bounds(b-flicker, 0, 255)
-            ledStripMiddle[i] = (r1,g1,b1)
-            ledStripMiddle.show()
-        sleepAndUpdateVolume(random.uniform(0.05,0.1))
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
-            return
-               
-def christmas_fire(duration):
-    startTime=time.monotonic()
-    ledStripMiddle.brightness = 1.0
-
-    #Flicker, based on our initial RGB values
-    while True:
-        for i in range (0, num_pixels):
-            red = random.randint(0,255)
-            green = random.randint(0,255)
-            blue = random.randint(0,255)
-            whichColor = random.randint(0,1)
-            if whichColor == 0:
-                r1=red
-                g1=0
-                b1=0
-            elif whichColor == 1:
-                r1=0
-                g1=green
-                b1=0
-            elif whichColor == 2:
-                r1=0
-                g1=0
-                b1=blue
-            ledStripMiddle[i] = (r1,g1,b1)
-            ledStripMiddle.show()
-        sleepAndUpdateVolume(random.uniform(.2,0.3))
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
-            return
-         
-def bounds(my_color, lower, upper):
-    if (my_color < lower): my_color = lower
-    if (my_color > upper): my_color = upper
-    return my_color
-
-def multicolor(duration):
-    startTime=time.monotonic()
-    ledStripMiddle.brightness = 1.0
-
-    #Flicker, based on our initial RGB values
-    while True:
-        for i in range (0, num_pixels):
-            red = random.randint(128,255)
-            green = random.randint(128,255)
-            blue = random.randint(128,255)
-            whichColor = random.randint(0,2)
-            if whichColor == 0:
-                r1=red
-                g1=0
-                b1=0
-            elif whichColor == 1:
-                r1=0
-                g1=green
-                b1=0
-            elif whichColor == 2:
-                r1=0
-                g1=0
-                b1=blue
-            ledStripMiddle[i] = (r1,g1,b1)
-            ledStripMiddle.show()
-        sleepAndUpdateVolume(random.uniform(.2,0.3))
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
-            return
+    # Process each segment
+    for segment in segments:
+        if segment[0] == 'L': #lights
+            # Extract the spotlight number, value
+            num = int(segment[1])
+            value = int(segment[2:])
+            
+            # Set the spotlight value
+            if num == 0:
+                # Set all spotlights to the specified value
+                for i in range(6):
+                    spotlights[i] = value
+            else:
+                # Set on spot light
+                spotlights[num-1] = int(value)
+        if segment[0] == 'S': #servos
+            # Extract the spotlight number, value
+            num = int(segment[1])
+            value = int(segment[2:])
+            
+            # Set the spotlight value
+            if num == 0:
+                # Set all spotlights to the specified value
+                for i in range(6):
+                    servo_array[i].angle = value
+            else:
+                # Set on spot light
+                servo_array[num].angle = int(value)
+          
+    ledStrip[0] = (spotlights[1],spotlights[0],spotlights[2])
+    ledStrip[1] = (spotlights[4],spotlights[3],spotlights[5])
+    ledStrip.show()
  
 ################################################################################
 # State Machine
@@ -1561,4 +1473,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-   
