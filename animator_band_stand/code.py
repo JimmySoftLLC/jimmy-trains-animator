@@ -1,46 +1,54 @@
+import utilities
+from adafruit_debouncer import Debouncer
+from rainbowio import colorwheel
+import neopixel
+from analogio import AnalogIn
+import asyncio
+from adafruit_motor import servo
+import pwmio
+import microcontroller
+import rtc
+import random
+import board
+import digitalio
+import busio
+import storage
+import sdcardio
+import audiobusio
+import audiomixer
+import audiocore
+import time
 import gc
 import files
+import os
 
 def garbage_collect(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
-    files.log_item( "Point " + collection_point + " Available memory: {} bytes".format(start_mem) )
+    files.log_item("Point " + collection_point +
+                   " Available memory: {} bytes".format(start_mem))
     
+def file_exists(filename):
+    try:
+        status = os.stat(filename)
+        file_exists = True
+    except OSError:
+        file_exists = False
+    return file_exists
+
 garbage_collect("Imports gc, files")
-
-import time
-import audiocore
-import audiomixer
-import audiobusio
-import sdcardio
-import storage
-import busio
-import digitalio
-import board
-import random
-import rtc
-import microcontroller
-import pwmio
-from adafruit_motor import servo
-import asyncio
-
-from analogio import AnalogIn
-
-import neopixel
-from rainbowio import colorwheel
-
-from adafruit_debouncer import Debouncer
 
 def reset_pico():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
     microcontroller.reset()
-    
+
 garbage_collect("imports")
 ################################################################################
 # Setup hardware
 
 # Setup and analog pin to be used for volume control
 analog_in = AnalogIn(board.A0)
+
 
 def get_voltage(pin, wait_for):
     my_increment = wait_for/10
@@ -51,6 +59,7 @@ def get_voltage(pin, wait_for):
         pin_value = pin_value / 10
     return (pin.value) / 65536
 
+
 audio_enable = digitalio.DigitalInOut(board.GP22)
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
@@ -60,7 +69,8 @@ i2s_bclk = board.GP18   # BCLK on MAX98357A
 i2s_lrc = board.GP19  # LRC on MAX98357A
 i2s_din = board.GP20  # DIN on MAX98357A
 
-audio = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
+audio = audiobusio.I2SOut(
+    bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 
 # Setup sdCard
 audio_enable.value = True
@@ -72,19 +82,20 @@ spi = busio.SPI(sck, si, so)
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 num_voices = 1
-mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2, bits_per_sample=16, samples_signed=True, buffer_size=4096)
+mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050,
+                         channel_count=2, bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
 volume = .2
 mixer.voice[0].level = volume
 
 try:
-  sdcard = sdcardio.SDCard(spi, cs)
-  vfs = storage.VfsFat(sdcard)
-  storage.mount(vfs, "/sd")
+    sdcard = sdcardio.SDCard(spi, cs)
+    vfs = storage.VfsFat(sdcard)
+    storage.mount(vfs, "/sd")
 except:
     wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
+    mixer.voice[0].play(wave0, loop=False)
     while mixer.voice[0].playing:
         pass
     cardInserted = False
@@ -96,16 +107,17 @@ except:
                 vfs = storage.VfsFat(sdcard)
                 storage.mount(vfs, "/sd")
                 cardInserted = True
-                wave0 = audiocore.WaveFile(open("/sd/mvc/micro_sd_card_success.wav", "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                wave0 = audiocore.WaveFile(
+                    open("/sd/mvc/micro_sd_card_success.wav", "rb"))
+                mixer.voice[0].play(wave0, loop=False)
                 while mixer.voice[0].playing:
                     pass
             except:
                 wave0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                mixer.voice[0].play(wave0, loop=False)
                 while mixer.voice[0].playing:
                     pass
-            
+
 audio_enable.value = False
 
 # Setup the servo
@@ -136,8 +148,8 @@ servo_5.angle = 90
 servo_6.angle = 90
 
 # Setup the switches, there are two the Left and Right or Black and Red
-SWITCH_1_PIN = board.GP6 #S1 on animator board
-SWITCH_2_PIN = board.GP7 #S2 on animator board
+SWITCH_1_PIN = board.GP6  # S1 on animator board
+SWITCH_2_PIN = board.GP7  # S2 on animator board
 
 switch_io_1 = digitalio.DigitalInOut(SWITCH_1_PIN)
 switch_io_1.direction = digitalio.Direction.INPUT
@@ -160,7 +172,8 @@ config = files.read_json_file("/sd/config_christmas_park.json")
 
 sound_options = files.return_directory("", "/sd/christmas_park_sounds", ".wav")
 
-my_sound_options = files.return_directory("customers_owned_music_", "/sd/customers_owned_music", ".wav")
+my_sound_options = files.return_directory(
+    "customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 all_sound_options = []
 all_sound_options.extend(sound_options)
@@ -168,11 +181,12 @@ all_sound_options.extend(my_sound_options)
 
 menu_sound_options = []
 menu_sound_options.extend(sound_options)
-rnd_options = ['random all','random built in','random my']
+rnd_options = ['random all', 'random built in', 'random my']
 menu_sound_options.extend(rnd_options)
 menu_sound_options.extend(my_sound_options)
 
-time_stamp_jsons = files.return_directory("", "/sd/time_stamp_defaults", ".json")
+time_stamp_jsons = files.return_directory(
+    "", "/sd/time_stamp_defaults", ".json")
 
 serve_webpage = config["serve_webpage"]
 
@@ -182,7 +196,8 @@ main_menu = config_main_menu["main_menu"]
 config_web_menu = files.read_json_file("/sd/mvc/web_menu.json")
 web_menu = config_web_menu["web_menu"]
 
-config_light_string_menu = files.read_json_file("/sd/mvc/light_string_menu.json")
+config_light_string_menu = files.read_json_file(
+    "/sd/mvc/light_string_menu.json")
 light_string_menu = config_light_string_menu["light_string_menu"]
 
 config_light_options = files.read_json_file("/sd/mvc/light_options.json")
@@ -191,7 +206,8 @@ light_options = config_light_options["light_options"]
 volume_settings_options = files.read_json_file("/sd/mvc/volume_settings.json")
 volume_settings = volume_settings_options["volume_settings"]
 
-add_sounds_animate_options = files.read_json_file("/sd/mvc/add_sounds_animate.json")
+add_sounds_animate_options = files.read_json_file(
+    "/sd/mvc/add_sounds_animate.json")
 add_sounds_animate = add_sounds_animate_options["add_sounds_animate"]
 
 garbage_collect("config setup")
@@ -206,44 +222,47 @@ grand_trees = []
 canes = []
 tree_ornaments = []
 tree_stars = []
-tree_branches  = []
-cane_starts  = []
-cane_ends  = []
+tree_branches = []
+cane_starts = []
+cane_ends = []
 
 num_pixels = 0
 
 ledStrip = neopixel.NeoPixel(board.GP15, num_pixels)
 
+
 def return_tree_parts(part):
     my_indexes = []
     for grand_tree in grand_trees:
         for led_index in grand_tree:
-            start_index=led_index
+            start_index = led_index
             break
         if part == "ornaments":
-            for led_index in range(0,7):
+            for led_index in range(0, 7):
                 my_indexes.append(led_index+start_index)
         if part == "star":
-            for led_index in range(7,14):
+            for led_index in range(7, 14):
                 my_indexes.append(led_index+start_index)
-        if part == "branches":        
-            for led_index in range(14,21):
+        if part == "branches":
+            for led_index in range(14, 21):
                 my_indexes.append(led_index+start_index)
     return my_indexes
+
 
 def return_cane_parts(part):
     my_indexes = []
     for cane in canes:
         for led_index in cane:
-            start_index=led_index
+            start_index = led_index
             break
         if part == "end":
-            for led_index in range(0,2):
+            for led_index in range(0, 2):
                 my_indexes.append(led_index+start_index)
         if part == "start":
-            for led_index in range(2,4):
+            for led_index in range(2, 4):
                 my_indexes.append(led_index+start_index)
     return my_indexes
+
 
 def show_Lights():
     ledStrip.show()
@@ -251,8 +270,9 @@ def show_Lights():
     ledStrip.fill((0, 0, 0))
     ledStrip.show()
 
+
 def runLightTest():
-    global tree_ornaments,tree_stars,tree_branches,cane_starts,cane_ends
+    global tree_ornaments, tree_stars, tree_branches, cane_starts, cane_ends
     tree_ornaments = return_tree_parts("ornaments")
     tree_stars = return_tree_parts("star")
     tree_branches = return_tree_parts("branches")
@@ -261,38 +281,39 @@ def runLightTest():
 
     count = 0
     for led_index in cane_starts:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
+        ledStrip[led_index] = (50, 50, 50)
+        count += 1
         if count > 1:
             show_Lights()
             count = 0
     for led_index in cane_ends:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
+        ledStrip[led_index] = (50, 50, 50)
+        count += 1
         if count > 1:
             show_Lights()
             count = 0
 
-    #tree test
+    # tree test
     count = 0
     for led_index in tree_ornaments:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
+        ledStrip[led_index] = (50, 50, 50)
+        count += 1
         if count > 6:
             show_Lights()
             count = 0
     for led_index in tree_stars:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
+        ledStrip[led_index] = (50, 50, 50)
+        count += 1
         if count > 6:
             show_Lights()
             count = 0
     for led_index in tree_branches:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
+        ledStrip[led_index] = (50, 50, 50)
+        count += 1
         if count > 6:
             show_Lights()
             count = 0
+
 
 def updateLightString():
     global grand_trees, canes, num_pixels, ledStrip, num_pixels
@@ -300,7 +321,7 @@ def updateLightString():
     canes = []
 
     num_pixels = 0
-    
+
     elements = config["light_string"].split(',')
 
     for element in elements:
@@ -311,7 +332,8 @@ def updateLightString():
             quantity = int(quantity)
 
             if christmas_park_type == 'grandtree':
-                grand_tree_sequence = list(range(num_pixels, num_pixels + quantity))
+                grand_tree_sequence = list(
+                    range(num_pixels, num_pixels + quantity))
                 grand_trees.append(grand_tree_sequence)
                 num_pixels += quantity
             elif christmas_park_type == 'cane':
@@ -319,14 +341,15 @@ def updateLightString():
                 canes.append(cane_sequence)
                 num_pixels += quantity
 
-    print ("Number of pixels total: ", num_pixels)
+    print("Number of pixels total: ", num_pixels)
     ledStrip.deinit()
     garbage_collect("Deinit ledStrip")
     ledStrip = neopixel.NeoPixel(board.GP15, num_pixels)
     ledStrip.auto_write = False
     ledStrip.brightness = 1.0
     runLightTest()
-    
+
+
 updateLightString()
 garbage_collect("Neopixels setup")
 
@@ -344,9 +367,9 @@ if (serve_webpage):
 
     files.log_item("Connecting to WiFi")
 
-    #default for manufacturing and shows
-    WIFI_SSID="jimmytrainsguest"
-    WIFI_PASSWORD=""
+    # default for manufacturing and shows
+    WIFI_SSID = "jimmytrainsguest"
+    WIFI_PASSWORD = ""
 
     try:
         env = files.read_json_file("/sd/env.json")
@@ -361,12 +384,13 @@ if (serve_webpage):
         # connect to your SSID
         wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
         garbage_collect("wifi connect")
-        
+
         # setup mdns server
         mdns_server = mdns.Server(wifi.radio)
         mdns_server.hostname = config["HOST_NAME"]
-        mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
-        
+        mdns_server.advertise_service(
+            service_type="_http", protocol="_tcp", port=80)
+
         # files.log_items MAC address to REPL
         mystring = [hex(i) for i in wifi.radio.mac_address]
         files.log_item("My MAC addr:" + str(mystring))
@@ -376,12 +400,12 @@ if (serve_webpage):
         # files.log_items IP address to REPL
         files.log_item("My IP address is" + ip_address)
         files.log_item("Connected to WiFi")
-        
+
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
         garbage_collect("wifi server")
-        
+
         ################################################################################
         # Setup routes
 
@@ -389,15 +413,15 @@ if (serve_webpage):
         def base(request: HTTPRequest):
             garbage_collect("Home page.")
             return FileResponse(request, "index.html", "/")
-        
+
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
             return FileResponse(request, "mui.min.css", "/")
-        
+
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
             return FileResponse(request, "mui.min.js", "/")
-        
+
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
             global config, continuous_run, time_stamp_mode
@@ -408,15 +432,15 @@ if (serve_webpage):
                         config["option_selected"] = sound_file
                         animation(config["option_selected"])
                         break
-            else: # built in animations
+            else:  # built in animations
                 for sound_file in menu_sound_options:
-                    if sound_file  in raw_text:
+                    if sound_file in raw_text:
                         config["option_selected"] = sound_file
                         animation(config["option_selected"])
                         break
-            files.write_json_file("/sd/config_christmas_park.json",config)
+            files.write_json_file("/sd/config_christmas_park.json", config)
             return Response(request, "Animation " + config["option_selected"] + " started.")
-        
+
         @server.route("/defaults", [POST])
         def buttonpress(request: Request):
             global config
@@ -424,37 +448,39 @@ if (serve_webpage):
             raw_text = request.raw_request.decode("utf8")
             if "reset_animation_timing_to_defaults" in raw_text:
                 for time_stamp_file in time_stamp_jsons:
-                    time_stamps = files.read_json_file("/sd/time_stamp_defaults/" + time_stamp_file + ".json")
-                    files.write_json_file("/sd/christmas_park_sounds/"+time_stamp_file+".json",time_stamps)
+                    time_stamps = files.read_json_file(
+                        "/sd/time_stamp_defaults/" + time_stamp_file + ".json")
+                    files.write_json_file(
+                        "/sd/christmas_park_sounds/"+time_stamp_file+".json", time_stamps)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 command_sent = "reset_to_defaults"
-                reset_to_defaults()      
-                files.write_json_file("/sd/config_christmas_park.json",config)
+                reset_to_defaults()
+                files.write_json_file("/sd/config_christmas_park.json", config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 state_machine.go_to_state('base_state')
             return Response(request, "Utility: " + command_sent)
-        
+
         @server.route("/mode", [POST])
         def buttonpress(request: Request):
             global config, continuous_run, time_stamp_mode
             command_sent = ""
             raw_text = request.raw_request.decode("utf8")
-            if "cont_mode_on" in raw_text: 
+            if "cont_mode_on" in raw_text:
                 continuous_run = True
                 play_audio_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" in raw_text: 
+            elif "cont_mode_off" in raw_text:
                 continuous_run = False
                 play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
-            elif "timestamp_mode_on" in raw_text: 
+            elif "timestamp_mode_on" in raw_text:
                 time_stamp_mode = True
                 play_audio_0("/sd/mvc/timestamp_mode_on.wav")
                 play_audio_0("/sd/mvc/timestamp_instructions.wav")
-            elif "timestamp_mode_off" in raw_text: 
+            elif "timestamp_mode_off" in raw_text:
                 time_stamp_mode = False
-                play_audio_0("/sd/mvc/timestamp_mode_off.wav") 
+                play_audio_0("/sd/mvc/timestamp_mode_off.wav")
             return Response(request, "Utility: " + command_sent)
-        
+
         @server.route("/speaker", [POST])
         def buttonpress(request: Request):
             global config
@@ -466,15 +492,15 @@ if (serve_webpage):
             elif "volume_pot_off" in raw_text:
                 command_sent = "volume_pot_off"
                 config["volume_pot"] = False
-                files.write_json_file("/sd/config_christmas_park.json",config)
+                files.write_json_file("/sd/config_christmas_park.json", config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 command_sent = "volume_pot_on"
                 config["volume_pot"] = True
-                files.write_json_file("/sd/config_christmas_park.json",config)
+                files.write_json_file("/sd/config_christmas_park.json", config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             return Response(request, "Utility: " + command_sent)
-        
+
         @server.route("/lights", [POST])
         def buttonpress(request: Request):
             global config
@@ -517,71 +543,74 @@ if (serve_webpage):
             global config
             data_object = request.json()
             config["HOST_NAME"] = data_object["text"]
-            files.write_json_file("/sd/config_christmas_park.json",config)       
+            files.write_json_file("/sd/config_christmas_park.json", config)
             mdns_server.hostname = config["HOST_NAME"]
             speak_webpage()
             return Response(request, config["HOST_NAME"])
-        
+
         @server.route("/get-host-name", [POST])
         def buttonpress(request: Request):
             return Response(request, config["HOST_NAME"])
-        
+
         @server.route("/update-volume", [POST])
         def buttonpress(request: Request):
             global config
             data_object = request.json()
             changeVolume(data_object["action"])
             return Response(request, config["volume"])
-        
+
         @server.route("/get-volume", [POST])
         def buttonpress(request: Request):
             return Response(request, config["volume"])
-        
+
         @server.route("/update-light-string", [POST])
         def buttonpress(request: Request):
             global config
             data_object = request.json()
             if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
                 config["light_string"] = data_object["text"]
-                print("action: " + data_object["action"]+ " data: " + config["light_string"])
-                files.write_json_file("/sd/config_christmas_park.json",config)
+                print(
+                    "action: " + data_object["action"] + " data: " + config["light_string"])
+                files.write_json_file("/sd/config_christmas_park.json", config)
                 updateLightString()
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 return Response(request, config["light_string"])
-            if config["light_string"] =="":
+            if config["light_string"] == "":
                 config["light_string"] = data_object["text"]
             else:
-                config["light_string"] = config["light_string"] + "," + data_object["text"]
-            print("action: " + data_object["action"]+ " data: " + config["light_string"])
-            files.write_json_file("/sd/config_christmas_park.json",config)
+                config["light_string"] = config["light_string"] + \
+                    "," + data_object["text"]
+            print("action: " + data_object["action"] +
+                  " data: " + config["light_string"])
+            files.write_json_file("/sd/config_christmas_park.json", config)
             updateLightString()
             play_audio_0("/sd/mvc/all_changes_complete.wav")
             return Response(request, config["light_string"])
-        
+
         @server.route("/get-light-string", [POST])
         def buttonpress(request: Request):
             return Response(request, config["light_string"])
-        
+
         @server.route("/get-customers-sound-tracks", [POST])
         def buttonpress(request: Request):
             my_string = files.json_stringify(my_sound_options)
             return Response(request, my_string)
-        
+
         @server.route("/get-built-in-sound-tracks", [POST])
         def buttonpress(request: Request):
             sounds = []
             sounds.extend(sound_options)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
-        
+
         @server.route("/test-animation", [POST])
         def buttonpress(request: Request):
             data_object = request.json()
-            print (data_object["text"])
+            print(data_object["text"])
             garbage_collect("Save Data.")
-            set_spotlights(data_object["text"])
+            update_animation(data_object["text"])
             return Response(request, "success")
-        
+
         @server.route("/get-animation", [POST])
         def buttonpress(request: Request):
             global config, continuous_run, time_stamp_mode
@@ -590,58 +619,71 @@ if (serve_webpage):
                 for sound_file in my_sound_options:
                     if sound_file in raw_text:
                         config["option_selected"] = sound_file
-                        sound_file=sound_file.replace("customers_owned_music_","")
-                        myData = files.read_json_file("/sd/customers_owned_music/" + sound_file + ".json")
+                        sound_file = sound_file.replace(
+                            "customers_owned_music_", "")
+                        myData = files.read_json_file(
+                            "/sd/customers_owned_music/" + sound_file + ".json")
                         for i in range(int(len(myData["flashTime"]))):
-                            myData["flashTime"][i] = str(round(myData["flashTime"][i], 1))
+                            myData["flashTime"][i] = str(
+                                round(myData["flashTime"][i], 1))
                         break
-            else: # built in animations
+            else:  # built in animations
                 for sound_file in menu_sound_options:
-                    if sound_file  in raw_text:
-                        config["option_selected"] = sound_file
-                        myData = files.read_json_file("/sd/christmas_park_sounds/" + sound_file + ".json")
-                        for i in range(int(len(myData["flashTime"]))):
-                            myData["flashTime"][i] = str(round(myData["flashTime"][i], 1))
-                        break
-            return JSONResponse(request, myData)
-                
-        @server.route("/get-data", [POST])
+                    if sound_file in raw_text:
+                        if (file_exists("/sd/christmas_park_sounds/" + sound_file + "_an.json") == True):
+                            file_name = "/sd/christmas_park_sounds/" + sound_file + "_an.json"
+                            return FileResponse(request, file_name, "/")
+                        else:
+                            config["option_selected"] = sound_file
+                            myData = files.read_json_file(
+                                "/sd/christmas_park_sounds/" + sound_file + ".json")
+                            for i in range(int(len(myData["flashTime"]))):
+                                myData["flashTime"][i] = str(
+                                    round(myData["flashTime"][i], 1))
+                            return JSONResponse(request, myData)
+                            
+        @server.route("/delete-file", [POST])
         def buttonpress(request: Request):
             data_object = request.json()
-            garbage_collect("web server")
-            return FileResponse(request, "/sd/config_timestamps.json", "/")
-        
+            file_name = "/sd/christmas_park_sounds/" + data_object["text"] + "_an.json"
+            os.remove(file_name)
+            garbage_collect("get data")
+            return JSONResponse(request, "file deleted")
+
         data_stuff = []
-               
+
         @server.route("/save-data", [POST])
         def buttonpress(request: Request):
             global data_stuff
             data_object = request.json()
-            if data_object[0] == 0:
-                data_stuff = []
             try:
+                if data_object[0] == 0:
+                    data_stuff = []
                 data_stuff.extend(data_object[2])
                 if data_object[0] == data_object[1]:
-                    files.write_json_file("/sd/config_timestamps.json",data_stuff)
+                    file_name = "/sd/christmas_park_sounds/" + data_object[3] + "_an.json"
+                    files.write_json_file(file_name, data_stuff)
                     data_stuff = []
+                    garbage_collect("get data")
             except:
                 data_stuff = []
+                garbage_collect("get data")
                 return Response(request, "out of memory")
-            garbage_collect("Save Data.")
             return Response(request, "success")
-           
+
     except Exception as e:
         serve_webpage = False
         files.log_item(e)
- 
+
 garbage_collect("web server")
 
-import utilities
 
 garbage_collect("utilities")
 
 ################################################################################
 # Global Methods
+
+
 def sleepAndUpdateVolume(seconds):
     if config["volume_pot"]:
         volume = get_voltage(analog_in, seconds)
@@ -656,9 +698,11 @@ def sleepAndUpdateVolume(seconds):
         mixer.voice[0].level = volume
         time.sleep(seconds)
 
+
 def reset_lights_to_defaults():
     global config
     config["light_string"] = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
+
 
 def reset_to_defaults():
     global config
@@ -668,7 +712,8 @@ def reset_to_defaults():
     config["volume"] = "20"
     config["can_cancel"] = True
     reset_lights_to_defaults()
-    
+
+
 def changeVolume(action):
     volume = int(config["volume"])
     if "volume" in action:
@@ -689,17 +734,18 @@ def changeVolume(action):
         else:
             volume += 10
     if volume > 100:
-        volume =100
+        volume = 100
     if volume < 1:
         volume = 1
     config["volume"] = str(volume)
     config["volume_pot"] = False
-    files.write_json_file("/sd/config_christmas_park.json",config)
+    files.write_json_file("/sd/config_christmas_park.json", config)
     play_audio_0("/sd/mvc/volume.wav")
     speak_this_string(config["volume"], False)
 
 ################################################################################
 # Dialog and sound play methods
+
 
 def play_audio_0(file_name):
     if mixer.voice[0].playing:
@@ -707,21 +753,24 @@ def play_audio_0(file_name):
         while mixer.voice[0].playing:
             sleepAndUpdateVolume(0.02)
     wave0 = audiocore.WaveFile(open(file_name, "rb"))
-    mixer.voice[0].play( wave0, loop=False )
+    mixer.voice[0].play(wave0, loop=False)
     while mixer.voice[0].playing:
         shortCircuitDialog()
+
 
 def stop_audio_0():
     mixer.voice[0].stop()
     while mixer.voice[0].playing:
         pass
 
+
 def shortCircuitDialog():
     sleepAndUpdateVolume(0.02)
     left_switch.update()
     if left_switch.fell:
         mixer.voice[0].stop()
-        
+
+
 def speak_this_string(str_to_speak, addLocal):
     for character in str_to_speak:
         try:
@@ -738,24 +787,29 @@ def speak_this_string(str_to_speak, addLocal):
         play_audio_0("/sd/mvc/dot.wav")
         play_audio_0("/sd/mvc/local.wav")
 
+
 def left_right_mouse_button():
-    play_audio_0("/sd/mvc/press_left_button_right_button.wav")        
-    
+    play_audio_0("/sd/mvc/press_left_button_right_button.wav")
+
+
 def selectWebOptionsAnnouncement():
     play_audio_0("/sd/mvc/web_menu.wav")
     left_right_mouse_button()
 
+
 def option_selected_announcement():
     play_audio_0("/sd/mvc/option_selected.wav")
 
+
 def speak_song_number(song_number):
     play_audio_0("/sd/mvc/song.wav")
-    speak_this_string(song_number,False)    
-    
+    speak_this_string(song_number, False)
+
+
 def speak_light_string(play_intro):
     try:
         elements = config["light_string"].split(',')
-        if play_intro :
+        if play_intro:
             play_audio_0("/sd/mvc/current_light_settings_are.wav")
         for index, element in enumerate(elements):
             play_audio_0("/sd/mvc/position.wav")
@@ -765,7 +819,8 @@ def speak_light_string(play_intro):
     except:
         play_audio_0("/sd/mvc/no_lights_in_light_string.wav")
         return
-        
+
+
 def no_user_soundtrack_found():
     play_audio_0("/sd/mvc/no_user_soundtrack_found.wav")
     while True:
@@ -777,22 +832,25 @@ def no_user_soundtrack_found():
             play_audio_0("/sd/mvc/create_sound_track_files.wav")
             break
 
+
 def speak_webpage():
     play_audio_0("/sd/mvc/animator_available_on_network.wav")
     play_audio_0("/sd/mvc/to_access_type.wav")
-    if config["HOST_NAME"]== "animator-christmas-park":
+    if config["HOST_NAME"] == "animator-christmas-park":
         play_audio_0("/sd/mvc/animator_dash_christmas_dash_park.wav")
         play_audio_0("/sd/mvc/dot.wav")
         play_audio_0("/sd/mvc/local.wav")
     else:
         speak_this_string(config["HOST_NAME"], True)
-    play_audio_0("/sd/mvc/in_your_browser.wav") 
+    play_audio_0("/sd/mvc/in_your_browser.wav")
 
 ################################################################################
 # animations
 
+
 last_option = ""
-     
+
+
 def animation(file_name):
     global config, last_option
     print("Filename: " + file_name)
@@ -800,25 +858,31 @@ def animation(file_name):
     try:
         if file_name == "random built in":
             highest_index = len(sound_options) - 1
-            current_option_selected = sound_options[random.randint(0, highest_index)]
-            while last_option == current_option_selected and len(sound_options)>1:
-                current_option_selected = sound_options[random.randint(0, highest_index)]
+            current_option_selected = sound_options[random.randint(
+                0, highest_index)]
+            while last_option == current_option_selected and len(sound_options) > 1:
+                current_option_selected = sound_options[random.randint(
+                    0, highest_index)]
             last_option = current_option_selected
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random my":
             highest_index = len(my_sound_options) - 1
-            current_option_selected = my_sound_options[random.randint(0, highest_index)]
-            while last_option == current_option_selected and len(my_sound_options)>1:
-                current_option_selected = my_sound_options[random.randint(0, highest_index)]
+            current_option_selected = my_sound_options[random.randint(
+                0, highest_index)]
+            while last_option == current_option_selected and len(my_sound_options) > 1:
+                current_option_selected = my_sound_options[random.randint(
+                    0, highest_index)]
             last_option = current_option_selected
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random all":
             highest_index = len(all_sound_options) - 1
-            current_option_selected = all_sound_options[random.randint(0, highest_index)]
-            while last_option == current_option_selected and len(all_sound_options)>1:
-                current_option_selected = all_sound_options[random.randint(0, highest_index)]
+            current_option_selected = all_sound_options[random.randint(
+                0, highest_index)]
+            while last_option == current_option_selected and len(all_sound_options) > 1:
+                current_option_selected = all_sound_options[random.randint(
+                    0, highest_index)]
             last_option = current_option_selected
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
@@ -832,6 +896,7 @@ def animation(file_name):
         return
     garbage_collect("Animation complete.")
 
+
 def move_servos(position):
     servo_1.angle = position
     servo_2.angle = position
@@ -840,24 +905,20 @@ def move_servos(position):
     servo_4.angle = position
     servo_5.angle = position
     servo_6.angle = position
-         
+
+
 def animation_light_show(file_name):
     global time_stamp_mode
     rand_index_low = 1
     rand_index_high = 3
-    if file_name == "silent night":
-        rand_index_low = 3
-        rand_index_high = 3
-    if file_name == "away in a manger":
-        rand_index_low = 3
-        rand_index_high = 3
 
     customers_file = "customers_owned_music_" in file_name
-    
+
     if customers_file:
-        file_name=file_name.replace("customers_owned_music_","")
+        file_name = file_name.replace("customers_owned_music_", "")
         try:
-            flash_time_dictionary = files.read_json_file("/sd/customers_owned_music/" + file_name + ".json")
+            flash_time_dictionary = files.read_json_file(
+                "/sd/customers_owned_music/" + file_name + ".json")
         except:
             play_audio_0("/sd/mvc/no_timestamp_file_found.wav")
             while True:
@@ -871,46 +932,51 @@ def animation_light_show(file_name):
                     play_audio_0("/sd/mvc/timestamp_instructions.wav")
                     return
     else:
-        flash_time_dictionary = files.read_json_file("/sd/christmas_park_sounds/" + file_name + ".json")
+        flash_time_dictionary = files.read_json_file(
+            "/sd/christmas_park_sounds/" + file_name + ".json")
     flashTime = flash_time_dictionary["flashTime"]
 
     flashTimeLen = len(flashTime)
     flashTimeIndex = 0
-    
+
     if customers_file:
-        wave0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
+        wave0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
     else:
-        wave0 = audiocore.WaveFile(open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
+        wave0 = audiocore.WaveFile(
+            open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play(wave0, loop=False)
     startTime = time.monotonic()
     my_index = 0
-    
-    multicolor(.01)
+
     while True:
-        previous_index=0
+        previous_index = 0
         timeElasped = time.monotonic()-startTime
         if flashTimeIndex < len(flashTime)-2:
-            duration = flashTime[flashTimeIndex+1]-flashTime[flashTimeIndex]-0.25
+            duration = flashTime[flashTimeIndex+1] - \
+                flashTime[flashTimeIndex]-0.25
         else:
-            duration =  0.25
-        if duration < 0: duration = 0
+            duration = 0.25
+        if duration < 0:
+            duration = 0
         if timeElasped > flashTime[flashTimeIndex] - 0.25:
-            #move_servos(0)
-            #sleepAndUpdateVolume(2)
-            print("time elasped: " + str(timeElasped) + " Timestamp: " + str(flashTime[flashTimeIndex]))
+            print("time elasped: " + str(timeElasped) +
+                  " Timestamp: " + str(flashTime[flashTimeIndex]))
             flashTimeIndex += 1
             my_index = random.randint(rand_index_low, rand_index_high)
             while my_index == previous_index:
                 print("regenerating random selection")
                 my_index = random.randint(rand_index_low, rand_index_high)
             if my_index == 1:
-                spotLight(commands)
+                update_animation("L0100,S0180")
+            if my_index == 2:
+                update_animation("L0255,S090")
+            if my_index == 3:
+                update_animation("L010,S00")
             previous_index = my_index
-            #move_servos(180)
-            #sleepAndUpdateVolume(2)
-        if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
+        if flashTimeLen == flashTimeIndex:
+            flashTimeIndex = 0
         left_switch.update()
-        #if timeElasped > 2: mixer.voice[0].stop()
         if left_switch.fell and config["can_cancel"]:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
@@ -918,24 +984,28 @@ def animation_light_show(file_name):
             ledStrip.show()
             break
         sleepAndUpdateVolume(.001)
-         
+
+
 def animation_timestamp(file_name):
     print("time stamp mode")
     global time_stamp_mode
- 
-    customers_file = "customers_owned_music_" in file_name
-    
-    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp_mode.json")
-    my_time_stamps["flashTime"]=[]
-    
-    file_name = file_name.replace("customers_owned_music_","")
 
-    if customers_file :
-        wave0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
+    customers_file = "customers_owned_music_" in file_name
+
+    my_time_stamps = files.read_json_file(
+        "/sd/time_stamp_defaults/timestamp_mode.json")
+    my_time_stamps["flashTime"] = []
+
+    file_name = file_name.replace("customers_owned_music_", "")
+
+    if customers_file:
+        wave0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
     else:
-        wave0 = audiocore.WaveFile(open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
-    mixer.voice[0].play( wave0, loop=False )
-    
+        wave0 = audiocore.WaveFile(
+            open("/sd/christmas_park_sounds/" + file_name + ".wav", "rb"))
+    mixer.voice[0].play(wave0, loop=False)
+
     startTime = time.monotonic()
     sleepAndUpdateVolume(.1)
 
@@ -943,16 +1013,18 @@ def animation_timestamp(file_name):
         time_elasped = time.monotonic()-startTime
         right_switch.update()
         if right_switch.fell:
-            my_time_stamps["flashTime"].append(time_elasped) 
+            my_time_stamps["flashTime"].append(time_elasped)
             print(time_elasped)
         if not mixer.voice[0].playing:
             ledStrip.fill((0, 0, 0))
             ledStrip.show()
             my_time_stamps["flashTime"].append(5000)
             if customers_file:
-                files.write_json_file("/sd/customers_owned_music/" + file_name + ".json",my_time_stamps)
-            else:   
-                files.write_json_file("/sd/christmas_park_sounds/" + file_name + ".json",my_time_stamps)
+                files.write_json_file(
+                    "/sd/customers_owned_music/" + file_name + ".json", my_time_stamps)
+            else:
+                files.write_json_file(
+                    "/sd/christmas_park_sounds/" + file_name + ".json", my_time_stamps)
             break
 
     time_stamp_mode = False
@@ -961,30 +1033,24 @@ def animation_timestamp(file_name):
     play_audio_0("/sd/mvc/animations_are_now_active.wav")
 
 ##############################
-# Led color effects
-        
-def spotLights():
-    ledStrip.brightness = 1.0
-    color_r = random.randint(0, 255)
-    color_g = random.randint(0, 255)
-    color_b = random.randint(0, 255)     
-    ledStrip.fill((color_r, color_g, color_b))
-    ledStrip.show()
+# animation effects
 
-spotlights = [0,0,0,0,0,0]
 
-def set_spotlights(input_string):
+spotlights = [0, 0, 0, 0, 0, 0]
+
+
+def update_animation(input_string):
     global spotlights
     # Split the input string into segments
     segments = input_string.split(",")
 
     # Process each segment
     for segment in segments:
-        if segment[0] == 'L': #lights
+        if segment[0] == 'L':  # lights
             # Extract the spotlight number, value
             num = int(segment[1])
             value = int(segment[2:])
-            
+
             # Set the spotlight value
             if num == 0:
                 # Set all spotlights to the specified value
@@ -993,11 +1059,11 @@ def set_spotlights(input_string):
             else:
                 # Set on spot light
                 spotlights[num-1] = int(value)
-        if segment[0] == 'S': #servos
+        if segment[0] == 'S':  # servos
             # Extract the spotlight number, value
             num = int(segment[1])
             value = int(segment[2:])
-            
+
             # Set the spotlight value
             if num == 0:
                 # Set all spotlights to the specified value
@@ -1006,13 +1072,14 @@ def set_spotlights(input_string):
             else:
                 # Set on spot light
                 servo_array[num].angle = int(value)
-          
-    ledStrip[0] = (spotlights[1],spotlights[0],spotlights[2])
-    ledStrip[1] = (spotlights[4],spotlights[3],spotlights[5])
+
+    ledStrip[0] = (spotlights[1], spotlights[0], spotlights[2])
+    ledStrip[1] = (spotlights[4], spotlights[3], spotlights[5])
     ledStrip.show()
- 
+
 ################################################################################
 # State Machine
+
 
 class StateMachine(object):
 
@@ -1052,6 +1119,8 @@ class StateMachine(object):
 # States
 
 # Abstract parent state class.
+
+
 class State(object):
 
     def __init__(self):
@@ -1070,9 +1139,10 @@ class State(object):
     def update(self, machine):
         pass
 
+
 class BaseState(State):
 
-    def __init__(self):      
+    def __init__(self):
         pass
 
     @property
@@ -1089,7 +1159,8 @@ class BaseState(State):
 
     def update(self, machine):
         global continuous_run
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+        switch_state = utilities.switch_state(
+            left_switch, right_switch, sleepAndUpdateVolume, 3.0)
         if switch_state == "left_held":
             if continuous_run:
                 continuous_run = False
@@ -1101,6 +1172,7 @@ class BaseState(State):
             animation(config["option_selected"])
         elif switch_state == "right":
             machine.go_to_state('main_menu')
+
 
 class MainMenu(State):
 
@@ -1127,7 +1199,7 @@ class MainMenu(State):
         if left_switch.fell:
             play_audio_0("/sd/mvc/" + main_menu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
-            self.menuIndex +=1
+            self.menuIndex += 1
             if self.menuIndex > len(main_menu)-1:
                 self.menuIndex = 0
         if right_switch.fell:
@@ -1135,16 +1207,17 @@ class MainMenu(State):
             if selected_menu_item == "choose_sounds":
                 machine.go_to_state('choose_sounds')
             elif selected_menu_item == "add_sounds_animate":
-                machine.go_to_state('add_sounds_animate')  
+                machine.go_to_state('add_sounds_animate')
             elif selected_menu_item == "light_string_setup_menu":
                 machine.go_to_state('light_string_setup_menu')
             elif selected_menu_item == "web_options":
-                machine.go_to_state('web_options') 
+                machine.go_to_state('web_options')
             elif selected_menu_item == "volume_settings":
                 machine.go_to_state('volume_settings')
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
+
 
 class ChooseSounds(State):
 
@@ -1175,12 +1248,13 @@ class ChooseSounds(State):
                     pass
             else:
                 try:
-                    wave0 = audiocore.WaveFile(open("/sd/christmas_park_options_voice_commands/option_" + menu_sound_options[self.optionIndex] + ".wav" , "rb"))
-                    mixer.voice[0].play( wave0, loop=False )
+                    wave0 = audiocore.WaveFile(open(
+                        "/sd/christmas_park_options_voice_commands/option_" + menu_sound_options[self.optionIndex] + ".wav", "rb"))
+                    mixer.voice[0].play(wave0, loop=False)
                 except:
                     speak_song_number(str(self.optionIndex+1))
                 self.currentOption = self.optionIndex
-                self.optionIndex +=1
+                self.optionIndex += 1
                 if self.optionIndex > len(menu_sound_options)-1:
                     self.optionIndex = 0
                 while mixer.voice[0].playing:
@@ -1192,12 +1266,14 @@ class ChooseSounds(State):
                     pass
             else:
                 config["option_selected"] = menu_sound_options[self.currentOption]
-                files.write_json_file("/sd/config_christmas_park.json",config)
-                wave0 = audiocore.WaveFile(open("/sd/mvc/option_selected.wav", "rb"))
-                mixer.voice[0].play( wave0, loop=False )
+                files.write_json_file("/sd/config_christmas_park.json", config)
+                wave0 = audiocore.WaveFile(
+                    open("/sd/mvc/option_selected.wav", "rb"))
+                mixer.voice[0].play(wave0, loop=False)
                 while mixer.voice[0].playing:
                     pass
             machine.go_to_state('base_state')
+
 
 class AddSoundsAnimate(State):
 
@@ -1223,9 +1299,10 @@ class AddSoundsAnimate(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/mvc/" + add_sounds_animate[self.menuIndex] + ".wav")
+            play_audio_0(
+                "/sd/mvc/" + add_sounds_animate[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
-            self.menuIndex +=1
+            self.menuIndex += 1
             if self.menuIndex > len(add_sounds_animate)-1:
                 self.menuIndex = 0
         if right_switch.fell:
@@ -1236,15 +1313,16 @@ class AddSoundsAnimate(State):
                 time_stamp_mode = True
                 play_audio_0("/sd/mvc/timestamp_mode_on.wav")
                 play_audio_0("/sd/mvc/timestamp_instructions.wav")
-                machine.go_to_state('base_state') 
+                machine.go_to_state('base_state')
             elif selected_menu_item == "timestamp_mode_off":
                 time_stamp_mode = False
                 play_audio_0("/sd/mvc/timestamp_mode_off.wav")
-                        
+
             else:
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
-                    
+
+
 class VolumeSettings(State):
 
     def __init__(self):
@@ -1270,39 +1348,42 @@ class VolumeSettings(State):
         if left_switch.fell:
             play_audio_0("/sd/mvc/" + volume_settings[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
-            self.menuIndex +=1
+            self.menuIndex += 1
             if self.menuIndex > len(volume_settings)-1:
                 self.menuIndex = 0
         if right_switch.fell:
-                selected_menu_item = volume_settings[self.selectedMenuIndex]
-                if selected_menu_item == "volume_level_adjustment":
-                    play_audio_0("/sd/mvc/volume_adjustment_menu.wav")
-                    done = False
-                    while not done: 
-                        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
-                        if switch_state == "left":
-                            changeVolume("lower")
-                        elif switch_state == "right":
-                            changeVolume("raise")
-                        elif switch_state == "right_held":
-                            files.write_json_file("/sd/config_christmas_park.json",config)
-                            play_audio_0("/sd/mvc/all_changes_complete.wav")
-                            done = True
-                            machine.go_to_state('base_state')
-                        sleepAndUpdateVolume(0.1)
-                        pass
-                elif selected_menu_item == "volume_pot_off":
-                    config["volume_pot"] = False
-                    if config["volume"] == 0:
-                        config["volume"] = 10
-                    files.write_json_file("/sd/config_christmas_park.json",config)
-                    play_audio_0("/sd/mvc/all_changes_complete.wav")
-                    machine.go_to_state('base_state') 
-                elif selected_menu_item == "volume_pot_on":
-                    config["volume_pot"] = True
-                    files.write_json_file("/sd/config_christmas_park.json",config)
-                    play_audio_0("/sd/mvc/all_changes_complete.wav")
-                    machine.go_to_state('base_state') 
+            selected_menu_item = volume_settings[self.selectedMenuIndex]
+            if selected_menu_item == "volume_level_adjustment":
+                play_audio_0("/sd/mvc/volume_adjustment_menu.wav")
+                done = False
+                while not done:
+                    switch_state = utilities.switch_state(
+                        left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+                    if switch_state == "left":
+                        changeVolume("lower")
+                    elif switch_state == "right":
+                        changeVolume("raise")
+                    elif switch_state == "right_held":
+                        files.write_json_file(
+                            "/sd/config_christmas_park.json", config)
+                        play_audio_0("/sd/mvc/all_changes_complete.wav")
+                        done = True
+                        machine.go_to_state('base_state')
+                    sleepAndUpdateVolume(0.1)
+                    pass
+            elif selected_menu_item == "volume_pot_off":
+                config["volume_pot"] = False
+                if config["volume"] == 0:
+                    config["volume"] = 10
+                files.write_json_file("/sd/config_christmas_park.json", config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
+            elif selected_menu_item == "volume_pot_on":
+                config["volume_pot"] = True
+                files.write_json_file("/sd/config_christmas_park.json", config)
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                machine.go_to_state('base_state')
+
 
 class WebOptions(State):
     def __init__(self):
@@ -1327,7 +1408,7 @@ class WebOptions(State):
         if left_switch.fell:
             play_audio_0("/sd/mvc/" + web_menu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
-            self.menuIndex +=1
+            self.menuIndex += 1
             if self.menuIndex > len(web_menu)-1:
                 self.menuIndex = 0
         if right_switch.fell:
@@ -1347,9 +1428,10 @@ class WebOptions(State):
                 play_audio_0("/sd/mvc/web_instruct.wav")
                 selectWebOptionsAnnouncement()
             else:
-                files.write_json_file("/sd/config_christmas_park.json",config)
+                files.write_json_file("/sd/config_christmas_park.json", config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to_state('base_state')   
+                machine.go_to_state('base_state')
+
 
 class LightStringSetupMenu(State):
 
@@ -1376,9 +1458,10 @@ class LightStringSetupMenu(State):
         left_switch.update()
         right_switch.update()
         if left_switch.fell:
-            play_audio_0("/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
+            play_audio_0(
+                "/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
-            self.menuIndex +=1
+            self.menuIndex += 1
             if self.menuIndex > len(light_string_menu)-1:
                 self.menuIndex = 0
         if right_switch.fell:
@@ -1389,56 +1472,63 @@ class LightStringSetupMenu(State):
                 reset_lights_to_defaults()
                 play_audio_0("/sd/mvc/lights_reset_to.wav")
                 speak_light_string(False)
-            elif selected_menu_item == "hear_current_light_settings": 
+            elif selected_menu_item == "hear_current_light_settings":
                 speak_light_string(True)
             elif selected_menu_item == "clear_light_string":
                 config["light_string"] = ""
-                play_audio_0("/sd/mvc/lights_cleared.wav") 
+                play_audio_0("/sd/mvc/lights_cleared.wav")
             elif selected_menu_item == "add_lights":
                 play_audio_0("/sd/mvc/add_light_menu.wav")
                 adding = True
                 while adding:
-                    switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+                    switch_state = utilities.switch_state(
+                        left_switch, right_switch, sleepAndUpdateVolume, 3.0)
                     if switch_state == "left":
-                        self.lightIndex -=1
+                        self.lightIndex -= 1
                         if self.lightIndex < 0:
                             self.lightIndex = len(light_options)-1
-                        self.selectedLightIndex = self.lightIndex   
-                        play_audio_0("/sd/mvc/" + light_options[self.lightIndex] + ".wav") 
+                        self.selectedLightIndex = self.lightIndex
+                        play_audio_0(
+                            "/sd/mvc/" + light_options[self.lightIndex] + ".wav")
                     elif switch_state == "right":
-                        self.menuIndex +=1
+                        self.menuIndex += 1
                         if self.menuIndex > len(light_options)-1:
                             self.menuIndex = 0
                         self.selectedMenuIndex = self.menuIndex
-                        play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
+                        play_audio_0(
+                            "/sd/mvc/" + light_options[self.menuIndex] + ".wav")
                     elif switch_state == "right_held":
                         if config["light_string"] == "":
                             config["light_string"] = light_options[self.selectedMenuIndex]
                         else:
-                            config["light_string"] = config["light_string"] + "," + light_options[self.selectedMenuIndex]
-                        play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
-                        play_audio_0("/sd/mvc/added.wav")    
+                            config["light_string"] = config["light_string"] + \
+                                "," + light_options[self.selectedMenuIndex]
+                        play_audio_0(
+                            "/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
+                        play_audio_0("/sd/mvc/added.wav")
                     elif switch_state == "left_held":
-                        files.write_json_file("/sd/config_christmas_park.json",config)   
+                        files.write_json_file(
+                            "/sd/config_christmas_park.json", config)
                         updateLightString()
                         play_audio_0("/sd/mvc/all_changes_complete.wav")
                         adding = False
-                        machine.go_to_state('base_state')  
+                        machine.go_to_state('base_state')
                     sleepAndUpdateVolume(0.1)
                     pass
             else:
-                files.write_json_file("/sd/config_christmas_park.json",config)
+                files.write_json_file("/sd/config_christmas_park.json", config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 updateLightString()
-                machine.go_to_state('base_state')  
+                machine.go_to_state('base_state')
 
 ###############################################################################
 # Create the state machine
 
+
 state_machine = StateMachine()
 state_machine.add_state(BaseState())
 state_machine.add_state(MainMenu())
-state_machine.add_state(ChooseSounds())
+state_machine.add_state(ChooseSounds()
 state_machine.add_state(AddSoundsAnimate())
 state_machine.add_state(VolumeSettings())
 state_machine.add_state(WebOptions())
@@ -1459,7 +1549,7 @@ if (serve_webpage):
         files.log_item("restarting...")
         reset_pico()
 
-state_machine.go_to_state('base_state')   
+state_machine.go_to_state('base_state')
 files.log_item("animator has started...")
 garbage_collect("animations started.")
 
@@ -1473,3 +1563,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+

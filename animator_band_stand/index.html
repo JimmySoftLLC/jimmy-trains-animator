@@ -289,10 +289,10 @@
                 <input class="input" id="animationName" type="text" disabled>
             </div>
             <div>
-                <button id="fetchDataButton" class="mui-btn mui-btn--primary" type="button">Get Animations</button>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Play</button>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+                <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
+                <button id="stopDataButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+                <button id="deleteDataButton" class="mui-btn mui-btn--primary" type="button">Delete Animations</button>
                 <table id="dataTable" class="mui-table">
                     <thead>
                         <tr>
@@ -483,7 +483,11 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animationName.value = animation
-                        populateTable(myData["flashTime"]);
+                        if (myData["flashTime"]){
+                           populateTable(myData["flashTime"]);
+                        }else{
+                           populateTable(myData)
+                        }
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
@@ -745,29 +749,27 @@
     });
 
     // Table component
-    var fetchDataButton = document.getElementById("fetchDataButton");
+    var deleteDataButton = document.getElementById("deleteDataButton");
     var saveDataButton = document.getElementById("saveDataButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
 
-    fetchDataButton.addEventListener("click", function () {
-        fetchData();
+    deleteDataButton.addEventListener("click", function () {
+        deleteData();
     });
 
     saveDataButton.addEventListener("click", function () {
         saveData();
     });
 
-    function fetchData() {
-        fetchDataButton.setAttribute("disabled", "true");
+    function deleteData() {
+        deleteDataButton.setAttribute("disabled", "true");
 
         var data = {
-            text: "dude",
+            text: animationName.value,
         };
 
-        let myData = []
-
-        fetch("/get-data", {
+        fetch("/delete-file", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -778,15 +780,13 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                myData = JSON.parse(data); // Set the value of the input field with the received data
-                populateTable(myData);
-                fetchDataButton.removeAttribute('disabled')
+                console.log("file deleted")
+                deleteDataButton.removeAttribute('disabled')
             })
             .catch(function (error) {
                 console.log(error);
-                fetchDataButton.removeAttribute('disabled')
+                deleteDataButton.removeAttribute('disabled')
             });
-
     }
 
     function populateTable(data) {
@@ -798,7 +798,7 @@
             var row = createDataRow(rowData);
             dataTableBody.appendChild(row);
         });
-        fetchDataButton.removeAttribute("disabled");
+        deleteDataButton.removeAttribute("disabled");
     }
 
     dataTableBody.addEventListener("click", function (event) {
@@ -810,13 +810,14 @@
         } else if (target.classList.contains("add-row-btn")) {
             addRow(target.parentNode.parentNode);
         } else if (target.classList.contains("test-row-btn")) {
-            const trElement = target.parentNode.parentNode; // Assuming target is defined elsewhere
-            const thirdInputText = getTextOfThirdInput(trElement);
-            testAnimation(thirdInputText)
+            testAnimation(target)
         }
     });
 
-    function testAnimation (thirdInputText) {
+    function testAnimation (target) {
+        const trElement = target.parentNode.parentNode; // Assuming target is defined elsewhere
+        const thirdInputText = getTextOfThirdInput(trElement);
+        target.setAttribute("disabled", "true");
         var url = "/test-animation";
 
         var data = {
@@ -835,9 +836,11 @@
             })
             .then(function (data) {
                 console.log (data);
+                target.removeAttribute('disabled')
             })
             .catch(function (error) {
                 console.log(error);
+                target.removeAttribute('disabled')
             });
     }
     
@@ -870,9 +873,9 @@
         row.appendChild(tcCell);
 
         if (myRowDataSplit[1]) {
-            var anCell = createEditableCell(myRowDataSplit[1], "550px");
+            var anCell = createEditableCell(myRowDataSplit[1], "500px");
         } else {
-            var anCell = createEditableCell("", "550px");
+            var anCell = createEditableCell("", "500px");
         }
         row.appendChild(anCell);
 
@@ -993,7 +996,7 @@
             const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
             const block = combinedData.slice(startIdx, endIdx);
             let myObject = [index, totalBlocks - 1, block]
-            if (startIdx == 0){
+            if (index == totalBlocks - 1){
                 myObject = [index, totalBlocks - 1, block, animationName.value]
             }
           
@@ -1052,3 +1055,4 @@
 </script>
 
 </html>
+
