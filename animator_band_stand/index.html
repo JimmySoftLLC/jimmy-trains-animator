@@ -24,9 +24,6 @@
                 <a data-mui-toggle="tab" data-mui-controls="my_animations">my animations</a>
             </li>
             <li>
-                <a data-mui-toggle="tab" data-mui-controls="lightning">light string</a>
-            </li>
-            <li>
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
             </li>
             <li>
@@ -78,54 +75,60 @@
                 by selecting one of your sound tracks and follow the spoken instructions.
             </p>
         </div>
-        <div class="mui-tabs__pane" id="lightning" style="padding-top:0.5rem;">
+        <div class="mui-tabs__pane" id="settings">
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_red" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
                     type="button">
-                    Red
+                    Spot 1
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_green" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L2255" data-url="/lights"
                     type="button">
-                    Green
+                    Spot 2
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_blue" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L3255" data-url="/lights"
                     type="button">
-                    Blue
+                    Spot 3
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_white" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L4255" data-url="/lights"
                     type="button">
-                    White
+                    Spot 4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L5255" data-url="/lights"
+                    type="button">
+                    Spot 5
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L6255" data-url="/lights"
+                    type="button">
+                    Spot 6
                 </button>
             </div>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="I0" data-url="/lights"
                     type="button">
                     Off
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_20" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="I20" data-url="/lights"
                     type="button">
                     20
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_40" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="I40" data-url="/lights"
                     type="button">
                     40
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_60" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="I60" data-url="/lights"
                     type="button">
                     60
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_80" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="I80" data-url="/lights"
                     type="button">
                     80
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_100" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="I100" data-url="/lights"
                     type="button">
                     100
                 </button>
             </div>
-        </div>
-        <div class="mui-tabs__pane" id="settings">
             <h2>Volume:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
                 type="button">
@@ -315,23 +318,6 @@
                 console.log(error);
             });
 
-        // get light string
-        fetch('/get-light-string', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                lightString.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-
         // get built in sound tracks
         fetch('/get-built-in-sound-tracks', {
             method: 'POST',
@@ -387,7 +373,7 @@
 
                 // Create an object with the data to be sent in the request
                 var data = {
-                    animation: animation,
+                    an: animation,
                 };
 
                 button.setAttribute('disabled', 'true')
@@ -433,7 +419,7 @@
 
                 // Create an object with the data to be sent in the request
                 var data = {
-                    animation: animation,
+                    an: animation,
                 };
 
                 button.setAttribute('disabled', 'true')
@@ -452,10 +438,10 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animationName.value = animation
-                        if (myData["flashTime"]){
-                           populateTable(myData["flashTime"]);
-                        }else{
-                           populateTable(myData)
+                        if (myData["flashTime"]) {
+                            populateTable(myData["flashTime"]);
+                        } else {
+                            populateTable(myData)
                         }
                         button.removeAttribute('disabled')
                     })
@@ -484,7 +470,7 @@
 
                 // Create an object with the data to be sent in the request
                 var data = {
-                    animation: animation,
+                    an: animation,
                 };
 
                 button.setAttribute('disabled', 'true')
@@ -530,7 +516,7 @@
 
                 // Create an object with the data to be sent in the request
                 var data = {
-                    animation: animation,
+                    an: animation,
                 };
 
                 button.setAttribute('disabled', 'true')
@@ -572,7 +558,7 @@
 
             // Create an object with the data to be sent in the request
             var data = {
-                animation: animation,
+                an: animation,
             };
 
             button.setAttribute('disabled', 'true')
@@ -600,52 +586,7 @@
         });
     });
 
-    // Get all buttons with the 'animator-light-update' class
-    // Add click event listener to each button
-    var lightUpdateButtons = document.querySelectorAll('.animator-light-update');
-    lightUpdateButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            var url = this.getAttribute('data-url');
-            var action = this.getAttribute('data-action');
-            var data = {}
-            if (action == "save" || action == "clear" || action == "defaults") {
-                var lightStringElement = document.getElementById('lightString');
-                lightStringValue = lightStringElement.value
-                if (action == "defaults") lightStringValue = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
-                if (action == "clear") lightStringValue = ""
-                data = {
-                    text: lightStringValue,
-                    action: action
-                }
-            } else {
-                data = {
-                    text: action,
-                    action: action
-                }
-            }
-            button.setAttribute('disabled', 'true')
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text(); // assuming the response is plain text
-                })
-                .then(function (data) {
-                    lightString.value = data; // Set the value of the input field with the received data
-                    button.removeAttribute('disabled')
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    button.removeAttribute('disabled')
-                });
-        });
-    });
-
-    // Get all buttons with the 'animator-light-update' class
+    // Get all buttons with the 'animator-volume-update' class
     // Add click event listener to each button
     var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
     volumeUpdateButtons.forEach(function (button) {
@@ -783,7 +724,7 @@
         }
     });
 
-    function testAnimation (target) {
+    function testAnimation(target) {
         const trElement = target.parentNode.parentNode; // Assuming target is defined elsewhere
         const thirdInputText = getTextOfThirdInput(trElement);
         target.setAttribute("disabled", "true");
@@ -804,7 +745,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                console.log (data);
+                console.log(data);
                 target.removeAttribute('disabled')
             })
             .catch(function (error) {
@@ -812,7 +753,7 @@
                 target.removeAttribute('disabled')
             });
     }
-    
+
     function getTextOfThirdInput(trElement) {
         const inputElements = trElement.querySelectorAll('input');
         if (inputElements.length >= 3) {
@@ -849,7 +790,7 @@
         row.appendChild(anCell);
 
         var actionCell = document.createElement("td");
-        
+
         var testButton = createTestButton();
         actionCell.appendChild(testButton);
 
@@ -965,10 +906,10 @@
             const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
             const block = combinedData.slice(startIdx, endIdx);
             let myObject = [index, totalBlocks - 1, block]
-            if (index == totalBlocks - 1){
+            if (index == totalBlocks - 1) {
                 myObject = [index, totalBlocks - 1, block, animationName.value]
             }
-          
+
             // Send data to the server
             fetch("/save-data", {
                 method: "POST",
@@ -1002,7 +943,7 @@
         var minutes = parseInt(parts[1]);
         var seconds = parseInt(parts[2]);
         var frames = parseInt(parts[3]);
-        
+
         hours -= 1
 
         var totalSeconds = hours * 3600 + minutes * 60 + seconds + frames / 24;
@@ -1024,4 +965,3 @@
 </script>
 
 </html>
-
