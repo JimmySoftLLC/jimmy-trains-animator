@@ -554,7 +554,6 @@ def sel_web():
     play_a_0("/sd/mvc/web_menu.wav")
     l_r_but()
 
-
 def opt_sel():
     play_a_0("/sd/mvc/option_selected.wav")
 
@@ -562,7 +561,6 @@ def opt_sel():
 def spk_sng_num(song_number):
     play_a_0("/sd/mvc/song.wav")
     spk_str(song_number, False)
-
 
 def no_trk():
     play_a_0("/sd/mvc/no_user_soundtrack_found.wav")
@@ -574,7 +572,6 @@ def no_trk():
         if r_sw.fell:
             play_a_0("/sd/mvc/create_sound_track_files.wav")
             break
-
 
 def spk_web():
     play_a_0("/sd/mvc/animator_available_on_network.wav")
@@ -590,10 +587,8 @@ def spk_web():
 ################################################################################
 # async methods
 
-
 # Create an event loop
 loop = asyncio.get_event_loop()
-
 
 async def upd_vol_async(s):
     if cfg["volume_pot"]:
@@ -611,7 +606,6 @@ async def upd_vol_async(s):
         await asyncio.sleep(s)
 
 p_arr = [90, 90, 90, 90, 90, 90]
-
 
 async def cyc_servo(n, s, p_up, p_dwn):
     global p_arr
@@ -644,9 +638,7 @@ def m_servo(n, p):
 ################################################################################
 # animations
 
-
 lst_opt = ""
-
 
 def animation(f_nm):
     global cfg, lst_opt
@@ -692,7 +684,6 @@ def animation(f_nm):
         cfg["option_selected"] = "random built in"
         return
     gc_col("Animation complete.")
-
 
 def an_light(f_nm):
     global ts_mode
@@ -831,7 +822,7 @@ spot = [0, 0, 0, 0, 0, 0]
 bright = 0
 
 
-def set_hdw(input_string):
+def set_hdw(input_string):  
     loop.create_task(set_hdw_async(input_string))
     loop.run_forever()
 
@@ -1270,3 +1261,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
