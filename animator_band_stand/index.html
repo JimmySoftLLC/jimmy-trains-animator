@@ -550,7 +550,11 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animationName.value = animation
-                        populateTable(myData["flashTime"]);
+                        if (myData["flashTime"]) {
+                            populateTable(myData["flashTime"]);
+                        } else {
+                            populateTable(myData)
+                        }
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
@@ -642,7 +646,7 @@
         var url = this.getAttribute('data-url');
 
         var data = {
-            text: websiteUrlText,
+            an: websiteUrlText,
         };
 
         websiteSubmitButton.setAttribute('disabled', 'true')
@@ -691,7 +695,7 @@
         deleteDataButton.setAttribute("disabled", "true");
 
         var data = {
-            text: animationName.value,
+            an: animationName.value,
         };
 
         fetch("/delete-file", {
@@ -746,7 +750,7 @@
         var url = "/test-animation";
 
         var data = {
-            text: thirdInputText,
+            an: thirdInputText,
         };
 
         fetch(url, {
