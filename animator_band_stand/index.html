@@ -74,8 +74,32 @@
                 animator will scan for new files and populate the web page with your sound tracks. Next you animate them
                 by selecting one of your sound tracks and follow the spoken instructions.
             </p>
+            <h2>Animation timing:</h2>
+            <p>
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
+                left button to start your animation. Once the sound track starts press the right button for each point
+                that you want an animation change. Time your button presses to key moments in the sound track. Continue
+                to do this until the animation finishes. Then
+                timestamp mode will be automatically turned off and your animation will be ready.
+            </p>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
+                    type="button">
+                    Timestamp Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/mode" type="button">
+                    Timestamp Mode Off
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_animation_timing_to_defaults"
+                    data-url="/defaults" type="button">
+                    Reset animation timing to factory defaults
+                </button>
+            </div>
         </div>
-        <div class="mui-tabs__pane" id="settings">  
+        <div class="mui-tabs__pane" id="settings">
             <h2>Platform positions:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
@@ -234,30 +258,6 @@
                 type="button">
                 Reset to defaults
             </button>
-            <h2>Animation timing:</h2>
-            <p>
-                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
-                left button to start your animation. Once the sound track starts press the right button for each point
-                that you want an animation change. Time your button presses to key moments in the sound track. Continue
-                to do this until the animation finishes. Then
-                timestamp mode will be automatically turned off and your animation will be ready.
-            </p>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
-                    type="button">
-                    Timestamp Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
-                    data-url="/mode" type="button">
-                    Timestamp Mode Off
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_animation_timing_to_defaults"
-                    data-url="/defaults" type="button">
-                    Reset animation timing to factory defaults
-                </button>
-            </div>
 
         </div>
         <div class="mui-tabs__pane" id="tables">
@@ -453,11 +453,7 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animationName.value = animation
-                        if (myData["flashTime"]) {
-                            populateTable(myData["flashTime"]);
-                        } else {
-                            populateTable(myData)
-                        }
+                        populateTable(myData)
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
@@ -550,11 +546,7 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animationName.value = animation
-                        if (myData["flashTime"]) {
-                            populateTable(myData["flashTime"]);
-                        } else {
-                            populateTable(myData)
-                        }
+                        populateTable(myData)
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
@@ -984,4 +976,3 @@
 </script>
 
 </html>
-

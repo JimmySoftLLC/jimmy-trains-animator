@@ -52,17 +52,17 @@ gc_col("imports")
 # Setup hardware
 
 # Setup pin for vol
-analog_in = AnalogIn(board.A0)
+a_in = AnalogIn(board.A0)
 
 
-def g_volt(pin, wait_for):
+def g_volt(p, wait_for):
     i = wait_for/10
-    pin_v = 0
+    p_v = 0
     for _ in range(10):
         time.sleep(i)
-        pin_v += 1
-        pin_v = pin_v / 10
-    return (pin.value) / 65536
+        p_v += 1
+        p_v = p_v / 10
+    return (p.value) / 65536
 
 
 # setup pin for audio enable
@@ -161,9 +161,9 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # Sd card config variables
 
-cfg = files.read_json_file("/sd/config_christmas_park.json")
+cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = files.return_directory("", "/sd/christmas_park_sounds", ".wav")
+snd_opt = files.return_directory("", "/sd/snds", ".wav")
 
 cust_snd_opt = files.return_directory(
     "customers_owned_music_", "/sd/customers_owned_music", ".wav")
@@ -179,7 +179,7 @@ menu_snd_opt.extend(rnd_opt)
 menu_snd_opt.extend(cust_snd_opt)
 
 ts_jsons = files.return_directory(
-    "", "/sd/time_stamp_defaults", ".json")
+    "", "/sd/t_s_def", ".json")
 
 web = cfg["serve_webpage"]
 
@@ -278,7 +278,7 @@ if (web):
             rq_d = request.json()
             cfg["option_selected"] = rq_d["an"]
             an(cfg["option_selected"])
-            files.write_json_file("/sd/config_christmas_park.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/defaults", [POST])
@@ -288,14 +288,14 @@ if (web):
             if rq_d["an"] == "reset_animation_timing_to_defaults":
                 for time_stamp_file in ts_jsons:
                     time_stamps = files.read_json_file(
-                        "/sd/time_stamp_defaults/" + time_stamp_file + ".json")
+                        "/sd/t_s_def/" + time_stamp_file + ".json")
                     files.write_json_file(
-                        "/sd/christmas_park_sounds/"+time_stamp_file+".json", time_stamps)
+                        "/sd/snds/"+time_stamp_file+".json", time_stamps)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
             elif rq_d["an"] == "reset_to_defaults":
                 cmd_snt = "reset_to_defaults"
                 rst_def()
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
             return Response(request, "Utility: " + rq_d["an"])
@@ -329,12 +329,12 @@ if (web):
             elif rq_d["an"] == "volume_pot_off":
                 cmd_snt = "volume_pot_off"
                 cfg["volume_pot"] = False
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
             elif rq_d["an"] == "volume_pot_on":
                 cmd_snt = "volume_pot_on"
                 cfg["volume_pot"] = True
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
             return Response(request, "Utility: " + rq_d["an"])
 
@@ -349,7 +349,7 @@ if (web):
             global cfg
             rq_d = request.json()
             cfg["HOST_NAME"] = rq_d["an"]
-            files.write_json_file("/sd/config_christmas_park.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             mdns.hostname = cfg["HOST_NAME"]
             spk_web()
             return Response(request, cfg["HOST_NAME"])
@@ -400,24 +400,10 @@ if (web):
                     f_n = "/sd/customers_owned_music/" + snd_f + "_an.json"
                     print(f_n)
                     return FileResponse(request, f_n, "/")
-                else:
-                    myData = files.read_json_file(
-                        "/sd/customers_owned_music/" + snd_f + ".json")
-                    for i in range(int(len(myData["flashTime"]))):
-                        myData["flashTime"][i] = str(
-                            round(myData["flashTime"][i], 1))
-                    return JSONResponse(request, myData)
             else:
-                if (f_exists("/sd/christmas_park_sounds/" + snd_f + "_an.json") == True):
-                    f_n = "/sd/christmas_park_sounds/" + snd_f + "_an.json"
+                if (f_exists("/sd/snds/" + snd_f + "_an.json") == True):
+                    f_n = "/sd/snds/" + snd_f + "_an.json"
                     return FileResponse(request, f_n, "/")
-                else:
-                    myData = files.read_json_file(
-                        "/sd/christmas_park_sounds/" + snd_f + ".json")
-                    for i in range(int(len(myData["flashTime"]))):
-                        myData["flashTime"][i] = str(
-                            round(myData["flashTime"][i], 1))
-                    return JSONResponse(request, myData)
 
         @server.route("/delete-file", [POST])
         def btn(request: Request):
@@ -427,7 +413,7 @@ if (web):
                 snd_f = rq_d["an"].replace("customers_owned_music_", "")
                 f_n = "/sd/customers_owned_music/" + snd_f + "_an.json"
             else:
-                f_n = "/sd/christmas_park_sounds/" + rq_d["an"] + "_an.json"
+                f_n = "/sd/snds/" + rq_d["an"] + "_an.json"
             os.remove(f_n)
             gc_col("get data")
             return JSONResponse(request, "file deleted")
@@ -449,7 +435,7 @@ if (web):
                         f_n = "/sd/customers_owned_music/" + \
                             snd_f + "_an.json"
                     else:
-                        f_n = "/sd/christmas_park_sounds/" + \
+                        f_n = "/sd/snds/" + \
                             rq_d[3] + "_an.json"
                     files.write_json_file(f_n, data)
                     data = []
@@ -485,7 +471,7 @@ def rst_def():
 
 def upd_vol(seconds):
     if cfg["volume_pot"]:
-        volume = g_volt(analog_in, seconds)
+        volume = g_volt(a_in, seconds)
         mix.voice[0].level = volume
     else:
         try:
@@ -523,7 +509,7 @@ def ch_vol(action):
         vol = 1
     cfg["volume"] = str(vol)
     cfg["volume_pot"] = False
-    files.write_json_file("/sd/config_christmas_park.json", cfg)
+    files.write_json_file("/sd/cfg.json", cfg)
     play_a_0("/sd/mvc/volume.wav")
     spk_str(cfg["volume"], False)
 
@@ -620,7 +606,7 @@ loop = asyncio.get_event_loop()
 
 async def upd_vol_async(s):
     if cfg["volume_pot"]:
-        vol = analog_in.value / 65536
+        vol = a_in.value / 65536
         mix.voice[0].level = vol
         await asyncio.sleep(s)
     else:
@@ -748,13 +734,9 @@ def an_light(f_nm):
                         play_a_0("/sd/mvc/timestamp_instructions.wav")
                         return
     else:
-        if (f_exists("/sd/christmas_park_sounds/" + f_nm + "_an.json") == True):
+        if (f_exists("/sd/snds/" + f_nm + "_an.json") == True):
             flsh_t = files.read_json_file(
-                "/sd/christmas_park_sounds/" + f_nm + "_an.json")
-        else:
-            flh_t_d = files.read_json_file(
-                "/sd/christmas_park_sounds/" + f_nm + ".json")
-            flsh_t = flh_t_d["flashTime"]
+                "/sd/snds/" + f_nm + "_an.json")
 
     flsh_i = 0
 
@@ -763,7 +745,7 @@ def an_light(f_nm):
             open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
     else:
         wave0 = audiocore.WaveFile(
-            open("/sd/christmas_park_sounds/" + f_nm + ".wav", "rb"))
+            open("/sd/snds/" + f_nm + ".wav", "rb"))
     mix.voice[0].play(wave0, loop=False)
     srt_t = time.monotonic()
 
@@ -810,9 +792,7 @@ def an_ts(f_nm):
 
     cust_f = "customers_owned_music_" in f_nm
 
-    t_s = files.read_json_file(
-        "/sd/time_stamp_defaults/timestamp mode.json")
-    t_s["flashTime"] = []
+    t_s = []
 
     f_nm = f_nm.replace("customers_owned_music_", "")
 
@@ -821,28 +801,28 @@ def an_ts(f_nm):
             open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
     else:
         wave0 = audiocore.WaveFile(
-            open("/sd/christmas_park_sounds/" + f_nm + ".wav", "rb"))
+            open("/sd/snds/" + f_nm + ".wav", "rb"))
     mix.voice[0].play(wave0, loop=False)
 
     startTime = time.monotonic()
     upd_vol(.1)
 
     while True:
-        t_elsp = time.monotonic()-startTime
+        t_elsp = round(time.monotonic()-startTime, 1)
         r_sw.update()
         if r_sw.fell:
-            t_s["flashTime"].append(t_elsp)
+            t_s.append(str(t_elsp) + "|")
             print(t_elsp)
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            t_s["flashTime"].append(5000)
+            t_s.append(5000)
             if cust_f:
                 files.write_json_file(
-                    "/sd/customers_owned_music/" + f_nm + ".json", t_s)
+                    "/sd/customers_owned_music/" + f_nm + "_an.json", t_s)
             else:
                 files.write_json_file(
-                    "/sd/christmas_park_sounds/" + f_nm + ".json", t_s)
+                    "/sd/snds/" + f_nm + "_an.json", t_s)
             break
 
     ts_mode = False
@@ -1073,7 +1053,7 @@ class Snds(State):
             else:
                 try:
                     wave0 = audiocore.WaveFile(open(
-                        "/sd/christmas_park_options_voice_commands/option_" + menu_snd_opt[self.i] + ".wav", "rb"))
+                        "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
                     mix.voice[0].play(wave0, loop=False)
                 except:
                     spk_sng_num(str(self.i+1))
@@ -1090,7 +1070,7 @@ class Snds(State):
                     pass
             else:
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 wave0 = audiocore.WaveFile(
                     open("/sd/mvc/option_selected.wav", "rb"))
                 mix.voice[0].play(wave0, loop=False)
@@ -1188,7 +1168,7 @@ class VolSet(State):
                         ch_vol("raise")
                     elif switch_state == "right_held":
                         files.write_json_file(
-                            "/sd/config_christmas_park.json", cfg)
+                            "/sd/cfg.json", cfg)
                         play_a_0("/sd/mvc/all_changes_complete.wav")
                         done = True
                         mch.go_to('base_state')
@@ -1198,12 +1178,12 @@ class VolSet(State):
                 cfg["volume_pot"] = False
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "volume_pot_on":
                 cfg["volume_pot"] = True
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
@@ -1251,7 +1231,7 @@ class WebOpt(State):
                 play_a_0("/sd/mvc/web_instruct.wav")
                 sel_web()
             else:
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
