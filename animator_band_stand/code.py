@@ -396,13 +396,19 @@ if (web):
             snd_f = rq_d["an"]
             if "customers_owned_music_" in snd_f:
                 snd_f = snd_f.replace("customers_owned_music_", "")
-                if (f_exists("/sd/customers_owned_music/" + snd_f + "_an.json") == True):
-                    f_n = "/sd/customers_owned_music/" + snd_f + "_an.json"
+                if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
+                    f_n = "/sd/customers_owned_music/" + snd_f + ".json"
                     print(f_n)
                     return FileResponse(request, f_n, "/")
+                else:
+                    f_n = "/sd/t_s_def/timestamp mode.json"
+                    return FileResponse(request, f_n, "/")
             else:
-                if (f_exists("/sd/snds/" + snd_f + "_an.json") == True):
-                    f_n = "/sd/snds/" + snd_f + "_an.json"
+                if (f_exists("/sd/snds/" + snd_f + ".json") == True):
+                    f_n = "/sd/snds/" + snd_f + ".json"
+                    return FileResponse(request, f_n, "/")
+                else:
+                    f_n = "/sd/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
 
         @server.route("/delete-file", [POST])
@@ -411,9 +417,9 @@ if (web):
             f_n = ""
             if "customers_owned_music_" in rq_d["an"]:
                 snd_f = rq_d["an"].replace("customers_owned_music_", "")
-                f_n = "/sd/customers_owned_music/" + snd_f + "_an.json"
+                f_n = "/sd/customers_owned_music/" + snd_f + ".json"
             else:
-                f_n = "/sd/snds/" + rq_d["an"] + "_an.json"
+                f_n = "/sd/snds/" + rq_d["an"] + ".json"
             os.remove(f_n)
             gc_col("get data")
             return JSONResponse(request, "file deleted")
@@ -433,10 +439,10 @@ if (web):
                     if "customers_owned_music_" in rq_d[3]:
                         snd_f = rq_d[3].replace("customers_owned_music_", "")
                         f_n = "/sd/customers_owned_music/" + \
-                            snd_f + "_an.json"
+                            snd_f + ".json"
                     else:
                         f_n = "/sd/snds/" + \
-                            rq_d[3] + "_an.json"
+                            rq_d[3] + ".json"
                     files.write_json_file(f_n, data)
                     data = []
                     gc_col("get data")
@@ -588,8 +594,8 @@ def no_trk():
 def spk_web():
     play_a_0("/sd/mvc/animator_available_on_network.wav")
     play_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-christmas-park":
-        play_a_0("/sd/mvc/animator_dash_christmas_dash_park.wav")
+    if cfg["HOST_NAME"] == "animator-bandstand":
+        play_a_0("/sd/mvc/animator_dash_bandstand.wav")
         play_a_0("/sd/mvc/dot.wav")
         play_a_0("/sd/mvc/local.wav")
     else:
@@ -714,9 +720,9 @@ def an_light(f_nm):
 
     if cust_f:
         f_nm = f_nm.replace("customers_owned_music_", "")
-        if (f_exists("/sd/customers_owned_music/" + f_nm + "_an.json") == True):
+        if (f_exists("/sd/customers_owned_music/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
-                "/sd/customers_owned_music/" + f_nm + "_an.json")
+                "/sd/customers_owned_music/" + f_nm + ".json")
         else:
             try:
                 flsh_t = files.read_json_file(
@@ -734,9 +740,9 @@ def an_light(f_nm):
                         play_a_0("/sd/mvc/timestamp_instructions.wav")
                         return
     else:
-        if (f_exists("/sd/snds/" + f_nm + "_an.json") == True):
+        if (f_exists("/sd/snds/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
-                "/sd/snds/" + f_nm + "_an.json")
+                "/sd/snds/" + f_nm + ".json")
 
     flsh_i = 0
 
@@ -819,10 +825,10 @@ def an_ts(f_nm):
             t_s.append(5000)
             if cust_f:
                 files.write_json_file(
-                    "/sd/customers_owned_music/" + f_nm + "_an.json", t_s)
+                    "/sd/customers_owned_music/" + f_nm + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/sd/snds/" + f_nm + "_an.json", t_s)
+                    "/sd/snds/" + f_nm + ".json", t_s)
             break
 
     ts_mode = False
@@ -1276,3 +1282,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
