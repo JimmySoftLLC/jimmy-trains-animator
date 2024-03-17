@@ -1013,6 +1013,8 @@
 
         var totalSeconds = hours * 3600 + minutes * 60 + seconds + frames / 24;
 
+        if (!totalSeconds) totalSeconds = 0;
+
         return totalSeconds.toFixed(1);
     }
 
@@ -1023,6 +1025,12 @@
         var minutes = Math.floor(seconds / 60);
         seconds %= 60;
         var frames = Math.round((seconds - Math.floor(seconds)) * 24);
+
+        if (!seconds) {
+            hours = 1
+            minutes = 0
+            frames = 0
+        }
 
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
     }
