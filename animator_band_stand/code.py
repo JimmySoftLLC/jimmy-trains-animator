@@ -241,6 +241,7 @@ if (web):
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
+        
         gc_col("wifi server")
 
         ################################################################################
