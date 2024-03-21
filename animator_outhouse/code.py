@@ -277,10 +277,10 @@ if (web):
                 animate_outhouse()
             elif "cont_mode_on" in raw_text:
                 cont_run = True
-                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
+                play_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif "cont_mode_off" in raw_text:
                 cont_run = False
-                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
+                play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/utilities", [POST])
@@ -288,19 +288,19 @@ if (web):
             global cfg
             raw_text = request.raw_request.decode("utf8")
             if "speaker_test" in raw_text:
-                play_audio_0("/sd/mvc/left_speaker_right_speaker.wav")
+                play_a_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif "volume_pot_off" in raw_text:
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 reset_to_defaults()
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 state_machine.go_to_state('base_state')
 
             return Response(request, "Dialog option cal saved.")
@@ -312,7 +312,7 @@ if (web):
             cfg["HOST_NAME"] = data_object["text"]
             files.write_json_file("/sd/cfg.json", cfg)
             mdns_server.hostname = cfg["HOST_NAME"]
-            speak_webpage()
+            spk_web()
             return Response(request, cfg["HOST_NAME"])
 
         @server.route("/get-host-name", [POST])
@@ -393,9 +393,9 @@ if (web):
             if data_object["action"] == "right":
                 moveGuyToPositionGently(cfg["guy_down_position"], 0.01)
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 state_machine.go_to_state('base_state')
-            return Response(request, cfg["v"])
+            return Response(request, cfg["figure"])
 
     except Exception as e:
         web = False
@@ -404,10 +404,26 @@ if (web):
 gc_col("web server")
 
 ################################################################################
+# Global Methods
+
+
+def rst_def():
+    global cfg
+    cfg["volume_pot"] = True
+    cfg["HOST_NAME"] = "animator-outhouse"
+    cfg["volume"] = "20"
+    cfg["roof_open_position"] = "100"
+    cfg["guy_up_position"] = "0"
+    cfg["door_open_position"] = "24"
+    cfg["guy_down_position"] = "180"
+    cfg["roof_closed_position"] = "31"
+    cfg["door_closed_position"] = "122"
+
+################################################################################
 # Dialog and sound play methods
 
 
-def sleepAndUpdateVolume(seconds):
+def upd_vol(seconds):
     if cfg["volume_pot"]:
         v = a_in.value / 65536
         mix.voice[0].level = v
@@ -449,31 +465,37 @@ def changeVolume(action):
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
     files.write_json_file("/sd/cfg.json", cfg)
-    play_audio_0("/sd/mvc/volume.wav")
-    speak_this_string(cfg["volume"], False)
+    play_a_0("/sd/mvc/volume.wav")
+    spk_str(cfg["volume"], False)
 
 
-def play_audio_0(file_name):
+def play_a_0(file_name):
     if mix.voice[0].playing:
         mix.voice[0].stop()
         while mix.voice[0].playing:
-            sleepAndUpdateVolume(0.02)
+            upd_vol(0.02)
     print("playing" + file_name)
     w0 = audiocore.WaveFile(open(file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
-        shortCircuitDialog()
+        exit_early()
     print("done playing")
 
 
-def shortCircuitDialog():
-    sleepAndUpdateVolume(0.02)
+def stop_a_0():
+    mix.voice[0].stop()
+    while mix.voice[0].playing:
+        pass
+
+
+def exit_early():
+    upd_vol(0.02)
     l_sw.update()
     if l_sw.fell:
         mix.voice[0].stop()
 
 
-def speak_this_string(str_to_speak, addLocal):
+def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
         try:
             if character == " ":
@@ -482,58 +504,57 @@ def speak_this_string(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            play_audio_0("/sd/mvc/" + character + ".wav")
+            play_a_0("/sd/mvc/" + character + ".wav")
         except:
             print("Invalid character in string to speak")
     if addLocal:
-        play_audio_0("/sd/mvc/dot.wav")
-        play_audio_0("/sd/mvc/local.wav")
+        play_a_0("/sd/mvc/dot.wav")
+        play_a_0("/sd/mvc/local.wav")
 
 
-def speak_webpage():
-    play_audio_0("/sd/mvc/animator_available_on_network.wav")
-    play_audio_0("/sd/mvc/to_access_type.wav")
+def l_r_but():
+    play_a_0("/sd/mvc/press_left_button_right_button.wav")
+
+
+def opt_sel():
+    play_a_0("/sd/mvc/option_selected.wav")
+
+
+def d_cal():
+    play_a_0("/sd/mvc/adjust_the_door_position_instruct.wav")
+    play_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
+
+
+def r_cal():
+    play_a_0("/sd/mvc/adjust_the_roof_position_instruct.wav")
+    play_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
+
+
+def sel_web():
+    play_a_0("/sd/mvc/web_menu.wav")
+    l_r_but()
+
+
+def spk_web():
+    play_a_0("/sd/mvc/animator_available_on_network.wav")
+    play_a_0("/sd/mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-outhouse":
-        play_audio_0("/sd/mvc/animator_dash_outhouse.wav")
-        play_audio_0("/sd/mvc/dot.wav")
-        play_audio_0("/sd/mvc/local.wav")
+        play_a_0("/sd/mvc/animator_dash_outhouse.wav")
+        play_a_0("/sd/mvc/dot.wav")
+        play_a_0("/sd/mvc/local.wav")
     else:
-        speak_this_string(cfg["HOST_NAME"], True)
-    play_audio_0("/sd/mvc/in_your_browser.wav")
+        spk_str(cfg["HOST_NAME"], True)
+    play_a_0("/sd/mvc/in_your_browser.wav")
 
 
-def left_right_mouse_button():
-    play_audio_0("/sd/mvc/press_left_button_right_button.wav")
-
-
-def option_selected_announcement():
-    play_audio_0("/sd/mvc/option_selected.wav")
-
-
-def doorCalAnnouncement():
-    play_audio_0("/sd/mvc/adjust_the_door_position_instruct.wav")
-    play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
-
-
-def roofCalAnnouncement():
-    play_audio_0("/sd/mvc/adjust_the_roof_position_instruct.wav")
-    play_audio_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
-
-
-def selectWebOptionsAnnouncement():
-    play_audio_0("/sd/mvc/web_menu.wav")
-    left_right_mouse_button()
-
-
-def checkLimits(min_servo_pos, max_servo_pos, servo_pos):
+def chk_lmt(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
-        play_audio_0("/sd/mvc/limit_reached.wav")
+        play_a_0("/sd/mvc/limit_reached.wav")
         return False
     if servo_pos > max_servo_pos:
-        play_audio_0("/sd/mvc/limit_reached.wav")
+        play_a_0("/sd/mvc/limit_reached.wav")
         return False
     return True
-
 
 ################################################################################
 # Servo helpers
@@ -605,7 +626,7 @@ def moveRoofToPositionGently(new_position, speed):
 def calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos):
     global cfg
     cfg[movement_type] -= 1 * sign
-    if checkLimits(min_servo_pos, max_servo_pos, cfg[movement_type]):
+    if chk_lmt(min_servo_pos, max_servo_pos, cfg[movement_type]):
         servo.angle = cfg[movement_type]
     else:
         cfg[movement_type] += 1 * sign
@@ -614,14 +635,14 @@ def calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_
 def calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos):
     global cfg
     cfg[movement_type] += 1 * sign
-    if checkLimits(min_servo_pos, max_servo_pos, cfg[movement_type]):
+    if chk_lmt(min_servo_pos, max_servo_pos, cfg[movement_type]):
         servo.angle = cfg[movement_type]
     else:
         cfg[movement_type] -= 1 * sign
 
 
 def write_calibrations_to_config_file():
-    play_audio_0("/sd/mvc/all_changes_complete.wav")
+    play_a_0("/sd/mvc/all_changes_complete.wav")
     global cfg
     files.write_json_file("/sd/cfg.json", cfg)
 
@@ -647,7 +668,7 @@ def calibratePosition(servo, movement_type):
             button_check = True
             number_cycles = 0
             while button_check:
-                sleepAndUpdateVolume(.1)
+                upd_vol(.1)
                 r_sw.update()
                 number_cycles += 1
                 if number_cycles > 30:
@@ -725,7 +746,7 @@ def fire():
             b1 = bounds(b-flicker, 0, 255)
             led_B[i] = (r1, g1, b1)
             led_B.show()
-            sleepAndUpdateVolume(random.uniform(0.05, 0.1))
+            upd_vol(random.uniform(0.05, 0.1))
         for i in range(0, 3):
             led_B[i] = (0, 0, 0)
         led_B.show()
@@ -756,7 +777,7 @@ async def runExplosion():
     cycle_lights = asyncio.create_task(fireAsync())
     await asyncio.gather(cycle_guy, cycle_lights)
     while mix.voice[0].playing:
-        shortCircuitDialog()
+        exit_early()
 
 ################################################################################
 # Animations
@@ -766,7 +787,7 @@ def play_audio_0_lit(file_name, match_start, match_time):
     if mix.voice[0].playing:
         mix.voice[0].stop()
         while mix.voice[0].playing:
-            sleepAndUpdateVolume(0.02)
+            upd_vol(0.02)
     print("playing" + file_name)
     w0 = audiocore.WaveFile(open(file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
@@ -777,7 +798,7 @@ def play_audio_0_lit(file_name, match_start, match_time):
     led_B[0] = ((0, 0, 0))
     led_B.show()
     while mix.voice[0].playing:
-        shortCircuitDialog()
+        exit_early()
     print("done playing")
 
 
@@ -799,12 +820,12 @@ def sitting_down():
         fire()
         moveGuyToPositionGently(cfg["guy_down_position"], 0.05)
         moveDoorToPositionGently(cfg["door_closed_position"], .05)
-        play_audio_0("/sd/o_s/alien_1_communication.wav")
+        play_a_0("/sd/o_s/alien_1_communication.wav")
     elif cfg["figure"] == "man":
         moveGuyToPositionGently(cfg["guy_down_position"], 0.05)
         moveDoorToPositionGently(cfg["door_closed_position"], .05)
         led_F[0] = ((0, 0, 0))
-        play_audio_0("/sd/o_s/man_2_roses_light_a_match.wav")
+        play_a_0("/sd/o_s/man_2_roses_light_a_match.wav")
         play_audio_0_lit("/sd/m_f/fail1.wav", .1, .1)
         play_audio_0_lit("/sd/m_f/fail1.wav", .1, .1)
         play_audio_0_lit("/sd/m_f/fail1.wav", .1, .1)
@@ -856,14 +877,14 @@ def install_figure(wait_for_button):
     moveRoofToPositionGently(cfg["roof_open_position"], 0.01)
     moveDoorToPositionGently(cfg["door_open_position"], 0.01)
     moveGuyToPositionGently(cfg["guy_up_position"], 0.01)
-    play_audio_0("/sd/mvc/install_figure_instructions.wav")
+    play_a_0("/sd/mvc/install_figure_instructions.wav")
     while wait_for_button:
         l_sw.update()
         r_sw.update()
         if r_sw.fell:
             moveGuyToPositionGently(cfg["guy_down_position"], 0.01)
             files.write_json_file("/sd/cfg.json", cfg)
-            play_audio_0("/sd/mvc/all_changes_complete.wav")
+            play_a_0("/sd/mvc/all_changes_complete.wav")
             break
 
 ################################################################################
@@ -930,7 +951,7 @@ class BaseState(State):
         moveDoorToPositionGently(cfg["door_closed_position"], 0.01)
         moveRoofToPositionGently(cfg["roof_closed_position"], 0.01)
 
-        play_audio_0("/sd/mvc/animations_are_now_active.wav")
+        play_a_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         State.enter(self, machine)
 
@@ -940,14 +961,14 @@ class BaseState(State):
     def update(self, machine):
         global cont_run
         switch_state = utilities.switch_state(
-            l_sw, r_sw, sleepAndUpdateVolume, 3.0)
+            l_sw, r_sw, upd_vol, 3.0)
         if switch_state == "left_held":
             if cont_run:
                 cont_run = False
-                play_audio_0("/sd/mvc/continuous_mode_deactivated.wav")
+                play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
-                play_audio_0("/sd/mvc/continuous_mode_activated.wav")
+                play_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif switch_state == "left" or cont_run:
             animate_outhouse()
         elif switch_state == "right":
@@ -966,8 +987,8 @@ class MoveRoofDoor(State):
 
     def enter(self, machine):
         files.log_item('Move roof or door menu')
-        play_audio_0("/sd/mvc/move_roof_or_door_menu.wav")
-        left_right_mouse_button()
+        play_a_0("/sd/mvc/move_roof_or_door_menu.wav")
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -977,7 +998,7 @@ class MoveRoofDoor(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_audio_0("/sd/mvc/" + mov_r_d[self.menuIndex] + ".wav")
+            play_a_0("/sd/mvc/" + mov_r_d[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
             if self.menuIndex > len(mov_r_d)-1:
@@ -993,7 +1014,7 @@ class MoveRoofDoor(State):
             elif selected_menu_item == "move_roof_closed_position":
                 moveRoofToPositionGently(cfg["roof_closed_position"], 0.01)
             else:
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
 
 
@@ -1009,8 +1030,8 @@ class AdjustRoofDoor(State):
 
     def enter(self, machine):
         files.log_item('Adjust roof or door menu')
-        play_audio_0("/sd/mvc/adjust_roof_or_door_menu.wav")
-        left_right_mouse_button()
+        play_a_0("/sd/mvc/adjust_roof_or_door_menu.wav")
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1020,7 +1041,7 @@ class AdjustRoofDoor(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_audio_0(
+            play_a_0(
                 "/sd/mvc/" + adj_r_d[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
@@ -1030,26 +1051,26 @@ class AdjustRoofDoor(State):
             selected_menu_item = adj_r_d[self.selectedMenuIndex]
             if selected_menu_item == "adjust_door_open_position":
                 moveDoorToPositionGently(cfg["door_open_position"], 0.01)
-                doorCalAnnouncement()
+                d_cal()
                 calibratePosition(d_s, "door_open_position")
                 machine.go_to_state('base_state')
             elif selected_menu_item == "adjust_door_closed_position":
                 moveDoorToPositionGently(cfg["door_closed_position"], 0.01)
-                doorCalAnnouncement()
+                d_cal()
                 calibratePosition(d_s, "door_closed_position")
                 machine.go_to_state('base_state')
             elif selected_menu_item == "adjust_roof_open_position":
                 moveRoofToPositionGently(cfg["roof_open_position"], 0.01)
-                roofCalAnnouncement()
+                r_cal()
                 calibratePosition(r_s, "roof_open_position")
                 machine.go_to_state('base_state')
             elif selected_menu_item == "adjust_roof_closed_position":
                 moveRoofToPositionGently(cfg["roof_closed_position"], 0.01)
-                roofCalAnnouncement()
+                r_cal()
                 calibratePosition(r_s, "roof_closed_position")
                 machine.go_to_state('base_state')
             else:
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
 
 
@@ -1065,8 +1086,8 @@ class VolumeSettings(State):
 
     def enter(self, machine):
         files.log_item('Set Web Options')
-        play_audio_0("/sd/mvc/volume_settings_menu.wav")
-        left_right_mouse_button()
+        play_a_0("/sd/mvc/volume_settings_menu.wav")
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1076,7 +1097,7 @@ class VolumeSettings(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_audio_0("/sd/mvc/" + vol_set[self.menuIndex] + ".wav")
+            play_a_0("/sd/mvc/" + vol_set[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
             if self.menuIndex > len(vol_set)-1:
@@ -1084,33 +1105,33 @@ class VolumeSettings(State):
         if r_sw.fell:
             selected_menu_item = vol_set[self.selectedMenuIndex]
             if selected_menu_item == "volume_level_adjustment":
-                play_audio_0("/sd/mvc/volume_adjustment_menu.wav")
+                play_a_0("/sd/mvc/volume_adjustment_menu.wav")
                 done = False
                 while not done:
                     switch_state = utilities.switch_state(
-                        l_sw, r_sw, sleepAndUpdateVolume, 3.0)
+                        l_sw, r_sw, upd_vol, 3.0)
                     if switch_state == "left":
                         changeVolume("lower")
                     elif switch_state == "right":
                         changeVolume("raise")
                     elif switch_state == "right_held":
                         files.write_json_file("/sd/cfg.json", cfg)
-                        play_audio_0("/sd/mvc/all_changes_complete.wav")
+                        play_a_0("/sd/mvc/all_changes_complete.wav")
                         done = True
                         machine.go_to_state('base_state')
-                    sleepAndUpdateVolume(0.1)
+                    upd_vol(0.1)
                     pass
             elif selected_menu_item == "volume_pot_off":
                 cfg["volume_pot"] = False
                 if cfg["v"] == 0:
                     cfg["v"] = 10
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
             elif selected_menu_item == "volume_pot_on":
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
 
 
@@ -1126,7 +1147,7 @@ class WebOptions(State):
 
     def enter(self, machine):
         files.log_item('Set Web Options')
-        selectWebOptionsAnnouncement()
+        sel_web()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1141,7 +1162,7 @@ class WebOptions(State):
                 while mix.voice[0].playing:
                     pass
             else:
-                play_audio_0("/sd/mvc/" + web_m[self.menuIndex] + ".wav")
+                play_a_0("/sd/mvc/" + web_m[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex += 1
                 if self.menuIndex > len(web_m)-1:
@@ -1150,21 +1171,21 @@ class WebOptions(State):
             selected_menu_item = web_m[self.selectedMenuIndex]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
-                option_selected_announcement()
-                selectWebOptionsAnnouncement()
+                opt_sel()
+                sel_web()
             elif selected_menu_item == "web_off":
                 cfg["serve_webpage"] = False
-                option_selected_announcement()
-                selectWebOptionsAnnouncement()
+                opt_sel()
+                sel_web()
             elif selected_menu_item == "hear_url":
-                speak_this_string(cfg["HOST_NAME"], True)
-                selectWebOptionsAnnouncement()
+                spk_str(cfg["HOST_NAME"], True)
+                sel_web()
             elif selected_menu_item == "hear_instr_web":
-                play_audio_0("/sd/mvc/web_instruct.wav")
-                selectWebOptionsAnnouncement()
+                play_a_0("/sd/mvc/web_instruct.wav")
+                sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
 
 
@@ -1180,8 +1201,8 @@ class ChooseSounds(State):
 
     def enter(self, machine):
         files.log_item('Choose sounds menu')
-        play_audio_0("/sd/mvc/sound_selection_menu.wav")
-        left_right_mouse_button()
+        play_a_0("/sd/mvc/sound_selection_menu.wav")
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1196,8 +1217,8 @@ class ChooseSounds(State):
                 while mix.voice[0].playing:
                     pass
             else:
-                play_audio_0("/sd/mvc/option_" +
-                             snd_opt[self.menuIndex] + ".wav")
+                play_a_0("/sd/mvc/option_" +
+                         snd_opt[self.menuIndex] + ".wav")
                 self.selectedMenuIndex = self.menuIndex
                 self.menuIndex += 1
                 if self.menuIndex > len(snd_opt)-1:
@@ -1207,7 +1228,7 @@ class ChooseSounds(State):
             files.log_item("Selected index: " + str(self.selectedMenuIndex) +
                            " Saved option: " + cfg["option_selected"])
             files.write_json_file("/sd/cfg.json", cfg)
-            option_selected_announcement()
+            opt_sel()
             machine.go_to_state('base_state')
 
 
@@ -1223,8 +1244,8 @@ class InstallFigure(State):
 
     def enter(self, machine):
         files.log_item('Choose sounds menu')
-        play_audio_0("/sd/mvc/install_figure_menu.wav")
-        left_right_mouse_button()
+        play_a_0("/sd/mvc/install_figure_menu.wav")
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1235,7 +1256,7 @@ class InstallFigure(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_audio_0(
+            play_a_0(
                 "/sd/mvc/" + inst_m[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
@@ -1260,8 +1281,8 @@ class MainMenu(State):
 
     def enter(self, machine):
         files.log_item('Main menu')
-        play_audio_0("/sd/mvc/main_menu.wav")
-        left_right_mouse_button()
+        play_a_0("/sd/mvc/main_menu.wav")
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1271,7 +1292,7 @@ class MainMenu(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_audio_0("/sd/mvc/" + main_m[self.menuIndex] + ".wav")
+            play_a_0("/sd/mvc/" + main_m[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
             if self.menuIndex > len(main_m)-1:
@@ -1293,7 +1314,7 @@ class MainMenu(State):
             elif selected_menu_item == "install_figure":
                 machine.go_to_state('install_figure')
             else:
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
 
 # StateTemplate copy and add functionality
@@ -1333,7 +1354,7 @@ state_machine.add_state(WebOptions())
 state_machine.add_state(VolumeSettings())
 state_machine.add_state(InstallFigure())
 
-sleepAndUpdateVolume(.1)
+upd_vol(.1)
 aud_en.value = True
 
 if (web):
@@ -1341,7 +1362,7 @@ if (web):
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        speak_webpage()
+        spk_web()
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
@@ -1353,7 +1374,7 @@ gc_col("animations started.")
 while True:
     loop.run_forever()
     state_machine.update()
-    sleepAndUpdateVolume(.1)
+    upd_vol(.1)
     if (web):
         try:
             server.poll()
