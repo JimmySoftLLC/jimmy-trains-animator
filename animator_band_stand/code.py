@@ -39,30 +39,19 @@ def f_exists(filename):
     return f_exists
 
 
-gc_col("Imports gc, files")
-
-
 def rst():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
     microcontroller.reset()
 
 
-gc_col("imports")
+gc_col("Imports gc, files")
+
 ################################################################################
 # Setup hardware
 
 # Setup pin for vol
 a_in = AnalogIn(board.A0)
 
-
-def g_volt(p, wait_for):
-    i = wait_for/10
-    p_v = 0
-    for _ in range(10):
-        time.sleep(i)
-        p_v += 1
-        p_v = p_v / 10
-    return (p.value) / 65536
 
 
 # setup pin for audio enable
@@ -477,8 +466,9 @@ def rst_def():
 
 def upd_vol(seconds):
     if cfg["volume_pot"]:
-        volume = g_volt(a_in, seconds)
+        volume =   a_in.value / 65536
         mix.voice[0].level = volume
+        time.sleep(seconds)
     else:
         try:
             volume = int(cfg["volume"]) / 100
@@ -1282,4 +1272,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
