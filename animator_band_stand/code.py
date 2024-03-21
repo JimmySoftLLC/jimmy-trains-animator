@@ -52,8 +52,6 @@ gc_col("Imports gc, files")
 # Setup pin for vol
 a_in = AnalogIn(board.A0)
 
-
-
 # setup pin for audio enable
 aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -90,8 +88,7 @@ mix = audiomixer.Mixer(voice_count=1, sample_rate=22050, channel_count=2,
                        bits_per_sample=16, samples_signed=True, buffer_size=8192)
 aud.play(mix)
 
-vol = .2
-mix.voice[0].level = vol
+mix.voice[0].level = .2
 
 try:
     sd = sdcardio.SDCard(spi, cs)
@@ -173,10 +170,10 @@ ts_jsons = files.return_directory(
 web = cfg["serve_webpage"]
 
 cfg_main = files.read_json_file("/sd/mvc/main_menu.json")
-main_menu = cfg_main["main_menu"]
+main_m = cfg_main["main_menu"]
 
 cfg_web = files.read_json_file("/sd/mvc/web_menu.json")
-web_menu = cfg_web["web_menu"]
+web_m = cfg_web["web_menu"]
 
 cfd_vol = files.read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfd_vol["volume_settings"]
@@ -185,13 +182,14 @@ cfg_add_song = files.read_json_file(
     "/sd/mvc/add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
-gc_col("config setup")
-
 cont_run = False
 ts_mode = False
 
+gc_col("config setup")
+
 ################################################################################
 # Setup neo pixels
+
 num_px = 2
 
 led = neopixel.NeoPixel(board.GP15, num_px)
@@ -466,7 +464,7 @@ def rst_def():
 
 def upd_vol(seconds):
     if cfg["volume_pot"]:
-        volume =   a_in.value / 65536
+        volume = a_in.value / 65536
         mix.voice[0].level = volume
         time.sleep(seconds)
     else:
@@ -481,29 +479,29 @@ def upd_vol(seconds):
 
 
 def ch_vol(action):
-    vol = int(cfg["volume"])
+    v = int(cfg["volume"])
     if "volume" in action:
-        vol = action.split("volume")
-        vol = int(vol[1])
+        v = action.split("volume")
+        v = int(v[1])
     if action == "lower1":
-        vol -= 1
+        v -= 1
     elif action == "raise1":
-        vol += 1
+        v += 1
     elif action == "lower":
-        if vol <= 10:
-            vol -= 1
+        if v <= 10:
+            v -= 1
         else:
-            vol -= 10
+            v -= 10
     elif action == "raise":
-        if vol < 10:
-            vol += 1
+        if v < 10:
+            v += 1
         else:
-            vol += 10
-    if vol > 100:
-        vol = 100
-    if vol < 1:
-        vol = 1
-    cfg["volume"] = str(vol)
+            v += 10
+    if v > 100:
+        v = 100
+    if v < 1:
+        v = 1
+    cfg["volume"] = str(v)
     cfg["volume_pot"] = False
     files.write_json_file("/sd/cfg.json", cfg)
     play_a_0("/sd/mvc/volume.wav")
@@ -602,17 +600,17 @@ loop = asyncio.get_event_loop()
 
 async def upd_vol_async(s):
     if cfg["volume_pot"]:
-        vol = a_in.value / 65536
-        mix.voice[0].level = vol
+        v = a_in.value / 65536
+        mix.voice[0].level = v
         await asyncio.sleep(s)
     else:
         try:
-            vol = int(cfg["volume"]) / 100
+            v = int(cfg["volume"]) / 100
         except:
-            vol = .5
-        if vol < 0 or vol > 1:
-            vol = .5
-        mix.voice[0].level = vol
+            v = .5
+        if v < 0 or v > 1:
+            v = .5
+        mix.voice[0].level = v
         await asyncio.sleep(s)
 
 p_arr = [90, 90, 90, 90, 90, 90]
@@ -999,13 +997,13 @@ class Main(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + main_menu[self.i] + ".wav")
+            play_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(main_menu)-1:
+            if self.i > len(main_m)-1:
                 self.i = 0
         if r_sw.fell:
-            sel_mnu = main_menu[self.sel_i]
+            sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
             elif sel_mnu == "add_sounds_animate":
@@ -1205,13 +1203,13 @@ class WebOpt(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + web_menu[self.i] + ".wav")
+            play_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(web_menu)-1:
+            if self.i > len(web_m)-1:
                 self.i = 0
         if r_sw.fell:
-            selected_menu_item = web_menu[self.sel_i]
+            selected_menu_item = web_m[self.sel_i]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
                 opt_sel()
