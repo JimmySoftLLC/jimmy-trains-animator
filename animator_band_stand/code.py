@@ -900,27 +900,13 @@ class StMch(object):
         if self.state:
             self.state.upd(self)
 
-    # When pausing, don't exit the state
-    def pause(self):
-        self.state = self.states['paused']
-        self.state.enter(self)
-
-    # When resuming, don't re-enter the state
-    def resume_state(self, state_name):
-        if self.state:
-            self.state.exit(self)
-        self.state = self.states[state_name]
-
-    def reset(self):
-        rst()
-
 ################################################################################
 # States
 
 # Abstract parent state class.
 
 
-class State(object):
+class Ste(object):
 
     def __init__(self):
         pass
@@ -939,7 +925,7 @@ class State(object):
         pass
 
 
-class BseSt(State):
+class BseSt(Ste):
 
     def __init__(self):
         pass
@@ -951,10 +937,10 @@ class BseSt(State):
     def enter(self, mch):
         play_a_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
-        State.enter(self, mch)
+        Ste.enter(self, mch)
 
     def exit(self, mch):
-        State.exit(self, mch)
+        Ste.exit(self, mch)
 
     def upd(self, mch):
         global cont_run
@@ -973,7 +959,7 @@ class BseSt(State):
             mch.go_to('main_menu')
 
 
-class Main(State):
+class Main(Ste):
 
     def __init__(self):
         self.i = 0
@@ -987,10 +973,10 @@ class Main(State):
         files.log_item('Main menu')
         play_a_0("/sd/mvc/main_menu.wav")
         l_r_but()
-        State.enter(self, mch)
+        Ste.enter(self, mch)
 
     def exit(self, mch):
-        State.exit(self, mch)
+        Ste.exit(self, mch)
 
     def upd(self, mch):
         l_sw.update()
@@ -1016,7 +1002,7 @@ class Main(State):
                 mch.go_to('base_state')
 
 
-class Snds(State):
+class Snds(Ste):
 
     def __init__(self):
         self.i = 0
@@ -1030,10 +1016,10 @@ class Snds(State):
         files.log_item('Choose sounds menu')
         play_a_0("/sd/mvc/sound_selection_menu.wav")
         l_r_but()
-        State.enter(self, mch)
+        Ste.enter(self, mch)
 
     def exit(self, mch):
-        State.exit(self, mch)
+        Ste.exit(self, mch)
 
     def upd(self, mch):
         l_sw.update()
@@ -1072,7 +1058,7 @@ class Snds(State):
             mch.go_to('base_state')
 
 
-class AddSnds(State):
+class AddSnds(Ste):
 
     def __init__(self):
         self.i = 0
@@ -1086,10 +1072,10 @@ class AddSnds(State):
         files.log_item('Add sounds animate')
         play_a_0("/sd/mvc/add_sounds_animate.wav")
         l_r_but()
-        State.enter(self, mch)
+        Ste.enter(self, mch)
 
     def exit(self, mch):
-        State.exit(self, mch)
+        Ste.exit(self, mch)
 
     def upd(self, mch):
         global ts_mode
@@ -1119,7 +1105,7 @@ class AddSnds(State):
                 mch.go_to('base_state')
 
 
-class VolSet(State):
+class VolSet(Ste):
 
     def __init__(self):
         self.i = 0
@@ -1133,10 +1119,10 @@ class VolSet(State):
         files.log_item('Set Web Options')
         play_a_0("/sd/mvc/volume_settings_menu.wav")
         l_r_but()
-        State.enter(self, mch)
+        Ste.enter(self, mch)
 
     def exit(self, mch):
-        State.exit(self, mch)
+        Ste.exit(self, mch)
 
     def upd(self, mch):
         l_sw.update()
@@ -1181,7 +1167,7 @@ class VolSet(State):
                 mch.go_to('base_state')
 
 
-class WebOpt(State):
+class WebOpt(Ste):
     def __init__(self):
         self.i = 0
         self.sel_i = 0
@@ -1193,10 +1179,10 @@ class WebOpt(State):
     def enter(self, mch):
         files.log_item('Set Web Options')
         sel_web()
-        State.enter(self, mch)
+        Ste.enter(self, mch)
 
     def exit(self, mch):
-        State.exit(self, mch)
+        Ste.exit(self, mch)
 
     def upd(self, mch):
         l_sw.update()
