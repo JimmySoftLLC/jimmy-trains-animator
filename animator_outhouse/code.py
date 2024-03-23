@@ -149,7 +149,8 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = files.return_directory("", "/sd/snds", ".wav")
+cfg_dlg = files.read_json_file("/sd/mvc/dialog_menu.json")
+dlg_opt = cfg_dlg["dialog_options"]
 
 cfg_mov_r_d = files.read_json_file("/sd/mvc/move_roof_door.json")
 mov_r_d = cfg_mov_r_d["move_roof_door"]
@@ -907,9 +908,9 @@ class StMch(object):
         s.ste = s.stes[ste]
         s.ste.enter(s)
 
-    def update(s):
+    def upd(s):
         if s.ste:
-            s.ste.update(s)
+            s.ste.upd(s)
 
 ################################################################################
 # States
@@ -932,7 +933,7 @@ class Ste(object):
     def exit(s, mch):
         pass
 
-    def update(s, mch):
+    def upd(s, mch):
         pass
 
 
@@ -958,7 +959,7 @@ class BseSt(Ste):
     def exit(self, mch):
         Ste.exit(self, mch)
 
-    def update(self, mch):
+    def upd(self, mch):
         global cont_run
         sw = utilities.switch_state(
             l_sw, r_sw, upd_vol, 3.0)
@@ -994,7 +995,7 @@ class MoveRD(Ste):
     def exit(s, mch):
         Ste.exit(s, mch)
 
-    def update(s, mch):
+    def upd(s, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1037,7 +1038,7 @@ class AdjRD(Ste):
     def exit(s, mch):
         Ste.exit(s, mch)
 
-    def update(s, mch):
+    def upd(s, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1093,7 +1094,7 @@ class VolSet(Ste):
     def exit(s, mch):
         Ste.exit(s, mch)
 
-    def update(s, mch):
+    def upd(s, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1153,7 +1154,7 @@ class WebOpt(Ste):
     def exit(s, mch):
         Ste.exit(s, mch)
 
-    def update(s, mch):
+    def upd(s, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1197,18 +1198,18 @@ class Snds(Ste):
 
     @property
     def name(s):
-        return 'choose_sounds'
+        return 'dialog_options'
 
     def enter(s, mch):
         files.log_item('Choose sounds menu')
-        play_a_0("/sd/mvc/sound_selection_menu.wav")
+        play_a_0("/sd/mvc/dialog_options_menu.wav")
         l_r_but()
         Ste.enter(s, mch)
 
     def exit(s, mch):
         Ste.exit(s, mch)
 
-    def update(s, mch):
+    def upd(s, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1217,14 +1218,14 @@ class Snds(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
-                play_a_0("/sd/mvc/option_" +
-                         snd_opt[s.i] + ".wav")
+                play_a_0("/sd/mvc/" +
+                         dlg_opt[s.i] + ".wav")
                 s.sel_i = s.i
                 s.i += 1
-                if s.i > len(snd_opt)-1:
+                if s.i > len(dlg_opt)-1:
                     s.i = 0
         if r_sw.fell:
-            cfg["option_selected"] = snd_opt[s.sel_i]
+            cfg["option_selected"] = dlg_opt[s.sel_i]
             files.log_item("Selected index: " + str(s.sel_i) +
                            " Saved option: " + cfg["option_selected"])
             files.write_json_file("/sd/cfg.json", cfg)
@@ -1251,7 +1252,7 @@ class InsFig(Ste):
     def exit(self, mch):
         Ste.exit(self, mch)
 
-    def update(self, mch):
+    def upd(self, mch):
         global cfg
         l_sw.update()
         r_sw.update()
@@ -1288,7 +1289,7 @@ class MainMenu(Ste):
     def exit(self, mch):
         Ste.exit(self, mch)
 
-    def update(self, mch):
+    def upd(self, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1299,8 +1300,8 @@ class MainMenu(Ste):
                 self.i = 0
         if r_sw.fell:
             sel_i = main_m[self.sel_i]
-            if sel_i == "choose_sounds":
-                mch.go_to('choose_sounds')
+            if sel_i == "dialog_options":
+                mch.go_to('dialog_options')
             elif sel_i == "adjust_roof_door":
                 mch.go_to('adjust_roof_door')
             elif sel_i == "move_roof_door":
@@ -1351,7 +1352,7 @@ gc_col("animations started.")
 
 while True:
     loop.run_forever()
-    st_mch.update()
+    st_mch.upd()
     upd_vol(.1)
     if (web):
         try:
@@ -1359,4 +1360,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
