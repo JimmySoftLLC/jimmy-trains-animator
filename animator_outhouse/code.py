@@ -299,7 +299,7 @@ if (web):
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
-                reset_to_defaults()
+                rst_def()
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
@@ -330,32 +330,39 @@ if (web):
         @server.route("/get-v", [POST])
         def buttonpress(request: Request):
             return Response(request, cfg["v"])
+        
+        @server.route("/get-built-in-sound-tracks", [POST])
+        def btn(request: Request):
+            sounds = []
+            sounds.extend(snd_opt)
+            my_string = files.json_stringify(sounds)
+            return Response(request, my_string)
 
         @server.route("/roof", [POST])
         def buttonpress(request: Request):
             global cfg
-            global roof_movement_type
-            raw_text = request.raw_request.decode("utf8")
-            if "roof_open_pos" in raw_text:
-                roof_movement_type = "roof_open_position"
-                mov_r_s(cfg[roof_movement_type], 0.01)
+            global mov_type
+            data = request.json()
+            if "roof_open_pos" in data[""]:
+                mov_type = "roof_open_position"
+                mov_r_s(cfg["roof_open_position"], 0.01)
                 return Response(request, "Moved to roof open position.")
             elif "roof_closed_pos" in raw_text:
-                roof_movement_type = "roof_closed_position"
-                mov_r_s(cfg[roof_movement_type], 0.01)
+                mov_type = "roof_closed_position"
+                mov_r_s(cfg[mov_type], 0.01)
                 return Response(request, "Moved to roof closed position.")
             elif "roof_open_more" in raw_text:
                 cal_l_but(
-                    r_s, roof_movement_type, -1, 0, 180)
+                    r_s, mov_type, -1, 0, 180)
                 return Response(request, "Moved door open more.")
             elif "roof_close_more" in raw_text:
                 cal_r_but(
-                    r_s, roof_movement_type, -1, 0, 180)
+                    r_s, mov_type, -1, 0, 180)
                 return Response(request, "Moved door close more.")
             elif "roof_cal_saved" in raw_text:
                 wrt_cal()
                 st_mch.go_to('base_state')
-                return Response(request, "Tree " + roof_movement_type + " cal saved.")
+                return Response(request, "cal saved.")
 
         @server.route("/door", [POST])
         def buttonpress(request: Request):
@@ -839,6 +846,7 @@ def an():
     print("explosion")
     current_option_selected = cfg["option_selected"]
     print("Sound file: " + current_option_selected)
+    current_option_selected = "explosions"
     w0 = audiocore.WaveFile(
         open("/sd/snds/" + current_option_selected + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
@@ -1137,7 +1145,7 @@ class VolSet(Ste):
 
 
 class WebOpt(Ste):
-
+    global cfg
     def __init__(s):
         s.i = 0
         s.sel_i = 0
