@@ -255,26 +255,8 @@ if (web):
             global cfg
             global cont_run
             raw_text = request.raw_request.decode("utf8")
-            if "random" in raw_text:
+            if "g" in raw_text:
                 cfg["option_selected"] = "random"
-                an()
-            elif "explosions" in raw_text:
-                cfg["option_selected"] = "explosions"
-                an()
-            elif "humor" in raw_text:
-                cfg["option_selected"] = "humor"
-                an()
-            elif "objectionable" in raw_text:
-                cfg["option_selected"] = "objectionable"
-                an()
-            elif "thoughts on the toilet" in raw_text:
-                cfg["option_selected"] = "thoughts on the toilet"
-                an()
-            elif "waiting crowd" in raw_text:
-                cfg["option_selected"] = "waiting crowd"
-                an()
-            elif "home life" in raw_text:
-                cfg["option_selected"] = "home life"
                 an()
             elif "cont_mode_on" in raw_text:
                 cont_run = True
@@ -330,22 +312,15 @@ if (web):
         @server.route("/get-v", [POST])
         def buttonpress(request: Request):
             return Response(request, cfg["v"])
-        
-        @server.route("/get-built-in-sound-tracks", [POST])
-        def btn(request: Request):
-            sounds = []
-            sounds.extend(snd_opt)
-            my_string = files.json_stringify(sounds)
-            return Response(request, my_string)
 
         @server.route("/roof", [POST])
         def buttonpress(request: Request):
             global cfg
             global mov_type
-            data = request.json()
-            if "roof_open_pos" in data[""]:
+            raw_text = request.raw_request.decode("utf8")
+            if "roof_open_pos" in raw_text:
                 mov_type = "roof_open_position"
-                mov_r_s(cfg["roof_open_position"], 0.01)
+                mov_r_s(cfg[mov_type], 0.01)
                 return Response(request, "Moved to roof open position.")
             elif "roof_closed_pos" in raw_text:
                 mov_type = "roof_closed_position"
