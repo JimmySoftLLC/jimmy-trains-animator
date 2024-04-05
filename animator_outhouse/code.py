@@ -254,14 +254,20 @@ if (web):
         def buttonpress(request: Request):
             global cfg
             global cont_run
-            raw_text = request.raw_request.decode("utf8")
-            if "g" in raw_text:
+            data_object = request.json()
+            if "RUN" == data_object["animation"]:
                 cfg["option_selected"] = "random"
                 an()
-            elif "cont_mode_on" in raw_text:
+            elif "g" == data_object["animation"]:
+                cfg["option_selected"] = "G"
+            elif "g" == data_object["animation"]:
+                cfg["option_selected"] = "PG"
+            elif "g" == data_object["animation"]:
+                cfg["option_selected"] = "R"
+            elif "cont_mode_on" == data_object["animation"]:
                 cont_run = True
                 play_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" in raw_text:
+            elif "cont_mode_off" == data_object["animation"]:
                 cont_run = False
                 play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
@@ -302,14 +308,14 @@ if (web):
         def buttonpress(request: Request):
             return Response(request, cfg["HOST_NAME"])
 
-        @server.route("/update-v", [POST])
+        @server.route("/update-volume", [POST])
         def buttonpress(request: Request):
             global cfg
             data_object = request.json()
             ch_vol(data_object["action"])
-            return Response(request, cfg["v"])
+            return Response(request, cfg["volume"])
 
-        @server.route("/get-v", [POST])
+        @server.route("/get-volume", [POST])
         def buttonpress(request: Request):
             return Response(request, cfg["v"])
 
@@ -424,8 +430,8 @@ def upd_vol(seconds):
 
 def ch_vol(action):
     v = int(cfg["volume"])
-    if "v" in action:
-        v = action.split("v")
+    if "volume" in action:
+        v = action.split("volume")
         v = int(v[1])
     if action == "lower1":
         v -= 1
