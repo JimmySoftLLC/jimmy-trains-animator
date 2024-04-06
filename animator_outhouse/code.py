@@ -177,6 +177,30 @@ cont_run = False
 gc_col("config setup")
 
 ################################################################################
+# Get files available
+
+man_el=[]
+woman_el=[]
+alien_el=[]
+
+snds = files.return_directory("", "/sd/o_s", ".wav")
+
+print(snds)
+
+for element in snds:
+    parts = element.split('_')
+    
+    if len(parts) == 3:
+        typ, id, func  = parts
+        if typ == 'man':
+            man_el.append(element)
+        if typ == 'woman':
+            woman_el.append(element)
+        if typ == 'alien':
+            alien_el.append(element)
+print(man_el)
+
+################################################################################
 # Setup neo pixels
 
 num_px = 6
@@ -795,7 +819,7 @@ def sit_d():
     mov_g_s(cfg["guy_down_position"]-10, 0.05)
     led_F[0] = ((255, 147, 41))
     led_F.show()
-    mov_d_s(cfg["door_open_position"], .05)
+    mov_d_s(cfg["door_open_position"], .03)
     if cfg["figure"] == "alien":
         w0 = audiocore.WaveFile(
             open("/sd/o_s/alien_1_unusual_space_portal.wav", "rb"))
@@ -806,28 +830,44 @@ def sit_d():
         mix.voice[0].play(w0, loop=False)
         fire()
         mov_g_s(cfg["guy_down_position"], 0.05)
-        mov_d_s(cfg["door_closed_position"], .05)
+        mov_d_s(cfg["door_closed_position"], .03)
         play_a_0("/sd/o_s/alien_1_communication.wav")
     elif cfg["figure"] == "man":
         mov_g_s(cfg["guy_down_position"], 0.05)
-        mov_d_s(cfg["door_closed_position"], .05)
+        mov_d_s(cfg["door_closed_position"], .03)
+        highest_index = len(man_el) - 1
+        i = random.randint(0, highest_index)
         led_F[0] = ((0, 0, 0))
-        play_a_0("/sd/o_s/man_2_roses_light_a_match.wav")
+        try:
+            play_a_0("/sd/o_s/"+ man_el[i] + ".wav")
+        except:
+            print("errored")
+        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
+        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
+        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
+        ply_a_0_1("/sd/m_l/lit3.wav", .4, .4)
+    elif cfg["figure"] == "woman":
+        mov_g_s(cfg["guy_down_position"], 0.05)
+        mov_d_s(cfg["door_closed_position"], .03)
+        highest_index = len(woman_el) - 1
+        i = random.randint(0, highest_index)
+        led_F[0] = ((0, 0, 0))
+        try:
+            play_a_0("/sd/o_s/"+ woman_el[i] + ".wav")
+        except:
+            print("errored")
         ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
         ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
         ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
         ply_a_0_1("/sd/m_l/lit3.wav", .4, .4)
 
-
-def an():
-    sit_d()
-
+def exp():
     print("explosion")
-    current_option_selected = cfg["option_selected"]
-    print("Sound file: " + current_option_selected)
-    current_option_selected = "explosions"
+    cur_opt = cfg["option_selected"]
+    print("Sound file: " + cur_opt)
+    cur_opt = "exp_1"
     w0 = audiocore.WaveFile(
-        open("/sd/snds/" + current_option_selected + ".wav", "rb"))
+        open("/sd/exp/" + cur_opt + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     time.sleep(.1)
     mov_r(cfg["roof_open_position"])
@@ -842,7 +882,10 @@ def an():
         time.sleep(delay_time)
     asyncio.run(rn_exp())
 
+def rst_an(): 
     print("reset")
+    led_F.fill((0, 0, 0))
+    led_F.show()
     led_B.fill((0, 0, 0))
     led_B.show()
     mov_d(cfg["door_closed_position"])
@@ -852,6 +895,10 @@ def an():
     mov_r_s(cfg["roof_closed_position"], .05)
     time.sleep(2)
 
+def an():
+    sit_d()
+    exp()
+    rst_an()
 
 def bnds(my_color, lower, upper):
     if (my_color < lower):
@@ -1057,8 +1104,8 @@ class MoveRD(Ste):
 class AdjRD(Ste):
 
     def __init__(s):
-        s.menuIndex = 0
-        s.selectedMenuIndex = 0
+        s.i = 0
+        s.sel_i = 0
 
     @property
     def name(s):
@@ -1078,29 +1125,29 @@ class AdjRD(Ste):
         r_sw.update()
         if l_sw.fell:
             play_a_0(
-                "/sd/mvc/" + adj_r_d[s.menuIndex] + ".wav")
-            s.selectedMenuIndex = s.menuIndex
-            s.menuIndex += 1
-            if s.menuIndex > len(adj_r_d)-1:
-                s.menuIndex = 0
+                "/sd/mvc/" + adj_r_d[s.i] + ".wav")
+            s.sel_i = s.i
+            s.i += 1
+            if s.i > len(adj_r_d)-1:
+                s.i = 0
         if r_sw.fell:
-            selected_menu_item = adj_r_d[s.selectedMenuIndex]
-            if selected_menu_item == "adjust_door_open_position":
+            sel_i = adj_r_d[s.sel_i]
+            if sel_i == "adjust_door_open_position":
                 mov_d_s(cfg["door_open_position"], 0.01)
                 d_cal()
                 cal_pos(d_s, "door_open_position")
                 mch.go_to('base_state')
-            elif selected_menu_item == "adjust_door_closed_position":
+            elif sel_i == "adjust_door_closed_position":
                 mov_d_s(cfg["door_closed_position"], 0.01)
                 d_cal()
                 cal_pos(d_s, "door_closed_position")
                 mch.go_to('base_state')
-            elif selected_menu_item == "adjust_roof_open_position":
+            elif sel_i == "adjust_roof_open_position":
                 mov_r_s(cfg["roof_open_position"], 0.01)
                 r_cal()
                 cal_pos(r_s, "roof_open_position")
                 mch.go_to('base_state')
-            elif selected_menu_item == "adjust_roof_closed_position":
+            elif sel_i == "adjust_roof_closed_position":
                 mov_r_s(cfg["roof_closed_position"], 0.01)
                 r_cal()
                 cal_pos(r_s, "roof_closed_position")
@@ -1144,13 +1191,13 @@ class VolSet(Ste):
                 play_a_0("/sd/mvc/volume_adjustment_menu.wav")
                 done = False
                 while not done:
-                    switch_state = utilities.switch_state(
+                    sw = utilities.switch_state(
                         l_sw, r_sw, upd_vol, 3.0)
-                    if switch_state == "left":
+                    if sw == "left":
                         ch_vol("lower")
-                    elif switch_state == "right":
+                    elif sw == "right":
                         ch_vol("raise")
-                    elif switch_state == "right_held":
+                    elif sw == "right_held":
                         files.write_json_file("/sd/cfg.json", cfg)
                         play_a_0("/sd/mvc/all_changes_complete.wav")
                         done = True
@@ -1303,8 +1350,6 @@ class InsFig(Ste):
             cfg["figure"] = sel_i
             ins_f(True)
             mch.go_to('base_state')
-
-
 
 
 gc_col("Ste mch")
