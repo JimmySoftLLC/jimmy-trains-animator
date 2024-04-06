@@ -177,28 +177,16 @@ cont_run = False
 gc_col("config setup")
 
 ################################################################################
-# Get files available
+# Get sound files in folder
 
-man_el=[]
-woman_el=[]
-alien_el=[]
-
-snds = files.return_directory("", "/sd/o_s", ".wav")
-
-print(snds)
-
-for element in snds:
-    parts = element.split('_')
-    
-    if len(parts) == 3:
-        typ, id, func  = parts
-        if typ == 'man':
-            man_el.append(element)
-        if typ == 'woman':
-            woman_el.append(element)
-        if typ == 'alien':
-            alien_el.append(element)
-print(man_el)
+def get_snds(dir, p_type):
+    snd_ret = []
+    snds = files.return_directory("", dir, ".wav")
+    for element in snds:
+        parts = element.split('_')
+        if parts [0] == p_type:
+            snd_ret.append(element)
+    return snd_ret
 
 ################################################################################
 # Setup neo pixels
@@ -273,6 +261,10 @@ if (web):
         @server.route("/mui.min.js")
         def base(req: HTTPRequest):
             return FileResponse(req, "mui.min.js", "/")
+        
+        def set_cfg(type,value):
+            cfg[type]=value
+            wrt_cal()
 
         @server.route("/animation", [POST])
         def buttonpress(req: Request):
@@ -280,40 +272,47 @@ if (web):
             global cont_run
             req_d = req.json()
             if "RUN" == req_d["an"]:
-                cfg["option_selected"] = "random"
                 an()
             elif "G" == req_d["an"]:
-                cfg["option_selected"] = "G"
+                set_cfg("rating", "g")
             elif "PG" == req_d["an"]:
-                cfg["option_selected"] = "PG"
+                set_cfg("rating", "pg")
             elif "R" == req_d["an"]:
-                cfg["option_selected"] = "R"
+                set_cfg("rating", "r")
+            elif "EXP0" == req_d["an"]:
+                set_cfg("explosions_freq", 0)
+            elif "EXP1" == req_d["an"]:
+                set_cfg("explosions_freq", 1)
+            elif "EXP2" == req_d["an"]:
+                set_cfg("explosions_freq", 2)
+            elif "EXP3" == req_d["an"]:
+                set_cfg("explosions_freq", 3)
             elif "cont_mode_on" == req_d["an"]:
                 cont_run = True
-                play_a_0("/sd/mvc/continuous_mode_activated.wav")
+                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif "cont_mode_off" == req_d["an"]:
                 cont_run = False
-                play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            return Response(req, "Animation " + cfg["option_selected"] + " started.")
+                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+            return Response(req, "Success")
 
         @server.route("/utilities", [POST])
         def buttonpress(req: Request):
             global cfg
             req_d = req.json()
             if "speaker_test" == req_d["an"]:
-                play_a_0("/sd/mvc/left_speaker_right_speaker.wav")
+                ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif "volume_pot_off" == req_d["an"]:
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" == req_d["an"]:
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" == req_d["an"]:
                 rst_def()
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
 
             return Response(req, "Dialog option cal saved.")
@@ -405,7 +404,7 @@ if (web):
             if req_d["action"] == "right":
                 mov_g_s(cfg["guy_down_position"], 0.01)
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
             return Response(req, cfg["figure"])
 
@@ -477,11 +476,11 @@ def ch_vol(action):
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
     files.write_json_file("/sd/cfg.json", cfg)
-    play_a_0("/sd/mvc/volume.wav")
+    ply_a_0("/sd/mvc/volume.wav")
     spk_str(cfg["volume"], False)
 
 
-def play_a_0(file_name):
+def ply_a_0(file_name):
     if mix.voice[0].playing:
         mix.voice[0].stop()
         while mix.voice[0].playing:
@@ -516,55 +515,55 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            play_a_0("/sd/mvc/" + character + ".wav")
+            ply_a_0("/sd/mvc/" + character + ".wav")
         except:
             print("Invalid character in string to speak")
     if addLocal:
-        play_a_0("/sd/mvc/dot.wav")
-        play_a_0("/sd/mvc/local.wav")
+        ply_a_0("/sd/mvc/dot.wav")
+        ply_a_0("/sd/mvc/local.wav")
 
 
 def l_r_but():
-    play_a_0("/sd/mvc/press_left_button_right_button.wav")
+    ply_a_0("/sd/mvc/press_left_button_right_button.wav")
 
 
 def opt_sel():
-    play_a_0("/sd/mvc/option_selected.wav")
+    ply_a_0("/sd/mvc/option_selected.wav")
 
 
 def d_cal():
-    play_a_0("/sd/mvc/adjust_the_door_position_instruct.wav")
-    play_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
+    ply_a_0("/sd/mvc/adjust_the_door_position_instruct.wav")
+    ply_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
 
 def r_cal():
-    play_a_0("/sd/mvc/adjust_the_roof_position_instruct.wav")
-    play_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
+    ply_a_0("/sd/mvc/adjust_the_roof_position_instruct.wav")
+    ply_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
 
 def sel_web():
-    play_a_0("/sd/mvc/web_menu.wav")
+    ply_a_0("/sd/mvc/web_menu.wav")
     l_r_but()
 
 
 def spk_web():
-    play_a_0("/sd/mvc/animator_available_on_network.wav")
-    play_a_0("/sd/mvc/to_access_type.wav")
+    ply_a_0("/sd/mvc/animator_available_on_network.wav")
+    ply_a_0("/sd/mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-outhouse":
-        play_a_0("/sd/mvc/animator_dash_outhouse.wav")
-        play_a_0("/sd/mvc/dot.wav")
-        play_a_0("/sd/mvc/local.wav")
+        ply_a_0("/sd/mvc/animator_dash_outhouse.wav")
+        ply_a_0("/sd/mvc/dot.wav")
+        ply_a_0("/sd/mvc/local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    play_a_0("/sd/mvc/in_your_browser.wav")
+    ply_a_0("/sd/mvc/in_your_browser.wav")
 
 
 def chk_lmt(min, max, pos):
     if pos < min:
-        play_a_0("/sd/mvc/limit_reached.wav")
+        ply_a_0("/sd/mvc/limit_reached.wav")
         return False
     if pos > max:
-        play_a_0("/sd/mvc/limit_reached.wav")
+        ply_a_0("/sd/mvc/limit_reached.wav")
         return False
     return True
 
@@ -654,7 +653,7 @@ def cal_r_but(s, mov_typ, sign, min, max):
 
 
 def wrt_cal():
-    play_a_0("/sd/mvc/all_changes_complete.wav")
+    ply_a_0("/sd/mvc/all_changes_complete.wav")
     global cfg
     files.write_json_file("/sd/cfg.json", cfg)
 
@@ -795,21 +794,22 @@ async def rn_exp():
 # Animations
 
 
-def ply_a_0_1(file_name, match_start, match_time):
+def ply_mtch(fn, srt, end, wait):
     if mix.voice[0].playing:
         mix.voice[0].stop()
         while mix.voice[0].playing:
             upd_vol(0.02)
-    print("playing" + file_name)
-    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    print("playing" + fn)
+    w0 = audiocore.WaveFile(open(fn, "rb"))
     mix.voice[0].play(w0, loop=False)
-    time.sleep(match_start)
-    led_B[0] = ((255, 0, 0))
-    led_B.show()
-    time.sleep(match_time)
-    led_B[0] = ((0, 0, 0))
-    led_B.show()
-    while mix.voice[0].playing:
+    if srt > 0 and end > 0:
+        time.sleep(srt)
+        led_B[0] = ((255, 0, 0))
+        led_B.show()
+        time.sleep(end)
+        led_B[0] = ((0, 0, 0))
+        led_B.show()
+    while mix.voice[0].playing and wait:
         exit_early()
     print("done playing")
 
@@ -822,65 +822,60 @@ def sit_d():
     mov_d_s(cfg["door_open_position"], .03)
     if cfg["figure"] == "alien":
         w0 = audiocore.WaveFile(
-            open("/sd/o_s/alien_1_unusual_space_portal.wav", "rb"))
+            open("/sd/"+ cfg["rating"] + "/alien_1_enter_1.wav", "rb"))
         mix.voice[0].play(w0, loop=False)
         fire()
         w0 = audiocore.WaveFile(
-            open("/sd/o_s/alien_1_lets_get_seated.wav", "rb"))
+            open("/sd/"+ cfg["rating"] + "/alien_1_seated.wav", "rb"))
         mix.voice[0].play(w0, loop=False)
         fire()
         mov_g_s(cfg["guy_down_position"], 0.05)
         mov_d_s(cfg["door_closed_position"], .03)
-        play_a_0("/sd/o_s/alien_1_communication.wav")
+        ply_a_0("/sd/"+ cfg["rating"] + "/alien_1_start_1.wav")
     elif cfg["figure"] == "man":
-        mov_g_s(cfg["guy_down_position"], 0.05)
-        mov_d_s(cfg["door_closed_position"], .03)
-        highest_index = len(man_el) - 1
-        i = random.randint(0, highest_index)
-        led_F[0] = ((0, 0, 0))
-        try:
-            play_a_0("/sd/o_s/"+ man_el[i] + ".wav")
-        except:
-            print("errored")
-        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
-        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
-        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
-        ply_a_0_1("/sd/m_l/lit3.wav", .4, .4)
+        mtch()
     elif cfg["figure"] == "woman":
+        mtch()
+
+def mtch():
         mov_g_s(cfg["guy_down_position"], 0.05)
-        mov_d_s(cfg["door_closed_position"], .03)
-        highest_index = len(woman_el) - 1
-        i = random.randint(0, highest_index)
+        mov_d_s(cfg["door_closed_position"], .03) 
         led_F[0] = ((0, 0, 0))
-        try:
-            play_a_0("/sd/o_s/"+ woman_el[i] + ".wav")
-        except:
-            print("errored")
-        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
-        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
-        ply_a_0_1("/sd/m_f/fail1.wav", .1, .1)
-        ply_a_0_1("/sd/m_l/lit3.wav", .4, .4)
+        print("rating is: " + cfg["rating"])
+        rnd_snd("/sd/" + cfg["rating"],cfg["figure"],0,0, True)
+        rnd_snd("/sd/match","fail", .1, .1, True)
+        rnd_snd("/sd/match","fail", .1, .1, True)
+        rnd_snd("/sd/match","fail", .1, .1, True)
+        rnd_snd("/sd/match","lit", .4, .4, True)
+
+def rnd_snd (dir, p_typ, srt, end, wait):
+    snds = get_snds(dir, p_typ)
+    max_i = len(snds) - 1
+    i = random.randint(0, max_i)
+    ply_mtch(dir + "/"+ snds[i] + ".wav",srt,end, wait)
 
 def exp():
     print("explosion")
-    cur_opt = cfg["option_selected"]
-    print("Sound file: " + cur_opt)
-    cur_opt = "exp_1"
-    w0 = audiocore.WaveFile(
-        open("/sd/exp/" + cur_opt + ".wav", "rb"))
-    mix.voice[0].play(w0, loop=False)
+    rnd_snd("/sd/" + cfg["rating"] + "_exp",cfg["figure"],0,0, False)
     time.sleep(.1)
     mov_r(cfg["roof_open_position"])
-    mov_g(cfg["guy_up_position"])
-    mov_d(cfg["door_open_position"])
-    delay_time = .05
-    led_F[0] = (0, 255, 0)
-    led_F.show()
-    for i in range(0, 6):
-        led_B[i] = (255, 0, 0)
+    if cfg["figure"] == "alien":
+        led_F.fill((0, 255, 0))
+        led_F.show()
+        led_B.fill((0, 0, 255))
         led_B.show()
-        time.sleep(delay_time)
-    asyncio.run(rn_exp())
+        mov_g_s(cfg["guy_up_position"],.05)     
+    else:
+        mov_g(cfg["guy_up_position"])
+        mov_d(cfg["door_open_position"])
+        delay_time = .05
+        led_F[0] = (255, 255, 253)
+        led_F.show()
+        for i in range(0, 6):
+            led_B[i] = (255, 0, 0)
+            led_B.show()
+            time.sleep(delay_time)
+        asyncio.run(rn_exp())
 
 def rst_an(): 
     print("reset")
@@ -893,7 +888,6 @@ def rst_an():
     time.sleep(.2)
     mov_r_s(cfg["roof_closed_position"]+20, .001)
     mov_r_s(cfg["roof_closed_position"], .05)
-    time.sleep(2)
 
 def an():
     sit_d()
@@ -912,14 +906,14 @@ def ins_f(wait_but):
     mov_r_s(cfg["roof_open_position"], 0.01)
     mov_d_s(cfg["door_open_position"], 0.01)
     mov_g_s(cfg["guy_up_position"], 0.01)
-    play_a_0("/sd/mvc/install_figure_instructions.wav")
+    ply_a_0("/sd/mvc/install_figure_instructions.wav")
     while wait_but:
         l_sw.update()
         r_sw.update()
         if r_sw.fell:
             mov_g_s(cfg["guy_down_position"], 0.01)
             files.write_json_file("/sd/cfg.json", cfg)
-            play_a_0("/sd/mvc/all_changes_complete.wav")
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
             break
 
 ################################################################################
@@ -986,7 +980,7 @@ class BseSt(Ste):
         mov_d_s(cfg["door_closed_position"], 0.01)
         mov_r_s(cfg["roof_closed_position"], 0.01)
 
-        play_a_0("/sd/mvc/animations_are_now_active.wav")
+        ply_a_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base Ste")
         Ste.enter(self, mch)
 
@@ -1000,10 +994,10 @@ class BseSt(Ste):
         if sw == "left_held":
             if cont_run:
                 cont_run = False
-                play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
-                play_a_0("/sd/mvc/continuous_mode_activated.wav")
+                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif sw == "left" or cont_run:
             an()
         elif sw == "right":
@@ -1022,7 +1016,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        play_a_0("/sd/mvc/main_menu.wav")
+        ply_a_0("/sd/mvc/main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1033,7 +1027,7 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
+            ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -1055,7 +1049,7 @@ class Main(Ste):
             elif sel_i == "install_figure":
                 mch.go_to('install_figure')
             else:
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 class MoveRD(Ste):
@@ -1070,7 +1064,7 @@ class MoveRD(Ste):
 
     def enter(s, mch):
         files.log_item('Move roof or door menu')
-        play_a_0("/sd/mvc/move_roof_or_door_menu.wav")
+        ply_a_0("/sd/mvc/move_roof_or_door_menu.wav")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1081,7 +1075,7 @@ class MoveRD(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + mov_r_d[s.i] + ".wav")
+            ply_a_0("/sd/mvc/" + mov_r_d[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(mov_r_d)-1:
@@ -1097,7 +1091,7 @@ class MoveRD(Ste):
             elif sel_i == "move_roof_closed_position":
                 mov_r_s(cfg["roof_closed_position"], 0.01)
             else:
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1113,7 +1107,7 @@ class AdjRD(Ste):
 
     def enter(s, mch):
         files.log_item('Adjust roof or door menu')
-        play_a_0("/sd/mvc/adjust_roof_or_door_menu.wav")
+        ply_a_0("/sd/mvc/adjust_roof_or_door_menu.wav")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1124,7 +1118,7 @@ class AdjRD(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0(
+            ply_a_0(
                 "/sd/mvc/" + adj_r_d[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
@@ -1153,7 +1147,7 @@ class AdjRD(Ste):
                 cal_pos(r_s, "roof_closed_position")
                 mch.go_to('base_state')
             else:
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1169,7 +1163,7 @@ class VolSet(Ste):
 
     def enter(s, mch):
         files.log_item('Set Web Options')
-        play_a_0("/sd/mvc/volume_settings_menu.wav")
+        ply_a_0("/sd/mvc/volume_settings_menu.wav")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1180,7 +1174,7 @@ class VolSet(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
+            ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
@@ -1188,7 +1182,7 @@ class VolSet(Ste):
         if r_sw.fell:
             sel_i = vol_set[s.sel_i]
             if sel_i == "volume_level_adjustment":
-                play_a_0("/sd/mvc/volume_adjustment_menu.wav")
+                ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
                 done = False
                 while not done:
                     sw = utilities.switch_state(
@@ -1199,7 +1193,7 @@ class VolSet(Ste):
                         ch_vol("raise")
                     elif sw == "right_held":
                         files.write_json_file("/sd/cfg.json", cfg)
-                        play_a_0("/sd/mvc/all_changes_complete.wav")
+                        ply_a_0("/sd/mvc/all_changes_complete.wav")
                         done = True
                         mch.go_to('base_state')
                     upd_vol(0.1)
@@ -1209,12 +1203,12 @@ class VolSet(Ste):
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
             elif sel_i == "volume_pot_on":
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1245,7 +1239,7 @@ class WebOpt(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
-                play_a_0("/sd/mvc/" + web_m[s.i] + ".wav")
+                ply_a_0("/sd/mvc/" + web_m[s.i] + ".wav")
                 s.sel_i = s.i
                 s.i += 1
                 if s.i > len(web_m)-1:
@@ -1264,11 +1258,11 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif sel_i == "hear_instr_web":
-                play_a_0("/sd/mvc/web_instruct.wav")
+                ply_a_0("/sd/mvc/web_instruct.wav")
                 sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1284,7 +1278,7 @@ class Snds(Ste):
 
     def enter(s, mch):
         files.log_item('Choose sounds menu')
-        play_a_0("/sd/mvc/dialog_options_menu.wav")
+        ply_a_0("/sd/mvc/dialog_options_menu.wav")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1300,7 +1294,7 @@ class Snds(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
-                play_a_0("/sd/mvc/" +
+                ply_a_0("/sd/mvc/" +
                          dlg_opt[s.i] + ".wav")
                 s.sel_i = s.i
                 s.i += 1
@@ -1327,7 +1321,7 @@ class InsFig(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        play_a_0("/sd/mvc/install_figure_menu.wav")
+        ply_a_0("/sd/mvc/install_figure_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1339,7 +1333,7 @@ class InsFig(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0(
+            ply_a_0(
                 "/sd/mvc/" + inst_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
@@ -1394,4 +1388,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
 
