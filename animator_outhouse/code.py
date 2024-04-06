@@ -89,8 +89,8 @@ aud.play(mix)
 mix.voice[0].level = .2
 
 try:
-    sdcard = sdcardio.SDCard(spi, cs)
-    vfs = storage.VfsFat(sdcard)
+    sd = sdcardio.SDCard(spi, cs)
+    vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
 except:
     w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
@@ -102,8 +102,8 @@ except:
         l_sw.update()
         if l_sw.fell:
             try:
-                sdcard = sdcardio.SDCard(spi, cs)
-                vfs = storage.VfsFat(sdcard)
+                sd = sdcardio.SDCard(spi, cs)
+                vfs = storage.VfsFat(sd)
                 storage.mount(vfs, "/sd")
                 card_in = True
                 w0 = audiocore.WaveFile(
@@ -219,9 +219,9 @@ if (web):
         gc_col("wifi connect")
 
         # setup mdns server
-        mdns_server = mdns.Server(wifi.radio)
-        mdns_server.hostname = cfg["HOST_NAME"]
-        mdns_server.advertise_service(
+        mdns = mdns.Server(wifi.radio)
+        mdns.hostname = cfg["HOST_NAME"]
+        mdns.advertise_service(
             service_type="_http", protocol="_tcp", port=80)
 
         # files.log_items IP address to REPL
@@ -238,152 +238,152 @@ if (web):
         # Setup routes
 
         @server.route("/")
-        def base(request: HTTPRequest):
+        def base(req: HTTPRequest):
             gc_col("Home page.")
-            return FileResponse(request, "index.html", "/")
+            return FileResponse(req, "index.html", "/")
 
         @server.route("/mui.min.css")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.css", "/")
+        def base(req: HTTPRequest):
+            return FileResponse(req, "mui.min.css", "/")
 
         @server.route("/mui.min.js")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.js", "/")
+        def base(req: HTTPRequest):
+            return FileResponse(req, "mui.min.js", "/")
 
         @server.route("/animation", [POST])
-        def buttonpress(request: Request):
+        def buttonpress(req: Request):
             global cfg
             global cont_run
-            data = request.json()
-            if "RUN" == data["animation"]:
+            req_d = req.json()
+            if "RUN" == req_d["an"]:
                 cfg["option_selected"] = "random"
                 an()
-            elif "g" == data["animation"]:
+            elif "G" == req_d["an"]:
                 cfg["option_selected"] = "G"
-            elif "g" == data["animation"]:
+            elif "PG" == req_d["an"]:
                 cfg["option_selected"] = "PG"
-            elif "g" == data["animation"]:
+            elif "R" == req_d["an"]:
                 cfg["option_selected"] = "R"
-            elif "cont_mode_on" == data["animation"]:
+            elif "cont_mode_on" == req_d["an"]:
                 cont_run = True
                 play_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" == data["animation"]:
+            elif "cont_mode_off" == req_d["an"]:
                 cont_run = False
                 play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            return Response(request, "Animation " + cfg["option_selected"] + " started.")
+            return Response(req, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/utilities", [POST])
-        def buttonpress(request: Request):
+        def buttonpress(req: Request):
             global cfg
-            data = request.json()
-            if "speaker_test" == data["animation"]:
+            req_d = req.json()
+            if "speaker_test" == req_d["an"]:
                 play_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif "volume_pot_off" == data["animation"]:
+            elif "volume_pot_off" == req_d["an"]:
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "volume_pot_on" == data["animation"]:
+            elif "volume_pot_on" == req_d["an"]:
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "reset_to_defaults" == data["animation"]:
+            elif "reset_to_defaults" == req_d["an"]:
                 rst_def()
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
 
-            return Response(request, "Dialog option cal saved.")
+            return Response(req, "Dialog option cal saved.")
 
         @server.route("/update-host-name", [POST])
-        def buttonpress(request: Request):
+        def buttonpress(req: Request):
             global cfg
-            data = request.json()
-            cfg["HOST_NAME"] = data["text"]
+            req_d = req.json()
+            cfg["HOST_NAME"] = req_d["text"]
             files.write_json_file("/sd/cfg.json", cfg)
-            mdns_server.hostname = cfg["HOST_NAME"]
+            mdns.hostname = cfg["HOST_NAME"]
             spk_web()
-            return Response(request, cfg["HOST_NAME"])
+            return Response(req, cfg["HOST_NAME"])
 
         @server.route("/get-host-name", [POST])
-        def buttonpress(request: Request):
-            return Response(request, cfg["HOST_NAME"])
+        def buttonpress(req: Request):
+            return Response(req, cfg["HOST_NAME"])
 
         @server.route("/update-volume", [POST])
-        def buttonpress(request: Request):
+        def buttonpress(req: Request):
             global cfg
-            data_object = request.json()
-            ch_vol(data_object["action"])
-            return Response(request, cfg["volume"])
+            req_d = req.json()
+            ch_vol(req_d["action"])
+            return Response(req, cfg["volume"])
 
         @server.route("/get-volume", [POST])
-        def buttonpress(request: Request):
-            return Response(request, cfg["volume"])
+        def buttonpress(req: Request):
+            return Response(req, cfg["volume"])
 
         @server.route("/roof", [POST])
-        def buttonpress(request: Request):
+        def buttonpress(req: Request):
             global cfg
             global mov_type
-            data = request.json()
-            if "roof_open_pos" == data["animation"]:
+            req_d = req.json()
+            if "roof_open_pos" == req_d["an"]:
                 mov_type = "roof_open_position"
                 mov_r_s(cfg[mov_type], 0.01)
-                return Response(request, "Moved to roof open position.")
-            elif "roof_closed_pos" == data["animation"]:
+                return Response(req, "Moved to roof open position.")
+            elif "roof_closed_pos" == req_d["an"]:
                 mov_type = "roof_closed_position"
                 mov_r_s(cfg[mov_type], 0.01)
-                return Response(request, "Moved to roof closed position.")
-            elif "roof_open_more" == data["animation"]:
+                return Response(req, "Moved to roof closed position.")
+            elif "roof_open_more" == req_d["an"]:
                 cal_l_but(
                     r_s, mov_type, -1, 0, 180)
-                return Response(request, "Moved door open more.")
-            elif "roof_close_more" == data["animation"]:
+                return Response(req, "Moved door open more.")
+            elif "roof_close_more" == req_d["an"]:
                 cal_r_but(
                     r_s, mov_type, -1, 0, 180)
-                return Response(request, "Moved door close more.")
-            elif "roof_cal_saved" == data["animation"]:
+                return Response(req, "Moved door close more.")
+            elif "roof_cal_saved" == req_d["an"]:
                 wrt_cal()
                 st_mch.go_to('base_state')
-                return Response(request, "cal saved.")
+                return Response(req, "cal saved.")
 
         @server.route("/door", [POST])
-        def buttonpress(request: Request):
+        def buttonpress(req: Request):
             global cfg
             global door_movement_type
-            data = request.json()
-            if "door_open_pos" == data["animation"]:
+            req_d = req.json()
+            if "door_open_pos" == req_d["an"]:
                 door_movement_type = "door_open_position"
                 mov_d_s(cfg[door_movement_type], 0.01)
-                return Response(request, "Moved to door open position.")
-            elif "door_closed_pos" == data["animation"]:
+                return Response(req, "Moved to door open position.")
+            elif "door_closed_pos" == req_d["an"]:
                 door_movement_type = "door_closed_position"
                 mov_d_s(cfg[door_movement_type], 0.01)
-                return Response(request, "Moved to door closed position.")
-            elif "door_open_more" == data["animation"]:
+                return Response(req, "Moved to door closed position.")
+            elif "door_open_more" == req_d["an"]:
                 cal_l_but(
                     d_s, door_movement_type, 1, 0, 180)
-                return Response(request, "Moved door open more.")
-            elif "door_close_more" == data["animation"]:
+                return Response(req, "Moved door open more.")
+            elif "door_close_more" == req_d["an"]:
                 cal_r_but(
                     d_s, door_movement_type, 1, 0, 180)
-                return Response(request, "Moved door close more.")
-            elif "door_cal_saved" == data["animation"]:
+                return Response(req, "Moved door close more.")
+            elif "door_cal_saved" == req_d["an"]:
                 wrt_cal()
                 st_mch.go_to('base_state')
-                return Response(request, "Tree " + door_movement_type + " cal saved.")
+                return Response(req, "Tree " + door_movement_type + " cal saved.")
 
         @server.route("/install-figure", [POST])
-        def buttonpress(request: Request):
+        def buttonpress(req: Request):
             global cfg
-            data = request.json()
-            if data["action"] != "right":
-                cfg["figure"] = data["action"]
+            req_d = req.json()
+            if req_d["action"] != "right":
+                cfg["figure"] = req_d["action"]
                 ins_f(False)
-            if data["action"] == "right":
+            if req_d["action"] == "right":
                 mov_g_s(cfg["guy_down_position"], 0.01)
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
-            return Response(request, cfg["figure"])
+            return Response(req, cfg["figure"])
 
     except Exception as e:
         web = False
@@ -535,11 +535,11 @@ def spk_web():
     play_a_0("/sd/mvc/in_your_browser.wav")
 
 
-def chk_lmt(min_servo_pos, max_servo_pos, servo_pos):
-    if servo_pos < min_servo_pos:
+def chk_lmt(min, max, pos):
+    if pos < min:
         play_a_0("/sd/mvc/limit_reached.wav")
         return False
-    if servo_pos > max_servo_pos:
+    if pos > max:
         play_a_0("/sd/mvc/limit_reached.wav")
         return False
     return True
@@ -548,85 +548,85 @@ def chk_lmt(min_servo_pos, max_servo_pos, servo_pos):
 # Servo helpers
 
 
-def mov_d(servo_pos):
-    if servo_pos < d_min:
-        servo_pos = d_min
-    if servo_pos > d_max:
-        servo_pos = d_max
-    d_s.angle = servo_pos
+def mov_d(pos):
+    if pos < d_min:
+        pos = d_min
+    if pos > d_max:
+        pos = d_max
+    d_s.angle = pos
     global d_lst_p
-    d_lst_p = servo_pos
+    d_lst_p = pos
 
 
-def mov_d_s(new_position, speed):
+def mov_d_s(n_pos, speed):
     global d_lst_p
     sign = 1
-    if d_lst_p > new_position:
+    if d_lst_p > n_pos:
         sign = - 1
-    for door_angle in range(d_lst_p, new_position, sign):
+    for door_angle in range(d_lst_p, n_pos, sign):
         mov_d(door_angle)
         time.sleep(speed)
-    mov_d(new_position)
+    mov_d(n_pos)
 
 
-def mov_g(servo_pos):
-    if servo_pos < g_min:
-        servo_pos = g_min
-    if servo_pos > g_max:
-        servo_pos = g_max
-    g_s.angle = servo_pos
+def mov_g(pos):
+    if pos < g_min:
+        pos = g_min
+    if pos > g_max:
+        pos = g_max
+    g_s.angle = pos
     global g_lst_p
-    g_lst_p = servo_pos
+    g_lst_p = pos
 
 
-def mov_g_s(new_position, speed):
+def mov_g_s(n_pos, speed):
     global g_lst_p
     sign = 1
-    if g_lst_p > new_position:
+    if g_lst_p > n_pos:
         sign = - 1
-    for guy_angle in range(g_lst_p, new_position, sign):
+    for guy_angle in range(g_lst_p, n_pos, sign):
         mov_g(guy_angle)
         time.sleep(speed)
-    mov_g(new_position)
+    mov_g(n_pos)
 
 
-def mov_r(servo_pos):
-    if servo_pos < r_min:
-        servo_pos = r_min
-    if servo_pos > r_max:
-        servo_pos = r_max
-    r_s.angle = servo_pos
+def mov_r(pos):
+    if pos < r_min:
+        pos = r_min
+    if pos > r_max:
+        pos = r_max
+    r_s.angle = pos
     global r_lst_p
-    r_lst_p = servo_pos
+    r_lst_p = pos
 
 
-def mov_r_s(new_position, speed):
+def mov_r_s(n_pos, spd):
     global r_lst_p
     sign = 1
-    if r_lst_p > new_position:
+    if r_lst_p > n_pos:
         sign = - 1
-    for roof_angle in range(r_lst_p, new_position, sign):
+    for roof_angle in range(r_lst_p, n_pos, sign):
         mov_r(roof_angle)
-        time.sleep(speed)
-    mov_r(new_position)
+        time.sleep(spd)
+    mov_r(n_pos)
 
 
-def cal_l_but(servo, movement_type, sign, min_servo_pos, max_servo_pos):
+def cal_l_but(s, mov_typ, sign, min, max):
     global cfg
-    cfg[movement_type] -= 1 * sign
-    if chk_lmt(min_servo_pos, max_servo_pos, cfg[movement_type]):
-        servo.angle = cfg[movement_type]
+    cfg[mov_typ] -= 1 * sign
+    if chk_lmt(min, max, cfg[mov_typ]):
+        s.angle = cfg[mov_typ]
     else:
-        cfg[movement_type] += 1 * sign
+        cfg[mov_typ] += 1 * sign
 
 
-def cal_r_but(servo, movement_type, sign, min_servo_pos, max_servo_pos):
+def cal_r_but(s, mov_typ, sign, min, max):
     global cfg
-    cfg[movement_type] += 1 * sign
-    if chk_lmt(min_servo_pos, max_servo_pos, cfg[movement_type]):
-        servo.angle = cfg[movement_type]
+    cfg[mov_typ] += 1 * sign
+    if chk_lmt(min, max, cfg[mov_typ]):
+        s.angle = cfg[mov_typ]
     else:
-        cfg[movement_type] -= 1 * sign
+        cfg[mov_typ] -= 1 * sign
 
 
 def wrt_cal():
@@ -635,7 +635,7 @@ def wrt_cal():
     files.write_json_file("/sd/cfg.json", cfg)
 
 
-def cal_pos(servo, mov_typ):
+def cal_pos(s, mov_typ):
     if mov_typ == "door_close_position" or mov_typ == "door_open_position":
         min = 0
         max = 180
@@ -644,14 +644,14 @@ def cal_pos(servo, mov_typ):
         min = 0
         max = 180
         sign = -1
-    cal_done = False
-    while not cal_done:
-        servo.angle = cfg[mov_typ]
+    done = False
+    while not done:
+        s.angle = cfg[mov_typ]
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
             cal_l_but(
-                servo, mov_typ, sign, min, max)
+                s, mov_typ, sign, min, max)
         if r_sw.fell:
             btn_chk = True
             number_cycles = 0
@@ -662,12 +662,12 @@ def cal_pos(servo, mov_typ):
                 if number_cycles > 30:
                     wrt_cal()
                     btn_chk = False
-                    cal_done = True
+                    done = True
                 if r_sw.rose:
                     btn_chk = False
-            if not cal_done:
+            if not done:
                 cal_r_but(
-                    servo, mov_typ, sign, min, max)
+                    s, mov_typ, sign, min, max)
     if mov_typ == "door_close_position" or mov_typ == "door_open_position":
         global d_lst_p
         d_lst_p = cfg[mov_typ]
@@ -876,7 +876,7 @@ def ins_f(wait_but):
             break
 
 ################################################################################
-# Ste mch
+# State Machine
 
 
 class StMch(object):
@@ -962,6 +962,54 @@ class BseSt(Ste):
         elif sw == "right":
             mch.go_to('main_menu')
 
+
+class Main(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'main_menu'
+
+    def enter(self, mch):
+        files.log_item('Main menu')
+        play_a_0("/sd/mvc/main_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            play_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(main_m)-1:
+                self.i = 0
+        if r_sw.fell:
+            sel_i = main_m[self.sel_i]
+            if sel_i == "dialog_options":
+                mch.go_to('dialog_options')
+            elif sel_i == "adjust_roof_door":
+                mch.go_to('adjust_roof_door')
+            elif sel_i == "move_roof_door":
+                mch.go_to('move_roof_door')
+            elif sel_i == "set_dialog_options":
+                mch.go_to('set_dialog_options')
+            elif sel_i == "web_options":
+                mch.go_to('web_options')
+            elif sel_i == "volume_settings":
+                mch.go_to('volume_settings')
+            elif sel_i == "install_figure":
+                mch.go_to('install_figure')
+            else:
+                play_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 class MoveRD(Ste):
 
@@ -1257,53 +1305,7 @@ class InsFig(Ste):
             mch.go_to('base_state')
 
 
-class MainMenu(Ste):
 
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
-
-    @property
-    def name(self):
-        return 'main_menu'
-
-    def enter(self, mch):
-        files.log_item('Main menu')
-        play_a_0("/sd/mvc/main_menu.wav")
-        l_r_but()
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            play_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(main_m)-1:
-                self.i = 0
-        if r_sw.fell:
-            sel_i = main_m[self.sel_i]
-            if sel_i == "dialog_options":
-                mch.go_to('dialog_options')
-            elif sel_i == "adjust_roof_door":
-                mch.go_to('adjust_roof_door')
-            elif sel_i == "move_roof_door":
-                mch.go_to('move_roof_door')
-            elif sel_i == "set_dialog_options":
-                mch.go_to('set_dialog_options')
-            elif sel_i == "web_options":
-                mch.go_to('web_options')
-            elif sel_i == "volume_settings":
-                mch.go_to('volume_settings')
-            elif sel_i == "install_figure":
-                mch.go_to('install_figure')
-            else:
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
 
 gc_col("Ste mch")
 
@@ -1312,7 +1314,7 @@ gc_col("Ste mch")
 
 st_mch = StMch()
 st_mch.add(BseSt())
-st_mch.add(MainMenu())
+st_mch.add(Main())
 st_mch.add(Snds())
 st_mch.add(AdjRD())
 st_mch.add(MoveRD())
