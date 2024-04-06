@@ -254,20 +254,20 @@ if (web):
         def buttonpress(request: Request):
             global cfg
             global cont_run
-            data_object = request.json()
-            if "RUN" == data_object["animation"]:
+            data = request.json()
+            if "RUN" == data["animation"]:
                 cfg["option_selected"] = "random"
                 an()
-            elif "g" == data_object["animation"]:
+            elif "g" == data["animation"]:
                 cfg["option_selected"] = "G"
-            elif "g" == data_object["animation"]:
+            elif "g" == data["animation"]:
                 cfg["option_selected"] = "PG"
-            elif "g" == data_object["animation"]:
+            elif "g" == data["animation"]:
                 cfg["option_selected"] = "R"
-            elif "cont_mode_on" == data_object["animation"]:
+            elif "cont_mode_on" == data["animation"]:
                 cont_run = True
                 play_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" == data_object["animation"]:
+            elif "cont_mode_off" == data["animation"]:
                 cont_run = False
                 play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
@@ -275,18 +275,18 @@ if (web):
         @server.route("/utilities", [POST])
         def buttonpress(request: Request):
             global cfg
-            raw_text = request.raw_request.decode("utf8")
-            if "speaker_test" in raw_text:
+            data = request.json()
+            if "speaker_test" == data["animation"]:
                 play_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif "volume_pot_off" in raw_text:
+            elif "volume_pot_off" == data["animation"]:
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "volume_pot_on" in raw_text:
+            elif "volume_pot_on" == data["animation"]:
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "reset_to_defaults" in raw_text:
+            elif "reset_to_defaults" == data["animation"]:
                 rst_def()
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
@@ -297,8 +297,8 @@ if (web):
         @server.route("/update-host-name", [POST])
         def buttonpress(request: Request):
             global cfg
-            data_object = request.json()
-            cfg["HOST_NAME"] = data_object["text"]
+            data = request.json()
+            cfg["HOST_NAME"] = data["text"]
             files.write_json_file("/sd/cfg.json", cfg)
             mdns_server.hostname = cfg["HOST_NAME"]
             spk_web()
@@ -317,30 +317,30 @@ if (web):
 
         @server.route("/get-volume", [POST])
         def buttonpress(request: Request):
-            return Response(request, cfg["v"])
+            return Response(request, cfg["volume"])
 
         @server.route("/roof", [POST])
         def buttonpress(request: Request):
             global cfg
             global mov_type
-            raw_text = request.raw_request.decode("utf8")
-            if "roof_open_pos" in raw_text:
+            data = request.json()
+            if "roof_open_pos" == data["animation"]:
                 mov_type = "roof_open_position"
                 mov_r_s(cfg[mov_type], 0.01)
                 return Response(request, "Moved to roof open position.")
-            elif "roof_closed_pos" in raw_text:
+            elif "roof_closed_pos" == data["animation"]:
                 mov_type = "roof_closed_position"
                 mov_r_s(cfg[mov_type], 0.01)
                 return Response(request, "Moved to roof closed position.")
-            elif "roof_open_more" in raw_text:
+            elif "roof_open_more" == data["animation"]:
                 cal_l_but(
                     r_s, mov_type, -1, 0, 180)
                 return Response(request, "Moved door open more.")
-            elif "roof_close_more" in raw_text:
+            elif "roof_close_more" == data["animation"]:
                 cal_r_but(
                     r_s, mov_type, -1, 0, 180)
                 return Response(request, "Moved door close more.")
-            elif "roof_cal_saved" in raw_text:
+            elif "roof_cal_saved" == data["animation"]:
                 wrt_cal()
                 st_mch.go_to('base_state')
                 return Response(request, "cal saved.")
@@ -349,24 +349,24 @@ if (web):
         def buttonpress(request: Request):
             global cfg
             global door_movement_type
-            raw_text = request.raw_request.decode("utf8")
-            if "door_open_pos" in raw_text:
+            data = request.json()
+            if "door_open_pos" == data["animation"]:
                 door_movement_type = "door_open_position"
                 mov_d_s(cfg[door_movement_type], 0.01)
                 return Response(request, "Moved to door open position.")
-            elif "door_closed_pos" in raw_text:
+            elif "door_closed_pos" == data["animation"]:
                 door_movement_type = "door_closed_position"
                 mov_d_s(cfg[door_movement_type], 0.01)
                 return Response(request, "Moved to door closed position.")
-            elif "door_open_more" in raw_text:
+            elif "door_open_more" == data["animation"]:
                 cal_l_but(
                     d_s, door_movement_type, 1, 0, 180)
                 return Response(request, "Moved door open more.")
-            elif "door_close_more" in raw_text:
+            elif "door_close_more" == data["animation"]:
                 cal_r_but(
                     d_s, door_movement_type, 1, 0, 180)
                 return Response(request, "Moved door close more.")
-            elif "door_cal_saved" in raw_text:
+            elif "door_cal_saved" == data["animation"]:
                 wrt_cal()
                 st_mch.go_to('base_state')
                 return Response(request, "Tree " + door_movement_type + " cal saved.")
@@ -374,12 +374,11 @@ if (web):
         @server.route("/install-figure", [POST])
         def buttonpress(request: Request):
             global cfg
-            data_object = request.json()
-            if data_object["action"] != "right":
-                cfg["figure"] = data_object["action"]
-                print(cfg["figure"])
+            data = request.json()
+            if data["action"] != "right":
+                cfg["figure"] = data["action"]
                 ins_f(False)
-            if data_object["action"] == "right":
+            if data["action"] == "right":
                 mov_g_s(cfg["guy_down_position"], 0.01)
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
@@ -400,13 +399,13 @@ def rst_def():
     global cfg
     cfg["volume_pot"] = True
     cfg["HOST_NAME"] = "animator-outhouse"
-    cfg["volume"] = "20"
-    cfg["roof_open_position"] = "100"
-    cfg["guy_up_position"] = "0"
-    cfg["door_open_position"] = "24"
-    cfg["guy_down_position"] = "180"
-    cfg["roof_closed_position"] = "31"
-    cfg["door_closed_position"] = "122"
+    cfg["volume"] = 20
+    cfg["roof_open_position"] = 100
+    cfg["guy_up_position"] = 0
+    cfg["door_open_position"] = 24
+    cfg["guy_down_position"] = 180
+    cfg["roof_closed_position"] = 31
+    cfg["door_closed_position"] = 122
 
 ################################################################################
 # Dialog and sound play methods
@@ -691,7 +690,7 @@ async def upd_vol_async(seconds):
         await asyncio.sleep(seconds)
     else:
         try:
-            v = int(cfg["v"]) / 100
+            v = int(cfg["volume"]) / 100
         except:
             v = .5
         if v < 0 or v > 1:
@@ -797,7 +796,6 @@ def sit_d():
     led_F[0] = ((255, 147, 41))
     led_F.show()
     mov_d_s(cfg["door_open_position"], .05)
-    print(cfg["figure"])
     if cfg["figure"] == "alien":
         w0 = audiocore.WaveFile(
             open("/sd/o_s/alien_1_unusual_space_portal.wav", "rb"))
@@ -1113,8 +1111,8 @@ class VolSet(Ste):
                     pass
             elif sel_i == "volume_pot_off":
                 cfg["volume_pot"] = False
-                if cfg["v"] == 0:
-                    cfg["v"] = 10
+                if cfg["volume"] == 0:
+                    cfg["volume"] = 10
                 files.write_json_file("/sd/cfg.json", cfg)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
@@ -1349,3 +1347,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
