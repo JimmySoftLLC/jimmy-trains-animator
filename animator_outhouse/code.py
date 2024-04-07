@@ -864,21 +864,24 @@ def exp():
     time.sleep(.1)
     mov_r(cfg["roof_open_position"])
     if cfg["figure"] == "alien":
-        led_F.fill((0, 255, 0))
-        led_F.show()
-        led_B.fill((0, 0, 255))
-        led_B.show()
-        mov_g_s(cfg["guy_up_position"],.05)     
+        led_F[0] = (0, 255, 0)
+    else:
+        led_F[0] = (255, 255, 255)
+    led_F.show()
+    if cfg["figure"] == "alien":
+        mov_g_s(cfg["guy_up_position"],.05)
+        for i in range(0, 6):
+            led_B[i] = (0, 0, 255)
+            led_B.show()
+            time.sleep(.05)
+        asyncio.run(rn_exp(0,0,1))
     else:
         mov_g(cfg["guy_up_position"])
         mov_d(cfg["door_open_position"])
-        delay_time = .05
-        led_F[0] = (255, 255, 253)
-        led_F.show()
         for i in range(0, 6):
             led_B[i] = (255, 0, 0)
             led_B.show()
-            time.sleep(delay_time)
+            time.sleep(.05)
         asyncio.run(rn_exp(1,0,0))
 
 def rst_an(): 
@@ -1392,5 +1395,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
 
