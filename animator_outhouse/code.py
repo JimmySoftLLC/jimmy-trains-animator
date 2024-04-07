@@ -722,19 +722,21 @@ async def upd_vol_async(seconds):
         await asyncio.sleep(seconds)
 
 
-async def fr_asy():
+async def fr_asy(r_on,g_on,b_on):
     led_B.brightness = 1.0
 
     r = random.randint(150, 255)
-    g = 0  # random.randint(0,255)
-    b = 0  # random.randint(0,255)
+    g = random.randint(150, 255)
+    b = random.randint(150, 255)
 
     # Flicker, based on our initial RGB values
     while mix.voice[0].playing:
         for i in range(0, num_px):
             flicker = random.randint(0, 175)
-            r1 = bnds(r-flicker, 0, 255)
-            led_B[i] = (r1, 0, 0)
+            r1 = bnds(r-flicker, g-flicker, b-flicker)
+            g1 = bnds(r-flicker, g-flicker, b-flicker)
+            b1 = bnds(r-flicker, g-flicker, b-flicker)
+            led_B[i] = (r1 * r_on, g1 * g_on, b1 * b_on)
         led_B.show()
         await upd_vol_async(random.uniform(0.05, 0.1))
     led_F[0] = (0, 0, 0)
@@ -785,7 +787,7 @@ async def cyc_g_asy(speed, pos_up, pos_down):
 async def rn_exp():
     cyc_g = asyncio.create_task(cyc_g_asy(
         0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"]))
-    cyc_l = asyncio.create_task(fr_asy())
+    cyc_l = asyncio.create_task(fr_asy(1,0,0))
     await asyncio.gather(cyc_g, cyc_l)
     while mix.voice[0].playing:
         exit_early()
@@ -813,25 +815,26 @@ def ply_mtch(fn, srt, end, wait):
         exit_early()
     print("done playing")
 
+def d_snd(pos):
+    rnd_snd ("/sd/sqk", "sqk", 0, 0, False)
+    mov_d_s(pos, .03)
+    while mix.voice[0].playing:
+        pass
 
 def sit_d():
     print("sitting down")
     mov_g_s(cfg["guy_down_position"]-10, 0.05)
     led_F[0] = ((255, 147, 41))
     led_F.show()
-    mov_d_s(cfg["door_open_position"], .03)
+    d_snd(cfg["door_open_position"])
     if cfg["figure"] == "alien":
-        w0 = audiocore.WaveFile(
-            open("/sd/"+ cfg["rating"] + "/alien_1_enter_1.wav", "rb"))
-        mix.voice[0].play(w0, loop=False)
+        rnd_snd("/sd/" + cfg["rating"],"alienent",0,0, False)
         fire()
-        w0 = audiocore.WaveFile(
-            open("/sd/"+ cfg["rating"] + "/alien_1_seated.wav", "rb"))
-        mix.voice[0].play(w0, loop=False)
+        rnd_snd("/sd/" + cfg["rating"],"alienseat",0,0, False)
         fire()
         mov_g_s(cfg["guy_down_position"], 0.05)
-        mov_d_s(cfg["door_closed_position"], .03)
-        ply_a_0("/sd/"+ cfg["rating"] + "/alien_1_start_1.wav")
+        d_snd(cfg["door_closed_position"])
+        rnd_snd("/sd/" + cfg["rating"],"alienstr",0,0, True)
     elif cfg["figure"] == "man":
         mtch()
     elif cfg["figure"] == "woman":
@@ -839,7 +842,7 @@ def sit_d():
 
 def mtch():
         mov_g_s(cfg["guy_down_position"], 0.05)
-        mov_d_s(cfg["door_closed_position"], .03) 
+        d_snd(cfg["door_closed_position"]) 
         led_F[0] = ((0, 0, 0))
         print("rating is: " + cfg["rating"])
         rnd_snd("/sd/" + cfg["rating"],cfg["figure"],0,0, True)
@@ -850,6 +853,7 @@ def mtch():
 
 def rnd_snd (dir, p_typ, srt, end, wait):
     snds = get_snds(dir, p_typ)
+    print(snds)
     max_i = len(snds) - 1
     i = random.randint(0, max_i)
     ply_mtch(dir + "/"+ snds[i] + ".wav",srt,end, wait)
@@ -1388,5 +1392,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
-
