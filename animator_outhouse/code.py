@@ -774,30 +774,75 @@ def alien_tlk():
         led_B.show()
 
 
-async def cyc_g_asy(speed, pos_up, pos_down):
+async def cyc_g_asy(spd, pos_up, pos_down):
     global g_lst_p
     while mix.voice[0].playing:
-        new_position = pos_up
+        n_pos = pos_up
         sign = 1
-        if g_lst_p > new_position:
+        if g_lst_p > n_pos:
             sign = - 1
-        for guy_angle in range(g_lst_p, new_position, sign):
-            mov_g(guy_angle)
-            await asyncio.sleep(speed)
-        new_position = pos_down
+        for ang in range(g_lst_p, n_pos, sign):
+            mov_g(ang)
+            await asyncio.sleep(spd)
+        n_pos = pos_down
         sign = 1
-        if g_lst_p > new_position:
+        if g_lst_p > n_pos:
             sign = - 1
-        for guy_angle in range(g_lst_p, new_position, sign):
-            mov_g(guy_angle)
-            await asyncio.sleep(speed)
+        for ang in range(g_lst_p, n_pos, sign):
+            mov_g(ang)
+            await asyncio.sleep(spd)
 
+async def cyc_r_asy(spd, pos_up, pos_down):
+    global r_lst_p
+    while mix.voice[0].playing:
+        n_pos = pos_up
+        sign = 1
+        if r_lst_p > n_pos:
+            sign = - 1
+        for ang in range(r_lst_p, n_pos, sign):
+            mov_r(ang)
+            await asyncio.sleep(spd)
+        n_pos = pos_down
+        sign = 1
+        if r_lst_p > n_pos:
+            sign = - 1
+        for ang in range(r_lst_p, n_pos, sign):
+            mov_r(ang)
+            await asyncio.sleep(spd)
+
+async def cyc_d_asy(spd, pos_up, pos_down):
+    global d_lst_p
+    while mix.voice[0].playing:
+        n_pos = pos_up
+        sign = 1
+        if d_lst_p > n_pos:
+            sign = - 1
+        for ang in range(d_lst_p, n_pos, sign):
+            mov_d(ang)
+            await asyncio.sleep(spd)
+        n_pos = pos_down
+        sign = 1
+        if d_lst_p > n_pos:
+            sign = - 1
+        for ang in range(d_lst_p, n_pos, sign):
+            mov_d(ang)
+            await asyncio.sleep(spd)
 
 async def rn_exp(r,g,b):
     cyc_g = asyncio.create_task(cyc_g_asy(
         0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"]))
     cyc_l = asyncio.create_task(fr_asy(r,g,b))
     await asyncio.gather(cyc_g, cyc_l)
+    while mix.voice[0].playing:
+        exit_early()
+
+async def rn_music(r,g,b):
+    cyc_r = asyncio.create_task(cyc_r_asy(
+        0.01, cfg["roof_closed_position"]+20, cfg["roof_closed_position"]))
+    cyc_d = asyncio.create_task(cyc_d_asy(
+        0.01, cfg["door_closed_position"]+20, cfg["door_closed_position"]))
+    cyc_l = asyncio.create_task(fr_asy(r,g,b))
+    await asyncio.gather(cyc_r, cyc_l, cyc_d)
     while mix.voice[0].playing:
         exit_early()
 
@@ -835,8 +880,8 @@ def sit_d():
     mov_g_s(cfg["guy_down_position"]-10, 0.05, False)
     led_F[0] = ((255, 147, 41))
     led_F.show()
-    d_snd(cfg["door_open_position"])
     if cfg["figure"] == "alien":
+        d_snd(cfg["door_open_position"])
         rnd_snd("/sd/" + cfg["rating"],"alienent",0,0, False)
         alien_tlk()
         rnd_snd("/sd/" + cfg["rating"],"alienseat",0,0, False)
@@ -844,9 +889,12 @@ def sit_d():
         mov_g_s(cfg["guy_down_position"], 0.05, False)
         d_snd(cfg["door_closed_position"])
         rnd_snd("/sd/" + cfg["rating"],"alienstr",0,0, True)
-    elif cfg["figure"] == "man":
-        mtch()
-    elif cfg["figure"] == "woman":
+    elif cfg["figure"] == "music":
+        d_snd(cfg["door_open_position"])
+        mov_g_s(cfg["guy_down_position"], 0.05, False)
+        d_snd(cfg["door_closed_position"])
+    else:
+        d_snd(cfg["door_open_position"])
         mtch()
 
 def mtch():
@@ -871,15 +919,18 @@ def exp():
     print("explosion")
     rnd_snd("/sd/" + cfg["rating"] + "_exp",cfg["figure"],0,0, False)
     time.sleep(.1)
-    mov_r(cfg["roof_open_position"])
+    if cfg["figure"] != "music":
+        mov_r(cfg["roof_open_position"])
     if cfg["figure"] == "alien":
         led_F[0] = (0, 255, 0)
-    else:
+    elif cfg["figure"] != "music":
         led_F[0] = (255, 255, 255)
     led_F.show()
     if cfg["figure"] == "alien":
         mov_g_s(cfg["guy_up_position"],.05, True)
         asyncio.run(rn_exp(0,0,1))
+    elif cfg["figure"] == "music":
+        asyncio.run(rn_music(0,1,1))
     else:
         mov_g(cfg["guy_up_position"])
         mov_d(cfg["door_open_position"])
