@@ -402,7 +402,7 @@ if (web):
                 cfg["figure"] = req_d["action"]
                 ins_f(False)
             if req_d["action"] == "right":
-                mov_g_s(cfg["guy_down_position"], 0.01)
+                mov_g_s(cfg["guy_down_position"], 0.01, False)
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
@@ -602,12 +602,21 @@ def mov_g(pos):
     g_lst_p = pos
 
 
-def mov_g_s(n_pos, speed):
+def mov_g_s(n_pos, speed, led):
     global g_lst_p
+    tot_d = abs(g_lst_p - n_pos)
     sign = 1
+    lst_i = -1
     if g_lst_p > n_pos:
         sign = - 1
     for guy_angle in range(g_lst_p, n_pos, sign):
+        if led == True:
+            i = int(abs(abs(n_pos-g_lst_p)/tot_d*5-5))
+            if i != lst_i:
+                led_B[i] = (0, 0, 255)
+                led_B.show()
+                lst_i = i
+                print(i)
         mov_g(guy_angle)
         time.sleep(speed)
     mov_g(n_pos)
@@ -823,7 +832,7 @@ def d_snd(pos):
 
 def sit_d():
     print("sitting down")
-    mov_g_s(cfg["guy_down_position"]-10, 0.05)
+    mov_g_s(cfg["guy_down_position"]-10, 0.05, False)
     led_F[0] = ((255, 147, 41))
     led_F.show()
     d_snd(cfg["door_open_position"])
@@ -832,7 +841,7 @@ def sit_d():
         alien_tlk()
         rnd_snd("/sd/" + cfg["rating"],"alienseat",0,0, False)
         alien_tlk()
-        mov_g_s(cfg["guy_down_position"], 0.05)
+        mov_g_s(cfg["guy_down_position"], 0.05, False)
         d_snd(cfg["door_closed_position"])
         rnd_snd("/sd/" + cfg["rating"],"alienstr",0,0, True)
     elif cfg["figure"] == "man":
@@ -841,7 +850,7 @@ def sit_d():
         mtch()
 
 def mtch():
-        mov_g_s(cfg["guy_down_position"], 0.05)
+        mov_g_s(cfg["guy_down_position"], 0.05, False)
         d_snd(cfg["door_closed_position"]) 
         led_F[0] = ((0, 0, 0))
         print("rating is: " + cfg["rating"])
@@ -869,11 +878,7 @@ def exp():
         led_F[0] = (255, 255, 255)
     led_F.show()
     if cfg["figure"] == "alien":
-        mov_g_s(cfg["guy_up_position"],.05)
-        for i in range(0, 6):
-            led_B[i] = (0, 0, 255)
-            led_B.show()
-            time.sleep(.05)
+        mov_g_s(cfg["guy_up_position"],.05, True)
         asyncio.run(rn_exp(0,0,1))
     else:
         mov_g(cfg["guy_up_position"])
@@ -891,7 +896,7 @@ def rst_an():
     led_B.fill((0, 0, 0))
     led_B.show()
     mov_d(cfg["door_closed_position"])
-    mov_g_s(cfg["guy_down_position"]-10, 0.001)
+    mov_g_s(cfg["guy_down_position"]-10, 0.001, False)
     time.sleep(.2)
     mov_r_s(cfg["roof_closed_position"]+20, .001)
     mov_r_s(cfg["roof_closed_position"], .05)
@@ -912,13 +917,13 @@ def bnds(my_color, lower, upper):
 def ins_f(wait_but):
     mov_r_s(cfg["roof_open_position"], 0.01)
     mov_d_s(cfg["door_open_position"], 0.01)
-    mov_g_s(cfg["guy_up_position"], 0.01)
+    mov_g_s(cfg["guy_up_position"], 0.01, False)
     ply_a_0("/sd/mvc/install_figure_instructions.wav")
     while wait_but:
         l_sw.update()
         r_sw.update()
         if r_sw.fell:
-            mov_g_s(cfg["guy_down_position"], 0.01)
+            mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             break
@@ -983,7 +988,7 @@ class BseSt(Ste):
 
     def enter(self, mch):
         # set servos to starting position
-        mov_g_s(cfg["guy_down_position"], 0.01)
+        mov_g_s(cfg["guy_down_position"], 0.01, False)
         mov_d_s(cfg["door_closed_position"], 0.01)
         mov_r_s(cfg["roof_closed_position"], 0.01)
 
