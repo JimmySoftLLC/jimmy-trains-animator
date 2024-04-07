@@ -743,7 +743,7 @@ async def fr_asy(r_on,g_on,b_on):
     led_F.show()
 
 
-def fire():
+def alien_tlk():
     led_B.brightness = 1.0
 
     r = random.randint(0, 0)
@@ -784,10 +784,10 @@ async def cyc_g_asy(speed, pos_up, pos_down):
             await asyncio.sleep(speed)
 
 
-async def rn_exp():
+async def rn_exp(r,g,b):
     cyc_g = asyncio.create_task(cyc_g_asy(
         0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"]))
-    cyc_l = asyncio.create_task(fr_asy(1,0,0))
+    cyc_l = asyncio.create_task(fr_asy(r,g,b))
     await asyncio.gather(cyc_g, cyc_l)
     while mix.voice[0].playing:
         exit_early()
@@ -829,9 +829,9 @@ def sit_d():
     d_snd(cfg["door_open_position"])
     if cfg["figure"] == "alien":
         rnd_snd("/sd/" + cfg["rating"],"alienent",0,0, False)
-        fire()
+        alien_tlk()
         rnd_snd("/sd/" + cfg["rating"],"alienseat",0,0, False)
-        fire()
+        alien_tlk()
         mov_g_s(cfg["guy_down_position"], 0.05)
         d_snd(cfg["door_closed_position"])
         rnd_snd("/sd/" + cfg["rating"],"alienstr",0,0, True)
@@ -879,7 +879,7 @@ def exp():
             led_B[i] = (255, 0, 0)
             led_B.show()
             time.sleep(delay_time)
-        asyncio.run(rn_exp())
+        asyncio.run(rn_exp(1,0,0))
 
 def rst_an(): 
     print("reset")
@@ -1392,3 +1392,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
+
