@@ -53,7 +53,7 @@ gc_col("Imports gc, files")
 a_in = AnalogIn(board.A0)
 
 # setup pin for audio enable
-aud_en = digitalio.DigitalInOut(board.GP22) #tiny 22, original 28
+aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
@@ -590,21 +590,6 @@ def spk_web():
     play_a_0("/sd/mvc/in_your_browser.wav")
 
 
-async def upd_vol_async(s):
-    if cfg["volume_pot"]:
-        v = a_in.value / 65536
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
-    else:
-        try:
-            v = int(cfg["volume"]) / 100
-        except:
-            v = .5
-        if v < 0 or v > 1:
-            v = .5
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
-
 p_arr = [90, 90, 90, 90, 90, 90]
 
 
@@ -681,6 +666,7 @@ def an(f_nm):
         if ts_mode:
             an_ts(cur_opt)
         else:
+            print(cur_opt)
             an_light(cur_opt)
     except:
         no_trk()
@@ -738,8 +724,10 @@ def an_light(f_nm):
     ft1 = []
     ft2 = []
 
-    while True:
+    run_loop = True
+    while run_loop:
         t_past = time.monotonic()-srt_t
+        
         if flsh_i < len(flsh_t)-2:
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
@@ -761,14 +749,23 @@ def an_light(f_nm):
                 if i == 3:
                     set_hdw("L010,S00")
             else:
-                set_hdw(ft1[1])
+                resp = set_hdw(ft1[1])
+                if resp == "E":
+                    run_loop = False
+                    print("run loop set to :" + run_loop)
+                    mix.voice[0].stop()
+                    while mix.voice[0].playing:
+                        pass
+                    led.fill((0, 0, 0))
+                    led.show()
+
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            return
+            #run_loop = False
         upd_vol(.001)
 
 
@@ -824,13 +821,27 @@ sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
 
-def set_hdw(input_string):
+def set_hdw(input_string): 
     global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
 
     # Process each segment
     for seg in segs:
+        if seg[0] == 'E':  # exit
+            return "E"
+        if seg[0] == 'M':  # exit
+            mix.voice[0].stop()
+            while mix.voice[0].playing:
+                mix.voice[0].stop()
+                pass
+            wave0 = audiocore.WaveFile(open("/sd/snds/" + seg[1:] + ".wav", "rb"))
+            mix.voice[0].play(wave0, loop=False)
+            time.sleep(5)
+            mix.voice[0].stop()
+            while mix.voice[0].playing:
+                mix.voice[0].stop()
+                pass
         if seg[0] == 'L':  # lights
             num = int(seg[1])
             v = int(seg[2:])
@@ -863,6 +874,7 @@ def set_hdw(input_string):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol(.01)
+    return "OK"
 
 ################################################################################
 # State Machine
@@ -1243,4 +1255,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
 
