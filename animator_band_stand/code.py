@@ -698,8 +698,6 @@ def an(f_nm):
 
 def an_light(f_nm):
     global ts_mode
-    rnd_i_l = 1
-    rnd_i_h = 3
 
     cust_f = "customers_owned_music_" in f_nm
 
@@ -760,13 +758,9 @@ def an_light(f_nm):
                   " Timestamp: " + ft1[0])
             flsh_i += 1
             if (len(ft1) == 1 or ft1[1] == ""):
-                i = random.randint(rnd_i_l, rnd_i_h)
-                if i == 1:
-                    set_hdw("L0100,S0180")
-                if i == 2:
-                    set_hdw("L0255,S090")
-                if i == 3:
-                    set_hdw("L010,S00")
+                pos = random.randint(60, 120)
+                lgt = random.randint(60, 120)
+                set_hdw("L0" + str(lgt) + ",S0" + str(pos))
             else:
                 set_hdw(ft1[1])
         l_sw.update()
