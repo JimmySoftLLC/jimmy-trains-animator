@@ -827,6 +827,14 @@ def an_ts(f_nm):
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
+def stp_snd():
+    mix.voice[0].stop()
+    wait_snd()
+
+def wait_snd():
+    while mix.voice[0].playing:
+        mix.voice[0].stop()
+        pass
 
 def set_hdw(input_string): 
     global sp, br
@@ -839,12 +847,19 @@ def set_hdw(input_string):
             if seg[0] == 'E': # end an
                 return "E"
             if seg[0] == 'M': # play file
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    mix.voice[0].stop()
-                    pass
-                w0 = audiocore.WaveFile(open("/sd/snds/" + seg[1:] + ".wav", "rb"))
-                mix.voice[0].play(w0, loop=False)
+                if seg[1] == "S":
+                    stp_snd()
+                elif seg[1] == "W":
+                    stp_snd()
+                    w0 = audiocore.WaveFile(open("/sd/snds/" + seg[2:] + ".wav", "rb"))
+                    mix.voice[0].play(w0, loop=False)
+                    wait_snd()
+                elif seg[1] == "A":
+                    files.log_item("not implemented")
+                elif seg[1] == "P":    
+                    stp_snd()
+                    w0 = audiocore.WaveFile(open("/sd/snds/" + seg[2:] + ".wav", "rb"))
+                    mix.voice[0].play(w0, loop=False)
             if seg[0] == 'L':  # lights
                 num = int(seg[1])
                 v = int(seg[2:])
