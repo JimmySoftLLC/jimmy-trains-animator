@@ -219,9 +219,9 @@ if (web):
         WIFI_SSID = env["WIFI_SSID"]
         WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
-        print("Using env ssid and password")
+        files.log_item("Using env ssid and password")
     except:
-        print("Using default ssid and password")
+        files.log_item("Using default ssid and password")
 
     try:
         # connect to your SSID
@@ -372,7 +372,7 @@ if (web):
         @server.route("/test-animation", [POST])
         def btn(request: Request):
             rq_d = request.json()
-            print(rq_d["an"])
+            files.log_item(rq_d["an"])
             gc_col("Save Data.")
             set_hdw(rq_d["an"])
             return Response(request, "success")
@@ -386,7 +386,7 @@ if (web):
                 snd_f = snd_f.replace("customers_owned_music_", "")
                 if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
                     f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-                    print(f_n)
+                    files.log_item(f_n)
                     return FileResponse(request, f_n, "/")
                 else:
                     f_n = "/sd/t_s_def/timestamp mode.json"
@@ -398,7 +398,15 @@ if (web):
                 else:
                     f_n = "/sd/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
-
+                
+        
+        @server.route("/stop", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            rst_an()
+            gc_col("rst an")
+            return JSONResponse(request, "rst an")
+        
         @server.route("/delete-file", [POST])
         def btn(request: Request):
             rq_d = request.json()
@@ -512,8 +520,8 @@ def play_a_0(file_name):
         mix.voice[0].stop()
         while mix.voice[0].playing:
             upd_vol(0.02)
-    wave0 = audiocore.WaveFile(open(file_name, "rb"))
-    mix.voice[0].play(wave0, loop=False)
+    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
 
@@ -542,7 +550,7 @@ def spk_str(str_to_speak, addLocal):
                 character = "dot"
             play_a_0("/sd/mvc/" + character + ".wav")
         except:
-            print("Invalid character in string to speak")
+            files.log_item("Invalid character in string to speak")
     if addLocal:
         play_a_0("/sd/mvc/dot.wav")
         play_a_0("/sd/mvc/local.wav")
@@ -630,7 +638,7 @@ lst_opt = ""
 
 def an(f_nm):
     global cfg, lst_opt
-    print("Filename: " + f_nm)
+    files.log_item("Filename: " + f_nm)
     cur_opt = f_nm
     try:
         if f_nm == "random built in":
@@ -641,8 +649,8 @@ def an(f_nm):
                 cur_opt = snd_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
+            files.log_item("Random sound option: " + f_nm)
+            files.log_item("Sound file: " + cur_opt)
         elif f_nm == "random my":
             h_i = len(cust_snd_opt) - 1
             cur_opt = cust_snd_opt[random.randint(
@@ -651,8 +659,8 @@ def an(f_nm):
                 cur_opt = cust_snd_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
+            files.log_item("Random sound option: " + f_nm)
+            files.log_item("Sound file: " + cur_opt)
         elif f_nm == "random all":
             h_i = len(all_snd_opt) - 1
             cur_opt = all_snd_opt[random.randint(
@@ -661,24 +669,23 @@ def an(f_nm):
                 cur_opt = all_snd_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
+            files.log_item("Random sound option: " + f_nm)
+            files.log_item("Sound file: " + cur_opt)
         if ts_mode:
             an_ts(cur_opt)
         else:
-            print(cur_opt)
-            an_light(cur_opt)
-    except:
+            files.log_item(cur_opt)
+            an_light(cur_opt, False)
+    except Exception as e:
+        files.log_item(e)
         no_trk()
         cfg["option_selected"] = "random built in"
         return
     gc_col("Animation complete.")
 
 
-def an_light(f_nm):
+def an_light(f_nm, ply_snd):
     global ts_mode
-    rnd_i_l = 1
-    rnd_i_h = 3
 
     cust_f = "customers_owned_music_" in f_nm
 
@@ -712,23 +719,29 @@ def an_light(f_nm):
 
     flsh_i = 0
 
-    if cust_f:
-        wave0 = audiocore.WaveFile(
-            open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
-    else:
-        wave0 = audiocore.WaveFile(
-            open("/sd/snds/" + f_nm + ".wav", "rb"))
-    mix.voice[0].play(wave0, loop=False)
+    if ply_snd:
+        if cust_f:
+            w0 = audiocore.WaveFile(
+                open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
+        else:
+            w0 = audiocore.WaveFile(
+                open("/sd/snds/" + f_nm + ".wav", "rb"))
+        mix.voice[0].play(w0, loop=False)
+
     srt_t = time.monotonic()
 
     ft1 = []
     ft2 = []
+    
+    ft1 = flsh_t[len(flsh_t)-1].split("|")
+    tm = float(ft1[0]) + 1
+    flsh_t.append(str(tm) + "|E")
+    flsh_t.append(str(tm + 1) + "|E")
 
-    run_loop = True
-    while run_loop:
+    while True:
         t_past = time.monotonic()-srt_t
         
-        if flsh_i < len(flsh_t)-2:
+        if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
             dur = float(ft2[0]) - float(ft1[0]) - 0.25
@@ -736,41 +749,35 @@ def an_light(f_nm):
             dur = 0.25
         if dur < 0:
             dur = 0
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-2:
-            print("time elapsed: " + str(t_past) +
-                  " Timestamp: " + ft1[0])
-            flsh_i += 1
+        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
+            files.log_item("time elapsed: " + str(t_past) +
+                  " Timestamp: " + ft1[0]) 
             if (len(ft1) == 1 or ft1[1] == ""):
-                i = random.randint(rnd_i_l, rnd_i_h)
-                if i == 1:
-                    set_hdw("L0100,S0180")
-                if i == 2:
-                    set_hdw("L0255,S090")
-                if i == 3:
-                    set_hdw("L010,S00")
+                pos = random.randint(60, 120)
+                lgt = random.randint(60, 120)
+                set_hdw("L0" + str(lgt) + ",S0" + str(pos))
             else:
                 resp = set_hdw(ft1[1])
                 if resp == "E":
-                    run_loop = False
-                    print("run loop set to :" + run_loop)
-                    mix.voice[0].stop()
-                    while mix.voice[0].playing:
-                        pass
-                    led.fill((0, 0, 0))
-                    led.show()
-
+                    rst_an()
+                    return
+            flsh_i += 1
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
-            mix.voice[0].stop()
-        if not mix.voice[0].playing:
-            led.fill((0, 0, 0))
-            led.show()
-            #run_loop = False
+            flsh_i = len(flsh_t)-1
+        if flsh_i == len(flsh_t)-1:
+            rst_an()
         upd_vol(.001)
 
+def rst_an():
+    mix.voice[0].stop()
+    while mix.voice[0].playing:
+        pass
+    led.fill((0, 0, 0))
+    led.show()
 
 def an_ts(f_nm):
-    print("time stamp mode")
+    files.log_item("time stamp mode")
     global ts_mode
 
     cust_f = "customers_owned_music_" in f_nm
@@ -780,12 +787,12 @@ def an_ts(f_nm):
     f_nm = f_nm.replace("customers_owned_music_", "")
 
     if cust_f:
-        wave0 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
     else:
-        wave0 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snds/" + f_nm + ".wav", "rb"))
-    mix.voice[0].play(wave0, loop=False)
+    mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
     upd_vol(.1)
@@ -795,11 +802,11 @@ def an_ts(f_nm):
         r_sw.update()
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
-            print(t_elsp)
+            files.log_item(t_elsp)
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            t_s.append(5000)
+            t_s.append(1)
             if cust_f:
                 files.write_json_file(
                     "/sd/customers_owned_music/" + f_nm + ".json", t_s)
@@ -827,54 +834,51 @@ def set_hdw(input_string):
     segs = input_string.split(",")
 
     # Process each segment
-    for seg in segs:
-        if seg[0] == 'E':  # exit
-            return "E"
-        if seg[0] == 'M':  # exit
-            mix.voice[0].stop()
-            while mix.voice[0].playing:
+    try:
+        for seg in segs:
+            if seg[0] == 'E': # end an
+                return "E"
+            if seg[0] == 'M': # play file
                 mix.voice[0].stop()
-                pass
-            wave0 = audiocore.WaveFile(open("/sd/snds/" + seg[1:] + ".wav", "rb"))
-            mix.voice[0].play(wave0, loop=False)
-            time.sleep(5)
-            mix.voice[0].stop()
-            while mix.voice[0].playing:
-                mix.voice[0].stop()
-                pass
-        if seg[0] == 'L':  # lights
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    sp[i] = v
-            else:
-                sp[num-1] = int(v)
-            led[0] = (sp[1], sp[0], sp[2])
-            led[1] = (sp[4], sp[3], sp[5])
-            led.show()
-        if seg[0] == 'S':  # servos
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    s_arr[i].angle = v
-            else:
-                s_arr[num].angle = int(v)
-        if seg[0] == 'B':  # brightness
-            br = int(seg[1:])
-            led.brightness = float(br/100)
-        if seg[0] == 'F':  # fade in or out
-            v = int(seg[1:])
-            while not br == v:
-                if br < v:
-                    br += 1
-                    led.brightness = float(br/100)
+                while mix.voice[0].playing:
+                    mix.voice[0].stop()
+                    pass
+                w0 = audiocore.WaveFile(open("/sd/snds/" + seg[1:] + ".wav", "rb"))
+                mix.voice[0].play(w0, loop=False)
+            if seg[0] == 'L':  # lights
+                num = int(seg[1])
+                v = int(seg[2:])
+                if num == 0:
+                    for i in range(6):
+                        sp[i] = v
                 else:
-                    br -= 1
-                    led.brightness = float(br/100)
-                upd_vol(.01)
-    return "OK"
+                    sp[num-1] = int(v)
+                led[0] = (sp[1], sp[0], sp[2])
+                led[1] = (sp[4], sp[3], sp[5])
+                led.show()
+            if seg[0] == 'S':  # servos
+                num = int(seg[1])
+                v = int(seg[2:])
+                if num == 0:
+                    for i in range(6):
+                        s_arr[i].angle = v
+                else:
+                    s_arr[num].angle = int(v)
+            if seg[0] == 'B':  # brightness
+                br = int(seg[1:])
+                led.brightness = float(br/100)
+            if seg[0] == 'F':  # fade in or out
+                v = int(seg[1:])
+                while not br == v:
+                    if br < v:
+                        br += 1
+                        led.brightness = float(br/100)
+                    else:
+                        br -= 1
+                        led.brightness = float(br/100)
+                    upd_vol(.01)
+    except Exception as e:
+        files.log_item(e)
 
 ################################################################################
 # State Machine
@@ -1031,9 +1035,9 @@ class Snds(Ste):
                     pass
             else:
                 try:
-                    wave0 = audiocore.WaveFile(open(
+                    w0 = audiocore.WaveFile(open(
                         "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
-                    mix.voice[0].play(wave0, loop=False)
+                    mix.voice[0].play(w0, loop=False)
                 except:
                     spk_sng_num(str(self.i+1))
                 self.sel_i = self.i
@@ -1050,9 +1054,9 @@ class Snds(Ste):
             else:
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
                 files.write_json_file("/sd/cfg.json", cfg)
-                wave0 = audiocore.WaveFile(
+                w0 = audiocore.WaveFile(
                     open("/sd/mvc/option_selected.wav", "rb"))
-                mix.voice[0].play(wave0, loop=False)
+                mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
             mch.go_to('base_state')
@@ -1255,5 +1259,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
-
+        

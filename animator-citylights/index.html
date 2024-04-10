@@ -16,6 +16,7 @@
             Use this web app to control and setup your animator - Bandstand
             product. Have fun animating.
         </p>
+        <!-- <button class="mui-btn mui-btn--primary" onclick="activateModal()">Activate modal</button> -->
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -278,8 +279,14 @@
             <div>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
-                <button id="stopDataButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+                <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
                 <button id="deleteDataButton" class="mui-btn mui-btn--primary" type="button">Delete Animations</button>
+                <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180<div>
+                <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255<div>
+                <div>BXXX = Brightness XXX 0 to 100<div>
+                <div>FXXX = Fade brightness in or out XXX 0 to 100<div>
+                <div>MXXX = Play music file XXX<div>
+                <div>E = End script<div>
                 <table id="dataTable" class="mui-table">
                     <thead>
                         <tr>
@@ -297,6 +304,18 @@
 </body>
 
 <script>
+    function activateModal() {
+        // initialize modal element
+        var modalEl = document.createElement('div');
+        modalEl.style.width = '400px';
+        modalEl.style.height = '300px';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // show modal
+        mui.overlay('on', modalEl);
+      }
+
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
         // get website url
@@ -672,6 +691,7 @@
     // Table component
     var deleteDataButton = document.getElementById("deleteDataButton");
     var saveDataButton = document.getElementById("saveDataButton");
+    var stopButton = document.getElementById("stopButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
 
@@ -679,9 +699,36 @@
         deleteData();
     });
 
-    saveDataButton.addEventListener("click", function () {
-        saveData();
+    stopButton.addEventListener("click", function () {
+        stopAnimation();
     });
+    
+    function stopAnimation() {
+        stopButton.setAttribute("disabled", "true");
+
+        var data = {
+            an: animationName.value,
+        };
+
+        fetch("/stop", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log("file deleted")
+                stopButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                stopButton.removeAttribute('disabled')
+            });
+    }
 
     function deleteData() {
         deleteDataButton.setAttribute("disabled", "true");
