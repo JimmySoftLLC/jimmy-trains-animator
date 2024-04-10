@@ -468,7 +468,6 @@ def rst_def():
 ################################################################################
 # Dialog and sound play methods
 
-
 def upd_vol(seconds):
     if cfg["volume_pot"]:
         volume = a_in.value / 65536
@@ -515,16 +514,22 @@ def ch_vol(action):
     spk_str(cfg["volume"], False)
 
 
+def stp_snd():
+    mix.voice[0].stop()
+    wait_snd()
+
+
+def wait_snd():
+    while mix.voice[0].playing:
+        exit_early
+        pass
+
 def play_a_0(file_name):
-    if mix.voice[0].playing:
-        mix.voice[0].stop()
-        while mix.voice[0].playing:
-            upd_vol(0.02)
+    stp_snd()
     w0 = audiocore.WaveFile(open(file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
-    while mix.voice[0].playing:
-        exit_early()
-
+    wait_snd()
+    
 
 def stop_a_0():
     mix.voice[0].stop()
@@ -826,15 +831,6 @@ def an_ts(f_nm):
 
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
-
-def stp_snd():
-    mix.voice[0].stop()
-    wait_snd()
-
-def wait_snd():
-    while mix.voice[0].playing:
-        mix.voice[0].stop()
-        pass
 
 def set_hdw(input_string): 
     global sp, br
