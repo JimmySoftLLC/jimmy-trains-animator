@@ -11,9 +11,9 @@
 
 <body>
     <div class="mui-container">
-        <h1>Animator - Bandstand</h1>
+        <h1>Animator - City Lights</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your animator - Bandstand
+            Use this web app to control and setup your Animator - City Light
             product. Have fun animating.
         </p>
         <!-- <button class="mui-btn mui-btn--primary" onclick="activateModal()">Activate modal</button> -->
@@ -44,6 +44,8 @@
                 type="button">
                 Random all sound tracks
             </button>
+            <h2>Scripts:</h2>
+            <div id="scriptsContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksContainer"></div>
             <h2>Animation settings:</h2>
@@ -268,6 +270,8 @@
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
+            <h2>Playlist:</h2>
+            <div id="scriptScriptContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksScriptContainer"></div>
             <h2>My sound tracks:</h2>
@@ -281,26 +285,26 @@
                 <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
                 <button id="deleteDataButton" class="mui-btn mui-btn--primary" type="button">Delete Animations</button>
-                <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180<div>
-                <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255<div>
-                <div>BXXX = Brightness XXX 0 to 100<div>
-                <div>FXXX = Fade brightness in or out XXX 0 to 100<div>
-                <div>MXXX = Play music file XXX<div>
+                <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
+                <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
+                <div>BXXX = Brightness XXX 0 to 100</div>
+                <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
+                <div>MALXXX = Play music file, A = action (P play, W play wait, A play animation), L = location (B built in, C Customer, P playlist) XXX (file name)</div>
                 <div>E = End script<div>
-                <table id="dataTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>TimeStamp</th>
-                            <th>TimeCode</th>
-                            <th>Animation</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                        <table id="dataTable" class="mui-table">
+                            <thead>
+                                <tr>
+                                    <th>TimeStamp</th>
+                                    <th>TimeCode</th>
+                                    <th>Animation</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 </body>
 
 <script>
@@ -314,7 +318,7 @@
 
         // show modal
         mui.overlay('on', modalEl);
-      }
+    }
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
@@ -347,6 +351,25 @@
             })
             .then(function (data) {
                 volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get built in sound tracks
+        fetch('/get-scripts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setScriptButtons(my_data)
+                setScriptScriptButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -390,6 +413,99 @@
                 console.log(error);
             });
     });
+
+    function setScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("script_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            button.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled');
+                        alert('Try Again');
+                    });
+            });
+            scriptsContainer.appendChild(button);
+        });
+    }
+
+    function setScriptScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("script_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        animationName.value = animation
+                        populateTable(myData)
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                        button.removeAttribute('disabled')
+                    });
+            });
+            scriptScriptContainer.appendChild(button);
+        });
+    }
 
     function setBuiltInSoundTrackButtons(my_data) {
         // Loop through the data and create a button for each item
@@ -702,7 +818,11 @@
     stopButton.addEventListener("click", function () {
         stopAnimation();
     });
-    
+
+    saveDataButton.addEventListener("click", function () {
+        saveData();
+    });
+
     function stopAnimation() {
         stopButton.setAttribute("disabled", "true");
 

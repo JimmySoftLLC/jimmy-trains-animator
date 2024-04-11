@@ -151,17 +151,21 @@ cfg = files.read_json_file("/sd/cfg.json")
 
 snd_opt = files.return_directory("", "/sd/snds", ".wav")
 
+script_opt = files.return_directory("script_", "/sd/script", ".json")
+
 cust_snd_opt = files.return_directory(
     "customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 all_snd_opt = []
 all_snd_opt.extend(snd_opt)
+all_snd_opt.extend(script_opt)
 all_snd_opt.extend(cust_snd_opt)
 
 menu_snd_opt = []
 menu_snd_opt.extend(snd_opt)
 rnd_opt = ['random all', 'random built in', 'random my']
 menu_snd_opt.extend(rnd_opt)
+menu_snd_opt.extend(script_opt)
 menu_snd_opt.extend(cust_snd_opt)
 
 ts_jsons = files.return_directory(
@@ -356,17 +360,24 @@ if (web):
         @server.route("/get-volume", [POST])
         def btn(request: Request):
             return Response(request, cfg["volume"])
-
-        @server.route("/get-customers-sound-tracks", [POST])
+        
+        @server.route("/get-scripts", [POST])
         def btn(request: Request):
-            my_string = files.json_stringify(cust_snd_opt)
+            sounds = []
+            sounds.extend(script_opt)
+            my_string = files.json_stringify(sounds)
             return Response(request, my_string)
-
+        
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
             sounds = []
             sounds.extend(snd_opt)
             my_string = files.json_stringify(sounds)
+            return Response(request, my_string)
+        
+        @server.route("/get-customers-sound-tracks", [POST])
+        def btn(request: Request):
+            my_string = files.json_stringify(cust_snd_opt)
             return Response(request, my_string)
 
         @server.route("/test-animation", [POST])
@@ -382,6 +393,15 @@ if (web):
             global cfg, cont_run, ts_mode
             rq_d = request.json()
             snd_f = rq_d["an"]
+            if "script_" in snd_f:
+                snd_f = snd_f.replace("script_", "")
+                if (f_exists("/sd/script/" + snd_f + ".json") == True):
+                    f_n = "/sd/script/" + snd_f + ".json"
+                    files.log_item(f_n)
+                    return FileResponse(request, f_n, "/")
+                else:
+                    f_n = "/sd/t_s_def/timestamp mode.json"
+                    return FileResponse(request, f_n, "/")
             if "customers_owned_music_" in snd_f:
                 snd_f = snd_f.replace("customers_owned_music_", "")
                 if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
@@ -426,19 +446,28 @@ if (web):
         def btn(request: Request):
             global data
             rq_d = request.json()
+            files.log_item(rq_d)
             try:
                 if rq_d[0] == 0:
                     data = []
                 data.extend(rq_d[2])
                 if rq_d[0] == rq_d[1]:
                     f_n = ""
-                    if "customers_owned_music_" in rq_d[3]:
+                    test_val = rq_d[3].split("_")
+                    print (test_val[0])
+                    if "script" == test_val[0]:
+                        snd_f = rq_d[3].replace("script_", "")
+                        f_n = "/sd/script/" + \
+                            snd_f + ".json"
+                        files.log_item(f_n)
+                    elif "customers" == test_val[0]:
                         snd_f = rq_d[3].replace("customers_owned_music_", "")
                         f_n = "/sd/customers_owned_music/" + \
-                            snd_f + ".json"
+                            snd_f + ".json" 
                     else:
                         f_n = "/sd/snds/" + \
                             rq_d[3] + ".json"
+                    print("saving to: " + f_n)
                     files.write_json_file(f_n, data)
                     data = []
                     gc_col("get data")
@@ -680,7 +709,7 @@ def an(f_nm):
             an_ts(cur_opt)
         else:
             files.log_item(cur_opt)
-            an_light(cur_opt, False)
+            an_light(cur_opt)
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -688,11 +717,11 @@ def an(f_nm):
         return
     gc_col("Animation complete.")
 
-
-def an_light(f_nm, ply_snd):
+def an_light(f_nm):
     global ts_mode
 
     cust_f = "customers_owned_music_" in f_nm
+    script_f = "script_" in f_nm
 
     flsh_t = []
 
@@ -717,14 +746,27 @@ def an_light(f_nm, ply_snd):
                         ts_mode = True
                         play_a_0("/sd/mvc/timestamp_instructions.wav")
                         return
+    elif script_f:
+        f_nm = f_nm.replace("script_", "")
+        flsh_t = files.read_json_file("/sd/script/" + f_nm + ".json")
     else:
         if (f_exists("/sd/snds/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
                 "/sd/snds/" + f_nm + ".json")
 
     flsh_i = 0
+    
+    ft1 = []
+    ft2 = []
+    
+    ft1 = flsh_t[len(flsh_t)-1].split("|")
+    tm = float(ft1[0]) + 1
+    flsh_t.append(str(tm) + "|E")
+    flsh_t.append(str(tm + 1) + "|E")
+    
+    files.log_item(flsh_t)
 
-    if ply_snd:
+    if not script_f:
         if cust_f:
             w0 = audiocore.WaveFile(
                 open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
@@ -734,14 +776,6 @@ def an_light(f_nm, ply_snd):
         mix.voice[0].play(w0, loop=False)
 
     srt_t = time.monotonic()
-
-    ft1 = []
-    ft2 = []
-    
-    ft1 = flsh_t[len(flsh_t)-1].split("|")
-    tm = float(ft1[0]) + 1
-    flsh_t.append(str(tm) + "|E")
-    flsh_t.append(str(tm + 1) + "|E")
 
     while True:
         t_past = time.monotonic()-srt_t
@@ -845,17 +879,17 @@ def set_hdw(input_string):
             if seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_snd()
-                elif seg[1] == "W":
+                elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stp_snd()
-                    w0 = audiocore.WaveFile(open("/sd/snds/" + seg[2:] + ".wav", "rb"))
+                    if seg[2] == "B":
+                        w0 = audiocore.WaveFile(open("/sd/snds/" + seg[3:] + ".wav", "rb"))
+                    elif seg[2] == "C":
+                        w0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + seg[2:] + ".wav", "rb"))
+                    elif seg[3] == "P":
+                        w0 = audiocore.WaveFile(open("/sd/script/" + seg[3:] + ".wav", "rb"))
                     mix.voice[0].play(w0, loop=False)
-                    wait_snd()
-                elif seg[1] == "A":
-                    files.log_item("not implemented")
-                elif seg[1] == "P":    
-                    stp_snd()
-                    w0 = audiocore.WaveFile(open("/sd/snds/" + seg[2:] + ".wav", "rb"))
-                    mix.voice[0].play(w0, loop=False)
+                    if seg[1] == "W" or seg[1] == "A":
+                        wait_snd()
             if seg[0] == 'L':  # lights
                 num = int(seg[1])
                 v = int(seg[2:])
