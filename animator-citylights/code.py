@@ -890,7 +890,6 @@ def set_hdw(input_string):
                         f_nm = "customers_owned_music_" + seg[3:]
                     elif seg[2] == "P":
                         f_nm = "script_" + seg[3:]
-                        an(f_nm)
                     if seg[1] == "W" or seg[1] == "P":
                         mix.voice[0].play(w0, loop=False)
                     if seg[1] == "A":    
