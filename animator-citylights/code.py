@@ -874,6 +874,7 @@ def set_hdw(input_string):
     # Process each segment
     try:
         for seg in segs:
+            f_nm = ""
             if seg[0] == 'E': # end an
                 return "E"
             if seg[0] == 'M': # play file
@@ -883,12 +884,18 @@ def set_hdw(input_string):
                     stp_snd()
                     if seg[2] == "B":
                         w0 = audiocore.WaveFile(open("/sd/snds/" + seg[3:] + ".wav", "rb"))
+                        f_nm = seg[3:]
                     elif seg[2] == "C":
-                        w0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + seg[2:] + ".wav", "rb"))
-                    elif seg[3] == "P":
-                        w0 = audiocore.WaveFile(open("/sd/script/" + seg[3:] + ".wav", "rb"))
-                    mix.voice[0].play(w0, loop=False)
-                    if seg[1] == "W" or seg[1] == "A":
+                        w0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + seg[3:] + ".wav", "rb"))
+                        f_nm = "customers_owned_music_" + seg[3:]
+                    elif seg[2] == "P":
+                        f_nm = "script_" + seg[3:]
+                        an(f_nm)
+                    if seg[1] == "W" or seg[1] == "P":
+                        mix.voice[0].play(w0, loop=False)
+                    if seg[1] == "A":    
+                        an(f_nm)
+                    if seg[1] == "W":
                         wait_snd()
             if seg[0] == 'L':  # lights
                 num = int(seg[1])
