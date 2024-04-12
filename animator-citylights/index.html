@@ -44,7 +44,7 @@
                 type="button">
                 Random all sound tracks
             </button>
-            <h2>Scripts:</h2>
+            <h2>Play lists:</h2>
             <div id="scriptsContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksContainer"></div>
@@ -270,7 +270,7 @@
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
-            <h2>Playlist:</h2>
+            <h2>Play lists:</h2>
             <div id="scriptScriptContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksScriptContainer"></div>
@@ -284,12 +284,12 @@
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <button id="deleteDataButton" class="mui-btn mui-btn--primary" type="button">Delete Animations</button>
+                <button id="deleteDataButton" class="mui-btn mui-btn--primary disabled" type="button">Delete Animations</button>
                 <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
-                <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
+                <div>LNNIXXX = Lights NN (00 All, 01-99) I index (0 All, 1 -3) XXX 0 to 255</div>
                 <div>BXXX = Brightness XXX 0 to 100</div>
                 <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
-                <div>MALXXX = Play music file, A = action (P play, W play wait, A play animation), L = location (B built in, C Customer, P playlist) XXX (file name)</div>
+                <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (B built in, C Customer, P playlist) XXX (file name)</div>
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
                             <thead>
@@ -418,7 +418,7 @@
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
-            button.textContent = item.replace("script_", "");
+            button.textContent = item.replace("plylst_", "");
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
             button.setAttribute("data-url", "/animation");
@@ -464,7 +464,7 @@
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
-            button.textContent = item.replace("script_", "");
+            button.textContent = item.replace("plylst_", "");
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
             button.setAttribute("data-url", "/get-animation");
@@ -812,7 +812,7 @@
     var dataTableBody = document.querySelector("#dataTable tbody");
 
     deleteDataButton.addEventListener("click", function () {
-        deleteData();
+        // deleteData();
     });
 
     stopButton.addEventListener("click", function () {
@@ -886,7 +886,6 @@
             var row = createDataRow(rowData);
             dataTableBody.appendChild(row);
         });
-        deleteDataButton.removeAttribute("disabled");
     }
 
     dataTableBody.addEventListener("click", function (event) {

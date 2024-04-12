@@ -53,7 +53,7 @@ gc_col("Imports gc, files")
 a_in = AnalogIn(board.A0)
 
 # setup pin for audio enable 22 on tiny 28 on large
-aud_en = digitalio.DigitalInOut(board.GP28)
+aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
@@ -123,7 +123,7 @@ aud_en.value = False
 
 # Setup the servos
 s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
-s_2 = pwmio.PWMOut(board.GP15, duty_cycle=2 ** 15, frequency=50)
+s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50) #bandstand 10 city lights 15
 s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 
 s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
@@ -196,7 +196,7 @@ gc_col("config setup")
 
 num_px = 10
 
-led = neopixel.NeoPixel(board.GP10, num_px) #15 on tiny 10 on large
+led = neopixel.NeoPixel(board.GP15, num_px) #15 on demo 17 tiny 10 on large
 led.fill((255, 255, 255))
 led.show()
 
@@ -625,8 +625,8 @@ def no_trk():
 def spk_web():
     play_a_0("/sd/mvc/animator_available_on_network.wav")
     play_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-bandstand":
-        play_a_0("/sd/mvc/animator_dash_bandstand.wav")
+    if cfg["HOST_NAME"] == "animator-city-lights":
+        play_a_0("/sd/mvc/animator_dash_city_dash_lights.wav")
         play_a_0("/sd/mvc/dot.wav")
         play_a_0("/sd/mvc/local.wav")
     else:
@@ -796,7 +796,7 @@ def an_light(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                set_hdw("L0" + str(lgt) + ",S0" + str(pos))
+                set_hdw("L000" + str(lgt) + ",S0" + str(pos))
             else:
                 resp = set_hdw(ft1[1])
                 if resp == "E":
@@ -897,21 +897,22 @@ def set_hdw(input_string):
                     if seg[1] == "W":
                         wait_snd()
             if seg[0] == 'L':  # lights
-                print(seg)
-                px = int(seg[1])
-                ind = int(seg[2])-1
+                px = int(seg[1])+int(seg[2])
+                ind = int(seg[3])-1
                 if ind == 0:
                     ind = 1
                 elif ind == 1:
                     ind = 0
-                v = int(seg[3:])
+                v = int(seg[4:])
                 if px == 0:
                     led.fill((v, v, v))
                 else:
-                    pixel_index = 0  # Change this to the index of the pixel you want to get the color of
                     cur = list(led[px-1])
                     cur[ind] = v
-                    led[px-1]=(cur[0],cur[1],cur[2])
+                    if seg[3] == "0":
+                        led[px-1]=(v,v,v)
+                    else:
+                        led[px-1]=(cur[0],cur[1],cur[2])
                 led.show()
             if seg[0] == 'S':  # servos
                 num = int(seg[1])
@@ -1288,7 +1289,6 @@ st_mch.add(VolSet())
 st_mch.add(WebOpt())
 
 aud_en.value = True
-
 upd_vol(.5)
 
 if (web):
