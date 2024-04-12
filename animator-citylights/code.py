@@ -52,8 +52,8 @@ gc_col("Imports gc, files")
 # Setup pin for vol
 a_in = AnalogIn(board.A0)
 
-# setup pin for audio enable
-aud_en = digitalio.DigitalInOut(board.GP22)
+# setup pin for audio enable 22 on tiny 28 on large
+aud_en = digitalio.DigitalInOut(board.GP28)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
@@ -123,7 +123,7 @@ aud_en.value = False
 
 # Setup the servos
 s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
-s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+s_2 = pwmio.PWMOut(board.GP15, duty_cycle=2 ** 15, frequency=50)
 s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 
 s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
@@ -149,23 +149,23 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = files.return_directory("", "/sd/snds", ".wav")
+snd_opt = files.return_directory("", "/sd/bltin", ".wav")
 
-script_opt = files.return_directory("script_", "/sd/script", ".json")
+plylst_opt = files.return_directory("plylst_", "/sd/plylst", ".json")
 
 cust_snd_opt = files.return_directory(
     "customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
 all_snd_opt = []
 all_snd_opt.extend(snd_opt)
-all_snd_opt.extend(script_opt)
+all_snd_opt.extend(plylst_opt)
 all_snd_opt.extend(cust_snd_opt)
 
 menu_snd_opt = []
 menu_snd_opt.extend(snd_opt)
 rnd_opt = ['random all', 'random built in', 'random my']
 menu_snd_opt.extend(rnd_opt)
-menu_snd_opt.extend(script_opt)
+menu_snd_opt.extend(plylst_opt)
 menu_snd_opt.extend(cust_snd_opt)
 
 ts_jsons = files.return_directory(
@@ -194,9 +194,11 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 
-num_px = 2
+num_px = 10
 
-led = neopixel.NeoPixel(board.GP15, num_px)
+led = neopixel.NeoPixel(board.GP10, num_px) #15 on tiny 10 on large
+led.fill((255, 255, 255))
+led.show()
 
 gc_col("Neopixels setup")
 
@@ -282,7 +284,7 @@ if (web):
                     time_stamps = files.read_json_file(
                         "/sd/t_s_def/" + time_stamp_file + ".json")
                     files.write_json_file(
-                        "/sd/snds/"+time_stamp_file+".json", time_stamps)
+                        "/sd/bltin/"+time_stamp_file+".json", time_stamps)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
             elif rq_d["an"] == "reset_to_defaults":
                 cmd_snt = "reset_to_defaults"
@@ -364,7 +366,7 @@ if (web):
         @server.route("/get-scripts", [POST])
         def btn(request: Request):
             sounds = []
-            sounds.extend(script_opt)
+            sounds.extend(plylst_opt)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
         
@@ -393,10 +395,10 @@ if (web):
             global cfg, cont_run, ts_mode
             rq_d = request.json()
             snd_f = rq_d["an"]
-            if "script_" in snd_f:
-                snd_f = snd_f.replace("script_", "")
-                if (f_exists("/sd/script/" + snd_f + ".json") == True):
-                    f_n = "/sd/script/" + snd_f + ".json"
+            if "plylst_" in snd_f:
+                snd_f = snd_f.replace("plylst_", "")
+                if (f_exists("/sd/plylst/" + snd_f + ".json") == True):
+                    f_n = "/sd/plylst/" + snd_f + ".json"
                     files.log_item(f_n)
                     return FileResponse(request, f_n, "/")
                 else:
@@ -412,8 +414,8 @@ if (web):
                     f_n = "/sd/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
             else:
-                if (f_exists("/sd/snds/" + snd_f + ".json") == True):
-                    f_n = "/sd/snds/" + snd_f + ".json"
+                if (f_exists("/sd/bltin/" + snd_f + ".json") == True):
+                    f_n = "/sd/bltin/" + snd_f + ".json"
                     return FileResponse(request, f_n, "/")
                 else:
                     f_n = "/sd/t_s_def/timestamp mode.json"
@@ -435,7 +437,7 @@ if (web):
                 snd_f = rq_d["an"].replace("customers_owned_music_", "")
                 f_n = "/sd/customers_owned_music/" + snd_f + ".json"
             else:
-                f_n = "/sd/snds/" + rq_d["an"] + ".json"
+                f_n = "/sd/bltin/" + rq_d["an"] + ".json"
             os.remove(f_n)
             gc_col("get data")
             return JSONResponse(request, "file deleted")
@@ -455,9 +457,9 @@ if (web):
                     f_n = ""
                     test_val = rq_d[3].split("_")
                     print (test_val[0])
-                    if "script" == test_val[0]:
-                        snd_f = rq_d[3].replace("script_", "")
-                        f_n = "/sd/script/" + \
+                    if "plylst" == test_val[0]:
+                        snd_f = rq_d[3].replace("plylst_", "")
+                        f_n = "/sd/plylst/" + \
                             snd_f + ".json"
                         files.log_item(f_n)
                     elif "customers" == test_val[0]:
@@ -465,7 +467,7 @@ if (web):
                         f_n = "/sd/customers_owned_music/" + \
                             snd_f + ".json" 
                     else:
-                        f_n = "/sd/snds/" + \
+                        f_n = "/sd/bltin/" + \
                             rq_d[3] + ".json"
                     print("saving to: " + f_n)
                     files.write_json_file(f_n, data)
@@ -721,7 +723,7 @@ def an_light(f_nm):
     global ts_mode
 
     cust_f = "customers_owned_music_" in f_nm
-    script_f = "script_" in f_nm
+    plylst_f = "plylst_" in f_nm
 
     flsh_t = []
 
@@ -746,13 +748,13 @@ def an_light(f_nm):
                         ts_mode = True
                         play_a_0("/sd/mvc/timestamp_instructions.wav")
                         return
-    elif script_f:
-        f_nm = f_nm.replace("script_", "")
-        flsh_t = files.read_json_file("/sd/script/" + f_nm + ".json")
+    elif plylst_f:
+        f_nm = f_nm.replace("plylst_", "")
+        flsh_t = files.read_json_file("/sd/plylst/" + f_nm + ".json")
     else:
-        if (f_exists("/sd/snds/" + f_nm + ".json") == True):
+        if (f_exists("/sd/bltin/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
-                "/sd/snds/" + f_nm + ".json")
+                "/sd/bltin/" + f_nm + ".json")
 
     flsh_i = 0
     
@@ -766,13 +768,13 @@ def an_light(f_nm):
     
     files.log_item(flsh_t)
 
-    if not script_f:
+    if not plylst_f:
         if cust_f:
             w0 = audiocore.WaveFile(
                 open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
         else:
             w0 = audiocore.WaveFile(
-                open("/sd/snds/" + f_nm + ".wav", "rb"))
+                open("/sd/bltin/" + f_nm + ".wav", "rb"))
         mix.voice[0].play(w0, loop=False)
 
     srt_t = time.monotonic()
@@ -830,7 +832,7 @@ def an_ts(f_nm):
             open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
     else:
         w0 = audiocore.WaveFile(
-            open("/sd/snds/" + f_nm + ".wav", "rb"))
+            open("/sd/bltin/" + f_nm + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
@@ -851,7 +853,7 @@ def an_ts(f_nm):
                     "/sd/customers_owned_music/" + f_nm + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/sd/snds/" + f_nm + ".json", t_s)
+                    "/sd/bltin/" + f_nm + ".json", t_s)
             break
 
     ts_mode = False
@@ -862,8 +864,6 @@ def an_ts(f_nm):
 ##############################
 # animation effects
 
-
-sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
 def set_hdw(input_string): 
@@ -883,13 +883,13 @@ def set_hdw(input_string):
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stp_snd()
                     if seg[2] == "B":
-                        w0 = audiocore.WaveFile(open("/sd/snds/" + seg[3:] + ".wav", "rb"))
+                        w0 = audiocore.WaveFile(open("/sd/bltin/" + seg[3:] + ".wav", "rb"))
                         f_nm = seg[3:]
                     elif seg[2] == "C":
                         w0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + seg[3:] + ".wav", "rb"))
                         f_nm = "customers_owned_music_" + seg[3:]
                     elif seg[2] == "P":
-                        f_nm = "script_" + seg[3:]
+                        f_nm = "plylst_" + seg[3:]
                     if seg[1] == "W" or seg[1] == "P":
                         mix.voice[0].play(w0, loop=False)
                     if seg[1] == "A":    
@@ -897,15 +897,21 @@ def set_hdw(input_string):
                     if seg[1] == "W":
                         wait_snd()
             if seg[0] == 'L':  # lights
-                num = int(seg[1])
-                v = int(seg[2:])
-                if num == 0:
-                    for i in range(6):
-                        sp[i] = v
+                print(seg)
+                px = int(seg[1])
+                ind = int(seg[2])-1
+                if ind == 0:
+                    ind = 1
+                elif ind == 1:
+                    ind = 0
+                v = int(seg[3:])
+                if px == 0:
+                    led.fill((v, v, v))
                 else:
-                    sp[num-1] = int(v)
-                led[0] = (sp[1], sp[0], sp[2])
-                led[1] = (sp[4], sp[3], sp[5])
+                    pixel_index = 0  # Change this to the index of the pixel you want to get the color of
+                    cur = list(led[px-1])
+                    cur[ind] = v
+                    led[px-1]=(cur[0],cur[1],cur[2])
                 led.show()
             if seg[0] == 'S':  # servos
                 num = int(seg[1])
@@ -1057,7 +1063,7 @@ class Main(Ste):
                 mch.go_to('base_state')
 
 
-class Snds(Ste):
+class Bltin(Ste):
 
     def __init__(self):
         self.i = 0
@@ -1087,7 +1093,7 @@ class Snds(Ste):
             else:
                 try:
                     w0 = audiocore.WaveFile(open(
-                        "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
+                        "/sd/o_bltin/" + menu_snd_opt[self.i] + ".wav", "rb"))
                     mix.voice[0].play(w0, loop=False)
                 except:
                     spk_sng_num(str(self.i+1))
@@ -1276,7 +1282,7 @@ class WebOpt(Ste):
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-st_mch.add(Snds())
+st_mch.add(Bltin())
 st_mch.add(AddSnds())
 st_mch.add(VolSet())
 st_mch.add(WebOpt())
