@@ -149,24 +149,28 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = files.return_directory("", "/sd/bltin", ".wav")
+def getAll():
+    global snd_opt, plylst_opt, cust_snd_opt, all_snd_opt, menu_snd_opt
+    snd_opt = files.return_directory("", "/sd/bltin", ".wav")
 
-plylst_opt = files.return_directory("plylst_", "/sd/plylst", ".json")
+    plylst_opt = files.return_directory("plylst_", "/sd/plylst", ".json")
 
-cust_snd_opt = files.return_directory(
-    "customers_owned_music_", "/sd/customers_owned_music", ".wav")
+    cust_snd_opt = files.return_directory(
+        "customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
-all_snd_opt = []
-all_snd_opt.extend(snd_opt)
-all_snd_opt.extend(plylst_opt)
-all_snd_opt.extend(cust_snd_opt)
+    all_snd_opt = []
+    all_snd_opt.extend(snd_opt)
+    all_snd_opt.extend(plylst_opt)
+    all_snd_opt.extend(cust_snd_opt)
 
-menu_snd_opt = []
-menu_snd_opt.extend(snd_opt)
-rnd_opt = ['random all', 'random built in', 'random my']
-menu_snd_opt.extend(rnd_opt)
-menu_snd_opt.extend(plylst_opt)
-menu_snd_opt.extend(cust_snd_opt)
+    menu_snd_opt = []
+    menu_snd_opt.extend(snd_opt)
+    rnd_opt = ['random all', 'random built in', 'random my']
+    menu_snd_opt.extend(rnd_opt)
+    menu_snd_opt.extend(plylst_opt)
+    menu_snd_opt.extend(cust_snd_opt)
+
+getAll()
 
 ts_jsons = files.return_directory(
     "", "/sd/t_s_def", ".json")
@@ -197,7 +201,7 @@ gc_col("config setup")
 num_px = 10
 
 led = neopixel.NeoPixel(board.GP15, num_px) #15 on demo 17 tiny 10 on large
-led.fill((255, 255, 255))
+led.fill((50, 50, 50))
 led.show()
 
 gc_col("Neopixels setup")
@@ -429,16 +433,14 @@ if (web):
             gc_col("rst an")
             return JSONResponse(request, "rst an")
         
-        @server.route("/delete-file", [POST])
+        @server.route("/delete-playlist", [POST])
         def btn(request: Request):
             rq_d = request.json()
-            f_n = ""
-            if "customers_owned_music_" in rq_d["an"]:
-                snd_f = rq_d["an"].replace("customers_owned_music_", "")
-                f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-            else:
-                f_n = "/sd/bltin/" + rq_d["an"] + ".json"
+            snd_f = rq_d["fn"].replace("plylst_", "")
+            f_n = "/sd/plylst/" + snd_f + ".json"
+            print(f_n)
             os.remove(f_n)
+            getAll()
             gc_col("get data")
             return JSONResponse(request, "file deleted")
 
@@ -478,6 +480,18 @@ if (web):
                 gc_col("get data")
                 return Response(request, "out of memory")
             return Response(request, "success")
+        
+        @server.route("/create-playlist", [POST])
+        def btn(request: Request):
+            global data
+            rq_d = request.json()
+            files.log_item(rq_d)
+            f_n="/sd/plylst/" + rq_d["fn"] + ".json"
+            print("saving to: " + f_n)
+            files.write_json_file(f_n, ["0.0|", "1.0|"])
+            getAll()
+            gc_col("created playlist")
+            return Response(request, "success")     
 
     except Exception as e:
         web = False
@@ -1289,6 +1303,7 @@ st_mch.add(VolSet())
 st_mch.add(WebOpt())
 
 aud_en.value = True
+
 upd_vol(.5)
 
 if (web):

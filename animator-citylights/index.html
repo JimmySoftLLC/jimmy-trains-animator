@@ -16,7 +16,6 @@
             Use this web app to control and setup your Animator - City Lights
             product. Have fun animating.
         </p>
-        <!-- <button class="mui-btn mui-btn--primary" onclick="activateModal()">Activate modal</button> -->
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -44,8 +43,8 @@
                 type="button">
                 Random all sound tracks
             </button>
-            <h2>Play lists:</h2>
-            <div id="scriptsContainer"></div>
+            <h2>Playlists:</h2>
+            <div id="playlistContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksContainer"></div>
             <h2>Animation settings:</h2>
@@ -270,8 +269,12 @@
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
-            <h2>Play lists:</h2>
-            <div id="scriptScriptContainer"></div>
+            <h2>Playlists:</h2>
+            <button class="mui-btn mui-btn--primary" onclick="activatePlaylistModal()">Create playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="activatePlaylistModal()">Duplicate playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="activatePlaylistModal()">Rename playlist</button>
+            <button id="deletePlaylistButton" class="mui-btn mui-btn--primary disabled" type="button">Delete playlist</button>
+            <div id="playlistScriptContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksScriptContainer"></div>
             <h2>My sound tracks:</h2>
@@ -284,12 +287,12 @@
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <button id="deleteDataButton" class="mui-btn mui-btn--primary disabled" type="button">Delete Animations</button>
                 <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
                 <div>LNNIXXX = Lights NN (00 All, 01-99) I index (0 All, 1 -3) XXX 0 to 255</div>
                 <div>BXXX = Brightness XXX 0 to 100</div>
                 <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
-                <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (B built in, C Customer, P playlist) XXX (file name)</div>
+                <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (B
+                    built in, C Customer, P playlist) XXX (file name)</div>
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
                             <thead>
@@ -308,93 +311,132 @@
 </body>
 
 <script>
-    function activateModal() {
-        // initialize modal element
+    function activatePlaylistModal() {
+        // Create modal element
         var modalEl = document.createElement('div');
         modalEl.style.width = '400px';
         modalEl.style.height = '300px';
         modalEl.style.margin = '100px auto';
         modalEl.style.backgroundColor = '#fff';
 
-        // show modal
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Create playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', createPlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
         mui.overlay('on', modalEl);
+    }
+
+    function createPlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fn: filenameInput,
+            };
+
+            fetch("/create-playlist", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updatePlaylists()
+                    deletePlaylistButton.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                    deletePlaylistButton.removeAttribute('disabled')
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function updatePlaylists() {
+        removeButtons("playlistContainer")
+        removeButtons("playlistScriptContainer")
+        getPlaylists()
+    }
+
+    function removeButtons(divId){
+        const myDiv = document.getElementById(divId);
+        // Remove all child nodes
+        while (myDiv.firstChild) {
+            myDiv.removeChild(myDiv.firstChild);
+        }
+        // Remove all event listeners attached to the div
+        const clonedDiv = myDiv.cloneNode(true);
+        myDiv.parentNode.replaceChild(clonedDiv, myDiv);
+    }
+
+    function showAlert(message) {
+        var alertModal = document.createElement('div');
+        alertModal.className = 'mui-container';
+        alertModal.innerHTML = `
+        <div class="mui-panel">
+            <span>${message}</span>
+            <button class="mui-btn mui-btn--primary" onclick="closeAlert()">OK</button>
+        </div>`
+        mui.overlay('on', alertModal);
+    }
+
+    function closeAlert() {
+        mui.overlay('off');
     }
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
-        // get website url
-        fetch('/get-host-name', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
+        getWebSiteUrl()
+        getVolume()
+        getPlaylists()
+        getBuiltInSoundTracks()
+        getCustomersSoundTracks()
+    });
 
-        // get volume
-        fetch('/get-volume', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                volume.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-
-        // get built in sound tracks
-        fetch('/get-scripts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                my_data = JSON.parse(data)
-                setScriptButtons(my_data)
-                setScriptScriptButtons(my_data)
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-
-        // get built in sound tracks
-        fetch('/get-built-in-sound-tracks', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                my_data = JSON.parse(data)
-                setBuiltInSoundTrackButtons(my_data)
-                setBuiltInSoundTrackScriptButtons(my_data)
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-
-        // get customers sound tracks
+    function getCustomersSoundTracks() {
         fetch('/get-customers-sound-tracks', {
             method: 'POST',
             headers: {
@@ -412,7 +454,83 @@
             .catch(function (error) {
                 console.log(error);
             });
-    });
+    }
+
+    function getBuiltInSoundTracks() {
+        fetch('/get-built-in-sound-tracks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setBuiltInSoundTrackButtons(my_data)
+                setBuiltInSoundTrackScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
+
+    function getWebSiteUrl() {
+        fetch('/get-host-name', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                websiteUrl.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
+
+    function getVolume() {
+        fetch('/get-volume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
+
+    function getPlaylists() {
+        fetch('/get-scripts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setScriptButtons(my_data)
+                setScriptScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
 
     function setScriptButtons(my_data) {
         // Loop through the data and create a button for each item
@@ -456,7 +574,7 @@
                         alert('Try Again');
                     });
             });
-            scriptsContainer.appendChild(button);
+            playlistContainer.appendChild(button);
         });
     }
 
@@ -503,7 +621,7 @@
                         button.removeAttribute('disabled')
                     });
             });
-            scriptScriptContainer.appendChild(button);
+            playlistScriptContainer.appendChild(button);
         });
     }
 
@@ -805,14 +923,14 @@
     });
 
     // Table component
-    var deleteDataButton = document.getElementById("deleteDataButton");
+    var deletePlaylistButton = document.getElementById("deletePlaylistButton");
     var saveDataButton = document.getElementById("saveDataButton");
     var stopButton = document.getElementById("stopButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
 
-    deleteDataButton.addEventListener("click", function () {
-        // deleteData();
+    deletePlaylistButton.addEventListener("click", function () {
+        deletePlaylist();
     });
 
     stopButton.addEventListener("click", function () {
@@ -850,14 +968,14 @@
             });
     }
 
-    function deleteData() {
-        deleteDataButton.setAttribute("disabled", "true");
+    function deletePlaylist() {
+        deletePlaylistButton.setAttribute("disabled", "true");
 
         var data = {
-            an: animationName.value,
+            fn: animationName.value,
         };
 
-        fetch("/delete-file", {
+        fetch("/delete-playlist", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -868,12 +986,13 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
+                updatePlaylists()
                 console.log("file deleted")
-                deleteDataButton.removeAttribute('disabled')
+                deletePlaylistButton.removeAttribute('disabled')
             })
             .catch(function (error) {
                 console.log(error);
-                deleteDataButton.removeAttribute('disabled')
+                deletePlaylistButton.removeAttribute('disabled')
             });
     }
 
