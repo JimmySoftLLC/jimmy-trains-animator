@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <div id = "modalEl"></div>
+    <div id="modalEl"></div>
     <div class="mui-container">
         <h1>Animator - City Lights</h1>
         <p style="padding-top:0.5rem;">
@@ -453,30 +453,7 @@
         var errorMessage = document.querySelector('.mui--text-danger');
 
         if (filenameInput) {
-            console.log('Filename:', filenameInput);
-            var data = {
-                fn: filenameInput,
-            };
-
-            fetch("/duplicate-playlist", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    updatePlaylists()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
+            saveData("plylst_" + filenameInput, true);
         } else {
             errorMessage.textContent = 'Please enter a filename.';
         }
@@ -1111,7 +1088,7 @@
     });
 
     saveDataButton.addEventListener("click", function () {
-        saveData();
+        saveData(animationName.value, false);
     });
 
     function stopAnimation() {
@@ -1393,7 +1370,8 @@
         populateTable(combinedData)
     }
 
-    function saveData() {
+
+    function saveData(file_name, get_changes) {
         saveDataButton.setAttribute("disabled", "true");
         var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
@@ -1420,6 +1398,11 @@
         // Function to send each block sequentially
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
+                if( get_changes == true){
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                }
                 // All blocks have been sent, enable the button
                 saveDataButton.removeAttribute('disabled');
                 return;
@@ -1430,7 +1413,7 @@
             const block = combinedData.slice(startIdx, endIdx);
             let myObject = [index, totalBlocks - 1, block]
             if (index == totalBlocks - 1) {
-                myObject = [index, totalBlocks - 1, block, animationName.value]
+                myObject = [index, totalBlocks - 1, block, file_name]
             }
 
             // Send data to the server

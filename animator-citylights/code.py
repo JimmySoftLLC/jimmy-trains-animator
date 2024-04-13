@@ -438,33 +438,29 @@ if (web):
             rq_d = request.json()
             snd_f = rq_d["fn"].replace("plylst_", "")
             f_n = "/sd/plylst/" + snd_f + ".json"
-            print(f_n)
             os.remove(f_n)
             getAll()
             gc_col("get data")
             return JSONResponse(request, "file deleted")
-
         data = []
 
         @server.route("/save-data", [POST])
         def btn(request: Request):
             global data
             rq_d = request.json()
-            files.log_item(rq_d)
             try:
                 if rq_d[0] == 0:
                     data = []
                 data.extend(rq_d[2])
                 if rq_d[0] == rq_d[1]:
                     f_n = ""
-                    test_val = rq_d[3].split("_")
-                    print (test_val[0])
-                    if "plylst" == test_val[0]:
+                    an = rq_d[3].split("_")
+                    if "plylst" == an[0]:
                         snd_f = rq_d[3].replace("plylst_", "")
                         f_n = "/sd/plylst/" + \
                             snd_f + ".json"
                         files.log_item(f_n)
-                    elif "customers" == test_val[0]:
+                    elif "customers" == an[0]:
                         snd_f = rq_d[3].replace("customers_owned_music_", "")
                         f_n = "/sd/customers_owned_music/" + \
                             snd_f + ".json" 
@@ -473,8 +469,10 @@ if (web):
                             rq_d[3] + ".json"
                     print("saving to: " + f_n)
                     files.write_json_file(f_n, data)
+                    getAll()
                     data = []
                     gc_col("get data")
+                    
             except:
                 data = []
                 gc_col("get data")
@@ -485,13 +483,23 @@ if (web):
         def btn(request: Request):
             global data
             rq_d = request.json()
-            files.log_item(rq_d)
             f_n="/sd/plylst/" + rq_d["fn"] + ".json"
-            print("saving to: " + f_n)
             files.write_json_file(f_n, ["0.0|", "1.0|"])
             getAll()
             gc_col("created playlist")
-            return Response(request, "success")     
+            return Response(request, "success")
+        
+        @server.route("/rename-playlist", [POST])
+        def btn(request: Request):
+            global data
+            rq_d = request.json()
+            snd = rq_d["fo"].replace("plylst_", "")
+            fo="/sd/plylst/" + snd + ".json"
+            fn="/sd/plylst/" + rq_d["fn"] + ".json"
+            os.rename(fo,fn)
+            getAll()
+            gc_col("renamed playlist")
+            return Response(request, "success")  
 
     except Exception as e:
         web = False
