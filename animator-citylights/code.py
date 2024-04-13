@@ -894,7 +894,8 @@ def an_ts(f_nm):
 
 br = 0
 
-def set_hdw(cmd,dur): 
+def set_hdw(cmd,dur):
+    print("hardware dur: " + str(dur))
     global sp, br
     # Split the input string into segments
     segs = cmd.split(",")
@@ -974,24 +975,26 @@ def set_hdw(cmd,dur):
 
 def rbow(spd,dur):
     st = time.monotonic()
-    for j in range(0,255,1):
-        for i in range(num_px):
-            pixel_index = (i * 256 // num_px) + j
-            led[i] = colorwheel(pixel_index & 255)
-        led.show()
-        upd_vol(spd)
-        te = time.monotonic()-st
-        if te > dur:
-            return
-    for j in reversed(range(0,255,1)):
-        for i in range(num_px):
-            pixel_index = (i * 256 // num_px) + j
-            led[i] = colorwheel(pixel_index & 255)
-        led.show()
-        upd_vol(spd)
-        te = time.monotonic()-st
-        if te > dur:
-            return
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0,255,1):
+            for i in range(num_px):
+                pixel_index = (i * 256 // num_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            upd_vol(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0,255,1)):
+            for i in range(num_px):
+                pixel_index = (i * 256 // num_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            upd_vol(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
 
 ################################################################################
 # State Machine
@@ -1373,3 +1376,4 @@ while True:
             files.log_item(e)
             continue
         
+
