@@ -120,29 +120,25 @@
             </div>
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000255" data-url="/lights"
                     type="button">
-                    Spot 1
+                    All 255
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L2255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000150" data-url="/lights"
                     type="button">
-                    Spot 2
+                    All 150
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L3255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000100" data-url="/lights"
                     type="button">
-                    Spot 3
+                    All 100
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L4255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00050" data-url="/lights"
                     type="button">
-                    Spot 4
+                    All 50
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L5255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L0000" data-url="/lights"
                     type="button">
-                    Spot 5
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L6255" data-url="/lights"
-                    type="button">
-                    Spot 6
+                    All 0
                 </button>
             </div>
             <div>
@@ -1398,7 +1394,7 @@
         // Function to send each block sequentially
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
-                if( get_changes == true){
+                if (get_changes == true) {
                     updatePlaylists()
                     var modalEl = document.getElementById("modalEl")
                     mui.overlay('off', modalEl)
