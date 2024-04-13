@@ -201,6 +201,8 @@ gc_col("config setup")
 num_px = 10
 
 led = neopixel.NeoPixel(board.GP15, num_px) #15 on demo 17 tiny 10 on large
+led.auto_write = False
+led.brightness = 1.0
 led.fill((50, 50, 50))
 led.show()
 
@@ -339,7 +341,7 @@ if (web):
         @server.route("/lights", [POST])
         def btn(request: Request):
             rq_d = request.json()
-            set_hdw(rq_d["an"])
+            set_hdw(rq_d["an"],1)
             return Response(request, "Utility: " + "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
@@ -391,7 +393,7 @@ if (web):
             rq_d = request.json()
             files.log_item(rq_d["an"])
             gc_col("Save Data.")
-            set_hdw(rq_d["an"])
+            set_hdw(rq_d["an"],3)
             return Response(request, "success")
 
         @server.route("/get-animation", [POST])
@@ -741,6 +743,7 @@ def an(f_nm):
         return
     gc_col("Animation complete.")
 
+
 def an_light(f_nm):
     global ts_mode
 
@@ -818,18 +821,21 @@ def an_light(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                set_hdw("L000" + str(lgt) + ",S0" + str(pos))
+                set_hdw("L000" + str(lgt) + ",S0" + str(pos),dur)
             else:
-                resp = set_hdw(ft1[1])
-                if resp == "E":
+                resp = set_hdw(ft1[1], dur)
+                if resp == "STOP":
                     rst_an()
                     return
             flsh_i += 1
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             flsh_i = len(flsh_t)-1
+            rst_an()
+            return "STOP"
         if flsh_i == len(flsh_t)-1:
             rst_an()
+            return "DONE"
         upd_vol(.001)
 
 def rst_an():
@@ -888,17 +894,17 @@ def an_ts(f_nm):
 
 br = 0
 
-def set_hdw(input_string): 
+def set_hdw(cmd,dur): 
     global sp, br
     # Split the input string into segments
-    segs = input_string.split(",")
+    segs = cmd.split(",")
 
     # Process each segment
     try:
         for seg in segs:
             f_nm = ""
             if seg[0] == 'E': # end an
-                return "E"
+                return "STOP"
             if seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_snd()
@@ -915,7 +921,8 @@ def set_hdw(input_string):
                     if seg[1] == "W" or seg[1] == "P":
                         mix.voice[0].play(w0, loop=False)
                     if seg[1] == "A":    
-                        an(f_nm)
+                        res = an(f_nm)
+                        if res == "STOP": return "STOP"
                     if seg[1] == "W":
                         wait_snd()
             if seg[0] == 'L':  # lights
@@ -947,6 +954,7 @@ def set_hdw(input_string):
             if seg[0] == 'B':  # brightness
                 br = int(seg[1:])
                 led.brightness = float(br/100)
+                led.show()
             if seg[0] == 'F':  # fade in or out
                 v = int(seg[1:])
                 while not br == v:
@@ -956,9 +964,34 @@ def set_hdw(input_string):
                     else:
                         br -= 1
                         led.brightness = float(br/100)
+                    led.show()
                     upd_vol(.01)
+            if seg[0] == 'R':
+                v = float(seg[1:])
+                rbow(v,dur)
     except Exception as e:
         files.log_item(e)
+
+def rbow(spd,dur):
+    st = time.monotonic()
+    for j in range(0,255,1):
+        for i in range(num_px):
+            pixel_index = (i * 256 // num_px) + j
+            led[i] = colorwheel(pixel_index & 255)
+        led.show()
+        upd_vol(spd)
+        te = time.monotonic()-st
+        if te > dur:
+            return
+    for j in reversed(range(0,255,1)):
+        for i in range(num_px):
+            pixel_index = (i * 256 // num_px) + j
+            led[i] = colorwheel(pixel_index & 255)
+        led.show()
+        upd_vol(spd)
+        te = time.monotonic()-st
+        if te > dur:
+            return
 
 ################################################################################
 # State Machine
