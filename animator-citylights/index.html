@@ -10,6 +10,7 @@
 </head>
 
 <body>
+    <div id = "modalEl"></div>
     <div class="mui-container">
         <h1>Animator - City Lights</h1>
         <p style="padding-top:0.5rem;">
@@ -312,9 +313,10 @@
 </body>
 
 <script>
+
     function activatePlaylistModal() {
-        // Create modal element
-        var modalEl = document.createElement('div');
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
         modalEl.style.width = '400px';
         modalEl.style.height = '300px';
         modalEl.style.margin = '100px auto';
@@ -384,7 +386,8 @@
                 })
                 .then(function (data) {
                     updatePlaylists()
-                    showAlert("File saved");
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
                     deletePlaylistButton.removeAttribute('disabled')
                 })
                 .catch(function (error) {
@@ -398,13 +401,14 @@
     }
 
     function updatePlaylists() {
-        removeButtons("playlistContainer")
-        removeButtons("playlistScriptContainer")
+        const myPlaylistDiv = document.getElementById("playlistContainer");
+        removeChildNodes(myPlaylistDiv)
+        const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
+        removeChildNodes(myPlaylistScriptDiv)
         getPlaylists()
     }
 
-    function removeButtons(divId) {
-        const myDiv = document.getElementById(divId);
+    function removeChildNodes(myDiv) {
         // Remove all child nodes
         while (myDiv.firstChild) {
             myDiv.removeChild(myDiv.firstChild);
