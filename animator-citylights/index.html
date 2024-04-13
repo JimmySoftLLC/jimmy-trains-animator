@@ -273,7 +273,8 @@
             <button class="mui-btn mui-btn--primary" onclick="activatePlaylistModal()">Create playlist</button>
             <button class="mui-btn mui-btn--primary" onclick="activatePlaylistModal()">Duplicate playlist</button>
             <button class="mui-btn mui-btn--primary" onclick="activatePlaylistModal()">Rename playlist</button>
-            <button id="deletePlaylistButton" class="mui-btn mui-btn--primary disabled" type="button">Delete playlist</button>
+            <button id="deletePlaylistButton" class="mui-btn mui-btn--primary disabled" type="button">Delete
+                playlist</button>
             <div id="playlistScriptContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksScriptContainer"></div>
@@ -383,6 +384,7 @@
                 })
                 .then(function (data) {
                     updatePlaylists()
+                    showAlert("File saved");
                     deletePlaylistButton.removeAttribute('disabled')
                 })
                 .catch(function (error) {
@@ -401,7 +403,7 @@
         getPlaylists()
     }
 
-    function removeButtons(divId){
+    function removeButtons(divId) {
         const myDiv = document.getElementById(divId);
         // Remove all child nodes
         while (myDiv.firstChild) {
