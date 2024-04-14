@@ -147,25 +147,6 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # Sd card data Variables
 
-# {
-#   "volume_pot": true,
-#   "door_open_position": 20,
-#   "option_selected": "exp always",
-#   "roof_open_position": 75,
-#   "rating": "g",
-#   "figure": "music",
-#   "HOST_NAME": "animator-outhouse",
-#   "volume": "9",
-#   "can_cancel": true,
-#   "serve_webpage": true,
-#   "guy_up_position": 0,
-#   "door_closed_position": 133,
-#   "explosions_freq": 1,
-#   "guy_down_position": 180,
-#   "figure_selected": "man",
-#   "roof_closed_position": 10
-# }
-
 cfg = files.read_json_file("/sd/cfg.json")
 
 cfg_dlg = files.read_json_file("/sd/mvc/dialog_menu.json")
@@ -198,17 +179,19 @@ gc_col("config setup")
 ################################################################################
 # Get sound files in folder
 
+
 def get_snds(dir, p_type):
     snd_ret = []
     snds = files.return_directory("", dir, ".wav")
     for element in snds:
         parts = element.split('_')
-        if parts [0] == p_type:
+        if parts[0] == p_type:
             snd_ret.append(element)
     return snd_ret
 
 ################################################################################
 # Setup neo pixels
+
 
 num_px = 6
 
@@ -280,9 +263,9 @@ if (web):
         @server.route("/mui.min.js")
         def base(req: HTTPRequest):
             return FileResponse(req, "mui.min.js", "/")
-        
-        def set_cfg(type,value):
-            cfg[type]=value
+
+        def set_cfg(type, value):
+            cfg[type] = value
             wrt_cal()
 
         @server.route("/animation", [POST])
@@ -448,6 +431,10 @@ def rst_def():
     cfg["guy_down_position"] = 180
     cfg["roof_closed_position"] = 31
     cfg["door_closed_position"] = 122
+    cfg["figure"] = "man"
+    cfg["explosions_freq"] = 3
+    cfg["serve_webpage"] = True
+    cfg["rating"] = "g"
 
 ################################################################################
 # Dialog and sound play methods
@@ -585,6 +572,7 @@ def chk_lmt(min, max, pos):
         ply_a_0("/sd/mvc/limit_reached.wav")
         return False
     return True
+
 
 def no_user_track():
     ply_a_0("/sd/mvc/no_user_soundtrack_found.wav")
@@ -761,7 +749,7 @@ async def upd_vol_async(seconds):
         await asyncio.sleep(seconds)
 
 
-async def fr_asy(r_on,g_on,b_on):
+async def fr_asy(r_on, g_on, b_on):
     led_B.brightness = 1.0
 
     r = random.randint(150, 255)
@@ -822,6 +810,7 @@ async def cyc_g_asy(spd, pos_up, pos_down):
             mov_g(ang)
             await asyncio.sleep(spd)
 
+
 async def cyc_r_asy(spd, pos_up, pos_down):
     global r_lst_p
     while mix.voice[0].playing:
@@ -839,6 +828,7 @@ async def cyc_r_asy(spd, pos_up, pos_down):
         for ang in range(r_lst_p, n_pos, sign):
             mov_r(ang)
             await asyncio.sleep(spd)
+
 
 async def cyc_d_asy(spd, pos_up, pos_down):
     global d_lst_p
@@ -858,26 +848,29 @@ async def cyc_d_asy(spd, pos_up, pos_down):
             mov_d(ang)
             await asyncio.sleep(spd)
 
-async def rn_exp(r,g,b):
+
+async def rn_exp(r, g, b):
     cyc_g = asyncio.create_task(cyc_g_asy(
         0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"]))
-    cyc_l = asyncio.create_task(fr_asy(r,g,b))
+    cyc_l = asyncio.create_task(fr_asy(r, g, b))
     await asyncio.gather(cyc_g, cyc_l)
     while mix.voice[0].playing:
         exit_early()
 
-async def rn_music(r,g,b):
+
+async def rn_music(r, g, b):
     cyc_r = asyncio.create_task(cyc_r_asy(
         0.01, cfg["roof_closed_position"]+20, cfg["roof_closed_position"]))
     cyc_d = asyncio.create_task(cyc_d_asy(
         0.01, cfg["door_closed_position"]+20, cfg["door_closed_position"]))
-    cyc_l = asyncio.create_task(fr_asy(r,g,b))
+    cyc_l = asyncio.create_task(fr_asy(r, g, b))
     await asyncio.gather(cyc_r, cyc_l, cyc_d)
     while mix.voice[0].playing:
         exit_early()
 
 ################################################################################
 # Animations
+
 
 def rnd_prob(v):
     if v == 0:
@@ -888,6 +881,7 @@ def rnd_prob(v):
         return random.random() < 0.75  # 75% chance
     elif v == 3:
         return True
+
 
 def ply_mtch(fn, srt, end, wait):
     if mix.voice[0].playing:
@@ -908,11 +902,13 @@ def ply_mtch(fn, srt, end, wait):
         exit_early()
     print("done playing")
 
+
 def d_snd(pos):
-    rnd_snd ("/sd/sqk", "sqk", 0, 0, False)
+    rnd_snd("/sd/sqk", "sqk", 0, 0, False)
     mov_d_s(pos, .03)
     while mix.voice[0].playing:
         pass
+
 
 def sit_d():
     print("sitting down")
@@ -921,13 +917,13 @@ def sit_d():
     led_F.show()
     if cfg["figure"] == "alien":
         d_snd(cfg["door_open_position"])
-        rnd_snd("/sd/" + cfg["rating"],"alienent",0,0, False)
+        rnd_snd("/sd/" + cfg["rating"], "alienent", 0, 0, False)
         alien_tlk()
-        rnd_snd("/sd/" + cfg["rating"],"alienseat",0,0, False)
+        rnd_snd("/sd/" + cfg["rating"], "alienseat", 0, 0, False)
         alien_tlk()
         mov_g_s(cfg["guy_down_position"], 0.05, False)
         d_snd(cfg["door_closed_position"])
-        rnd_snd("/sd/" + cfg["rating"],"alienstr",0,0, True)
+        rnd_snd("/sd/" + cfg["rating"], "alienstr", 0, 0, True)
     elif cfg["figure"] == "music":
         d_snd(cfg["door_open_position"])
         mov_g_s(cfg["guy_down_position"], 0.05, False)
@@ -936,27 +932,30 @@ def sit_d():
         d_snd(cfg["door_open_position"])
         mtch()
 
-def mtch():
-        mov_g_s(cfg["guy_down_position"], 0.05, False)
-        d_snd(cfg["door_closed_position"]) 
-        led_F[0] = ((0, 0, 0))
-        print("rating is: " + cfg["rating"])
-        rnd_snd("/sd/" + cfg["rating"],cfg["figure"],0,0, True)
-        rnd_snd("/sd/match","fail", .1, .1, True)
-        rnd_snd("/sd/match","fail", .1, .1, True)
-        rnd_snd("/sd/match","fail", .1, .1, True)
-        rnd_snd("/sd/match","lit", .4, .4, True)
 
-def rnd_snd (dir, p_typ, srt, end, wait):
+def mtch():
+    mov_g_s(cfg["guy_down_position"], 0.05, False)
+    d_snd(cfg["door_closed_position"])
+    led_F[0] = ((0, 0, 0))
+    print("rating is: " + cfg["rating"])
+    rnd_snd("/sd/" + cfg["rating"], cfg["figure"], 0, 0, True)
+    rnd_snd("/sd/match", "fail", .1, .1, True)
+    rnd_snd("/sd/match", "fail", .1, .1, True)
+    rnd_snd("/sd/match", "fail", .1, .1, True)
+    rnd_snd("/sd/match", "lit", .4, .4, True)
+
+
+def rnd_snd(dir, p_typ, srt, end, wait):
     snds = get_snds(dir, p_typ)
     print(snds)
     max_i = len(snds) - 1
     i = random.randint(0, max_i)
-    ply_mtch(dir + "/"+ snds[i] + ".wav",srt,end, wait)
+    ply_mtch(dir + "/" + snds[i] + ".wav", srt, end, wait)
+
 
 def exp():
     print("explosion")
-    rnd_snd("/sd/" + cfg["rating"] + "_exp",cfg["figure"],0,0, False)
+    rnd_snd("/sd/" + cfg["rating"] + "_exp", cfg["figure"], 0, 0, False)
     time.sleep(.1)
     if cfg["figure"] != "music":
         mov_r(cfg["roof_open_position"])
@@ -966,10 +965,10 @@ def exp():
         led_F[0] = (255, 255, 255)
     led_F.show()
     if cfg["figure"] == "alien":
-        mov_g_s(cfg["guy_up_position"],.05, True)
-        asyncio.run(rn_exp(0,0,1))
+        mov_g_s(cfg["guy_up_position"], .05, True)
+        asyncio.run(rn_exp(0, 0, 1))
     elif cfg["figure"] == "music":
-        asyncio.run(rn_music(0,1,1))
+        asyncio.run(rn_music(0, 1, 1))
     else:
         mov_g(cfg["guy_up_position"])
         mov_d(cfg["door_open_position"])
@@ -977,9 +976,10 @@ def exp():
             led_B[i] = (255, 0, 0)
             led_B.show()
             time.sleep(.05)
-        asyncio.run(rn_exp(1,0,0))
+        asyncio.run(rn_exp(1, 0, 0))
 
-def rst_an(): 
+
+def rst_an():
     print("reset")
     led_F.fill((0, 0, 0))
     led_F.show()
@@ -990,6 +990,7 @@ def rst_an():
     time.sleep(.2)
     mov_r_s(cfg["roof_closed_position"]+20, .001)
     mov_r_s(cfg["roof_closed_position"], .05)
+
 
 def an():
     try:
@@ -1161,6 +1162,7 @@ class Main(Ste):
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
+
 class MoveRD(Ste):
 
     def __init__(s):
@@ -1323,6 +1325,7 @@ class VolSet(Ste):
 
 class WebOpt(Ste):
     global cfg
+
     def __init__(s):
         s.i = 0
         s.sel_i = 0
@@ -1405,16 +1408,19 @@ class Dlg_Opt(Ste):
             else:
                 print(dlg_opt[s.i])
                 ply_a_0("/sd/mvc/" +
-                         dlg_opt[s.i] + ".wav")
+                        dlg_opt[s.i] + ".wav")
                 s.sel_i = s.i
                 s.i += 1
                 if s.i > len(dlg_opt)-1:
                     s.i = 0
         if r_sw.fell:
-            cfg["option_selected"] = dlg_opt[s.sel_i]
-            print(cfg)
-            files.log_item("Selected index: " + str(s.sel_i) +
-                           " Saved option: " + cfg["option_selected"])
+            opts = dlg_opt[s.sel_i].split(" ")
+            if opts[0] == "exp":
+                cfg["explosions_freq"] = opts[1]
+            else:
+                cfg["rating"] = opts[1]
+            files.log_item(
+                "Current exp freq: " + cfg["explosions_freq"] + "Current rating: " + cfg["rating"])
             files.write_json_file("/sd/cfg.json", cfg)
             opt_sel()
             mch.go_to('base_state')
@@ -1499,4 +1505,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-

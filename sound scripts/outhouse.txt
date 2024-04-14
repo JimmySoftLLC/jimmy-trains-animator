@@ -59,6 +59,19 @@ Can Rudolph save me from this Christmas fire? This is too hot!
 Have you been good this year?  I haven't been and Mrs Clause has made me use the outdoor John.
 Have you been good this year?  Mrs Clause has made me use the outdoor John, she decided to have the one inside renovated.
 
+My soundtracks.
+
+Music.
+
+You can create your own sound track files by putting wav files in one of three folders on the microSD card that is inserted 
+in your animator.  The first one is called c, the second is called c underscore e x p, and the third one is called c underscore
+ n o e x p . These files must be named with lower case letters using the figure you want to use underscore and a number. For example man underscore 1. 
+Valid figures are man,woman,alien,music.
+These three folders are used as follows.  Folder c
+is for the sitting down dialog, folder c underscore e x p is for the explosion, and folder c underscore n o e x p is for the dialog if there is no explosion.
+The files must be wav files encoded with a sample rate of 22050Hz and a sample format of 16 bits. 
+You can create files of this type using Audacity, a free application.
+
 
 https://d1uzcg9xibmb7f.cloudfront.net/public/pico feller rev 2.zip
 https://d1uzcg9xibmb7f.cloudfront.net/public/sd card feller rev 2.zip
