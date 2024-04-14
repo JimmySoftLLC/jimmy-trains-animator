@@ -582,7 +582,7 @@ def no_user_track():
         if l_sw.fell:
             break
         if r_sw.fell:
-            ply_a_0("/sd/mvc/create_sound_track_files.wav")
+            ply_a_0("/sd/mvc/my_track_inst.wav")
             break
 
 ################################################################################
@@ -1416,11 +1416,11 @@ class Dlg_Opt(Ste):
         if r_sw.fell:
             opts = dlg_opt[s.sel_i].split(" ")
             if opts[0] == "exp":
-                cfg["explosions_freq"] = opts[1]
+                cfg["explosions_freq"] = int(opts[1])
             else:
                 cfg["rating"] = opts[1]
             files.log_item(
-                "Current exp freq: " + cfg["explosions_freq"] + "Current rating: " + cfg["rating"])
+                "Exp freq: " + str(cfg["explosions_freq"]) + " Rating: " + cfg["rating"])
             files.write_json_file("/sd/cfg.json", cfg)
             opt_sel()
             mch.go_to('base_state')
@@ -1454,7 +1454,7 @@ class InsFig(Ste):
                 "/sd/mvc/" + inst_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(main_m)-1:
+            if self.i > len(inst_m)-1:
                 self.i = 0
         if r_sw.fell:
             sel_i = inst_m[self.sel_i]
@@ -1505,3 +1505,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
