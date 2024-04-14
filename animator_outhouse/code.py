@@ -147,6 +147,25 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # Sd card data Variables
 
+# {
+#   "volume_pot": true,
+#   "door_open_position": 20,
+#   "option_selected": "exp always",
+#   "roof_open_position": 75,
+#   "rating": "g",
+#   "figure": "music",
+#   "HOST_NAME": "animator-outhouse",
+#   "volume": "9",
+#   "can_cancel": true,
+#   "serve_webpage": true,
+#   "guy_up_position": 0,
+#   "door_closed_position": 133,
+#   "explosions_freq": 1,
+#   "guy_down_position": 180,
+#   "figure_selected": "man",
+#   "roof_closed_position": 10
+# }
+
 cfg = files.read_json_file("/sd/cfg.json")
 
 cfg_dlg = files.read_json_file("/sd/mvc/dialog_menu.json")
@@ -277,8 +296,8 @@ if (web):
                 set_cfg("rating", "g")
             elif "PG" == req_d["an"]:
                 set_cfg("rating", "pg")
-            elif "R" == req_d["an"]:
-                set_cfg("rating", "r")
+            elif "C" == req_d["an"]:
+                set_cfg("rating", "c")
             elif "EXP0" == req_d["an"]:
                 set_cfg("explosions_freq", 0)
             elif "EXP1" == req_d["an"]:
@@ -567,6 +586,17 @@ def chk_lmt(min, max, pos):
         return False
     return True
 
+def no_user_track():
+    ply_a_0("/sd/mvc/no_user_soundtrack_found.wav")
+    while True:
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            break
+        if r_sw.fell:
+            ply_a_0("/sd/mvc/create_sound_track_files.wav")
+            break
+
 ################################################################################
 # Servo helpers
 
@@ -849,6 +879,15 @@ async def rn_music(r,g,b):
 ################################################################################
 # Animations
 
+def rnd_prob(v):
+    if v == 0:
+        return False
+    elif v == 1:
+        return random.random() < 0.5  # 50% chance
+    elif v == 2:
+        return random.random() < 0.75  # 75% chance
+    elif v == 3:
+        return True
 
 def ply_mtch(fn, srt, end, wait):
     if mix.voice[0].playing:
@@ -953,9 +992,16 @@ def rst_an():
     mov_r_s(cfg["roof_closed_position"], .05)
 
 def an():
-    sit_d()
-    exp()
-    rst_an()
+    try:
+        sit_d()
+        if rnd_prob(cfg["explosions_freq"]):
+            exp()
+        else:
+            print("no explosion")
+        rst_an()
+    except Exception as e:
+        no_user_track()
+
 
 def bnds(my_color, lower, upper):
     if (my_color < lower):
@@ -1329,7 +1375,7 @@ class WebOpt(Ste):
                 mch.go_to('base_state')
 
 
-class Snds(Ste):
+class Dlg_Opt(Ste):
 
     def __init__(s):
         s.i = 0
@@ -1357,6 +1403,7 @@ class Snds(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
+                print(dlg_opt[s.i])
                 ply_a_0("/sd/mvc/" +
                          dlg_opt[s.i] + ".wav")
                 s.sel_i = s.i
@@ -1365,6 +1412,7 @@ class Snds(Ste):
                     s.i = 0
         if r_sw.fell:
             cfg["option_selected"] = dlg_opt[s.sel_i]
+            print(cfg)
             files.log_item("Selected index: " + str(s.sel_i) +
                            " Saved option: " + cfg["option_selected"])
             files.write_json_file("/sd/cfg.json", cfg)
@@ -1417,7 +1465,7 @@ gc_col("Ste mch")
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-st_mch.add(Snds())
+st_mch.add(Dlg_Opt())
 st_mch.add(AdjRD())
 st_mch.add(MoveRD())
 st_mch.add(WebOpt())
