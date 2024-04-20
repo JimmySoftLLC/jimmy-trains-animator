@@ -498,19 +498,21 @@ def ply_a_0(file_name):
         exit_early()
     print("done playing")
 
+def sw_stp_m():
+    l_sw.update()
+    if l_sw.fell:
+        mix.voice[0].stop()
 
 def stop_a_0():
     mix.voice[0].stop()
     while mix.voice[0].playing:
         pass
 
-
 def exit_early():
     upd_vol(0.02)
     l_sw.update()
     if l_sw.fell:
         mix.voice[0].stop()
-
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -737,6 +739,7 @@ async def upd_vol_async(seconds):
     if cfg["volume_pot"]:
         v = a_in.value / 65536
         mix.voice[0].level = v
+        sw_stp_m()
         await asyncio.sleep(seconds)
     else:
         try:
@@ -746,6 +749,7 @@ async def upd_vol_async(seconds):
         if v < 0 or v > 1:
             v = .5
         mix.voice[0].level = v
+        sw_stp_m()
         await asyncio.sleep(seconds)
 
 
@@ -859,12 +863,12 @@ async def rn_exp(r, g, b):
 
 
 async def rn_music(r, g, b):
-    cyc_r = asyncio.create_task(cyc_r_asy(
-        0.01, cfg["roof_closed_position"]+20, cfg["roof_closed_position"]))
+    led_F[0] = (0, 0, 0)
+    led_F.show()
     cyc_d = asyncio.create_task(cyc_d_asy(
-        0.01, cfg["door_closed_position"]+20, cfg["door_closed_position"]))
+        0.01, cfg["door_closed_position"]-20, cfg["door_closed_position"]))
     cyc_l = asyncio.create_task(fr_asy(r, g, b))
-    await asyncio.gather(cyc_r, cyc_l, cyc_d)
+    await asyncio.gather(cyc_l, cyc_d)
     while mix.voice[0].playing:
         exit_early()
 
@@ -957,12 +961,11 @@ def exp():
     print("explosion")
     rnd_snd("/sd/" + cfg["rating"] + "_exp", cfg["figure"], 0, 0, False)
     time.sleep(.1)
+    led_F[0] = (80, 80, 80)
     if cfg["figure"] != "music":
         mov_r(cfg["roof_open_position"])
     if cfg["figure"] == "alien":
         led_F[0] = (0, 255, 0)
-    elif cfg["figure"] != "music":
-        led_F[0] = (255, 255, 255)
     led_F.show()
     if cfg["figure"] == "alien":
         mov_g_s(cfg["guy_up_position"], .05, True)
