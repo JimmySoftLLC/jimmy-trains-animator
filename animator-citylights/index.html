@@ -270,8 +270,7 @@
             <button class="mui-btn mui-btn--primary" onclick="createPlaylistDialog()">Create playlist</button>
             <button class="mui-btn mui-btn--primary" onclick="duplicatePlaylistDialog()">Duplicate playlist</button>
             <button class="mui-btn mui-btn--primary" onclick="renamePlaylistDialog()">Rename playlist</button>
-            <button id="deletePlaylistButton" class="mui-btn mui-btn--primary disabled" type="button">Delete
-                playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="deletePlaylistDialog()">Delete playlist</button>
             <div id="playlistScriptContainer"></div>
             <h2>Built in sound tracks:</h2>
             <div id="builtInTracksScriptContainer"></div>
@@ -291,6 +290,7 @@
                 <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
                 <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (B
                     built in, C Customer, P playlist) XXX (file name)</div>
+                <div>RXXX = Rainbow, XXX cycle speed in seconds</div>
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
                             <thead>
@@ -540,6 +540,50 @@
         }
     }
 
+    function deletePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = '300px';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Delete playlist';
+        form.appendChild(legend);
+
+        var subhead = document.createElement('subhead');
+        subhead.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        form.appendChild(subhead);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', deletePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
     function updatePlaylists() {
         const myPlaylistDiv = document.getElementById("playlistContainer");
         removeChildNodes(myPlaylistDiv)
@@ -599,6 +643,7 @@
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
     }
 
@@ -619,6 +664,7 @@
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
     }
 
@@ -637,6 +683,7 @@
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
     }
 
@@ -655,6 +702,7 @@
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
     }
 
@@ -675,6 +723,7 @@
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
     }
 
@@ -717,7 +766,8 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        console.log(error);
+                        showAlert(error);
                     });
             });
             playlistContainer.appendChild(button);
@@ -763,8 +813,9 @@
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
-                        console.log(error);
                         button.removeAttribute('disabled')
+                        console.log(error);
+                    showAlert(error);
                     });
             });
             playlistScriptContainer.appendChild(button);
@@ -810,7 +861,8 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        console.log(error);
+                    showAlert(error);
                     });
             });
             builtInTracksContainer.appendChild(button);
@@ -856,8 +908,9 @@
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
-                        console.log(error);
                         button.removeAttribute('disabled')
+                        console.log(error);
+                    showAlert(error);
                     });
             });
             builtInTracksScriptContainer.appendChild(button);
@@ -903,7 +956,8 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        console.log(error);
+                    showAlert(error);
                     });
             });
             myTracksContainer.appendChild(button);
@@ -949,8 +1003,9 @@
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
-                        console.log(error);
                         button.removeAttribute('disabled')
+                        console.log(error);
+                    showAlert(error);
                     });
             });
             myTracksScriptContainer.appendChild(button);
@@ -991,7 +1046,8 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    console.log(error);
+                    showAlert(error);
                 });
         });
     });
@@ -1023,8 +1079,9 @@
                     button.removeAttribute('disabled')
                 })
                 .catch(function (error) {
-                    console.log(error);
                     button.removeAttribute('disabled')
+                    console.log(error);
+                    showAlert(error);
                 });
         });
     });
@@ -1057,8 +1114,9 @@
                 websiteSubmitButton.removeAttribute('disabled')
             })
             .catch(function (error) {
-                console.log(error);
                 websiteSubmitButton.removeAttribute('disabled')
+                console.log(error);
+                    showAlert(error);
             });
     });
 
@@ -1069,15 +1127,12 @@
     });
 
     // Table component
-    var deletePlaylistButton = document.getElementById("deletePlaylistButton");
     var saveDataButton = document.getElementById("saveDataButton");
     var stopButton = document.getElementById("stopButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
+    var deletePlaylistButton = document.getElementById("deletePlaylistButton");
 
-    deletePlaylistButton.addEventListener("click", function () {
-        deletePlaylist();
-    });
 
     stopButton.addEventListener("click", function () {
         stopAnimation();
@@ -1115,8 +1170,6 @@
     }
 
     function deletePlaylist() {
-        deletePlaylistButton.setAttribute("disabled", "true");
-
         var data = {
             fn: animationName.value,
         };
@@ -1134,11 +1187,12 @@
             .then(function (data) {
                 updatePlaylists()
                 console.log("file deleted")
-                deletePlaylistButton.removeAttribute('disabled')
+                var modalEl = document.getElementById("modalEl")
+                mui.overlay('off', modalEl)
             })
             .catch(function (error) {
                 console.log(error);
-                deletePlaylistButton.removeAttribute('disabled')
+                    showAlert(error);
             });
     }
 
@@ -1191,8 +1245,9 @@
                 target.removeAttribute('disabled')
             })
             .catch(function (error) {
-                console.log(error);
                 target.removeAttribute('disabled')
+                console.log(error);
+                    showAlert(error);
             });
     }
 
@@ -1428,9 +1483,9 @@
                     sendBlockSequentially(index + 1);
                 })
                 .catch(function (error) {
-                    alert(error.message);
-                    // Enable the button even if an error occurs
                     saveDataButton.removeAttribute('disabled');
+                    console.log(error);
+                    showAlert(error);
                 });
         }
 
