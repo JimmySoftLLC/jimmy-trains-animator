@@ -314,7 +314,7 @@
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
-        modalEl.style.height = '300px';
+        modalEl.style.height = 'auto';
         modalEl.style.margin = '100px auto';
         modalEl.style.backgroundColor = '#fff';
 
@@ -398,7 +398,7 @@
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
-        modalEl.style.height = '300px';
+        modalEl.style.height = 'auto';
         modalEl.style.margin = '100px auto';
         modalEl.style.backgroundColor = '#fff';
 
@@ -459,7 +459,7 @@
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
-        modalEl.style.height = '300px';
+        modalEl.style.height = 'auto';
         modalEl.style.margin = '100px auto';
         modalEl.style.backgroundColor = '#fff';
 
@@ -544,7 +544,7 @@
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
-        modalEl.style.height = '300px';
+        modalEl.style.height = 'auto';
         modalEl.style.margin = '100px auto';
         modalEl.style.backgroundColor = '#fff';
 
@@ -558,14 +558,14 @@
         legend.textContent = 'Delete playlist';
         form.appendChild(legend);
 
-        var subhead = document.createElement('subhead');
+        var subhead = document.createElement('div');
         subhead.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
         form.appendChild(subhead);
 
         var saveBtn = document.createElement('button');
         saveBtn.type = 'button';
         saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
+        saveBtn.textContent = 'Delete';
         saveBtn.addEventListener('click', deletePlaylist);
         form.appendChild(saveBtn);
 
