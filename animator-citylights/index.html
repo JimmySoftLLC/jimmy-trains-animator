@@ -558,9 +558,10 @@
         legend.textContent = 'Delete playlist';
         form.appendChild(legend);
 
-        var subhead = document.createElement('div');
-        subhead.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
-        form.appendChild(subhead);
+        var message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        form.appendChild(message);
 
         var saveBtn = document.createElement('button');
         saveBtn.type = 'button';
