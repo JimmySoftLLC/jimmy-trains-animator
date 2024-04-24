@@ -151,7 +151,7 @@ all_sound_options.extend(my_sound_options)
 
 menu_sound_options = []
 menu_sound_options.extend(sound_options)
-rnd_options = ['random all','random built in','random my']
+rnd_options = ['random all','random built in','random my','christmas show']
 menu_sound_options.extend(rnd_options)
 menu_sound_options.extend(my_sound_options)
 
@@ -187,15 +187,19 @@ time_stamp_mode = False
 
 grand_trees = []
 canes = []
+spots = []
+lights = []
 tree_ornaments = []
 tree_stars = []
 tree_branches  = []
 cane_starts  = []
 cane_ends  = []
 
-num_pixels = 0
+num_pixels_rgb = 0
+num_pixels_rgbw = 0
 
-ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
+ledStripRGB = neopixel.NeoPixel(board.GP10, num_pixels_rgb)
+ledStripRGBW = neopixel.NeoPixel(board.GP11, num_pixels_rgbw, bpp=4)
 
 def return_tree_parts(part):
     my_indexes = []
@@ -228,11 +232,23 @@ def return_cane_parts(part):
                 my_indexes.append(led_index+start_index)
     return my_indexes
 
-def show_Lights():
-    ledStrip.show()
+def show_lights_rgb():
+    ledStripRGB.show()
+    ledStripRGBW.show()
     time.sleep(.3)
-    ledStrip.fill((0, 0, 0))
-    ledStrip.show()
+    ledStripRGB.fill((0, 0, 0))
+    ledStripRGBW.fill((0, 0, 0, 0))
+    ledStripRGB.show()
+    ledStripRGBW.show()
+
+def show_lights_rgbw():
+    ledStripRGB.show()
+    ledStripRGBW.show()
+    time.sleep(.3)
+    ledStripRGB.fill((0, 0, 0))
+    ledStripRGBW.fill((0, 0, 0, 0))
+    ledStripRGB.show()
+    ledStripRGBW.show()
 
 def runLightTest():
     global tree_ornaments,tree_stars,tree_branches,cane_starts,cane_ends
@@ -245,47 +261,63 @@ def runLightTest():
     # cane test
     count = 0
     for led_index in cane_starts:
-        ledStrip[led_index]=(50, 50, 50)
+        ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 1:
-            show_Lights()
+            show_lights_rgb()
             count = 0
     for led_index in cane_ends:
-        ledStrip[led_index]=(50, 50, 50)
+        ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 1:
-            show_Lights()
+            show_lights_rgb()
             count = 0
 
     #tree test
     count = 0
     for led_index in tree_ornaments:
-        ledStrip[led_index]=(50, 50, 50)
+        ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
-            show_Lights()
+            show_lights_rgb()
             count = 0
     for led_index in tree_stars:
-        ledStrip[led_index]=(50, 50, 50)
+        ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
-            show_Lights()
+            show_lights_rgb()
             count = 0
     for led_index in tree_branches:
-        ledStrip[led_index]=(50, 50, 50)
+        ledStripRGB[led_index]=(50, 50, 50)
         count+=1
         if count > 6:
-            show_Lights()
+            show_lights_rgb()
             count = 0
 
+    #light test
+    for light in lights:
+        for led_index in light:
+            ledStripRGB[led_index]=(50, 50, 50)
+        show_lights_rgb()
+
+    #spot test
+    for spot in spots:
+        for led_index in spot:
+            ledStripRGBW[led_index]=(50, 50, 50, 50)
+        show_lights_rgbw()
+
+
 def updateLightString():
-    global grand_trees, canes, num_pixels, ledStrip, num_pixels
+    global grand_trees, canes, lights, spots, num_pixels_rgb, ledStripRGB, num_pixels_rgb, ledStripRGBW, num_pixels_rgbw
     grand_trees = []
     canes = []
+    lights = []
+    spots = []
 
-    num_pixels = 0
+    num_pixels_rgb = 0
+    num_pixels_rgbw = 0
     
-    elements = config["light_string"].split(',')
+    elements = config["light_string_rgb"].split(',')
 
     for element in elements:
         parts = element.split('-')
@@ -295,20 +327,46 @@ def updateLightString():
             quantity = int(quantity)
 
             if christmas_park_type == 'grandtree':
-                grand_tree_sequence = list(range(num_pixels, num_pixels + quantity))
+                grand_tree_sequence = list(range(num_pixels_rgb, num_pixels_rgb + quantity))
                 grand_trees.append(grand_tree_sequence)
-                num_pixels += quantity
+                num_pixels_rgb += quantity
             elif christmas_park_type == 'cane':
-                cane_sequence = list(range(num_pixels, num_pixels + quantity))
+                cane_sequence = list(range(num_pixels_rgb, num_pixels_rgb + quantity))
                 canes.append(cane_sequence)
-                num_pixels += quantity
+                num_pixels_rgb += quantity
+            elif christmas_park_type == 'light':
+                light_sequence = list(range(num_pixels_rgb, num_pixels_rgb + quantity))
+                lights.append(light_sequence)
+                num_pixels_rgb += quantity
 
-    print ("Number of pixels total: ", num_pixels)
-    ledStrip.deinit()
+    elements = config["light_string_rgbw"].split(',')
+
+    for element in elements:
+        parts = element.split('-')
+
+        if len(parts) == 2:
+            christmas_park_type, quantity = parts
+            quantity = int(quantity)
+
+        if christmas_park_type == 'spot':
+                spot_sequence = list(range(num_pixels_rgbw, num_pixels_rgbw + quantity))
+                spots.append(spot_sequence)
+                num_pixels_rgbw += quantity
+
+    print ("Number of rgb pixels total: ", num_pixels_rgb)
+    print ("Number of rgbw pixels total: ", num_pixels_rgbw)
+
+    ledStripRGB.deinit()
+    ledStripRGBW.deinit()
     garbage_collect("Deinit ledStrip")
-    ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
-    ledStrip.auto_write = False
-    ledStrip.brightness = 1.0
+
+    ledStripRGB = neopixel.NeoPixel(board.GP10, num_pixels_rgb)
+    ledStripRGB.auto_write = False
+    ledStripRGB.brightness = 1.0
+
+    ledStripRGBW = neopixel.NeoPixel(board.GP11, num_pixels_rgbw, bpp=4)
+    ledStripRGBW.auto_write = False
+    ledStripRGBW.brightness = 1.0
     runLightTest()
     
 updateLightString()
@@ -465,35 +523,40 @@ if (serve_webpage):
             command_sent = ""
             raw_text = request.raw_request.decode("utf8")
             if "set_to_red" in raw_text:
-                ledStrip.fill((255, 0, 0))
-                ledStrip.show()
+                ledStripRGB.fill((255, 0, 0))
+                ledStripRGBW.fill((255, 0, 0, 0))
             elif "set_to_green" in raw_text:
-                ledStrip.fill((0, 255, 0))
-                ledStrip.show()
+                ledStripRGB.fill((0, 255, 0))
+                ledStripRGBW.fill((0, 255, 0, 0))
             elif "set_to_blue" in raw_text:
-                ledStrip.fill((0, 0, 255))
-                ledStrip.show()
+                ledStripRGB.fill((0, 0, 255))
+                ledStripRGBW.fill((0, 0, 255, 0))
             elif "set_to_white" in raw_text:
-                ledStrip.fill((255, 255, 255))
-                ledStrip.show()
+                ledStripRGB.fill((255, 255, 255))
+                ledStripRGBW.fill((0, 0, 0, 255))
             elif "set_to_0" in raw_text:
-                ledStrip.brightness = 0.0
-                ledStrip.show()
+                ledStripRGB.brightness = 0.0
+                ledStripRGBW.brightness = 0.0
             elif "set_to_20" in raw_text:
-                ledStrip.brightness = 0.2
-                ledStrip.show()
+                ledStripRGB.brightness = 0.2
+                ledStripRGBW.brightness = 0.2
             elif "set_to_40" in raw_text:
-                ledStrip.brightness = 0.4
-                ledStrip.show()
+                ledStripRGB.brightness = 0.4
+                ledStripRGBW.brightness = 0.4
             elif "set_to_60" in raw_text:
-                ledStrip.brightness = 0.6
-                ledStrip.show()
+                ledStripRGB.brightness = 0.6
+                ledStripRGBW.brightness = 0.6
             elif "set_to_80" in raw_text:
-                ledStrip.brightness = 0.8
-                ledStrip.show()
+                ledStripRGB.brightness = 0.8
+                ledStripRGBW.brightness = 0.8
             elif "set_to_100" in raw_text:
-                ledStrip.brightness = 1.0
-                ledStrip.show()
+                ledStripRGB.brightness = 1.0
+                ledStripRGBW.brightness = 1.0
+            elif "set_to_1" in raw_text:
+                ledStripRGB.brightness = 0.01
+                ledStripRGBW.brightness = 0.01
+            ledStripRGB.show()
+            ledStripRGBW.show()
             return Response(request, "Utility: " + "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
@@ -521,30 +584,55 @@ if (serve_webpage):
         def buttonpress(request: Request):
             return Response(request, config["volume"])
         
-        @server.route("/update-light-string", [POST])
+        @server.route("/update-light-string-rgb", [POST])
         def buttonpress(request: Request):
             global config
             data_object = request.json()
             if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
-                config["light_string"] = data_object["text"]
-                print("action: " + data_object["action"]+ " data: " + config["light_string"])
+                config["light_string_rgb"] = data_object["text"]
+                print("action: " + data_object["action"]+ " data: " + config["light_string_rgb"])
                 files.write_json_file("/sd/config_christmas_park.json",config)
                 updateLightString()
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-                return Response(request, config["light_string"])
-            if config["light_string"] =="":
-                config["light_string"] = data_object["text"]
+                return Response(request, config["light_string_rgb"])
+            if config["light_string_rgb"] =="":
+                config["light_string_rgb"] = data_object["text"]
             else:
-                config["light_string"] = config["light_string"] + "," + data_object["text"]
-            print("action: " + data_object["action"]+ " data: " + config["light_string"])
+                config["light_string_rgb"] = config["light_string_rgb"] + "," + data_object["text"]
+            print("action: " + data_object["action"]+ " data: " + config["light_string_rgb"])
             files.write_json_file("/sd/config_christmas_park.json",config)
             updateLightString()
             play_audio_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, config["light_string"])
+            return Response(request, config["light_string_rgb"])
         
-        @server.route("/get-light-string", [POST])
+        @server.route("/update-light-string-rgbw", [POST])
         def buttonpress(request: Request):
-            return Response(request, config["light_string"])
+            global config
+            data_object = request.json()
+            if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
+                config["light_string_rgbw"] = data_object["text"]
+                print("action: " + data_object["action"]+ " data: " + config["light_string_rgbw"])
+                files.write_json_file("/sd/config_christmas_park.json",config)
+                updateLightString()
+                play_audio_0("/sd/mvc/all_changes_complete.wav")
+                return Response(request, config["light_string_rgbw"])
+            if config["light_string_rgbw"] =="":
+                config["light_string_rgbw"] = data_object["text"]
+            else:
+                config["light_string_rgbw"] = config["light_string_rgbw"] + "," + data_object["text"]
+            print("action: " + data_object["action"]+ " data: " + config["light_string_rgbw"])
+            files.write_json_file("/sd/config_christmas_park.json",config)
+            updateLightString()
+            play_audio_0("/sd/mvc/all_changes_complete.wav")
+            return Response(request, config["light_string_rgbw"])
+        
+        @server.route("/get-light-string-rgb", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["light_string_rgb"])
+        
+        @server.route("/get-light-string-rgbw", [POST])
+        def buttonpress(request: Request):
+            return Response(request, config["light_string_rgbw"])
         
         @server.route("/get-customers-sound-tracks", [POST])
         def buttonpress(request: Request):
@@ -751,11 +839,53 @@ def animation(file_name):
             last_option = current_option_selected
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
+        elif file_name == "christmas show":
+            lightSpot (3, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/introduction.wav")
+            lightSpot (3, 0,0,0,0)
+            
+            lightSpot (0, 0,0,0,255)
+            lightSpot (1, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/charlie brown depressed.wav")
+            lightSpot (0, 0,0,0,0)
+            lightSpot (1, 0,0,0,0)
+            animation_light_show("customers_owned_music_home for the holidays short")
+            
+            lightSpot (0, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/my own dog gone commercial.wav")
+            lightSpot (0, 0,0,0,0)
+            animation_light_show("customers_owned_music_most wonderful time short")
+            
+            lightSpot (2, 0,0,0,255)
+            lightSpot (3, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/schroeder lucy.wav")
+            lightSpot (2, 0,0,0,0)
+            lightSpot (3, 0,0,0,0)
+            animation_light_show("deck the halls jazzy version short")
+            
+            lightSpot (2, 0,0,0,255)
+            lightSpot (3, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/schroeder lucy jingle bells short.wav")
+            lightSpot (2, 0,0,0,0)
+            lightSpot (3, 0,0,0,0)
+            animation_light_show("jingle bells orchestra")
+
+            lightSpot (0, 0,0,0,255)
+            animation_light_show("customers_owned_music_linus christmas all about")
+            lightSpot (0, 0,0,0,0)
+            animation_light_show("silent night short")
+            
+            lightSpot (4, 0,0,0,255)
+            play_audio_0("/sd/christmas_show/santa.wav")
+            lightSpot (4, 0,0,0,0)
+              
+            return
         if time_stamp_mode:
             animation_timestamp(current_option_selected)
         else:
             animation_light_show(current_option_selected)
-    except:
+    except Exception as e:
+        print(f"An exception occurred: {e}")
         no_user_soundtrack_found()
         config["option_selected"] = "random built in"
         return
@@ -771,14 +901,15 @@ def animation_light_show(file_name):
     if file_name == "away in a manger":
         rand_index_low = 3
         rand_index_high = 3
-
+        
     customers_file = "customers_owned_music_" in file_name
     
     if customers_file:
         file_name=file_name.replace("customers_owned_music_","")
         try:
             flash_time_dictionary = files.read_json_file("/sd/customers_owned_music/" + file_name + ".json")
-        except:
+        except Exception as e:
+            print(f"An exception occurred: {e}")
             play_audio_0("/sd/mvc/no_timestamp_file_found.wav")
             while True:
                 left_switch.update()
@@ -805,7 +936,7 @@ def animation_light_show(file_name):
     startTime = time.monotonic()
     my_index = 0
     
-    multicolor(.01)
+    multicolor(.1)
     while True:
         previous_index=0
         timeElasped = time.monotonic()-startTime
@@ -817,21 +948,35 @@ def animation_light_show(file_name):
         if timeElasped > flashTime[flashTimeIndex] - 0.25:
             print("time elasped: " + str(timeElasped) + " Timestamp: " + str(flashTime[flashTimeIndex]))
             flashTimeIndex += 1
-            my_index = random.randint(rand_index_low, rand_index_high)
-            while my_index == previous_index:
-                print("regenerating random selection")
+            if file_name == "linus christmas all about":
+                if flashTime[flashTimeIndex-1] == 18.8691:
+                    setAllLights(25,25,25,25)
+                if flashTime[flashTimeIndex-1] == 29.7422:
+                    setAllLights(50,50,50,50)
+                if flashTime[flashTimeIndex-1] == 36.5254:
+                    setAllLights(75,75,75,75)
+                if flashTime[flashTimeIndex-1] == 46.2461:
+                    setAllLights(125,125,125,125)
+                if flashTime[flashTimeIndex-1] == 55.1338:
+                    setAllLights(255,255,255,255)
+                if flashTime[flashTimeIndex-1] == 69.3906:
+                    setAllLights(0,0,255,255)             
+            else:
                 my_index = random.randint(rand_index_low, rand_index_high)
-            if my_index == 1:
-                rainbow(.005,duration)
-            elif my_index == 2:
-                multicolor(.01)
-                sleepAndUpdateVolume(duration)
-            elif my_index == 3:
-                fire(duration)
-            elif my_index == 4:   
-                christmas_fire(duration)
-            elif my_index == 5:
-                multicolor(duration)
+                while my_index == previous_index:
+                    print("regenerating random selection")
+                    my_index = random.randint(rand_index_low, rand_index_high)
+                if my_index == 1:
+                    rainbow(.005,duration)
+                elif my_index == 2:
+                    multicolor(.01)
+                    sleepAndUpdateVolume(duration)
+                elif my_index == 3:
+                    fire(duration)
+                elif my_index == 4:   
+                    christmas_fire(duration)
+                elif my_index == 5:
+                    multicolor(duration)
             previous_index = my_index
         if flashTimeLen == flashTimeIndex: flashTimeIndex = 0
         left_switch.update()
@@ -839,8 +984,10 @@ def animation_light_show(file_name):
         if left_switch.fell and config["can_cancel"]:
             mixer.voice[0].stop()
         if not mixer.voice[0].playing:
-            ledStrip.fill((0, 0, 0))
-            ledStrip.show()
+            ledStripRGB.fill((0, 0, 0))
+            ledStripRGBW.fill((0, 0, 0, 0))
+            ledStripRGB.show()
+            ledStripRGBW.show()
             break
         sleepAndUpdateVolume(.001)
          
@@ -850,7 +997,7 @@ def animation_timestamp(file_name):
  
     customers_file = "customers_owned_music_" in file_name
     
-    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp_mode.json")
+    my_time_stamps = files.read_json_file("/sd/time_stamp_defaults/timestamp mode.json")
     my_time_stamps["flashTime"]=[]
     
     file_name = file_name.replace("customers_owned_music_","")
@@ -862,7 +1009,7 @@ def animation_timestamp(file_name):
     mixer.voice[0].play( wave0, loop=False )
     
     startTime = time.monotonic()
-    sleepAndUpdateVolume(.1)
+    sleepAndUpdateVolume(.01)
 
     while True:
         time_elasped = time.monotonic()-startTime
@@ -871,8 +1018,8 @@ def animation_timestamp(file_name):
             my_time_stamps["flashTime"].append(time_elasped) 
             print(time_elasped)
         if not mixer.voice[0].playing:
-            ledStrip.fill((0, 0, 0))
-            ledStrip.show()
+            ledStripRGB.fill((0, 0, 0))
+            ledStripRGB.show()
             my_time_stamps["flashTime"].append(5000)
             if customers_file:
                 files.write_json_file("/sd/customers_owned_music/" + file_name + ".json",my_time_stamps)
@@ -889,37 +1036,39 @@ def animation_timestamp(file_name):
 # Led color effects
         
 def change_color():
-    ledStrip.brightness = 1.0
+    ledStripRGB.brightness = 1.0
     color_r = random.randint(0, 255)
     color_g = random.randint(0, 255)
     color_b = random.randint(0, 255)     
-    ledStrip.fill((color_r, color_g, color_b))
-    ledStrip.show()
+    ledStripRGB.fill((color_r, color_g, color_b))
+    ledStripRGB.show()
 
 def rainbow(speed,duration):
+    randSpot(0,0,0,255)
     startTime = time.monotonic()
     for j in range(0,255,1):
-        for i in range(num_pixels):
-            pixel_index = (i * 256 // num_pixels) + j
-            ledStrip[i] = colorwheel(pixel_index & 255)
-        ledStrip.show()
+        for i in range(num_pixels_rgb):
+            pixel_index = (i * 256 // num_pixels_rgb) + j
+            ledStripRGB[i] = colorwheel(pixel_index & 255)
+        ledStripRGB.show()
         sleepAndUpdateVolume(speed)
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
     for j in reversed(range(0,255,1)):
-        for i in range(num_pixels):
-            pixel_index = (i * 256 // num_pixels) + j
-            ledStrip[i] = colorwheel(pixel_index & 255)
-        ledStrip.show()
+        for i in range(num_pixels_rgb):
+            pixel_index = (i * 256 // num_pixels_rgb) + j
+            ledStripRGB[i] = colorwheel(pixel_index & 255)
+        ledStripRGB.show()
         sleepAndUpdateVolume(speed)
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
 
 def fire(duration):
+    randSpot(0,0,0,255)
     startTime = time.monotonic()
-    ledStrip.brightness = 1.0
+    ledStripRGB.brightness = 1.0
 
     fire_indexes = []
     
@@ -931,13 +1080,13 @@ def fire(duration):
     star_indexes.extend(tree_stars)
     
     for i in star_indexes:
-        ledStrip[i] = (255,255,255)
+        ledStripRGB[i] = (255,255,255)
         
     branches_indexes = []
     branches_indexes.extend((tree_branches))
     
     for i in branches_indexes:
-        ledStrip[i] = (50,50,50)
+        ledStripRGB[i] = (50,50,50)
     
     r = random.randint(0,255)
     g = random.randint(0,255)
@@ -947,26 +1096,27 @@ def fire(duration):
 
     #Flicker, based on our initial RGB values
     while True:
-        #for i in range (0, num_pixels):
+        #for i in range (0, num_pixels_rgb):
         for i in fire_indexes:
             flicker = random.randint(0,110)
             r1 = bounds(r-flicker, 0, 255)
             g1 = bounds(g-flicker, 0, 255)
             b1 = bounds(b-flicker, 0, 255)
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
+            ledStripRGB[i] = (r1,g1,b1)
+        ledStripRGB.show()
         sleepAndUpdateVolume(random.uniform(0.05,0.1))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
                
 def christmas_fire(duration):
+    randSpot(0,0,0,255)
     startTime=time.monotonic()
-    ledStrip.brightness = 1.0
+    ledStripRGB.brightness = 1.0
 
     #Flicker, based on our initial RGB values
     while True:
-        for i in range (0, num_pixels):
+        for i in range (0, num_pixels_rgb):
             red = random.randint(0,255)
             green = random.randint(0,255)
             blue = random.randint(0,255)
@@ -983,8 +1133,8 @@ def christmas_fire(duration):
                 r1=0
                 g1=0
                 b1=blue
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
+            ledStripRGB[i] = (r1,g1,b1)
+            ledStripRGB.show()
         sleepAndUpdateVolume(random.uniform(.2,0.3))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
@@ -996,12 +1146,13 @@ def bounds(my_color, lower, upper):
     return my_color
 
 def multicolor(duration):
+    randSpot(0,0,0,255)
     startTime=time.monotonic()
-    ledStrip.brightness = 1.0
+    ledStripRGB.brightness = 1.0
 
     #Flicker, based on our initial RGB values
     while True:
-        for i in range (0, num_pixels):
+        for i in range (0, num_pixels_rgb):
             red = random.randint(128,255)
             green = random.randint(128,255)
             blue = random.randint(128,255)
@@ -1018,12 +1169,33 @@ def multicolor(duration):
                 r1=0
                 g1=0
                 b1=blue
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
+            ledStripRGB[i] = (r1,g1,b1)
+        ledStripRGB.show()
         sleepAndUpdateVolume(random.uniform(.2,0.3))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
+        
+def randSpot (r,g,b,w):
+    spotnum=random.randint(0, num_pixels_rgbw-1)
+    lightSpotReset(spotnum, r,g,b,w)
+
+def lightSpotReset (spotnum, r,g,b,w):
+    ledStripRGBW.fill((0,0,0,0))
+    lightSpot(spotnum, r,g,b,w)
+    
+def lightSpot (spotnum, r,g,b,w):
+    ledStripRGBW[spotnum]=(r,g,b,w)
+    ledStripRGBW.show()
+    ledStripRGBW.show()
+    
+def setAllLights (r,g,b,w):
+    ledStripRGB.fill((r,g,b))
+    ledStripRGB.show()
+    lightSpot (1,0,0,0,w)
+    lightSpot (2,0,0,0,w)
+    lightSpot (3,0,0,0,w)
+    lightSpot (4,0,0,0,w)
  
 ################################################################################
 # State Machine
@@ -1365,86 +1537,86 @@ class WebOptions(State):
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')   
 
-class LightStringSetupMenu(State):
+# class LightStringSetupMenu(State):
 
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
-        self.lightIndex = 0
-        self.selectedLightIndex = 0
+#     def __init__(self):
+#         self.menuIndex = 0
+#         self.selectedMenuIndex = 0
+#         self.lightIndex = 0
+#         self.selectedLightIndex = 0
 
-    @property
-    def name(self):
-        return 'light_string_setup_menu'
+#     @property
+#     def name(self):
+#         return 'light_string_setup_menu'
 
-    def enter(self, machine):
-        files.log_item('Set Web Options')
-        play_audio_0("/sd/mvc/light_string_setup_menu.wav")
-        left_right_mouse_button()
-        State.enter(self, machine)
+#     def enter(self, machine):
+#         files.log_item('Set Web Options')
+#         play_audio_0("/sd/mvc/light_string_setup_menu.wav")
+#         left_right_mouse_button()
+#         State.enter(self, machine)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+#     def exit(self, machine):
+#         State.exit(self, machine)
 
-    def update(self, machine):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
-            play_audio_0("/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
-            self.selectedMenuIndex = self.menuIndex
-            self.menuIndex +=1
-            if self.menuIndex > len(light_string_menu)-1:
-                self.menuIndex = 0
-        if right_switch.fell:
-            selected_menu_item = light_string_menu[self.selectedMenuIndex]
-            if selected_menu_item == "hear_light_setup_instructions":
-                play_audio_0("/sd/mvc/park_string_instructions.wav")
-            elif selected_menu_item == "reset_lights_defaults":
-                reset_lights_to_defaults()
-                play_audio_0("/sd/mvc/lights_reset_to.wav")
-                speak_light_string(False)
-            elif selected_menu_item == "hear_current_light_settings": 
-                speak_light_string(True)
-            elif selected_menu_item == "clear_light_string":
-                config["light_string"] = ""
-                play_audio_0("/sd/mvc/lights_cleared.wav") 
-            elif selected_menu_item == "add_lights":
-                play_audio_0("/sd/mvc/add_light_menu.wav")
-                adding = True
-                while adding:
-                    switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
-                    if switch_state == "left":
-                        self.lightIndex -=1
-                        if self.lightIndex < 0:
-                            self.lightIndex = len(light_options)-1
-                        self.selectedLightIndex = self.lightIndex   
-                        play_audio_0("/sd/mvc/" + light_options[self.lightIndex] + ".wav") 
-                    elif switch_state == "right":
-                        self.menuIndex +=1
-                        if self.menuIndex > len(light_options)-1:
-                            self.menuIndex = 0
-                        self.selectedMenuIndex = self.menuIndex
-                        play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
-                    elif switch_state == "right_held":
-                        if config["light_string"] == "":
-                            config["light_string"] = light_options[self.selectedMenuIndex]
-                        else:
-                            config["light_string"] = config["light_string"] + "," + light_options[self.selectedMenuIndex]
-                        play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
-                        play_audio_0("/sd/mvc/added.wav")    
-                    elif switch_state == "left_held":
-                        files.write_json_file("/sd/config_christmas_park.json",config)   
-                        updateLightString()
-                        play_audio_0("/sd/mvc/all_changes_complete.wav")
-                        adding = False
-                        machine.go_to_state('base_state')  
-                    sleepAndUpdateVolume(0.1)
-                    pass
-            else:
-                files.write_json_file("/sd/config_christmas_park.json",config)
-                play_audio_0("/sd/mvc/all_changes_complete.wav")
-                updateLightString()
-                machine.go_to_state('base_state')  
+#     def update(self, machine):
+#         left_switch.update()
+#         right_switch.update()
+#         if left_switch.fell:
+#             play_audio_0("/sd/mvc/" + light_string_menu[self.menuIndex] + ".wav")
+#             self.selectedMenuIndex = self.menuIndex
+#             self.menuIndex +=1
+#             if self.menuIndex > len(light_string_menu)-1:
+#                 self.menuIndex = 0
+#         if right_switch.fell:
+#             selected_menu_item = light_string_menu[self.selectedMenuIndex]
+#             if selected_menu_item == "hear_light_setup_instructions":
+#                 play_audio_0("/sd/mvc/park_string_instructions.wav")
+#             elif selected_menu_item == "reset_lights_defaults":
+#                 reset_lights_to_defaults()
+#                 play_audio_0("/sd/mvc/lights_reset_to.wav")
+#                 speak_light_string(False)
+#             elif selected_menu_item == "hear_current_light_settings": 
+#                 speak_light_string(True)
+#             elif selected_menu_item == "clear_light_string":
+#                 config["light_string"] = ""
+#                 play_audio_0("/sd/mvc/lights_cleared.wav") 
+#             elif selected_menu_item == "add_lights":
+#                 play_audio_0("/sd/mvc/add_light_menu.wav")
+#                 adding = True
+#                 while adding:
+#                     switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+#                     if switch_state == "left":
+#                         self.lightIndex -=1
+#                         if self.lightIndex < 0:
+#                             self.lightIndex = len(light_options)-1
+#                         self.selectedLightIndex = self.lightIndex   
+#                         play_audio_0("/sd/mvc/" + light_options[self.lightIndex] + ".wav") 
+#                     elif switch_state == "right":
+#                         self.menuIndex +=1
+#                         if self.menuIndex > len(light_options)-1:
+#                             self.menuIndex = 0
+#                         self.selectedMenuIndex = self.menuIndex
+#                         play_audio_0("/sd/mvc/" + light_options[self.menuIndex] + ".wav") 
+#                     elif switch_state == "right_held":
+#                         if config["light_string"] == "":
+#                             config["light_string"] = light_options[self.selectedMenuIndex]
+#                         else:
+#                             config["light_string"] = config["light_string"] + "," + light_options[self.selectedMenuIndex]
+#                         play_audio_0("/sd/mvc/" + light_options[self.selectedMenuIndex] + ".wav")
+#                         play_audio_0("/sd/mvc/added.wav")    
+#                     elif switch_state == "left_held":
+#                         files.write_json_file("/sd/config_christmas_park.json",config)   
+#                         updateLightString()
+#                         play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                         adding = False
+#                         machine.go_to_state('base_state')  
+#                     sleepAndUpdateVolume(0.1)
+#                     pass
+#             else:
+#                 files.write_json_file("/sd/config_christmas_park.json",config)
+#                 play_audio_0("/sd/mvc/all_changes_complete.wav")
+#                 updateLightString()
+#                 machine.go_to_state('base_state')  
 
 ###############################################################################
 # Create the state machine
@@ -1456,7 +1628,7 @@ state_machine.add_state(ChooseSounds())
 state_machine.add_state(AddSoundsAnimate())
 state_machine.add_state(VolumeSettings())
 state_machine.add_state(WebOptions())
-state_machine.add_state(LightStringSetupMenu())
+# state_machine.add_state(LightStringSetupMenu())
 
 audio_enable.value = True
 
@@ -1476,6 +1648,7 @@ if (serve_webpage):
 state_machine.go_to_state('base_state')   
 files.log_item("animator has started...")
 garbage_collect("animations started.")
+
 
 while True:
     state_machine.update()
