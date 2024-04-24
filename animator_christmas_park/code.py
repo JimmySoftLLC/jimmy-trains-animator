@@ -1378,7 +1378,7 @@ class LightStringSetupMenu(State):
         return 'light_string_setup_menu'
 
     def enter(self, machine):
-        files.log_item('Set Web Options')
+        files.log_item('Light string menu')
         play_audio_0("/sd/mvc/light_string_setup_menu.wav")
         left_right_mouse_button()
         State.enter(self, machine)
