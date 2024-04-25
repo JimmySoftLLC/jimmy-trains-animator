@@ -899,22 +899,31 @@ def set_hdw(cmd,dur):
                     if seg[1] == "W":
                         wait_snd()
             if seg[0] == 'L':  # lights
-                px = int(seg[1])+int(seg[2])
-                ind = int(seg[3])-1
+                mod = int(seg[1])+int(seg[2])
+                ind = int(seg[4])-1
                 if ind == 0:
                     ind = 1
                 elif ind == 1:
                     ind = 0
+                elif ind == 3:
+                    ind = 4
+                elif ind == 4:
+                    ind = 3
                 v = int(seg[4:])
-                if px == 0:
+                if mod == 0:
                     led.fill((v, v, v))
                 else:
-                    cur = list(led[px-1])
-                    cur[ind] = v
-                    if seg[3] == "0":
-                        led[px-1]=(v,v,v)
+                    if seg[4] == "0":
+                        led[mod-1]=(v,v,v)
+                        led[mod]=(v,v,v)
+                    elif ind < 3:
+                        cur = list(led[mod-1])
+                        cur[ind] = v
+                        led[mod-1]=(cur[0],cur[1],cur[2])
                     else:
-                        led[px-1]=(cur[0],cur[1],cur[2])
+                        cur = list(led[mod])
+                        cur[ind-3] = v
+                        led[mod]=(cur[0],cur[1],cur[2])
                 led.show()
             if seg[0] == 'B':  # brightness
                 br = int(seg[1:])
@@ -934,6 +943,8 @@ def set_hdw(cmd,dur):
             if seg[0] == 'R':
                 v = float(seg[1:])
                 rbow(v,dur)
+            if seg[0] == 'C':
+                print("not implemented")
     except Exception as e:
         files.log_item(e)
 
@@ -1340,3 +1351,4 @@ while True:
             files.log_item(e)
             continue
         
+

@@ -280,12 +280,13 @@
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <div>LNNIXXX = Lights NN (00 All, 01-99) I index (0 All, 1 -3) XXX 0 to 255</div>
+                <div>LNN-IXXX = Lights NN (00 All, 01 to 58) I index (0 All, 1 to 6) XXX 0 to 255</div>
                 <div>BXXX = Brightness XXX 0 to 100</div>
                 <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
                 <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (S
                     sound tracks, M my sound tracks, P playlist) XXX (file name)</div>
                 <div>RXXX = Rainbow, XXX cycle speed in seconds</div>
+                <div>C-NN-...-XXX = Cycle, NN one or many commands seperated by dashes, XXX interval in seconds between commands</div>
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
                             <thead>
@@ -1581,3 +1582,4 @@
 </script>
 
 </html>
+
