@@ -3,7 +3,6 @@ from adafruit_debouncer import Debouncer
 from rainbowio import colorwheel
 import neopixel
 from analogio import AnalogIn
-import asyncio
 from adafruit_motor import servo
 import pwmio
 import microcontroller
@@ -121,25 +120,6 @@ except:
 
 aud_en.value = False
 
-# Setup the servos
-s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
-s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50) #bandstand 10 city lights 15
-s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
-
-s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
-s_5 = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
-s_6 = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
-
-s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
-s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
-s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
-
-s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
-s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
-s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
-
-s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
-
 # Setup time
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
@@ -151,7 +131,7 @@ cfg = files.read_json_file("/sd/cfg.json")
 
 def getAll():
     global snd_opt, plylst_opt, cust_snd_opt, all_snd_opt, menu_snd_opt
-    snd_opt = files.return_directory("", "/sd/bltin", ".wav")
+    snd_opt = files.return_directory("", "/sd/sndtrk", ".wav")
 
     plylst_opt = files.return_directory("plylst_", "/sd/plylst", ".json")
 
@@ -197,16 +177,22 @@ gc_col("config setup")
 
 ################################################################################
 # Setup neo pixels
-
-num_px = 10
-
+num_px = 0
 led = neopixel.NeoPixel(board.GP15, num_px) #15 on demo 17 tiny 10 on large
-led.auto_write = False
-led.brightness = 1.0
-led.fill((50, 50, 50))
-led.show()
 
-gc_col("Neopixels setup")
+def neo_setup():
+    global led, num_px
+    num_px = int(cfg["mod_num"])*2
+    led.deinit()
+    led = neopixel.NeoPixel(board.GP15, num_px) #15 on demo 17 tiny 10 on large
+    led.auto_write = False
+    led.brightness = 1.0
+    led.fill((50, 50, 50))
+    led.show()
+
+    gc_col("Neopixels setup")
+
+neo_setup()
 
 ################################################################################
 # Setup wifi and web server
@@ -290,7 +276,7 @@ if (web):
                     time_stamps = files.read_json_file(
                         "/sd/t_s_def/" + time_stamp_file + ".json")
                     files.write_json_file(
-                        "/sd/bltin/"+time_stamp_file+".json", time_stamps)
+                        "/sd/sndtrk/"+time_stamp_file+".json", time_stamps)
                 play_a_0("/sd/mvc/all_changes_complete.wav")
             elif rq_d["an"] == "reset_to_defaults":
                 cmd_snt = "reset_to_defaults"
@@ -353,6 +339,20 @@ if (web):
             mdns.hostname = cfg["HOST_NAME"]
             spk_web()
             return Response(request, cfg["HOST_NAME"])
+        
+        @server.route("/set-mod-num", [POST])
+        def btn(request: Request):
+            global cfg
+            rq_d = request.json()
+            cfg["mod_num"] = rq_d["an"]
+            files.write_json_file("/sd/cfg.json", cfg)
+            neo_setup()
+            play_a_0("/sd/mvc/all_changes_complete.wav")
+            return Response(request, cfg["mod_num"])
+        
+        @server.route("/get-mod-num", [POST])
+        def btn(request: Request):
+            return Response(request, cfg["mod_num"])
 
         @server.route("/get-host-name", [POST])
         def btn(request: Request):
@@ -420,8 +420,8 @@ if (web):
                     f_n = "/sd/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
             else:
-                if (f_exists("/sd/bltin/" + snd_f + ".json") == True):
-                    f_n = "/sd/bltin/" + snd_f + ".json"
+                if (f_exists("/sd/sndtrk/" + snd_f + ".json") == True):
+                    f_n = "/sd/sndtrk/" + snd_f + ".json"
                     return FileResponse(request, f_n, "/")
                 else:
                     f_n = "/sd/t_s_def/timestamp mode.json"
@@ -467,7 +467,7 @@ if (web):
                         f_n = "/sd/customers_owned_music/" + \
                             snd_f + ".json" 
                     else:
-                        f_n = "/sd/bltin/" + \
+                        f_n = "/sd/sndtrk/" + \
                             rq_d[3] + ".json"
                     print("saving to: " + f_n)
                     files.write_json_file(f_n, data)
@@ -519,6 +519,7 @@ def rst_def():
     cfg["HOST_NAME"] = "animator-bandstand"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
+    cfg["mod_num"] = 6
 
 ################################################################################
 # Dialog and sound play methods
@@ -660,35 +661,6 @@ def spk_web():
 
 p_arr = [90, 90, 90, 90, 90, 90]
 
-
-async def cyc_servo(n, s, p_up, p_dwn):
-    global p_arr
-    while mix.voice[0].playing:
-        n_p = p_up
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
-        n_p = p_dwn
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
-
-
-def m_servo(n, p):
-    global p_arr
-    if p < 0:
-        p = 0
-    if p > 180:
-        p = 180
-    s_arr[n].angle = p
-    p_arr[n][n] = p
-
 ################################################################################
 # animations
 
@@ -777,9 +749,9 @@ def an_light(f_nm):
         f_nm = f_nm.replace("plylst_", "")
         flsh_t = files.read_json_file("/sd/plylst/" + f_nm + ".json")
     else:
-        if (f_exists("/sd/bltin/" + f_nm + ".json") == True):
+        if (f_exists("/sd/sndtrk/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
-                "/sd/bltin/" + f_nm + ".json")
+                "/sd/sndtrk/" + f_nm + ".json")
 
     flsh_i = 0
     
@@ -799,7 +771,7 @@ def an_light(f_nm):
                 open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
         else:
             w0 = audiocore.WaveFile(
-                open("/sd/bltin/" + f_nm + ".wav", "rb"))
+                open("/sd/sndtrk/" + f_nm + ".wav", "rb"))
         mix.voice[0].play(w0, loop=False)
 
     srt_t = time.monotonic()
@@ -860,7 +832,7 @@ def an_ts(f_nm):
             open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
     else:
         w0 = audiocore.WaveFile(
-            open("/sd/bltin/" + f_nm + ".wav", "rb"))
+            open("/sd/sndtrk/" + f_nm + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
@@ -875,13 +847,13 @@ def an_ts(f_nm):
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            t_s.append(1)
+            t_s.append(str(t_elsp+1) + "|")
             if cust_f:
                 files.write_json_file(
                     "/sd/customers_owned_music/" + f_nm + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/sd/bltin/" + f_nm + ".json", t_s)
+                    "/sd/sndtrk/" + f_nm + ".json", t_s)
             break
 
     ts_mode = False
@@ -911,10 +883,10 @@ def set_hdw(cmd,dur):
                     stp_snd()
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stp_snd()
-                    if seg[2] == "B":
-                        w0 = audiocore.WaveFile(open("/sd/bltin/" + seg[3:] + ".wav", "rb"))
+                    if seg[2] == "S":
+                        w0 = audiocore.WaveFile(open("/sd/sndtrk/" + seg[3:] + ".wav", "rb"))
                         f_nm = seg[3:]
-                    elif seg[2] == "C":
+                    elif seg[2] == "M":
                         w0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + seg[3:] + ".wav", "rb"))
                         f_nm = "customers_owned_music_" + seg[3:]
                     elif seg[2] == "P":
@@ -944,14 +916,6 @@ def set_hdw(cmd,dur):
                     else:
                         led[px-1]=(cur[0],cur[1],cur[2])
                 led.show()
-            if seg[0] == 'S':  # servos
-                num = int(seg[1])
-                v = int(seg[2:])
-                if num == 0:
-                    for i in range(6):
-                        s_arr[i].angle = v
-                else:
-                    s_arr[num].angle = int(v)
             if seg[0] == 'B':  # brightness
                 br = int(seg[1:])
                 led.brightness = float(br/100)
@@ -1122,7 +1086,7 @@ class Main(Ste):
                 mch.go_to('base_state')
 
 
-class Bltin(Ste):
+class sndtrk(Ste):
 
     def __init__(self):
         self.i = 0
@@ -1341,7 +1305,7 @@ class WebOpt(Ste):
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-st_mch.add(Bltin())
+st_mch.add(sndtrk())
 st_mch.add(AddSnds())
 st_mch.add(VolSet())
 st_mch.add(WebOpt())
@@ -1376,4 +1340,3 @@ while True:
             files.log_item(e)
             continue
         
-
