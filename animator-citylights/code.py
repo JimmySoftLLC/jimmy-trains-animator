@@ -130,25 +130,30 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 cfg = files.read_json_file("/sd/cfg.json")
 
 def getAll():
-    global snd_opt, plylst_opt, cust_snd_opt, all_snd_opt, menu_snd_opt
-    snd_opt = files.return_directory("", "/sd/sndtrk", ".wav")
+    global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
+    sndtrk_opt = files.return_directory("", "/sd/sndtrk", ".wav")    
+    print("Sound tracks: " + str(sndtrk_opt))
 
     plylst_opt = files.return_directory("plylst_", "/sd/plylst", ".json")
+    print("Sound tracks: " + str(plylst_opt))
 
-    cust_snd_opt = files.return_directory(
+    mysndtrk_opt = files.return_directory(
         "customers_owned_music_", "/sd/customers_owned_music", ".wav")
+    print("Sound tracks: " + str(mysndtrk_opt))
 
     all_snd_opt = []
-    all_snd_opt.extend(snd_opt)
     all_snd_opt.extend(plylst_opt)
-    all_snd_opt.extend(cust_snd_opt)
+    all_snd_opt.extend(sndtrk_opt)
+    all_snd_opt.extend(mysndtrk_opt)
 
     menu_snd_opt = []
-    menu_snd_opt.extend(snd_opt)
-    rnd_opt = ['random all', 'random built in', 'random my']
-    menu_snd_opt.extend(rnd_opt)
     menu_snd_opt.extend(plylst_opt)
-    menu_snd_opt.extend(cust_snd_opt)
+    rnd_opt = ['rnd plylst', 'rnd sndtrk', 'rnd mysndtrk', 'rnd all']
+    menu_snd_opt.extend(rnd_opt)
+    menu_snd_opt.extend(sndtrk_opt)
+    menu_snd_opt.extend(mysndtrk_opt)
+    
+    print("Sound tracks: " + str(menu_snd_opt))
 
 getAll()
 
@@ -379,19 +384,18 @@ if (web):
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
             sounds = []
-            sounds.extend(snd_opt)
+            sounds.extend(sndtrk_opt)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
         
         @server.route("/get-customers-sound-tracks", [POST])
         def btn(request: Request):
-            my_string = files.json_stringify(cust_snd_opt)
+            my_string = files.json_stringify(mysndtrk_opt)
             return Response(request, my_string)
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
             rq_d = request.json()
-            files.log_item(rq_d["an"])
             gc_col("Save Data.")
             set_hdw(rq_d["an"],3)
             return Response(request, "success")
@@ -405,7 +409,6 @@ if (web):
                 snd_f = snd_f.replace("plylst_", "")
                 if (f_exists("/sd/plylst/" + snd_f + ".json") == True):
                     f_n = "/sd/plylst/" + snd_f + ".json"
-                    files.log_item(f_n)
                     return FileResponse(request, f_n, "/")
                 else:
                     f_n = "/sd/t_s_def/timestamp mode.json"
@@ -414,7 +417,6 @@ if (web):
                 snd_f = snd_f.replace("customers_owned_music_", "")
                 if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
                     f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-                    files.log_item(f_n)
                     return FileResponse(request, f_n, "/")
                 else:
                     f_n = "/sd/t_s_def/timestamp mode.json"
@@ -461,7 +463,6 @@ if (web):
                         snd_f = rq_d[3].replace("plylst_", "")
                         f_n = "/sd/plylst/" + \
                             snd_f + ".json"
-                        files.log_item(f_n)
                     elif "customers" == an[0]:
                         snd_f = rq_d[3].replace("customers_owned_music_", "")
                         f_n = "/sd/customers_owned_music/" + \
@@ -469,7 +470,6 @@ if (web):
                     else:
                         f_n = "/sd/sndtrk/" + \
                             rq_d[3] + ".json"
-                    print("saving to: " + f_n)
                     files.write_json_file(f_n, data)
                     getAll()
                     data = []
@@ -516,8 +516,8 @@ gc_col("web server")
 def rst_def():
     global cfg
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-bandstand"
-    cfg["option_selected"] = "random all"
+    cfg["HOST_NAME"] = "animator-city-lights"
+    cfg["option_selected"] = "rnd plylst"
     cfg["volume"] = "20"
     cfg["mod_num"] = 6
 
@@ -630,9 +630,14 @@ def opt_sel():
     play_a_0("/sd/mvc/option_selected.wav")
 
 
-def spk_sng_num(song_number):
-    play_a_0("/sd/mvc/song.wav")
-    spk_str(song_number, False)
+def spk_sng_num(sn, fn):
+    if "plylst_" in fn:
+        play_a_0("/sd/mvc/playlist.wav")
+    elif "customers_owned_music_" in fn:
+        play_a_0("/sd/mvc/my_sound_track.wav")
+    else:
+        play_a_0("/sd/mvc/sound_track.wav")
+    spk_str(sn, False)
 
 
 def no_trk():
@@ -673,27 +678,37 @@ def an(f_nm):
     files.log_item("Filename: " + f_nm)
     cur_opt = f_nm
     try:
-        if f_nm == "random built in":
-            h_i = len(snd_opt) - 1
-            cur_opt = snd_opt[random.randint(
+        if f_nm == "rnd sndtrk":
+            h_i = len(sndtrk_opt) - 1
+            cur_opt = sndtrk_opt[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(snd_opt) > 1:
-                cur_opt = snd_opt[random.randint(
+            while lst_opt == cur_opt and len(sndtrk_opt) > 1:
+                cur_opt = sndtrk_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             files.log_item("Random sound option: " + f_nm)
             files.log_item("Sound file: " + cur_opt)
-        elif f_nm == "random my":
-            h_i = len(cust_snd_opt) - 1
-            cur_opt = cust_snd_opt[random.randint(
+        elif f_nm == "rnd mysndtrk":
+            h_i = len(mysndtrk_opt) - 1
+            cur_opt = mysndtrk_opt[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(cust_snd_opt) > 1:
-                cur_opt = cust_snd_opt[random.randint(
+            while lst_opt == cur_opt and len(mysndtrk_opt) > 1:
+                cur_opt = mysndtrk_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             files.log_item("Random sound option: " + f_nm)
             files.log_item("Sound file: " + cur_opt)
-        elif f_nm == "random all":
+        elif f_nm == "rnd plylst":
+            h_i = len(plylst_opt) - 1
+            cur_opt = plylst_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(plylst_opt) > 1:
+                cur_opt = plylst_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            files.log_item("Random sound option: " + f_nm)
+            files.log_item("Sound file: " + cur_opt)  
+        elif f_nm == "rnd all":
             h_i = len(all_snd_opt) - 1
             cur_opt = all_snd_opt[random.randint(
                 0, h_i)]
@@ -711,7 +726,7 @@ def an(f_nm):
     except Exception as e:
         files.log_item(e)
         no_trk()
-        cfg["option_selected"] = "random built in"
+        cfg["option_selected"] = "rnd sndtrk"
         return
     gc_col("Animation complete.")
 
@@ -762,8 +777,6 @@ def an_light(f_nm):
     tm = float(ft1[0]) + 1
     flsh_t.append(str(tm) + "|E")
     flsh_t.append(str(tm + 1) + "|E")
-    
-    files.log_item(flsh_t)
 
     if not plylst_f:
         if cust_f:
@@ -867,7 +880,6 @@ def an_ts(f_nm):
 br = 0
 
 def set_hdw(cmd,dur):
-    print("hardware dur: " + str(dur))
     global sp, br
     # Split the input string into segments
     segs = cmd.split(",")
@@ -1125,12 +1137,13 @@ class sndtrk(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
+                print(str(menu_snd_opt[self.i]))
                 try:
                     w0 = audiocore.WaveFile(open(
-                        "/sd/o_bltin/" + menu_snd_opt[self.i] + ".wav", "rb"))
+                        "/sd/snd_opt/" + menu_snd_opt[self.i] + ".wav", "rb"))
                     mix.voice[0].play(w0, loop=False)
                 except:
-                    spk_sng_num(str(self.i+1))
+                    spk_sng_num(str(self.i+1), menu_snd_opt[self.i])
                 self.sel_i = self.i
                 self.i += 1
                 if self.i > len(menu_snd_opt)-1:
