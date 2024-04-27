@@ -912,6 +912,8 @@ def set_hdw(cmd,dur):
                         wait_snd()
             if seg[0] == 'L':  # lights
                 mod = (int(seg[1])*10+int(seg[2]))*2
+                mod_num = mod - 2
+                print (mod_num)
                 ind = int(seg[4])-1
                 if ind == 0:
                     ind = 1
@@ -921,28 +923,30 @@ def set_hdw(cmd,dur):
                     ind = 4
                 elif ind == 4:
                     ind = 3
-                v = int(seg[4:])
-                if seg[1] == "0" and seg[2] == 0:
+                v = int(seg[5:])
+                print (v)
+                if seg[1] == "0" and seg[2] == "0":
                     led.fill((v, v, v))
                 else:
                     if seg[4] == "0":
-                        led[mod-1]=(v,v,v)
-                        led[mod]=(v,v,v)
+                        led[mod_num]=(v,v,v)
+                        led[mod_num+1]=(v,v,v)
                     elif ind < 3:
-                        cur = list(led[mod-1])
+                        cur = list(led[mod_num])
                         cur[ind] = v
-                        led[mod-1]=(cur[0],cur[1],cur[2])
+                        led[mod_num]=(cur[0],cur[1],cur[2])
                     else:
-                        cur = list(led[mod])
+                        cur = list(led[mod_num+1])
                         cur[ind-3] = v
-                        led[mod]=(cur[0],cur[1],cur[2])
+                        led[mod_num+1]=(cur[0],cur[1],cur[2])
                 led.show()
             if seg[0] == 'B':  # brightness
                 br = int(seg[1:])
                 led.brightness = float(br/100)
                 led.show()
             if seg[0] == 'F':  # fade in or out
-                v = int(seg[1:])
+                v = int(seg[1])*100+int(seg[2])*10+int(seg[3])
+                s = float(seg[5:])
                 while not br == v:
                     if br < v:
                         br += 1
@@ -951,7 +955,7 @@ def set_hdw(cmd,dur):
                         br -= 1
                         led.brightness = float(br/100)
                     led.show()
-                    upd_vol(.01)
+                    upd_vol(s)
             if seg[0] == 'R':
                 v = float(seg[1:])
                 rbow(v,dur)
@@ -1364,5 +1368,3 @@ while True:
             files.log_item(e)
             continue
         
-
-
