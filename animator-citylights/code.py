@@ -52,7 +52,7 @@ gc_col("Imports gc, files")
 a_in = AnalogIn(board.A0)
 
 # setup pin for audio enable 22 on tiny 28 on large
-aud_en = digitalio.DigitalInOut(board.GP22)
+aud_en = digitalio.DigitalInOut(board.GP28)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
@@ -183,13 +183,13 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 num_px = 0
-led = neopixel.NeoPixel(board.GP15, num_px) #15 on demo 17 tiny 10 on large
+led = neopixel.NeoPixel(board.GP10, num_px) #15 on demo 17 tiny 10 on large
 
 def neo_setup():
     global led, num_px
     num_px = int(cfg["mod_num"])*2
     led.deinit()
-    led = neopixel.NeoPixel(board.GP15, num_px) #15 on demo 17 tiny 10 on large
+    led = neopixel.NeoPixel(board.GP10, num_px) #15 on demo 17 tiny 10 on large
     led.auto_write = False
     led.brightness = 1.0
     led.fill((50, 50, 50))
@@ -911,7 +911,7 @@ def set_hdw(cmd,dur):
                     if seg[1] == "W":
                         wait_snd()
             if seg[0] == 'L':  # lights
-                mod = int(seg[1])+int(seg[2])
+                mod = (int(seg[1])*10+int(seg[2]))*2
                 ind = int(seg[4])-1
                 if ind == 0:
                     ind = 1
@@ -922,7 +922,7 @@ def set_hdw(cmd,dur):
                 elif ind == 4:
                     ind = 3
                 v = int(seg[4:])
-                if mod == 0:
+                if seg[1] == "0" and seg[2] == 0:
                     led.fill((v, v, v))
                 else:
                     if seg[4] == "0":
@@ -1364,4 +1364,5 @@ while True:
             files.log_item(e)
             continue
         
+
 
