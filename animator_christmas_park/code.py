@@ -49,6 +49,7 @@ def get_voltage(pin, wait_for):
         pin_value = pin_value / 10
     return (pin.value) / 65536
 
+# setup pin for audio enable 22 on tiny 28 on large
 audio_enable = digitalio.DigitalInOut(board.GP28)
 audio_enable.direction = digitalio.Direction.OUTPUT
 audio_enable.value = False
@@ -195,6 +196,7 @@ cane_ends  = []
 
 num_pixels = 0
 
+#15 on demo 17 tiny 10 on large
 ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
 
 def return_tree_parts(part):
@@ -306,6 +308,7 @@ def updateLightString():
     print ("Number of pixels total: ", num_pixels)
     ledStrip.deinit()
     garbage_collect("Deinit ledStrip")
+    #15 on demo 17 tiny 10 on large
     ledStrip = neopixel.NeoPixel(board.GP10, num_pixels)
     ledStrip.auto_write = False
     ledStrip.brightness = 1.0
