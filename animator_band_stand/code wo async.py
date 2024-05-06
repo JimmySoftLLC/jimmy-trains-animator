@@ -3,7 +3,6 @@ from adafruit_debouncer import Debouncer
 from rainbowio import colorwheel
 import neopixel
 from analogio import AnalogIn
-import asyncio
 from adafruit_motor import servo
 import pwmio
 import microcontroller
@@ -192,7 +191,7 @@ gc_col("config setup")
 
 num_px = 2
 
-#15 on demo 17 tiny 10 on large
+# 15 on demo 17 tiny 10 on large
 led = neopixel.NeoPixel(board.GP15, num_px)
 
 gc_col("Neopixels setup")
@@ -590,33 +589,11 @@ def spk_web():
         spk_str(cfg["HOST_NAME"], True)
     play_a_0("/sd/mvc/in_your_browser.wav")
 
-################################################################################
-# async methods
-
-
-# Create an event loop
-loop = asyncio.get_event_loop()
-
-
-async def upd_vol_async(s):
-    if cfg["volume_pot"]:
-        v = a_in.value / 65536
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
-    else:
-        try:
-            v = int(cfg["volume"]) / 100
-        except:
-            v = .5
-        if v < 0 or v > 1:
-            v = .5
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
 
 p_arr = [90, 90, 90, 90, 90, 90]
 
 
-async def cyc_servo(n, s, p_up, p_dwn):
+def cyc_servo(n, s, p_up, p_dwn):
     global p_arr
     while mix.voice[0].playing:
         n_p = p_up
@@ -625,14 +602,14 @@ async def cyc_servo(n, s, p_up, p_dwn):
             sign = - 1
         for a in range(p_arr[n], n_p, sign):
             m_servo(a)
-            await asyncio.sleep(s)
+            time.sleep(s)
         n_p = p_dwn
         sign = 1
         if p_arr[n] > n_p:
             sign = - 1
         for a in range(p_arr[n], n_p, sign):
             m_servo(a)
-            await asyncio.sleep(s)
+            time.sleep(s)
 
 
 def m_servo(n, p):
@@ -827,11 +804,6 @@ br = 0
 
 
 def set_hdw(input_string):
-    loop.create_task(set_hdw_async(input_string))
-    loop.run_forever()
-
-
-async def set_hdw_async(input_string):
     global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
@@ -869,7 +841,7 @@ async def set_hdw_async(input_string):
                 else:
                     br -= 1
                     led.brightness = float(br/100)
-                upd_vol_async(.01)
+                upd_vol(.01)
 
 ################################################################################
 # State Machine
@@ -1250,3 +1222,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
