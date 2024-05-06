@@ -173,7 +173,7 @@ cfg_inst_m = files.read_json_file("/sd/mvc/install_menu.json")
 inst_m = cfg_inst_m["install_menu"]
 
 cont_run = False
-wait_but = False
+fig_web = False
 
 gc_col("config setup")
 
@@ -400,12 +400,14 @@ if (web):
 
         @server.route("/install-figure", [POST])
         def buttonpress(req: Request):
-            global cfg
+            global cfg, fig_web
             req_d = req.json()
             if req_d["action"] != "right":
                 cfg["figure"] = req_d["action"]
-                ins_f()
+                ins_f(False)
+                fig_web = True
             if req_d["action"] == "right":
+                fig_web = False
                 mov_g_s(cfg["guy_down_position"], 0.01, False)
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -989,8 +991,9 @@ def bnds(my_color, lower, upper):
         my_color = upper
     return my_color
 
-def ins_f():
-    global wait_but
+
+def ins_f(wait_but):
+    global fig_web
     mov_r_s(cfg["roof_open_position"], 0.01)
     mov_d_s(cfg["door_open_position"], 0.01)
     mov_g_s(cfg["guy_up_position"], 0.01, False)
@@ -998,7 +1001,7 @@ def ins_f():
     while wait_but:
         r_sw.update()
         if r_sw.fell:
-            wait_but = False
+            fig_web = False
             mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1088,7 +1091,7 @@ class BseSt(Ste):
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif sw == "left" or cont_run:
             an()
-        elif sw == "right" and not wait_but:
+        elif sw == "right" and not fig_web:
             mch.go_to('main_menu')
 
 
@@ -1424,7 +1427,7 @@ class InsFig(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg, wait_but
+        global cfg
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1437,8 +1440,7 @@ class InsFig(Ste):
         if r_sw.fell:
             sel_i = inst_m[self.sel_i]
             cfg["figure"] = sel_i
-            wait_but = True
-            ins_f()
+            ins_f(True)
             mch.go_to('base_state')
 
 
@@ -1483,5 +1485,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
 
