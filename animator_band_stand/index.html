@@ -279,13 +279,8 @@
             <div>LNXXX = Lights N (00 All, 1-6) XXX 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
-            <div>MALXXX = Play file XXX (file name)</div>
-            <div>E = End script<div>
             <div>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
-                <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
-                <button id="stopDataButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <button id="deleteDataButton" class="mui-btn mui-btn--primary" type="button">Delete Animations</button>
                 <table id="dataTable" class="mui-table">
                     <thead>
                         <tr>
@@ -676,45 +671,13 @@
     });
 
     // Table component
-    var deleteDataButton = document.getElementById("deleteDataButton");
     var saveDataButton = document.getElementById("saveDataButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
 
-    deleteDataButton.addEventListener("click", function () {
-        deleteData();
-    });
-
     saveDataButton.addEventListener("click", function () {
         saveData();
     });
-
-    function deleteData() {
-        deleteDataButton.setAttribute("disabled", "true");
-
-        var data = {
-            an: animationName.value,
-        };
-
-        fetch("/delete-file", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                console.log("file deleted")
-                deleteDataButton.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                console.log(error);
-                deleteDataButton.removeAttribute('disabled')
-            });
-    }
 
     function populateTable(data) {
         // Clear existing table rows
@@ -725,7 +688,6 @@
             var row = createDataRow(rowData);
             dataTableBody.appendChild(row);
         });
-        deleteDataButton.removeAttribute("disabled");
     }
 
     dataTableBody.addEventListener("click", function (event) {
