@@ -1079,7 +1079,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
+        global cont_run, fig_web
         sw = utilities.switch_state(
             l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
@@ -1093,6 +1093,12 @@ class BseSt(Ste):
             an()
         elif sw == "right" and not fig_web:
             mch.go_to('main_menu')
+        elif sw == "right" and fig_web:
+            fig_web = False
+            mov_g_s(cfg["guy_down_position"], 0.01, False)
+            files.write_json_file("/sd/cfg.json", cfg)
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
+            st_mch.go_to('base_state')
 
 
 class Main(Ste):
@@ -1427,7 +1433,7 @@ class InsFig(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg
+        global cfg, fig_web
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
