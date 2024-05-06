@@ -52,7 +52,7 @@ gc_col("Imports gc, files")
 # Setup pin for vol
 a_in = AnalogIn(board.A0)
 
-# setup pin for audio enable
+# setup pin for audio enable 22 on tiny 28 on large
 aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
@@ -192,7 +192,8 @@ gc_col("config setup")
 
 num_px = 2
 
-led = neopixel.NeoPixel(board.GP15, num_px)
+#15 on demo 17 tiny 10 on large
+led = neopixel.NeoPixel(board.GP17, num_px)
 
 gc_col("Neopixels setup")
 
@@ -855,7 +856,7 @@ async def set_hdw_async(input_string):
                 for i in range(6):
                     s_arr[i].angle = v
             else:
-                s_arr[num].angle = int(v)
+                s_arr[num-1].angle = int(v)
         if seg[0] == 'B':  # brightness
             br = int(seg[1:])
             led.brightness = float(br/100)
