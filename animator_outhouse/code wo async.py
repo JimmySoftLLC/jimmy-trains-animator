@@ -15,7 +15,6 @@ from adafruit_motor import servo
 import utilities
 import neopixel
 import random
-
 import gc
 import files
 import rtc
@@ -640,7 +639,6 @@ def mov_g_s(n_pos, speed, led):
                 led_B[i] = (0, 0, 255)
                 led_B.show()
                 lst_i = i
-                print(i)
         mov_g(guy_angle)
         time.sleep(speed)
     mov_g(n_pos)
@@ -692,7 +690,7 @@ def wrt_cal():
 
 
 def cal_pos(s, mov_typ):
-    if mov_typ == "door_close_position" or mov_typ == "door_open_position":
+    if mov_typ == "door_closed_position" or mov_typ == "door_open_position":
         min = 0
         max = 180
         sign = 1
@@ -734,7 +732,7 @@ def cal_pos(s, mov_typ):
 ################################################################################
 # animations
 
-def fr_asy(r_on, g_on, b_on):
+def fr_asy(r_on, g_on, b_on, spd):
     led_B.brightness = 1.0
 
     r = random.randint(150, 255)
@@ -742,17 +740,16 @@ def fr_asy(r_on, g_on, b_on):
     b = random.randint(150, 255)
 
     # Flicker, based on our initial RGB values
-    while mix.voice[0].playing:
-        for i in range(0, num_px):
-            flicker = random.randint(0, 175)
-            r1 = bnds(r-flicker, g-flicker, b-flicker)
-            g1 = bnds(r-flicker, g-flicker, b-flicker)
-            b1 = bnds(r-flicker, g-flicker, b-flicker)
-            led_B[i] = (r1 * r_on, g1 * g_on, b1 * b_on)
-        led_B.show()
-        time(random.uniform(0.05, 0.1))
-    led_F[0] = (0, 0, 0)
-    led_F.show()
+
+    for i in range(0, num_px):
+        flicker = random.randint(0, 175)
+        r1 = bnds(r-flicker, g-flicker, b-flicker)
+        g1 = bnds(r-flicker, g-flicker, b-flicker)
+        b1 = bnds(r-flicker, g-flicker, b-flicker)
+        led_B[i] = (r1 * r_on, g1 * g_on, b1 * b_on)
+    led_B.show()
+    exit_early()
+    time.sleep(spd)
 
 
 def alien_tlk():
@@ -777,66 +774,68 @@ def alien_tlk():
         led_B.show()
 
 
-def cyc_g_asy(spd, pos_up, pos_down):
+def cyc_g_asy(spd, pos_up, pos_down,r, g, b):
     global g_lst_p
     while mix.voice[0].playing:
+        exit_early()
         n_pos = pos_up
         sign = 1
         if g_lst_p > n_pos:
             sign = - 1
-        for ang in range(g_lst_p, n_pos, sign):
+        for ang in range(g_lst_p, n_pos, sign*3):
             mov_g(ang)
-            time.sleep(spd)
+            fr_asy(r, g, b, spd)
         n_pos = pos_down
         sign = 1
         if g_lst_p > n_pos:
             sign = - 1
-        for ang in range(g_lst_p, n_pos, sign):
+        for ang in range(g_lst_p, n_pos, sign*3):
             mov_g(ang)
-            time.sleep(spd)
+            fr_asy(r, g, b, spd)
 
 
-def cyc_r_asy(spd, pos_up, pos_down):
+def cyc_r_asy(spd, pos_up, pos_down,r, g, b):
     global r_lst_p
     while mix.voice[0].playing:
+        exit_early()
         n_pos = pos_up
         sign = 1
         if r_lst_p > n_pos:
             sign = - 1
         for ang in range(r_lst_p, n_pos, sign):
             mov_r(ang)
-            time.sleep(spd)
+            fr_asy(r, g, b, spd)
         n_pos = pos_down
         sign = 1
         if r_lst_p > n_pos:
             sign = - 1
         for ang in range(r_lst_p, n_pos, sign):
             mov_r(ang)
-            time.sleep(spd)
+            fr_asy(r, g, b, spd)
 
 
-def cyc_d_asy(spd, pos_up, pos_down):
+def cyc_d_asy(spd, pos_up, pos_down,r, g, b):
     global d_lst_p
     while mix.voice[0].playing:
+        exit_early()
         n_pos = pos_up
         sign = 1
         if d_lst_p > n_pos:
             sign = - 1
         for ang in range(d_lst_p, n_pos, sign):
             mov_d(ang)
-            time.sleep(spd)
+            fr_asy(r, g, b, spd)
         n_pos = pos_down
         sign = 1
         if d_lst_p > n_pos:
             sign = - 1
         for ang in range(d_lst_p, n_pos, sign):
             mov_d(ang)
-            time.sleep(spd)
+            fr_asy(r, g, b, spd)
 
 
 def rn_exp(r, g, b):
-    cyc_g_asy(0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"])
-    fr_asy(r, g, b)
+    cyc_g_asy(0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"],r, g, b)
     while mix.voice[0].playing:
         exit_early()
 
@@ -844,8 +843,7 @@ def rn_exp(r, g, b):
 def rn_music(r, g, b):
     led_F[0] = (0, 0, 0)
     led_F.show()
-    cyc_d_asy(0.01, cfg["door_closed_position"]-20, cfg["door_closed_position"])
-    fr_asy(r, g, b)
+    cyc_d_asy(0.01, cfg["door_closed_position"]-20, cfg["door_closed_position"],r, g, b)
     while mix.voice[0].playing:
         exit_early()
 
@@ -904,7 +902,8 @@ def sit_d():
         alien_tlk()
         mov_g_s(cfg["guy_down_position"], 0.05, False)
         d_snd(cfg["door_closed_position"])
-        rnd_snd("/sd/" + cfg["rating"], "alienstr", 0, 0, True)
+        rnd_snd("/sd/" + cfg["rating"], "alienstr", 0, 0, False)
+        alien_tlk()
     elif cfg["figure"] == "music":
         d_snd(cfg["door_open_position"])
         mov_g_s(cfg["guy_down_position"], 0.05, False)
@@ -918,7 +917,6 @@ def mtch():
     mov_g_s(cfg["guy_down_position"], 0.05, False)
     d_snd(cfg["door_closed_position"])
     led_F[0] = ((0, 0, 0))
-    print("rating is: " + cfg["rating"])
     rnd_snd("/sd/" + cfg["rating"], cfg["figure"], 0, 0, True)
     rnd_snd("/sd/match", "fail", .1, .1, True)
     rnd_snd("/sd/match", "fail", .1, .1, True)
@@ -928,7 +926,6 @@ def mtch():
 
 def rnd_snd(dir, p_typ, srt, end, wait):
     snds = get_snds(dir, p_typ)
-    print(snds)
     max_i = len(snds) - 1
     i = random.randint(0, max_i)
     ply_mtch(dir + "/" + snds[i] + ".wav", srt, end, wait)
@@ -957,7 +954,30 @@ def exp():
             led_B.show()
             time.sleep(.05)
         rn_exp(1, 0, 0)
-
+        
+def no_exp():
+    print("no explosion")
+    time.sleep(.1)
+    led_F[0] = ((255, 147, 41))
+    led_F.show()
+    if cfg["figure"] == "music":
+        rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
+        rn_music(0, 1, 1)
+    elif cfg["figure"] == "alien":
+        d_snd(cfg["door_open_position"])
+        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
+        alien_tlk()
+        led_F[0] = ((0, 0, 0))
+        led_F.show()
+        d_snd(cfg["door_closed_position"])
+    else:
+        d_snd(cfg["door_open_position"])
+        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, True)
+        led_F[0] = ((0, 0, 0))
+        led_F.show()
+        d_snd(cfg["door_closed_position"])
 
 def rst_an():
     print("reset")
@@ -978,9 +998,10 @@ def an():
         if rnd_prob(cfg["explosions_freq"]):
             exp()
         else:
-            print("no explosion")
+            no_exp()
         rst_an()
     except Exception as e:
+        print(e)
         no_user_track()
 
 
@@ -1393,7 +1414,6 @@ class Dlg_Opt(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
-                print(dlg_opt[s.i])
                 ply_a_0("/sd/mvc/" +
                         dlg_opt[s.i] + ".wav")
                 s.sel_i = s.i
