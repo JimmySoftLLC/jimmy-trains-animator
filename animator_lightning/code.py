@@ -322,31 +322,31 @@ if (web):
         # Setup routes
 
         @server.route("/")
-        def base(request: HTTPRequest):
+        def base(req: HTTPRequest):
             gc_col("Home page.")
-            return FileResponse(request, "index.html", "/")
+            return FileResponse(req, "index.html", "/")
 
         @server.route("/mui.min.css")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.css", "/")
+        def base(req: HTTPRequest):
+            return FileResponse(req, "mui.min.css", "/")
 
         @server.route("/mui.min.js")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.js", "/")
+        def base(req: HTTPRequest):
+            return FileResponse(req, "mui.min.js", "/")
 
         @server.route("/animation", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg, c_run, ts_mode
-            rq_d = request.json()
+            rq_d = req.json()
             cfg["option_selected"] = rq_d["an"]
             an(cfg["option_selected"])
             files.write_json_file("/sd/cfg.json", cfg)
-            return Response(request, "Animation " + cfg["option_selected"] + " started.")
+            return Response(req, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/defaults", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg
-            rq_d = request.json()
+            rq_d = req.json()
             if rq_d["an"] == "reset_animation_timing_to_defaults":
                 for ts_fn in t_s_j:
                     ts = files.read_json_file(
@@ -363,24 +363,24 @@ if (web):
                 rst_def_col()
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                my_string = files.json_stringify(
+                s = files.json_stringify(
                     {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
                 st_mch.go_to_state('base_state')
-                return Response(request, my_string)
+                return Response(req, s)
             elif rq_d["an"] == "reset_white_colors":
                 rst_wht_col()
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                my_string = files.json_stringify(
+                s = files.json_stringify(
                     {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
                 st_mch.go_to_state('base_state')
-                return Response(request, my_string)
-            return Response(request, "Utility: " + rq_d["an"])
+                return Response(req, s)
+            return Response(req, "Utility: " + rq_d["an"])
 
         @server.route("/mode", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg, c_run, ts_mode
-            rq_d = request.json()
+            rq_d = req.json()
             if rq_d["an"] == "cont_mode_on":
                 c_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
@@ -394,12 +394,12 @@ if (web):
             elif rq_d["an"] == "timestamp_mode_off":
                 ts_mode = False
                 ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-            return Response(request, "Utility: " + rq_d["an"])
+            return Response(req, "Utility: " + rq_d["an"])
 
         @server.route("/speaker", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg
-            rq_d = request.json()
+            rq_d = req.json()
             if rq_d["an"] == "speaker_test":
                 ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif rq_d["an"] == "volume_pot_off":
@@ -410,64 +410,64 @@ if (web):
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, "Utility: " +  rq_d["an"])
+            return Response(req, "Utility: " +  rq_d["an"])
 
         @server.route("/lights", [POST])
-        def btn(request: Request):
-            rq_d = request.json()
+        def btn(req: Request):
+            rq_d = req.json()
             v = rq_d["an"].split(",")
             led.fill((float(v[0]), float(v[1]), float(v[2])))
             led.show()
-            return Response(request, "OK")
+            return Response(req, "OK")
         
         @server.route("/bolt", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             led.fill((int(cfg["bolts"]["r"]), int(cfg["bolts"]["g"]), int(cfg["bolts"]["b"])))
             led.show()
-            return Response(request, "OK")
+            return Response(req, "OK")
         
         @server.route("/bar", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             led.fill((int(cfg["bars"]["r"]), int(cfg["bars"]["g"]), int(cfg["bars"]["b"])))
             led.show()
-            return Response(request, "OK")
+            return Response(req, "OK")
         
         @server.route("/bright", [POST])
-        def btn(request: Request):
-            rq_d = request.json()
+        def btn(req: Request):
+            rq_d = req.json()
             led.brightness = float(rq_d["an"])
             led.show()
-            return Response(request, "OK")
+            return Response(req, "OK")
 
         @server.route("/update-host-name", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg
-            rq_d = request.json()
+            rq_d = req.json()
             cfg["HOST_NAME"] = rq_d["text"]
             files.write_json_file("/sd/cfg.json", cfg)
             mdns_server.hostname = cfg["HOST_NAME"]
-            speak_webpage()
-            return Response(request, cfg["HOST_NAME"])
+            spk_web()
+            return Response(req, cfg["HOST_NAME"])
 
         @server.route("/get-host-name", [POST])
-        def btn(request: Request):
-            return Response(request, cfg["HOST_NAME"])
+        def btn(req: Request):
+            return Response(req, cfg["HOST_NAME"])
 
         @server.route("/update-volume", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg
-            rq_d = request.json()
+            rq_d = req.json()
             ch_vol(rq_d["action"])
-            return Response(request, cfg["volume"])
+            return Response(req, cfg["volume"])
 
         @server.route("/get-volume", [POST])
-        def btn(request: Request):
-            return Response(request, cfg["volume"])
+        def btn(req: Request):
+            return Response(req, cfg["volume"])
 
         @server.route("/update-light-string", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg
-            rq_d = request.json()
+            rq_d = req.json()
             if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
                 cfg["light_string"] = rq_d["text"]
                 print("action: " +
@@ -475,7 +475,7 @@ if (web):
                 files.write_json_file("/sd/cfg.json", cfg)
                 upd_l_str()
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                return Response(request, cfg["light_string"])
+                return Response(req, cfg["light_string"])
             if cfg["light_string"] == "":
                 cfg["light_string"] = rq_d["text"]
             else:
@@ -486,43 +486,43 @@ if (web):
             files.write_json_file("/sd/cfg.json", cfg)
             upd_l_str()
             ply_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, cfg["light_string"])
+            return Response(req, cfg["light_string"])
 
         @server.route("/get-light-string", [POST])
-        def btn(request: Request):
-            return Response(request, cfg["light_string"])
+        def btn(req: Request):
+            return Response(req, cfg["light_string"])
 
         @server.route("/get-customers-sound-tracks", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             s = files.json_stringify(c_s_o)
-            return Response(request, s)
+            return Response(req, s)
 
         @server.route("/get-built-in-sound-tracks", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             s = []
             s.extend(s_o)
             s = files.json_stringify(s)
-            return Response(request, s)
+            return Response(req, s)
 
         @server.route("/get-bar-colors", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             s = files.json_stringify(cfg["bars"])
-            return Response(request, s)
+            return Response(req, s)
 
         @server.route("/get-bolt-colors", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             s = files.json_stringify(cfg["bolts"])
-            return Response(request, s)
+            return Response(req, s)
 
         @server.route("/get-color-variation", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             s = files.json_stringify(cfg["v"])
-            return Response(request, s)
+            return Response(req, s)
 
         @server.route("/set-lights", [POST])
-        def btn(request: Request):
+        def btn(req: Request):
             global cfg
-            rq_d = request.json()
+            rq_d = req.json()
             if rq_d["item"] == "bars":
                 cfg["bars"] = {"r": rq_d["r"],
                                "g": rq_d["g"], "b": rq_d["b"]}
@@ -549,7 +549,7 @@ if (web):
                 cfg["v"] = {"r1": cfg["v"]["r1"], "g1": cfg["v"]["g1"], "b1": cfg["v"]
                                     ["b1"], "r2": rq_d["r"], "g2": rq_d["g"], "b2": rq_d["b"]}
             files.write_json_file("/sd/cfg.json", cfg)
-            return Response(request, "OK")
+            return Response(req, "OK")
 
     except Exception as e:
         web = False
@@ -593,11 +593,11 @@ def rst_def():
 ################################################################################
 # Dialog and sound play methods
 
-def upd_vol(seconds):
+def upd_vol(s):
     if cfg["volume_pot"]:
         v = a_in.value / 65536
         mix.voice[0].level = v
-        time.sleep(seconds)
+        time.sleep(s)
     else:
         try:
             v = int(cfg["volume"]) / 100
@@ -606,7 +606,7 @@ def upd_vol(seconds):
         if v < 0 or v > 1:
             v = .5
         mix.voice[0].level = v
-        time.sleep(seconds)
+        time.sleep(s)
 
 
 def ch_vol(action):
@@ -647,16 +647,16 @@ def ply_a_0(file_name):
     wave0 = audiocore.WaveFile(open(file_name, "rb"))
     mix.voice[0].play(wave0, loop=False)
     while mix.voice[0].playing:
-        shortCircuitDialog()
+        exit_early()
 
 
-def stop_audio_0():
+def stp_a_0():
     mix.voice[0].stop()
     while mix.voice[0].playing:
         pass
 
 
-def shortCircuitDialog():
+def exit_early():
     upd_vol(0.02)
     l_sw.update()
     if l_sw.fell:
@@ -680,25 +680,25 @@ def spk_str(str_to_speak, addLocal):
         ply_a_0("/sd/mvc/local.wav")
 
 
-def left_right_mouse_button():
+def l_r_but():
     ply_a_0("/sd/mvc/press_left_button_right_button.wav")
 
 
-def selectWebOptionsAnnouncement():
+def sel_web():
     ply_a_0("/sd/mvc/web_menu.wav")
-    left_right_mouse_button()
+    l_r_but()
 
 
-def option_selected_announcement():
+def opt_sel():
     ply_a_0("/sd/mvc/option_selected.wav")
 
 
-def speak_song_number(song_number):
+def spk_sng_num(song_number):
     ply_a_0("/sd/mvc/song.wav")
     spk_str(song_number, False)
 
 
-def speak_light_string(play_intro):
+def spk_lght(play_intro):
     try:
         elements = cfg["light_string"].split(',')
         if play_intro:
@@ -713,7 +713,7 @@ def speak_light_string(play_intro):
         return
 
 
-def no_user_soundtrack_found():
+def no_trk():
     ply_a_0("/sd/mvc/no_user_soundtrack_found.wav")
     while True:
         l_sw.update()
@@ -725,7 +725,7 @@ def no_user_soundtrack_found():
             break
 
 
-def speak_webpage():
+def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-lightning":
@@ -740,81 +740,75 @@ def speak_webpage():
 # animations
 
 
-last_option = ""
+l_o = ""
 
 
-def an(file_name):
-    global cfg, last_option
-    print("Filename: " + file_name)
-    current_option_selected = file_name
+def an(fn):
+    global cfg, l_o
+    print("Filename: " + fn)
+    c_o = fn
     try:
-        if file_name == "random built in":
-            highest_index = len(s_o) - 1
-            current_option_selected = s_o[random.randint(
-                0, highest_index)]
-            while last_option == current_option_selected and len(s_o) > 1:
-                current_option_selected = s_o[random.randint(
-                    0, highest_index)]
-            last_option = current_option_selected
-            print("Random sound option: " + file_name)
-            print("Sound file: " + current_option_selected)
-        elif file_name == "random my":
-            highest_index = len(c_s_o) - 1
-            current_option_selected = c_s_o[random.randint(
-                0, highest_index)]
-            while last_option == current_option_selected and len(c_s_o) > 1:
-                current_option_selected = c_s_o[random.randint(
-                    0, highest_index)]
-            last_option = current_option_selected
-            print("Random sound option: " + file_name)
-            print("Sound file: " + current_option_selected)
-        elif file_name == "random all":
-            highest_index = len(a_s_o) - 1
-            current_option_selected = a_s_o[random.randint(
-                0, highest_index)]
-            while last_option == current_option_selected and len(a_s_o) > 1:
-                current_option_selected = a_s_o[random.randint(
-                    0, highest_index)]
-            last_option = current_option_selected
-            print("Random sound option: " + file_name)
-            print("Sound file: " + current_option_selected)
+        if fn == "random built in":
+            hi = len(s_o) - 1
+            c_o = s_o[random.randint(
+                0, hi)]
+            while l_o == c_o and len(s_o) > 1:
+                c_o = s_o[random.randint(
+                    0, hi)]
+            l_o = c_o
+        elif fn == "random my":
+            hi = len(c_s_o) - 1
+            c_o = c_s_o[random.randint(
+                0, hi)]
+            while l_o == c_o and len(c_s_o) > 1:
+                c_o = c_s_o[random.randint(
+                    0, hi)]
+            l_o = c_o
+        elif fn == "random all":
+            hi = len(a_s_o) - 1
+            c_o = a_s_o[random.randint(
+                0, hi)]
+            while l_o == c_o and len(a_s_o) > 1:
+                c_o = a_s_o[random.randint(
+                    0, hi)]
+            l_o = c_o
         if ts_mode:
-            ts(current_option_selected)
+            ts(c_o)
         else:
-            if "customers_owned_music_" in current_option_selected:
-                animation_light_show(current_option_selected)
-            elif current_option_selected == "alien lightshow":
-                animation_light_show(current_option_selected)
-            elif current_option_selected == "inspiring cinematic ambient lightshow":
-                animation_light_show(current_option_selected)
-            elif current_option_selected == "fireworks":
-                animation_light_show(current_option_selected)
+            if "customers_owned_music_" in c_o:
+                an_ls(c_o)
+            elif c_o == "alien lightshow":
+                an_ls(c_o)
+            elif c_o == "inspiring cinematic ambient lightshow":
+                an_ls(c_o)
+            elif c_o == "fireworks":
+                an_ls(c_o)
             else:
-                t_l(current_option_selected)
+                t_l(c_o)
     except Exception as e:
         files.log_item(e)
-        no_user_soundtrack_found()
+        no_trk()
         cfg["option_selected"] = "random built in"
         return
     gc_col("Animation complete.")
 
 
-def animation_light_show(file_name):
+def an_ls(fn):
     global ts_mode
-    rand_index_low = 1
-    rand_index_high = 3
+    il = 1
+    ih = 3
 
-    if file_name == "fireworks":
-        rand_index_low = 4
-        rand_index_high = 4
+    if fn == "fireworks":
+        il = 4
+        ih = 4
 
-    customers_file = "customers_owned_music_" in file_name
+    cf = "customers_owned_music_" in fn
 
-    if customers_file:
-        file_name = file_name.replace("customers_owned_music_", "")
+    if cf:
+        fn = fn.replace("customers_owned_music_", "")
         try:
-            flash_time_dictionary = files.read_json_file(
-                "/sd/customers_owned_music/" + file_name + ".json")
+            fls_t = files.read_json_file(
+                "/sd/customers_owned_music/" + fn + ".json")
         except:
             ply_a_0("/sd/mvc/no_timestamp_file_found.wav")
             while True:
@@ -828,55 +822,54 @@ def animation_light_show(file_name):
                     ply_a_0("/sd/mvc/timestamp_instructions.wav")
                     return
     else:
-        flash_time_dictionary = files.read_json_file(
-            "/sd/snd/" + file_name + ".json")
-    flashTime = flash_time_dictionary["flashTime"]
+        fls_t = files.read_json_file(
+            "/sd/snd/" + fn + ".json")
+    ft = fls_t["flashTime"]
 
-    flashTimeLen = len(flashTime)
-    flashTimeIndex = 0
+    ftl = len(ft)
+    fti = 0
 
-    if customers_file:
-        wave0 = audiocore.WaveFile(
-            open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
+    if cf:
+        w0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        wave0 = audiocore.WaveFile(
-            open("/sd/snd/" + file_name + ".wav", "rb"))
-    mix.voice[0].play(wave0, loop=False)
-    startTime = time.monotonic()
-    my_index = 0
+        w0 = audiocore.WaveFile(
+            open("/sd/snd/" + fn + ".wav", "rb"))
+    mix.voice[0].play(w0, loop=False)
+    st = time.monotonic()
+    i = 0
 
     mlt_c(.01)
     while True:
-        previous_index = 0
-        timeElapsed = time.monotonic()-startTime
-        if flashTimeIndex < len(flashTime)-2:
-            duration = flashTime[flashTimeIndex+1] - \
-                flashTime[flashTimeIndex]-0.25
+        pi = 0
+        te = time.monotonic()-st
+        if fti < len(ft)-2:
+            d = ft[fti+1] - \
+                ft[fti]-0.25
         else:
-            duration = 0.25
-        if duration < 0:
-            duration = 0
-        if timeElapsed > flashTime[flashTimeIndex] - 0.25:
-            print("Time elapsed: " + str(timeElapsed) + " Timestamp: " +
-                  str(flashTime[flashTimeIndex]) + " Dif: " + str(timeElapsed-flashTime[flashTimeIndex]))
-            flashTimeIndex += 1
-            my_index = random.randint(rand_index_low, rand_index_high)
-            while my_index == previous_index:
-                my_index = random.randint(rand_index_low, rand_index_high)
-            if my_index == 1:
-                rainbow(.005, duration)
-            elif my_index == 2:
+            d = 0.25
+        if d < 0:
+            d = 0
+        if te > ft[fti] - 0.25:
+            print("Time elapsed: " + str(te) + " Timestamp: " +
+                  str(ft[fti]) + " Dif: " + str(te-ft[fti]))
+            fti += 1
+            i = random.randint(il, ih)
+            while i == pi:
+                i = random.randint(il, ih)
+            if i == 1:
+                rainbow(.005, d)
+            elif i == 2:
                 mlt_c(.01)
-                upd_vol(duration)
-            elif my_index == 3:
-                candle(duration)
-            elif my_index == 4:
-                fwrk(duration)
-            previous_index = my_index
-        if flashTimeLen == flashTimeIndex:
-            flashTimeIndex = 0
+                upd_vol(d)
+            elif i == 3:
+                candle(d)
+            elif i == 4:
+                fwrk(d)
+            pi = i
+        if ftl == fti:
+            fti = 0
         l_sw.update()
-        # if timeElasped > 2: mixer.voice[0].stop()
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
@@ -886,45 +879,45 @@ def animation_light_show(file_name):
         upd_vol(.001)
 
 
-def ts(file_name):
+def ts(fn):
     print("Time stamp mode:")
     global ts_mode
 
-    customers_file = "customers_owned_music_" in file_name
+    cf = "customers_owned_music_" in fn
 
-    my_time_stamps = files.read_json_file(
+    ts = files.read_json_file(
         "/sd/t_s_def/timestamp mode.json")
-    my_time_stamps["flashTime"] = []
+    ts["flashTime"] = []
 
-    file_name = file_name.replace("customers_owned_music_", "")
+    fn = fn.replace("customers_owned_music_", "")
 
-    if customers_file:
-        wave0 = audiocore.WaveFile(
-            open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
+    if cf:
+        w0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        wave0 = audiocore.WaveFile(
-            open("/sd/snd/" + file_name + ".wav", "rb"))
-    mix.voice[0].play(wave0, loop=False)
+        w0 = audiocore.WaveFile(
+            open("/sd/snd/" + fn + ".wav", "rb"))
+    mix.voice[0].play(w0, loop=False)
 
-    startTime = time.monotonic()
+    st = time.monotonic()
     upd_vol(.1)
 
     while True:
-        time_elapsed = time.monotonic()-startTime
+        te = time.monotonic()-st
         r_sw.update()
         if r_sw.fell:
-            my_time_stamps["flashTime"].append(time_elapsed)
-            print(time_elapsed)
+            ts["flashTime"].append(te)
+            print(te)
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            my_time_stamps["flashTime"].append(5000)
-            if customers_file:
+            ts["flashTime"].append(5000)
+            if cf:
                 files.write_json_file(
-                    "/sd/customers_owned_music/" + file_name + ".json", my_time_stamps)
+                    "/sd/customers_owned_music/" + fn + ".json", ts)
             else:
                 files.write_json_file(
-                    "/sd/snd/" + file_name + ".json", my_time_stamps)
+                    "/sd/snd/" + fn + ".json", ts)
             break
 
     ts_mode = False
@@ -935,31 +928,31 @@ def ts(file_name):
 
 def t_l(file_name):
 
-    flash_time_dictionary = files.read_json_file(
+    ftd = files.read_json_file(
         "/sd/snd/" + file_name + ".json")
 
-    flashTime = flash_time_dictionary["flashTime"]
+    ft = ftd["flashTime"]
 
-    flashTimeLen = len(flashTime)
-    flashTimeIndex = 0
+    ftl = len(ft)
+    fti = 0
 
-    wave0 = audiocore.WaveFile(
+    w0 = audiocore.WaveFile(
         open("/sd/snd/" + file_name + ".wav", "rb"))
-    mix.voice[0].play(wave0, loop=False)
-    startTime = time.monotonic()
+    mix.voice[0].play(w0, loop=False)
+    st = time.monotonic()
 
     while True:
         upd_vol(.1)
-        time_elapsed = time.monotonic()-startTime
+        te = time.monotonic()-st
         # amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
-        rand_time = flashTime[flashTimeIndex] - random.uniform(.5, 1)
-        if time_elapsed > rand_time:
-            print("Time elapsed: " + str(time_elapsed) + " Timestamp: " +
-                  str(rand_time) + " Dif: " + str(time_elapsed-rand_time))
-            flashTimeIndex += 1
+        rt = ft[fti] - random.uniform(.5, 1)
+        if te > rt:
+            print("Time elapsed: " + str(te) + " Timestamp: " +
+                  str(rt) + " Dif: " + str(te-rt))
+            fti += 1
             ltng()
-        if flashTimeLen == flashTimeIndex:
-            flashTimeIndex = 0
+        if ftl == fti:
+            fti = 0
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
@@ -1346,7 +1339,7 @@ class MainMenu(State):
 
     def enter(self, machine):
         ply_a_0("/sd/mvc/main_menu.wav")
-        left_right_mouse_button()
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1391,7 +1384,7 @@ class ChooseSounds(State):
     def enter(self, machine):
         files.log_item('Choose sounds menu')
         ply_a_0("/sd/mvc/sound_selection_menu.wav")
-        left_right_mouse_button()
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1411,7 +1404,7 @@ class ChooseSounds(State):
                         "/sd/snd_opt/option_" + m_s_o[self.optionIndex] + ".wav", "rb"))
                     mix.voice[0].play(wave0, loop=False)
                 except:
-                    speak_song_number(str(self.optionIndex+1))
+                    spk_sng_num(str(self.optionIndex+1))
                 self.currentOption = self.optionIndex
                 self.optionIndex += 1
                 if self.optionIndex > len(m_s_o)-1:
@@ -1498,7 +1491,7 @@ class VolumeSettings(State):
     def enter(self, machine):
         files.log_item('Set Web Options')
         ply_a_0("/sd/mvc/volume_settings_menu.wav")
-        left_right_mouse_button()
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1558,7 +1551,7 @@ class WebOptions(State):
 
     def enter(self, machine):
         files.log_item('Set Web Options')
-        selectWebOptionsAnnouncement()
+        sel_web()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1577,18 +1570,18 @@ class WebOptions(State):
             selected_menu_item = w_mu[self.selectedMenuIndex]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
-                option_selected_announcement()
-                selectWebOptionsAnnouncement()
+                opt_sel()
+                sel_web()
             elif selected_menu_item == "web_off":
                 cfg["serve_webpage"] = False
-                option_selected_announcement()
-                selectWebOptionsAnnouncement()
+                opt_sel()
+                sel_web()
             elif selected_menu_item == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
-                selectWebOptionsAnnouncement()
+                sel_web()
             elif selected_menu_item == "hear_instr_web":
                 ply_a_0("/sd/mvc/web_instruct.wav")
-                selectWebOptionsAnnouncement()
+                sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1608,7 +1601,7 @@ class LightStringSetupMenu(State):
     def enter(self, machine):
         files.log_item('Light string menu')
         ply_a_0("/sd/mvc/light_string_setup_menu.wav")
-        left_right_mouse_button()
+        l_r_but()
         State.enter(self, machine)
 
     def exit(self, machine):
@@ -1630,9 +1623,9 @@ class LightStringSetupMenu(State):
             elif selected_menu_item == "reset_lights_defaults":
                 rst_l_def()
                 ply_a_0("/sd/mvc/lights_reset_to.wav")
-                speak_light_string(False)
+                spk_lght(False)
             elif selected_menu_item == "hear_current_light_settings":
-                speak_light_string(True)
+                spk_lght(True)
             elif selected_menu_item == "clear_light_string":
                 cfg["light_string"] = ""
                 ply_a_0("/sd/mvc/lights_cleared.wav")
@@ -1699,7 +1692,7 @@ if (web):
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        speak_webpage()
+        spk_web()
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
