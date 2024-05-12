@@ -3,7 +3,6 @@ from adafruit_debouncer import Debouncer
 from rainbowio import colorwheel
 import neopixel
 from analogio import AnalogIn
-import asyncio
 from adafruit_motor import servo
 import pwmio
 import microcontroller
@@ -175,8 +174,8 @@ main_m = cfg_main["main_menu"]
 cfg_web = files.read_json_file("/sd/mvc/web_menu.json")
 web_m = cfg_web["web_menu"]
 
-cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
-vol_set = cfg_vol["volume_settings"]
+cfd_vol = files.read_json_file("/sd/mvc/volume_settings.json")
+vol_set = cfd_vol["volume_settings"]
 
 cfg_add_song = files.read_json_file(
     "/sd/mvc/add_sounds_animate.json")
@@ -192,259 +191,261 @@ gc_col("config setup")
 
 num_px = 2
 
-#15 on demo 17 tiny 10 on large
+# 15 on demo 17 tiny 10 on large
 led = neopixel.NeoPixel(board.GP17, num_px)
 
 gc_col("Neopixels setup")
 
 ################################################################################
 # Setup wifi and web server
+web = False
 
-if (web):
-    import socketpool
-    import mdns
-    gc_col("config wifi imports")
-    import wifi
-    gc_col("config wifi imports")
-    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
-    gc_col("config wifi imports")
+# if (web):
+#     import socketpool
+#     import mdns
+#     gc_col("config wifi imports")
+#     import wifi
+#     gc_col("config wifi imports")
+#     from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
+#     gc_col("config wifi imports")
 
-    files.log_item("Connecting to WiFi")
+#     files.log_item("Connecting to WiFi")
 
-    # default for manufacturing and shows
-    WIFI_SSID = "jimmytrainsguest"
-    WIFI_PASSWORD = ""
+#     # default for manufacturing and shows
+#     WIFI_SSID = "jimmytrainsguest"
+#     WIFI_PASSWORD = ""
 
-    try:
-        env = files.read_json_file("/sd/env.json")
-        WIFI_SSID = env["WIFI_SSID"]
-        WIFI_PASSWORD = env["WIFI_PASSWORD"]
-        gc_col("wifi env")
-        print("Using env ssid and password")
-    except:
-        print("Using default ssid and password")
+#     try:
+#         env = files.read_json_file("/sd/env.json")
+#         WIFI_SSID = env["WIFI_SSID"]
+#         WIFI_PASSWORD = env["WIFI_PASSWORD"]
+#         gc_col("wifi env")
+#         print("Using env ssid and password")
+#     except:
+#         print("Using default ssid and password")
 
-    try:
-        # connect to your SSID
-        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
-        gc_col("wifi connect")
+#     try:
+#         # connect to your SSID
+#         wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+#         gc_col("wifi connect")
 
-        # setup mdns server
-        mdns = mdns.Server(wifi.radio)
-        mdns.hostname = cfg["HOST_NAME"]
-        mdns.advertise_service(
-            service_type="_http", protocol="_tcp", port=80)
+#         # setup mdns server
+#         mdns = mdns.Server(wifi.radio)
+#         mdns.hostname = cfg["HOST_NAME"]
+#         mdns.advertise_service(
+#             service_type="_http", protocol="_tcp", port=80)
 
-        # files.log_items IP address to REPL
-        files.log_item("IP is" + str(wifi.radio.ipv4_address))
-        files.log_item("Connected")
+#         # files.log_items IP address to REPL
+#         files.log_item("IP is" + str(wifi.radio.ipv4_address))
+#         files.log_item("Connected")
 
-        # set up server
-        pool = socketpool.SocketPool(wifi.radio)
-        server = Server(pool, "/static", debug=True)
+#         # set up server
+#         pool = socketpool.SocketPool(wifi.radio)
+#         server = Server(pool, "/static", debug=True)
 
-        gc_col("wifi server")
+#         gc_col("wifi server")
 
-        ################################################################################
-        # Setup routes
+#         ################################################################################
+#         # Setup routes
 
-        @server.route("/")
-        def base(request: HTTPRequest):
-            gc_col("Home page.")
-            return FileResponse(request, "index.html", "/")
+#         @server.route("/")
+#         def base(request: HTTPRequest):
+#             gc_col("Home page.")
+#             return FileResponse(request, "index.html", "/")
 
-        @server.route("/mui.min.css")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.css", "/")
+#         @server.route("/mui.min.css")
+#         def base(request: HTTPRequest):
+#             return FileResponse(request, "mui.min.css", "/")
 
-        @server.route("/mui.min.js")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.js", "/")
+#         @server.route("/mui.min.js")
+#         def base(request: HTTPRequest):
+#             return FileResponse(request, "mui.min.js", "/")
 
-        @server.route("/animation", [POST])
-        def btn(request: Request):
-            global cfg, cont_run, ts_mode
-            rq_d = request.json()
-            cfg["option_selected"] = rq_d["an"]
-            an(cfg["option_selected"])
-            files.write_json_file("/sd/cfg.json", cfg)
-            return Response(request, "Animation " + cfg["option_selected"] + " started.")
+#         @server.route("/animation", [POST])
+#         def btn(request: Request):
+#             global cfg, cont_run, ts_mode
+#             rq_d = request.json()
+#             cfg["option_selected"] = rq_d["an"]
+#             an(cfg["option_selected"])
+#             files.write_json_file("/sd/cfg.json", cfg)
+#             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
-        @server.route("/defaults", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            if rq_d["an"] == "reset_animation_timing_to_defaults":
-                for ts_fn in ts_jsons:
-                    ts = files.read_json_file(
-                        "/sd/t_s_def/" + ts_fn + ".json")
-                    files.write_json_file(
-                        "/sd/snds/"+ts_fn+".json", ts)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "reset_to_defaults":
-                rst_def()
-                files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-                st_mch.go_to('base_state')
-            return Response(request, "Utility: " + rq_d["an"])
+#         @server.route("/defaults", [POST])
+#         def btn(request: Request):
+#             global cfg
+#             rq_d = request.json()
+#             if rq_d["an"] == "reset_animation_timing_to_defaults":
+#                 for time_stamp_file in ts_jsons:
+#                     time_stamps = files.read_json_file(
+#                         "/sd/t_s_def/" + time_stamp_file + ".json")
+#                     files.write_json_file(
+#                         "/sd/snds/"+time_stamp_file+".json", time_stamps)
+#                 play_a_0("/sd/mvc/all_changes_complete.wav")
+#             elif rq_d["an"] == "reset_to_defaults":
+#                 cmd_snt = "reset_to_defaults"
+#                 rst_def()
+#                 files.write_json_file("/sd/cfg.json", cfg)
+#                 play_a_0("/sd/mvc/all_changes_complete.wav")
+#                 st_mch.go_to('base_state')
+#             return Response(request, "Utility: " + rq_d["an"])
 
-        @server.route("/mode", [POST])
-        def btn(request: Request):
-            global cfg, cont_run, ts_mode
-            rq_d = request.json()
-            if rq_d["an"] == "cont_mode_on":
-                cont_run = True
-                play_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif rq_d["an"] == "cont_mode_off":
-                cont_run = False
-                play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            elif rq_d["an"] == "timestamp_mode_on":
-                ts_mode = True
-                play_a_0("/sd/mvc/timestamp_mode_on.wav")
-                play_a_0("/sd/mvc/timestamp_instructions.wav")
-            elif rq_d["an"] == "timestamp_mode_off":
-                ts_mode = False
-                play_a_0("/sd/mvc/timestamp_mode_off.wav")
-            return Response(request, "Utility: " + rq_d["an"])
+#         @server.route("/mode", [POST])
+#         def btn(request: Request):
+#             global cfg, cont_run, ts_mode
+#             rq_d = request.json()
+#             if rq_d["an"] == "cont_mode_on":
+#                 cont_run = True
+#                 play_a_0("/sd/mvc/continuous_mode_activated.wav")
+#             elif rq_d["an"] == "cont_mode_off":
+#                 cont_run = False
+#                 play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+#             elif rq_d["an"] == "timestamp_mode_on":
+#                 ts_mode = True
+#                 play_a_0("/sd/mvc/timestamp_mode_on.wav")
+#                 play_a_0("/sd/mvc/timestamp_instructions.wav")
+#             elif rq_d["an"] == "timestamp_mode_off":
+#                 ts_mode = False
+#                 play_a_0("/sd/mvc/timestamp_mode_off.wav")
+#             return Response(request, "Utility: " + rq_d["an"])
 
-        @server.route("/speaker", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            if rq_d["an"] == "speaker_test":
-                cmd_snt = "speaker_test"
-                play_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif rq_d["an"] == "volume_pot_off":
-                cmd_snt = "volume_pot_off"
-                cfg["volume_pot"] = False
-                files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "volume_pot_on":
-                cmd_snt = "volume_pot_on"
-                cfg["volume_pot"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, "Utility: " + rq_d["an"])
+#         @server.route("/speaker", [POST])
+#         def btn(request: Request):
+#             global cfg
+#             rq_d = request.json()
+#             if rq_d["an"] == "speaker_test":
+#                 cmd_snt = "speaker_test"
+#                 play_a_0("/sd/mvc/left_speaker_right_speaker.wav")
+#             elif rq_d["an"] == "volume_pot_off":
+#                 cmd_snt = "volume_pot_off"
+#                 cfg["volume_pot"] = False
+#                 files.write_json_file("/sd/cfg.json", cfg)
+#                 play_a_0("/sd/mvc/all_changes_complete.wav")
+#             elif rq_d["an"] == "volume_pot_on":
+#                 cmd_snt = "volume_pot_on"
+#                 cfg["volume_pot"] = True
+#                 files.write_json_file("/sd/cfg.json", cfg)
+#                 play_a_0("/sd/mvc/all_changes_complete.wav")
+#             return Response(request, "Utility: " + rq_d["an"])
 
-        @server.route("/lights", [POST])
-        def btn(request: Request):
-            rq_d = request.json()
-            set_hdw(rq_d["an"])
-            return Response(request, "Utility: " + "Utility: set lights")
+#         @server.route("/lights", [POST])
+#         def btn(request: Request):
+#             rq_d = request.json()
+#             set_hdw(rq_d["an"])
+#             return Response(request, "Utility: " + "Utility: set lights")
 
-        @server.route("/update-host-name", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            cfg["HOST_NAME"] = rq_d["an"]
-            files.write_json_file("/sd/cfg.json", cfg)
-            mdns.hostname = cfg["HOST_NAME"]
-            spk_web()
-            return Response(request, cfg["HOST_NAME"])
+#         @server.route("/update-host-name", [POST])
+#         def btn(request: Request):
+#             global cfg
+#             rq_d = request.json()
+#             cfg["HOST_NAME"] = rq_d["an"]
+#             files.write_json_file("/sd/cfg.json", cfg)
+#             mdns.hostname = cfg["HOST_NAME"]
+#             spk_web()
+#             return Response(request, cfg["HOST_NAME"])
 
-        @server.route("/get-host-name", [POST])
-        def btn(request: Request):
-            return Response(request, cfg["HOST_NAME"])
+#         @server.route("/get-host-name", [POST])
+#         def btn(request: Request):
+#             return Response(request, cfg["HOST_NAME"])
 
-        @server.route("/update-volume", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            ch_vol(rq_d["action"])
-            return Response(request, cfg["volume"])
+#         @server.route("/update-volume", [POST])
+#         def btn(request: Request):
+#             global cfg
+#             rq_d = request.json()
+#             ch_vol(rq_d["action"])
+#             return Response(request, cfg["volume"])
 
-        @server.route("/get-volume", [POST])
-        def btn(request: Request):
-            return Response(request, cfg["volume"])
+#         @server.route("/get-volume", [POST])
+#         def btn(request: Request):
+#             return Response(request, cfg["volume"])
 
-        @server.route("/get-customers-sound-tracks", [POST])
-        def btn(request: Request):
-            my_string = files.json_stringify(cust_snd_opt)
-            return Response(request, my_string)
+#         @server.route("/get-customers-sound-tracks", [POST])
+#         def btn(request: Request):
+#             my_string = files.json_stringify(cust_snd_opt)
+#             return Response(request, my_string)
 
-        @server.route("/get-built-in-sound-tracks", [POST])
-        def btn(request: Request):
-            sounds = []
-            sounds.extend(snd_opt)
-            my_string = files.json_stringify(sounds)
-            return Response(request, my_string)
+#         @server.route("/get-built-in-sound-tracks", [POST])
+#         def btn(request: Request):
+#             sounds = []
+#             sounds.extend(snd_opt)
+#             my_string = files.json_stringify(sounds)
+#             return Response(request, my_string)
 
-        @server.route("/test-animation", [POST])
-        def btn(request: Request):
-            rq_d = request.json()
-            print(rq_d["an"])
-            gc_col("Save Data.")
-            set_hdw(rq_d["an"])
-            return Response(request, "success")
+#         @server.route("/test-animation", [POST])
+#         def btn(request: Request):
+#             rq_d = request.json()
+#             print(rq_d["an"])
+#             gc_col("Save Data.")
+#             set_hdw(rq_d["an"])
+#             return Response(request, "success")
 
-        @server.route("/get-animation", [POST])
-        def btn(request: Request):
-            global cfg, cont_run, ts_mode
-            rq_d = request.json()
-            snd_f = rq_d["an"]
-            if "customers_owned_music_" in snd_f:
-                snd_f = snd_f.replace("customers_owned_music_", "")
-                if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
-                    f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-                    print(f_n)
-                    return FileResponse(request, f_n, "/")
-                else:
-                    f_n = "/sd/t_s_def/timestamp mode.json"
-                    return FileResponse(request, f_n, "/")
-            else:
-                if (f_exists("/sd/snds/" + snd_f + ".json") == True):
-                    f_n = "/sd/snds/" + snd_f + ".json"
-                    return FileResponse(request, f_n, "/")
-                else:
-                    f_n = "/sd/t_s_def/timestamp mode.json"
-                    return FileResponse(request, f_n, "/")
+#         @server.route("/get-animation", [POST])
+#         def btn(request: Request):
+#             global cfg, cont_run, ts_mode
+#             rq_d = request.json()
+#             snd_f = rq_d["an"]
+#             if "customers_owned_music_" in snd_f:
+#                 snd_f = snd_f.replace("customers_owned_music_", "")
+#                 if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
+#                     f_n = "/sd/customers_owned_music/" + snd_f + ".json"
+#                     print(f_n)
+#                     return FileResponse(request, f_n, "/")
+#                 else:
+#                     f_n = "/sd/t_s_def/timestamp mode.json"
+#                     return FileResponse(request, f_n, "/")
+#             else:
+#                 if (f_exists("/sd/snds/" + snd_f + ".json") == True):
+#                     f_n = "/sd/snds/" + snd_f + ".json"
+#                     return FileResponse(request, f_n, "/")
+#                 else:
+#                     f_n = "/sd/t_s_def/timestamp mode.json"
+#                     return FileResponse(request, f_n, "/")
 
-        @server.route("/delete-file", [POST])
-        def btn(request: Request):
-            rq_d = request.json()
-            f_n = ""
-            if "customers_owned_music_" in rq_d["an"]:
-                snd_f = rq_d["an"].replace("customers_owned_music_", "")
-                f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-            else:
-                f_n = "/sd/snds/" + rq_d["an"] + ".json"
-            os.remove(f_n)
-            gc_col("get data")
-            return JSONResponse(request, "file deleted")
+#         @server.route("/delete-file", [POST])
+#         def btn(request: Request):
+#             rq_d = request.json()
+#             f_n = ""
+#             if "customers_owned_music_" in rq_d["an"]:
+#                 snd_f = rq_d["an"].replace("customers_owned_music_", "")
+#                 f_n = "/sd/customers_owned_music/" + snd_f + ".json"
+#             else:
+#                 f_n = "/sd/snds/" + rq_d["an"] + ".json"
+#             os.remove(f_n)
+#             gc_col("get data")
+#             return JSONResponse(request, "file deleted")
 
-        data = []
+#         data = []
 
-        @server.route("/save-data", [POST])
-        def btn(request: Request):
-            global data
-            rq_d = request.json()
-            try:
-                if rq_d[0] == 0:
-                    data = []
-                data.extend(rq_d[2])
-                if rq_d[0] == rq_d[1]:
-                    f_n = ""
-                    if "customers_owned_music_" in rq_d[3]:
-                        snd_f = rq_d[3].replace("customers_owned_music_", "")
-                        f_n = "/sd/customers_owned_music/" + \
-                            snd_f + ".json"
-                    else:
-                        f_n = "/sd/snds/" + \
-                            rq_d[3] + ".json"
-                    files.write_json_file(f_n, data)
-                    data = []
-                    gc_col("get data")
-            except:
-                data = []
-                gc_col("get data")
-                return Response(request, "out of memory")
-            return Response(request, "success")
+#         @server.route("/save-data", [POST])
+#         def btn(request: Request):
+#             global data
+#             rq_d = request.json()
+#             try:
+#                 if rq_d[0] == 0:
+#                     data = []
+#                 data.extend(rq_d[2])
+#                 if rq_d[0] == rq_d[1]:
+#                     f_n = ""
+#                     if "customers_owned_music_" in rq_d[3]:
+#                         snd_f = rq_d[3].replace("customers_owned_music_", "")
+#                         f_n = "/sd/customers_owned_music/" + \
+#                             snd_f + ".json"
+#                     else:
+#                         f_n = "/sd/snds/" + \
+#                             rq_d[3] + ".json"
+#                     files.write_json_file(f_n, data)
+#                     data = []
+#                     gc_col("get data")
+#             except:
+#                 data = []
+#                 gc_col("get data")
+#                 return Response(request, "out of memory")
+#             return Response(request, "success")
 
-    except Exception as e:
-        web = False
-        files.log_item(e)
+#     except Exception as e:
+#         web = False
+#         files.log_item(e)
 
-gc_col("web server")
+# gc_col("web server")
 
 ################################################################################
 # Global Methods
@@ -589,33 +590,11 @@ def spk_web():
         spk_str(cfg["HOST_NAME"], True)
     play_a_0("/sd/mvc/in_your_browser.wav")
 
-################################################################################
-# async methods
-
-
-# Create an event loop
-loop = asyncio.get_event_loop()
-
-
-async def upd_vol_async(s):
-    if cfg["volume_pot"]:
-        v = a_in.value / 65536
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
-    else:
-        try:
-            v = int(cfg["volume"]) / 100
-        except:
-            v = .5
-        if v < 0 or v > 1:
-            v = .5
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
 
 p_arr = [90, 90, 90, 90, 90, 90]
 
 
-async def cyc_servo(n, s, p_up, p_dwn):
+def cyc_servo(n, s, p_up, p_dwn):
     global p_arr
     while mix.voice[0].playing:
         n_p = p_up
@@ -624,14 +603,14 @@ async def cyc_servo(n, s, p_up, p_dwn):
             sign = - 1
         for a in range(p_arr[n], n_p, sign):
             m_servo(a)
-            await asyncio.sleep(s)
+            time.sleep(s)
         n_p = p_dwn
         sign = 1
         if p_arr[n] > n_p:
             sign = - 1
         for a in range(p_arr[n], n_p, sign):
             m_servo(a)
-            await asyncio.sleep(s)
+            time.sleep(s)
 
 
 def m_servo(n, p):
@@ -826,11 +805,6 @@ br = 0
 
 
 def set_hdw(input_string):
-    loop.create_task(set_hdw_async(input_string))
-    loop.run_forever()
-
-
-async def set_hdw_async(input_string):
     global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
@@ -868,7 +842,7 @@ async def set_hdw_async(input_string):
                 else:
                     br -= 1
                     led.brightness = float(br/100)
-                upd_vol_async(.01)
+                upd_vol(.01)
 
 ################################################################################
 # State Machine
@@ -996,172 +970,172 @@ class Main(Ste):
                 mch.go_to('base_state')
 
 
-class Snds(Ste):
+# class Snds(Ste):
 
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
+#     def __init__(self):
+#         self.i = 0
+#         self.sel_i = 0
 
-    @property
-    def name(self):
-        return 'choose_sounds'
+#     @property
+#     def name(self):
+#         return 'choose_sounds'
 
-    def enter(self, mch):
-        files.log_item('Choose sounds menu')
-        play_a_0("/sd/mvc/sound_selection_menu.wav")
-        l_r_but()
-        Ste.enter(self, mch)
+#     def enter(self, mch):
+#         files.log_item('Choose sounds menu')
+#         play_a_0("/sd/mvc/sound_selection_menu.wav")
+#         l_r_but()
+#         Ste.enter(self, mch)
 
-    def exit(self, mch):
-        Ste.exit(self, mch)
+#     def exit(self, mch):
+#         Ste.exit(self, mch)
 
-    def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            if mix.voice[0].playing:
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-            else:
-                try:
-                    wave0 = audiocore.WaveFile(open(
-                        "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
-                    mix.voice[0].play(wave0, loop=False)
-                except:
-                    spk_sng_num(str(self.i+1))
-                self.sel_i = self.i
-                self.i += 1
-                if self.i > len(menu_snd_opt)-1:
-                    self.i = 0
-                while mix.voice[0].playing:
-                    pass
-        if r_sw.fell:
-            if mix.voice[0].playing:
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-            else:
-                cfg["option_selected"] = menu_snd_opt[self.sel_i]
-                files.write_json_file("/sd/cfg.json", cfg)
-                wave0 = audiocore.WaveFile(
-                    open("/sd/mvc/option_selected.wav", "rb"))
-                mix.voice[0].play(wave0, loop=False)
-                while mix.voice[0].playing:
-                    pass
-            mch.go_to('base_state')
-
-
-class AddSnds(Ste):
-
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
-
-    @property
-    def name(self):
-        return 'add_sounds_animate'
-
-    def enter(self, mch):
-        files.log_item('Add sounds animate')
-        play_a_0("/sd/mvc/add_sounds_animate.wav")
-        l_r_but()
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        global ts_mode
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            play_a_0(
-                "/sd/mvc/" + add_snd[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(add_snd)-1:
-                self.i = 0
-        if r_sw.fell:
-            sel_mnu = add_snd[self.sel_i]
-            if sel_mnu == "hear_instructions":
-                play_a_0("/sd/mvc/create_sound_track_files.wav")
-            elif sel_mnu == "timestamp_mode_on":
-                ts_mode = True
-                play_a_0("/sd/mvc/timestamp_mode_on.wav")
-                play_a_0("/sd/mvc/timestamp_instructions.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "timestamp_mode_off":
-                ts_mode = False
-                play_a_0("/sd/mvc/timestamp_mode_off.wav")
-            else:
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
+#     def upd(self, mch):
+#         l_sw.update()
+#         r_sw.update()
+#         if l_sw.fell:
+#             if mix.voice[0].playing:
+#                 mix.voice[0].stop()
+#                 while mix.voice[0].playing:
+#                     pass
+#             else:
+#                 try:
+#                     wave0 = audiocore.WaveFile(open(
+#                         "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
+#                     mix.voice[0].play(wave0, loop=False)
+#                 except:
+#                     spk_sng_num(str(self.i+1))
+#                 self.sel_i = self.i
+#                 self.i += 1
+#                 if self.i > len(menu_snd_opt)-1:
+#                     self.i = 0
+#                 while mix.voice[0].playing:
+#                     pass
+#         if r_sw.fell:
+#             if mix.voice[0].playing:
+#                 mix.voice[0].stop()
+#                 while mix.voice[0].playing:
+#                     pass
+#             else:
+#                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
+#                 files.write_json_file("/sd/cfg.json", cfg)
+#                 wave0 = audiocore.WaveFile(
+#                     open("/sd/mvc/option_selected.wav", "rb"))
+#                 mix.voice[0].play(wave0, loop=False)
+#                 while mix.voice[0].playing:
+#                     pass
+#             mch.go_to('base_state')
 
 
-class VolSet(Ste):
+# class AddSnds(Ste):
 
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
+#     def __init__(self):
+#         self.i = 0
+#         self.sel_i = 0
 
-    @property
-    def name(self):
-        return 'volume_settings'
+#     @property
+#     def name(self):
+#         return 'add_sounds_animate'
 
-    def enter(self, mch):
-        files.log_item('Set Web Options')
-        play_a_0("/sd/mvc/volume_settings_menu.wav")
-        l_r_but()
-        Ste.enter(self, mch)
+#     def enter(self, mch):
+#         files.log_item('Add sounds animate')
+#         play_a_0("/sd/mvc/add_sounds_animate.wav")
+#         l_r_but()
+#         Ste.enter(self, mch)
 
-    def exit(self, mch):
-        Ste.exit(self, mch)
+#     def exit(self, mch):
+#         Ste.exit(self, mch)
 
-    def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            play_a_0("/sd/mvc/" + vol_set[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(vol_set)-1:
-                self.i = 0
-        if r_sw.fell:
-            sel_mnu = vol_set[self.sel_i]
-            if sel_mnu == "volume_level_adjustment":
-                play_a_0("/sd/mvc/volume_adjustment_menu.wav")
-                done = False
-                while not done:
-                    switch_state = utilities.switch_state(
-                        l_sw, r_sw, upd_vol, 3.0)
-                    if switch_state == "left":
-                        ch_vol("lower")
-                    elif switch_state == "right":
-                        ch_vol("raise")
-                    elif switch_state == "right_held":
-                        files.write_json_file(
-                            "/sd/cfg.json", cfg)
-                        play_a_0("/sd/mvc/all_changes_complete.wav")
-                        done = True
-                        mch.go_to('base_state')
-                    upd_vol(0.1)
-                    pass
-            elif sel_mnu == "volume_pot_off":
-                cfg["volume_pot"] = False
-                if cfg["volume"] == 0:
-                    cfg["volume"] = 10
-                files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "volume_pot_on":
-                cfg["volume_pot"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
+#     def upd(self, mch):
+#         global ts_mode
+#         l_sw.update()
+#         r_sw.update()
+#         if l_sw.fell:
+#             play_a_0(
+#                 "/sd/mvc/" + add_snd[self.i] + ".wav")
+#             self.sel_i = self.i
+#             self.i += 1
+#             if self.i > len(add_snd)-1:
+#                 self.i = 0
+#         if r_sw.fell:
+#             sel_mnu = add_snd[self.sel_i]
+#             if sel_mnu == "hear_instructions":
+#                 play_a_0("/sd/mvc/create_sound_track_files.wav")
+#             elif sel_mnu == "timestamp_mode_on":
+#                 ts_mode = True
+#                 play_a_0("/sd/mvc/timestamp_mode_on.wav")
+#                 play_a_0("/sd/mvc/timestamp_instructions.wav")
+#                 mch.go_to('base_state')
+#             elif sel_mnu == "timestamp_mode_off":
+#                 ts_mode = False
+#                 play_a_0("/sd/mvc/timestamp_mode_off.wav")
+#             else:
+#                 play_a_0("/sd/mvc/all_changes_complete.wav")
+#                 mch.go_to('base_state')
 
 
-class WebOpt(Ste):
+# class VolSet(Ste):
+
+#     def __init__(self):
+#         self.i = 0
+#         self.sel_i = 0
+
+#     @property
+#     def name(self):
+#         return 'volume_settings'
+
+#     def enter(self, mch):
+#         files.log_item('Set Web Options')
+#         play_a_0("/sd/mvc/volume_settings_menu.wav")
+#         l_r_but()
+#         Ste.enter(self, mch)
+
+#     def exit(self, mch):
+#         Ste.exit(self, mch)
+
+#     def upd(self, mch):
+#         l_sw.update()
+#         r_sw.update()
+#         if l_sw.fell:
+#             play_a_0("/sd/mvc/" + vol_set[self.i] + ".wav")
+#             self.sel_i = self.i
+#             self.i += 1
+#             if self.i > len(vol_set)-1:
+#                 self.i = 0
+#         if r_sw.fell:
+#             sel_mnu = vol_set[self.sel_i]
+#             if sel_mnu == "volume_level_adjustment":
+#                 play_a_0("/sd/mvc/volume_adjustment_menu.wav")
+#                 done = False
+#                 while not done:
+#                     switch_state = utilities.switch_state(
+#                         l_sw, r_sw, upd_vol, 3.0)
+#                     if switch_state == "left":
+#                         ch_vol("lower")
+#                     elif switch_state == "right":
+#                         ch_vol("raise")
+#                     elif switch_state == "right_held":
+#                         files.write_json_file(
+#                             "/sd/cfg.json", cfg)
+#                         play_a_0("/sd/mvc/all_changes_complete.wav")
+#                         done = True
+#                         mch.go_to('base_state')
+#                     upd_vol(0.1)
+#                     pass
+#             elif sel_mnu == "volume_pot_off":
+#                 cfg["volume_pot"] = False
+#                 if cfg["volume"] == 0:
+#                     cfg["volume"] = 10
+#                 files.write_json_file("/sd/cfg.json", cfg)
+#                 play_a_0("/sd/mvc/all_changes_complete.wav")
+#                 mch.go_to('base_state')
+#             elif sel_mnu == "volume_pot_on":
+#                 cfg["volume_pot"] = True
+#                 files.write_json_file("/sd/cfg.json", cfg)
+#                 play_a_0("/sd/mvc/all_changes_complete.wav")
+#                 mch.go_to('base_state')
+
+
+# class WebOpt(Ste):
     def __init__(self):
         self.i = 0
         self.sel_i = 0
@@ -1215,10 +1189,10 @@ class WebOpt(Ste):
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-st_mch.add(Snds())
-st_mch.add(AddSnds())
-st_mch.add(VolSet())
-st_mch.add(WebOpt())
+# st_mch.add(Snds())
+# st_mch.add(AddSnds())
+# st_mch.add(VolSet())
+# st_mch.add(WebOpt())
 
 aud_en.value = True
 
@@ -1249,3 +1223,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
+

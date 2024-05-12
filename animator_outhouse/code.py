@@ -28,14 +28,6 @@ def gc_col(collection_point):
                    " Available memory: {} bytes".format(start_mem))
 
 
-def f_exists(filename):
-    try:
-        status = os.stat(filename)
-        f_exists = True
-    except OSError:
-        f_exists = False
-    return f_exists
-
 
 def rst():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -51,6 +43,7 @@ gc_col("Imports gc, files")
 a_in = AnalogIn(board.A0)
 
 # setup pin for audio enable
+# 22 animator tiny, #28 standard size
 aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
