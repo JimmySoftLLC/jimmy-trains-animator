@@ -41,7 +41,7 @@ a_in = AnalogIn(board.A0)
 
 # setup pin for audio enable
 # 22 animator tiny, #28 standard size
-aud_en = digitalio.DigitalInOut(board.GP22)
+aud_en = digitalio.DigitalInOut(board.GP28)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
@@ -263,7 +263,7 @@ def upd_l_str():
     led.deinit()
     gc_col("Deinit ledStrip")
     # 15 on demo 17 tiny 10 on large
-    led = neopixel.NeoPixel(board.GP15, num_px)
+    led = neopixel.NeoPixel(board.GP10, num_px)
     led.auto_write = False
     led.brightness = 1.0
     l_tst()
@@ -361,8 +361,16 @@ if (web):
                 files.write_json_file("/sd/config_lightning.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to_state('base_state')
-            elif rq_d["an"] == "reset_default_colors":
+            elif rq_d["an"] == "reset_incandescent_colors":
                 rst_def_col()
+                files.write_json_file("/sd/config_lightning.json", cfg)
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                my_string = files.json_stringify(
+                    {"bars": cfg["bars"], "bolts": cfg["bolts"], "variation": cfg["variation"]})
+                st_mch.go_to_state('base_state')
+                return Response(request, my_string)
+            elif rq_d["an"] == "reset_white_colors":
+                rst_wht_col()
                 files.write_json_file("/sd/config_lightning.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 my_string = files.json_stringify(
@@ -578,10 +586,9 @@ def rst_l_def():
 
 def rst_def_col():
     global cfg
-    cfg["bars"] = {"r": 255, "g": 77, "b": 21}
-    cfg["bolts"] = {"r": 255, "g": 77, "b": 21}
+    cfg["bars"] = {"r": 255, "g": 197, "b": 143}
+    cfg["bolts"] = {"r": 255, "g": 197, "b": 143}
     cfg["variation"] = {"r1": 20, "g1": 8, "b1": 5, "r2": 20, "g2": 8, "b2": 5}
-
 
 def rst_wht_col():
     global cfg
@@ -598,7 +605,7 @@ def rst_def():
     cfg["volume"] = "20"
     cfg["can_cancel"] = True
     rst_l_def()
-    rst_wht_col()
+    rst_def_col()
 
 
 ################################################################################
@@ -1729,3 +1736,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
