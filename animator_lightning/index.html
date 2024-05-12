@@ -760,12 +760,12 @@
             .then(function (data) {
                 colorPickerBars.value = rgbToHex(data["bars"]["r"], data["bars"]["g"], data["bars"]["b"]);
                 colorPickerBolts.value = rgbToHex(data["bolts"]["r"], data["bolts"]["g"], data["bolts"]["b"]);
-                varBoltR.value = data["variation"]["r1"]
-                varBoltG.value = data["variation"]["g1"]
-                varBoltB.value = data["variation"]["b1"]
-                varBarR.value = data["variation"]["r2"]
-                varBarG.value = data["variation"]["g2"]
-                varBarB.value = data["variation"]["b2"]
+                varBoltR.value = data["v"]["r1"]
+                varBoltG.value = data["v"]["g1"]
+                varBoltB.value = data["v"]["b1"]
+                varBarR.value = data["v"]["r2"]
+                varBarG.value = data["v"]["g2"]
+                varBarB.value = data["v"]["b2"]
                 resetIncadescentColorsButton.removeAttribute('disabled')
             })
             .catch(function (error) {
@@ -800,12 +800,12 @@
             .then(function (data) {
                 colorPickerBars.value = rgbToHex(data["bars"]["r"], data["bars"]["g"], data["bars"]["b"]);
                 colorPickerBolts.value = rgbToHex(data["bolts"]["r"], data["bolts"]["g"], data["bolts"]["b"]);
-                varBoltR.value = data["variation"]["r1"]
-                varBoltG.value = data["variation"]["g1"]
-                varBoltB.value = data["variation"]["b1"]
-                varBarR.value = data["variation"]["r2"]
-                varBarG.value = data["variation"]["g2"]
-                varBarB.value = data["variation"]["b2"]
+                varBoltR.value = data["v"]["r1"]
+                varBoltG.value = data["v"]["g1"]
+                varBoltB.value = data["v"]["b1"]
+                varBarR.value = data["v"]["r2"]
+                varBarG.value = data["v"]["g2"]
+                varBarB.value = data["v"]["b2"]
                 resetWhiteColorsButton.removeAttribute('disabled')
             })
             .catch(function (error) {

@@ -72,7 +72,6 @@ cs = board.GP5
 spi = busio.SPI(sck, si, so)
 
 # Setup the mixer
-num_voices = 1
 mix = audiomixer.Mixer(voice_count=1, sample_rate=22050,
                        channel_count=2, bits_per_sample=16, samples_signed=True, buffer_size=4096)
 aud.play(mix)
@@ -117,49 +116,49 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # Sd card data Variables
 
-cfg = files.read_json_file("/sd/config_lightning.json")
+cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = files.return_directory("", "/sd/lightning_sounds", ".wav")
+s_o = files.return_directory("", "/sd/snd", ".wav")
 
-cust_snd_opt = files.return_directory(
+c_s_o = files.return_directory(
     "customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
-all_snd_opt = []
-all_snd_opt.extend(snd_opt)
-all_snd_opt.extend(cust_snd_opt)
+a_s_o = []
+a_s_o.extend(s_o)
+a_s_o.extend(c_s_o)
 
-menu_snd_opt = []
-menu_snd_opt.extend(snd_opt)
+m_s_o = []
+m_s_o.extend(s_o)
 rnd_opt = ['random all', 'random built in', 'random my']
-menu_snd_opt.extend(rnd_opt)
-menu_snd_opt.extend(cust_snd_opt)
+m_s_o.extend(rnd_opt)
+m_s_o.extend(c_s_o)
 
-ts_jsons = files.return_directory(
-    "", "/sd/time_stamp_defaults", ".json")
+t_s_j = files.return_directory(
+    "", "/sd/t_s_def", ".json")
 
 web = cfg["serve_webpage"]
 
-cfg_main = files.read_json_file("/sd/mvc/main_menu.json")
-main_m = cfg_main["main_menu"]
+c_m = files.read_json_file("/sd/mvc/main_menu.json")
+m_mu = c_m["main_menu"]
 
-cfg_web = files.read_json_file("/sd/mvc/web_menu.json")
-web_m = cfg_web["web_menu"]
+c_w = files.read_json_file("/sd/mvc/web_menu.json")
+w_mu = c_w["web_menu"]
 
-cfg_lght = files.read_json_file(
+c_l = files.read_json_file(
     "/sd/mvc/light_string_menu.json")
-lght_m = cfg_lght["light_string_menu"]
+l_mu = c_l["light_string_menu"]
 
-cfg_l_opt = files.read_json_file("/sd/mvc/light_options.json")
-l_opt = cfg_l_opt["light_options"]
+c_l_o = files.read_json_file("/sd/mvc/light_options.json")
+l_o = c_l_o["light_options"]
 
-cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
-vol_set = cfg_vol["volume_settings"]
+c_v = files.read_json_file("/sd/mvc/volume_settings.json")
+v_s = c_v["volume_settings"]
 
-cfg_add_song = files.read_json_file(
+c_a_s = files.read_json_file(
     "/sd/mvc/add_sounds_animate.json")
-add_snd = cfg_add_song["add_sounds_animate"]
+a_s = c_a_s["add_sounds_animate"]
 
-cont_run = False
+c_run = False
 ts_mode = False
 
 gc_col("config setup")
@@ -173,52 +172,52 @@ nood = []
 bar_arr = []
 bolt_arr = []
 
-num_px = 0
+n_px = 0
 
 # 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP10, num_px)
+led = neopixel.NeoPixel(board.GP10, n_px)
 
 
 def bld_bar():
-    my_indexes = []
-    for bar in bars:
-        for led_index in bar:
-            start_index = led_index
+    i = []
+    for b in bars:
+        for l in b:
+            si = l
             break
-        for led_index in range(0, 10):
-            my_indexes.append(led_index+start_index)
-    return my_indexes
+        for l in range(0, 10):
+            i.append(l+si)
+    return i
 
 
 def bld_bolt():
-    my_indexes = []
-    for bolt in bolts:
-        for led_index in bolt:
-            start_index = led_index
+    i = []
+    for b in bolts:
+        for l in b:
+            si = l
             break
-        if len(bolt) == 4:
-            for led_index in range(0, 4):
-                my_indexes.append(led_index+start_index)
-        if len(bolt) == 1:
-            for led_index in range(0, 1):
-                my_indexes.append(led_index+start_index)
-    return my_indexes
+        if len(b) == 4:
+            for l in range(0, 4):
+                i.append(l+si)
+        if len(b) == 1:
+            for l in range(0, 1):
+                i.append(l+si)
+    return i
 
 
 def l_tst():
     global bar_arr, bolt_arr
     bar_arr = bld_bar()
     bolt_arr = bld_bolt()
-    for bar in bars:
-        for led_index in bar:
-            led[led_index] = (50, 50, 50)
+    for b in bars:
+        for l in b:
+            led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
         led.fill((0, 0, 0))
         led.show()
-    for bolt in bolts:
-        for led_index in bolt:
-            led[led_index] = (50, 50, 50)
+    for b in bolts:
+        for l in b:
+            led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
         led.fill((0, 0, 0))
@@ -232,12 +231,12 @@ def l_tst():
 
 
 def upd_l_str():
-    global bars, bolts, nood, num_px, led, num_px
+    global bars, bolts, nood, n_px, led
     bars = []
     bolts = []
     nood = []
 
-    num_px = 0
+    n_px = 0
 
     els = cfg["light_string"].split(',')
 
@@ -247,23 +246,22 @@ def upd_l_str():
             typ, qty = p
             qty = int(qty)
             if typ == 'bar':
-                s = list(range(num_px, num_px + qty))
+                s = list(range(n_px, n_px + qty))
                 bars.append(s)
-                num_px += qty
+                n_px += qty
             elif typ == 'bolt' and qty < 4:
-                s = [num_px, qty]
+                s = [n_px, qty]
                 nood.append(s)
-                num_px += 1
+                n_px += 1
             elif typ == 'bolt' and qty == 4:
-                s = list(range(num_px, num_px + qty))
+                s = list(range(n_px, n_px + qty))
                 bolts.append(s)
-                num_px += qty
+                n_px += qty
 
-    print("Number of pixels total: ", num_px)
     led.deinit()
     gc_col("Deinit ledStrip")
     # 15 on demo 17 tiny 10 on large
-    led = neopixel.NeoPixel(board.GP10, num_px)
+    led = neopixel.NeoPixel(board.GP10, n_px)
     led.auto_write = False
     led.brightness = 1.0
     l_tst()
@@ -287,21 +285,21 @@ if (web):
     files.log_item("Connecting to WiFi")
 
     # default for manufacturing and shows
-    WIFI_SSID = "jimmytrainsguest"
-    WIFI_PASSWORD = ""
+    SSID = "jimmytrainsguest"
+    PASS = ""
 
     try:
         env = files.read_json_file("/sd/env.json")
-        WIFI_SSID = env["WIFI_SSID"]
-        WIFI_PASSWORD = env["WIFI_PASSWORD"]
+        SSID = env["WIFI_SSID"]
+        PASS = env["WIFI_PASSWORD"]
         gc_col("wifi env")
-        print("Using env ssid and password")
+        print("Using env ssid")
     except:
-        print("Using default ssid and password")
+        print("Using default ssid")
 
     try:
         # connect to your SSID
-        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+        wifi.radio.connect(SSID, PASS)
         gc_col("wifi connect")
 
         # setup mdns server
@@ -338,7 +336,7 @@ if (web):
 
         @server.route("/animation", [POST])
         def btn(request: Request):
-            global cfg, cont_run, ts_mode
+            global cfg, c_run, ts_mode
             rq_d = request.json()
             cfg["option_selected"] = rq_d["an"]
             an(cfg["option_selected"])
@@ -350,44 +348,44 @@ if (web):
             global cfg
             rq_d = request.json()
             if rq_d["an"] == "reset_animation_timing_to_defaults":
-                for ts_fn in ts_jsons:
+                for ts_fn in t_s_j:
                     ts = files.read_json_file(
-                        "/sd/time_stamp_defaults/" + ts_fn + ".json")
+                        "/sd/t_s_def/" + ts_fn + ".json")
                     files.write_json_file(
-                        "/sd/lightning_sounds/"+ts_fn+".json", ts)
+                        "/sd/snd/"+ts_fn+".json", ts)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
             elif rq_d["an"] == "reset_to_defaults":
                 rst_def()
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to_state('base_state')
             elif rq_d["an"] == "reset_incandescent_colors":
                 rst_def_col()
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 my_string = files.json_stringify(
-                    {"bars": cfg["bars"], "bolts": cfg["bolts"], "variation": cfg["variation"]})
+                    {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
                 st_mch.go_to_state('base_state')
                 return Response(request, my_string)
             elif rq_d["an"] == "reset_white_colors":
                 rst_wht_col()
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 my_string = files.json_stringify(
-                    {"bars": cfg["bars"], "bolts": cfg["bolts"], "variation": cfg["variation"]})
+                    {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
                 st_mch.go_to_state('base_state')
                 return Response(request, my_string)
             return Response(request, "Utility: " + rq_d["an"])
 
         @server.route("/mode", [POST])
         def btn(request: Request):
-            global cfg, cont_run, ts_mode
+            global cfg, c_run, ts_mode
             rq_d = request.json()
             if rq_d["an"] == "cont_mode_on":
-                cont_run = True
+                c_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif rq_d["an"] == "cont_mode_off":
-                cont_run = False
+                c_run = False
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             elif rq_d["an"] == "timestamp_mode_on":
                 ts_mode = True
@@ -406,13 +404,13 @@ if (web):
                 ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif rq_d["an"] == "volume_pot_off":
                 cfg["volume_pot"] = False
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
             elif rq_d["an"] == "volume_pot_on":
                 cfg["volume_pot"] = True
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, "Utility: " +  request.json())
+            return Response(request, "Utility: " +  rq_d["an"])
 
         @server.route("/lights", [POST])
         def btn(request: Request):
@@ -444,9 +442,9 @@ if (web):
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
             global cfg
-            data_object = request.json()
-            cfg["HOST_NAME"] = data_object["text"]
-            files.write_json_file("/sd/config_lightning.json", cfg)
+            rq_d = request.json()
+            cfg["HOST_NAME"] = rq_d["text"]
+            files.write_json_file("/sd/cfg.json", cfg)
             mdns_server.hostname = cfg["HOST_NAME"]
             speak_webpage()
             return Response(request, cfg["HOST_NAME"])
@@ -458,8 +456,8 @@ if (web):
         @server.route("/update-volume", [POST])
         def btn(request: Request):
             global cfg
-            data_object = request.json()
-            ch_vol(data_object["action"])
+            rq_d = request.json()
+            ch_vol(rq_d["action"])
             return Response(request, cfg["volume"])
 
         @server.route("/get-volume", [POST])
@@ -469,23 +467,23 @@ if (web):
         @server.route("/update-light-string", [POST])
         def btn(request: Request):
             global cfg
-            data_object = request.json()
-            if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
-                cfg["light_string"] = data_object["text"]
+            rq_d = request.json()
+            if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
+                cfg["light_string"] = rq_d["text"]
                 print("action: " +
-                      data_object["action"] + " data: " + cfg["light_string"])
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                      rq_d["action"] + " data: " + cfg["light_string"])
+                files.write_json_file("/sd/cfg.json", cfg)
                 upd_l_str()
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 return Response(request, cfg["light_string"])
             if cfg["light_string"] == "":
-                cfg["light_string"] = data_object["text"]
+                cfg["light_string"] = rq_d["text"]
             else:
                 cfg["light_string"] = cfg["light_string"] + \
-                    "," + data_object["text"]
-            print("action: " + data_object["action"] +
+                    "," + rq_d["text"]
+            print("action: " + rq_d["action"] +
                   " data: " + cfg["light_string"])
-            files.write_json_file("/sd/config_lightning.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             upd_l_str()
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             return Response(request, cfg["light_string"])
@@ -496,72 +494,68 @@ if (web):
 
         @server.route("/get-customers-sound-tracks", [POST])
         def btn(request: Request):
-            my_string = files.json_stringify(cust_snd_opt)
-            return Response(request, my_string)
+            s = files.json_stringify(c_s_o)
+            return Response(request, s)
 
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
-            sounds = []
-            sounds.extend(snd_opt)
-            my_string = files.json_stringify(sounds)
-            return Response(request, my_string)
+            s = []
+            s.extend(s_o)
+            s = files.json_stringify(s)
+            return Response(request, s)
 
         @server.route("/get-bar-colors", [POST])
         def btn(request: Request):
-            my_string = files.json_stringify(cfg["bars"])
-            return Response(request, my_string)
+            s = files.json_stringify(cfg["bars"])
+            return Response(request, s)
 
         @server.route("/get-bolt-colors", [POST])
         def btn(request: Request):
-            my_string = files.json_stringify(cfg["bolts"])
-            return Response(request, my_string)
+            s = files.json_stringify(cfg["bolts"])
+            return Response(request, s)
 
         @server.route("/get-color-variation", [POST])
         def btn(request: Request):
-            my_string = files.json_stringify(cfg["variation"])
-            return Response(request, my_string)
+            s = files.json_stringify(cfg["v"])
+            return Response(request, s)
 
         @server.route("/set-lights", [POST])
         def btn(request: Request):
             global cfg
-            data_object = request.json()
-            command_sent = "set-lights"
-            if data_object["item"] == "bars":
-                cfg["bars"] = {"r": data_object["r"],
-                               "g": data_object["g"], "b": data_object["b"]}
-                bar_indexes = []
-                bar_indexes.extend(bar_arr)
-                for i in bar_indexes:
-                    led[i] = (data_object["r"],
-                              data_object["g"], data_object["b"])
+            rq_d = request.json()
+            if rq_d["item"] == "bars":
+                cfg["bars"] = {"r": rq_d["r"],
+                               "g": rq_d["g"], "b": rq_d["b"]}
+                bi = []
+                bi.extend(bar_arr)
+                for i in bi:
+                    led[i] = (rq_d["r"],
+                              rq_d["g"], rq_d["b"])
                     led.show()
-            elif data_object["item"] == "bolts":
-                cfg["bolts"] = {"r": data_object["r"],
-                                "g": data_object["g"], "b": data_object["b"]}
-                bolt_indexes = []
-                bolt_indexes.extend(bolt_arr)
-                for i in bolt_indexes:
-                    led[i] = (data_object["r"],
-                              data_object["g"], data_object["b"])
+            elif rq_d["item"] == "bolts":
+                cfg["bolts"] = {"r": rq_d["r"],
+                                "g": rq_d["g"], "b": rq_d["b"]}
+                bi = []
+                bi.extend(bolt_arr)
+                for i in bi:
+                    led[i] = (rq_d["r"],
+                              rq_d["g"], rq_d["b"])
                     led.show()
-            elif data_object["item"] == "variationBolt":
-                print(data_object)
-                cfg["variation"] = {"r1": data_object["r"], "g1": data_object["g"], "b1": data_object["b"],
-                                    "r2": cfg["variation"]["r2"], "g2": cfg["variation"]["g2"], "b2": cfg["variation"]["b2"]}
-            elif data_object["item"] == "variationBar":
-                cfg["variation"] = {"r1": cfg["variation"]["r1"], "g1": cfg["variation"]["g1"], "b1": cfg["variation"]
-                                    ["b1"], "r2": data_object["r"], "g2": data_object["g"], "b2": data_object["b"]}
-            files.write_json_file("/sd/config_lightning.json", cfg)
-            return Response(request, command_sent)
+            elif rq_d["item"] == "variationBolt":
+                print(rq_d)
+                cfg["v"] = {"r1": rq_d["r"], "g1": rq_d["g"], "b1": rq_d["b"],
+                                    "r2": cfg["v"]["r2"], "g2": cfg["v"]["g2"], "b2": cfg["v"]["b2"]}
+            elif rq_d["item"] == "variationBar":
+                cfg["v"] = {"r1": cfg["v"]["r1"], "g1": cfg["v"]["g1"], "b1": cfg["v"]
+                                    ["b1"], "r2": rq_d["r"], "g2": rq_d["g"], "b2": rq_d["b"]}
+            files.write_json_file("/sd/cfg.json", cfg)
+            return Response(request, "OK")
 
     except Exception as e:
         web = False
         files.log_item(e)
 
 gc_col("web server")
-
-
-gc_col("utilities")
 
 ################################################################################
 # Global Methods
@@ -576,13 +570,13 @@ def rst_def_col():
     global cfg
     cfg["bars"] = {"r": 255, "g": 136, "b": 26}
     cfg["bolts"] = {"r": 255, "g": 136, "b": 26}
-    cfg["variation"] = {"r1": 20, "g1": 8, "b1": 5, "r2": 20, "g2": 8, "b2": 5}
+    cfg["v"] = {"r1": 20, "g1": 8, "b1": 5, "r2": 20, "g2": 8, "b2": 5}
 
 def rst_wht_col():
     global cfg
     cfg["bars"] = {"r": 255, "g": 255, "b": 255}
     cfg["bolts"] = {"r": 255, "g": 255, "b": 255}
-    cfg["variation"] = {"r1": 0, "g1": 0, "b1": 0, "r2": 0, "g2": 0, "b2": 0}
+    cfg["v"] = {"r1": 0, "g1": 0, "b1": 0, "r2": 0, "g2": 0, "b2": 0}
 
 
 def rst_def():
@@ -755,31 +749,31 @@ def an(file_name):
     current_option_selected = file_name
     try:
         if file_name == "random built in":
-            highest_index = len(snd_opt) - 1
-            current_option_selected = snd_opt[random.randint(
+            highest_index = len(s_o) - 1
+            current_option_selected = s_o[random.randint(
                 0, highest_index)]
-            while last_option == current_option_selected and len(snd_opt) > 1:
-                current_option_selected = snd_opt[random.randint(
+            while last_option == current_option_selected and len(s_o) > 1:
+                current_option_selected = s_o[random.randint(
                     0, highest_index)]
             last_option = current_option_selected
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random my":
-            highest_index = len(cust_snd_opt) - 1
-            current_option_selected = cust_snd_opt[random.randint(
+            highest_index = len(c_s_o) - 1
+            current_option_selected = c_s_o[random.randint(
                 0, highest_index)]
-            while last_option == current_option_selected and len(cust_snd_opt) > 1:
-                current_option_selected = cust_snd_opt[random.randint(
+            while last_option == current_option_selected and len(c_s_o) > 1:
+                current_option_selected = c_s_o[random.randint(
                     0, highest_index)]
             last_option = current_option_selected
             print("Random sound option: " + file_name)
             print("Sound file: " + current_option_selected)
         elif file_name == "random all":
-            highest_index = len(all_snd_opt) - 1
-            current_option_selected = all_snd_opt[random.randint(
+            highest_index = len(a_s_o) - 1
+            current_option_selected = a_s_o[random.randint(
                 0, highest_index)]
-            while last_option == current_option_selected and len(all_snd_opt) > 1:
-                current_option_selected = all_snd_opt[random.randint(
+            while last_option == current_option_selected and len(a_s_o) > 1:
+                current_option_selected = a_s_o[random.randint(
                     0, highest_index)]
             last_option = current_option_selected
             print("Random sound option: " + file_name)
@@ -835,7 +829,7 @@ def animation_light_show(file_name):
                     return
     else:
         flash_time_dictionary = files.read_json_file(
-            "/sd/lightning_sounds/" + file_name + ".json")
+            "/sd/snd/" + file_name + ".json")
     flashTime = flash_time_dictionary["flashTime"]
 
     flashTimeLen = len(flashTime)
@@ -846,7 +840,7 @@ def animation_light_show(file_name):
             open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
     else:
         wave0 = audiocore.WaveFile(
-            open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+            open("/sd/snd/" + file_name + ".wav", "rb"))
     mix.voice[0].play(wave0, loop=False)
     startTime = time.monotonic()
     my_index = 0
@@ -899,7 +893,7 @@ def ts(file_name):
     customers_file = "customers_owned_music_" in file_name
 
     my_time_stamps = files.read_json_file(
-        "/sd/time_stamp_defaults/timestamp mode.json")
+        "/sd/t_s_def/timestamp mode.json")
     my_time_stamps["flashTime"] = []
 
     file_name = file_name.replace("customers_owned_music_", "")
@@ -909,7 +903,7 @@ def ts(file_name):
             open("/sd/customers_owned_music/" + file_name + ".wav", "rb"))
     else:
         wave0 = audiocore.WaveFile(
-            open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+            open("/sd/snd/" + file_name + ".wav", "rb"))
     mix.voice[0].play(wave0, loop=False)
 
     startTime = time.monotonic()
@@ -930,7 +924,7 @@ def ts(file_name):
                     "/sd/customers_owned_music/" + file_name + ".json", my_time_stamps)
             else:
                 files.write_json_file(
-                    "/sd/lightning_sounds/" + file_name + ".json", my_time_stamps)
+                    "/sd/snd/" + file_name + ".json", my_time_stamps)
             break
 
     ts_mode = False
@@ -942,7 +936,7 @@ def ts(file_name):
 def t_l(file_name):
 
     flash_time_dictionary = files.read_json_file(
-        "/sd/lightning_sounds/" + file_name + ".json")
+        "/sd/snd/" + file_name + ".json")
 
     flashTime = flash_time_dictionary["flashTime"]
 
@@ -950,7 +944,7 @@ def t_l(file_name):
     flashTimeIndex = 0
 
     wave0 = audiocore.WaveFile(
-        open("/sd/lightning_sounds/" + file_name + ".wav", "rb"))
+        open("/sd/snd/" + file_name + ".wav", "rb"))
     mix.voice[0].play(wave0, loop=False)
     startTime = time.monotonic()
 
@@ -979,8 +973,8 @@ def t_l(file_name):
 def rainbow(spd, dur):
     startTime = time.monotonic()
     for j in range(0, 255, 1):
-        for i in range(num_px):
-            pi = (i * 256 // num_px) + j
+        for i in range(n_px):
+            pi = (i * 256 // n_px) + j
             led[i] = colorwheel(pi & 255)
         led.show()
         upd_vol(spd)
@@ -988,8 +982,8 @@ def rainbow(spd, dur):
         if te > dur:
             return
     for j in reversed(range(0, 255, 1)):
-        for i in range(num_px):
-            pi = (i * 256 // num_px) + j
+        for i in range(n_px):
+            pi = (i * 256 // n_px) + j
             led[i] = colorwheel(pi & 255)
         led.show()
         upd_vol(spd)
@@ -1120,7 +1114,7 @@ def mlt_c(duration):
 
     # Flicker, based on our initial RGB values
     while True:
-        for i in range(0, num_px):
+        for i in range(0, n_px):
             red = random.randint(128, 255)
             green = random.randint(128, 255)
             blue = random.randint(128, 255)
@@ -1202,14 +1196,14 @@ def ltng():
 
     for i in range(0, flashCount):
         # set bolt base color
-        bolt_r = col_it(cfg["bolts"]["r"], cfg["variation"]["r1"])
-        bolt_g = col_it(cfg["bolts"]["g"], cfg["variation"]["g1"])
-        bolt_b = col_it(cfg["bolts"]["b"], cfg["variation"]["b1"])
+        bolt_r = col_it(cfg["bolts"]["r"], cfg["v"]["r1"])
+        bolt_g = col_it(cfg["bolts"]["g"], cfg["v"]["g1"])
+        bolt_b = col_it(cfg["bolts"]["b"], cfg["v"]["b1"])
 
         # set bar base color
-        bar_r = col_it(cfg["bars"]["r"], cfg["variation"]["r2"])
-        bar_g = col_it(cfg["bars"]["g"], cfg["variation"]["g2"])
-        bar_b = col_it(cfg["bars"]["b"], cfg["variation"]["b2"])
+        bar_r = col_it(cfg["bars"]["r"], cfg["v"]["r2"])
+        bar_g = col_it(cfg["bars"]["g"], cfg["v"]["g2"])
+        bar_b = col_it(cfg["bars"]["b"], cfg["v"]["b2"])
 
         led.brightness = random.randint(150, 255) / 255
         for j in range(4):
@@ -1324,17 +1318,17 @@ class BaseState(State):
         State.exit(self, machine)
 
     def update(self, machine):
-        global cont_run
+        global c_run
         switch_state = utilities.switch_state(
             l_sw, r_sw, upd_vol, 3.0)
         if switch_state == "left_held":
-            if cont_run:
-                cont_run = False
+            if c_run:
+                c_run = False
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
-                cont_run = True
+                c_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif switch_state == "left" or cont_run:
+        elif switch_state == "left" or c_run:
             an(cfg["option_selected"])
         elif switch_state == "right":
             machine.go_to_state('main_menu')
@@ -1362,13 +1356,13 @@ class MainMenu(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + main_m[self.menuIndex] + ".wav")
+            ply_a_0("/sd/mvc/" + m_mu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
-            if self.menuIndex > len(main_m)-1:
+            if self.menuIndex > len(m_mu)-1:
                 self.menuIndex = 0
         if r_sw.fell:
-            selected_menu_item = main_m[self.selectedMenuIndex]
+            selected_menu_item = m_mu[self.selectedMenuIndex]
             if selected_menu_item == "choose_sounds":
                 machine.go_to_state('choose_sounds')
             elif selected_menu_item == "add_sounds_animate":
@@ -1414,13 +1408,13 @@ class ChooseSounds(State):
             else:
                 try:
                     wave0 = audiocore.WaveFile(open(
-                        "/sd/lightning_options_voice_commands/option_" + menu_snd_opt[self.optionIndex] + ".wav", "rb"))
+                        "/sd/snd_opt/option_" + m_s_o[self.optionIndex] + ".wav", "rb"))
                     mix.voice[0].play(wave0, loop=False)
                 except:
                     speak_song_number(str(self.optionIndex+1))
                 self.currentOption = self.optionIndex
                 self.optionIndex += 1
-                if self.optionIndex > len(menu_snd_opt)-1:
+                if self.optionIndex > len(m_s_o)-1:
                     self.optionIndex = 0
                 while mix.voice[0].playing:
                     pass
@@ -1430,8 +1424,8 @@ class ChooseSounds(State):
                 while mix.voice[0].playing:
                     pass
             else:
-                cfg["option_selected"] = menu_snd_opt[self.currentOption]
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                cfg["option_selected"] = m_s_o[self.currentOption]
+                files.write_json_file("/sd/cfg.json", cfg)
                 wave0 = audiocore.WaveFile(
                     open("/sd/mvc/option_selected.wav", "rb"))
                 mix.voice[0].play(wave0, loop=False)
@@ -1514,13 +1508,13 @@ class VolumeSettings(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + vol_set[self.menuIndex] + ".wav")
+            ply_a_0("/sd/mvc/" + v_s[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
-            if self.menuIndex > len(vol_set)-1:
+            if self.menuIndex > len(v_s)-1:
                 self.menuIndex = 0
         if r_sw.fell:
-            selected_menu_item = vol_set[self.selectedMenuIndex]
+            selected_menu_item = v_s[self.selectedMenuIndex]
             if selected_menu_item == "volume_level_adjustment":
                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
                 done = False
@@ -1532,7 +1526,7 @@ class VolumeSettings(State):
                     elif switch_state == "right":
                         ch_vol("raise")
                     elif switch_state == "right_held":
-                        files.write_json_file("/sd/config_lightning.json", cfg)
+                        files.write_json_file("/sd/cfg.json", cfg)
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
                         done = True
                         machine.go_to_state('base_state')
@@ -1542,12 +1536,12 @@ class VolumeSettings(State):
                 cfg["volume_pot"] = False
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
             elif selected_menu_item == "volume_pot_on":
                 cfg["volume_pot"] = True
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
 
@@ -1574,13 +1568,13 @@ class WebOptions(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + web_m[self.menuIndex] + ".wav")
+            ply_a_0("/sd/mvc/" + w_mu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
-            if self.menuIndex > len(web_m)-1:
+            if self.menuIndex > len(w_mu)-1:
                 self.menuIndex = 0
         if r_sw.fell:
-            selected_menu_item = web_m[self.selectedMenuIndex]
+            selected_menu_item = w_mu[self.selectedMenuIndex]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
                 option_selected_announcement()
@@ -1596,7 +1590,7 @@ class WebOptions(State):
                 ply_a_0("/sd/mvc/web_instruct.wav")
                 selectWebOptionsAnnouncement()
             else:
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
 
@@ -1624,13 +1618,13 @@ class LightStringSetupMenu(State):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + lght_m[self.menuIndex] + ".wav")
+            ply_a_0("/sd/mvc/" + l_mu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
-            if self.menuIndex > len(lght_m)-1:
+            if self.menuIndex > len(l_mu)-1:
                 self.menuIndex = 0
         if r_sw.fell:
-            selected_menu_item = lght_m[self.selectedMenuIndex]
+            selected_menu_item = l_mu[self.selectedMenuIndex]
             if selected_menu_item == "hear_light_setup_instructions":
                 ply_a_0("/sd/mvc/string_instructions.wav")
             elif selected_menu_item == "reset_lights_defaults":
@@ -1651,28 +1645,28 @@ class LightStringSetupMenu(State):
                     if switch_state == "left":
                         self.menuIndex -= 1
                         if self.menuIndex < 0:
-                            self.menuIndex = len(l_opt)-1
+                            self.menuIndex = len(l_o)-1
                         self.selectedMenuIndex = self.menuIndex
                         ply_a_0("/sd/mvc/" +
-                                l_opt[self.menuIndex] + ".wav")
+                                l_o[self.menuIndex] + ".wav")
                     elif switch_state == "right":
                         self.menuIndex += 1
-                        if self.menuIndex > len(l_opt)-1:
+                        if self.menuIndex > len(l_o)-1:
                             self.menuIndex = 0
                         self.selectedMenuIndex = self.menuIndex
                         ply_a_0("/sd/mvc/" +
-                                l_opt[self.menuIndex] + ".wav")
+                                l_o[self.menuIndex] + ".wav")
                     elif switch_state == "right_held":
                         if cfg["light_string"] == "":
-                            cfg["light_string"] = l_opt[self.selectedMenuIndex]
+                            cfg["light_string"] = l_o[self.selectedMenuIndex]
                         else:
                             cfg["light_string"] = cfg["light_string"] + \
-                                "," + l_opt[self.selectedMenuIndex]
+                                "," + l_o[self.selectedMenuIndex]
                         ply_a_0("/sd/mvc/" +
-                                l_opt[self.selectedMenuIndex] + ".wav")
+                                l_o[self.selectedMenuIndex] + ".wav")
                         ply_a_0("/sd/mvc/added.wav")
                     elif switch_state == "left_held":
-                        files.write_json_file("/sd/config_lightning.json", cfg)
+                        files.write_json_file("/sd/cfg.json", cfg)
                         upd_l_str()
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
                         adding = False
@@ -1680,7 +1674,7 @@ class LightStringSetupMenu(State):
                     upd_vol(0.1)
                     pass
             else:
-                files.write_json_file("/sd/config_lightning.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 upd_l_str()
                 machine.go_to_state('base_state')
@@ -1724,4 +1718,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
 
