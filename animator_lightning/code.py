@@ -346,7 +346,7 @@ if (web):
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/defaults", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             global cfg
             rq_d = request.json()
             if rq_d["an"] == "reset_animation_timing_to_defaults":
@@ -380,7 +380,7 @@ if (web):
             return Response(request, "Utility: " + rq_d["an"])
 
         @server.route("/mode", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             global cfg, cont_run, ts_mode
             rq_d = request.json()
             if rq_d["an"] == "cont_mode_on":
@@ -399,62 +399,50 @@ if (web):
             return Response(request, "Utility: " + rq_d["an"])
 
         @server.route("/speaker", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             global cfg
-            command_sent = ""
-            raw_text = request.raw_request.decode("utf8")
-            if "speaker_test" in raw_text:
-                command_sent = "speaker_test"
+            rq_d = request.json()
+            if rq_d["an"] == "speaker_test":
                 ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif "volume_pot_off" in raw_text:
-                command_sent = "volume_pot_off"
+            elif rq_d["an"] == "volume_pot_off":
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/config_lightning.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "volume_pot_on" in raw_text:
-                command_sent = "volume_pot_on"
+            elif rq_d["an"] == "volume_pot_on":
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/config_lightning.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, "Utility: " + command_sent)
+            return Response(request, "Utility: " +  request.json())
 
         @server.route("/lights", [POST])
-        def buttonpress(request: Request):
-            raw_text = request.raw_request.decode("utf8")
-            if "set_to_red" in raw_text:
-                led.fill((255, 0, 0))
-                led.show()
-            elif "set_to_green" in raw_text:
-                led.fill((0, 255, 0))
-                led.show()
-            elif "set_to_blue" in raw_text:
-                led.fill((0, 0, 255))
-                led.show()
-            elif "set_to_white" in raw_text:
-                led.fill((255, 255, 255))
-                led.show()
-            elif "set_to_0" in raw_text:
-                led.brightness = 0.0
-                led.show()
-            elif "set_to_20" in raw_text:
-                led.brightness = 0.2
-                led.show()
-            elif "set_to_40" in raw_text:
-                led.brightness = 0.4
-                led.show()
-            elif "set_to_60" in raw_text:
-                led.brightness = 0.6
-                led.show()
-            elif "set_to_80" in raw_text:
-                led.brightness = 0.8
-                led.show()
-            elif "set_to_100" in raw_text:
-                led.brightness = 1.0
-                led.show()
-            return Response(request, "Utility: set lights")
+        def btn(request: Request):
+            rq_d = request.json()
+            v = rq_d["an"].split(",")
+            led.fill((float(v[0]), float(v[1]), float(v[2])))
+            led.show()
+            return Response(request, "OK")
+        
+        @server.route("/bolt", [POST])
+        def btn(request: Request):
+            led.fill((int(cfg["bolts"]["r"]), int(cfg["bolts"]["g"]), int(cfg["bolts"]["b"])))
+            led.show()
+            return Response(request, "OK")
+        
+        @server.route("/bar", [POST])
+        def btn(request: Request):
+            led.fill((int(cfg["bars"]["r"]), int(cfg["bars"]["g"]), int(cfg["bars"]["b"])))
+            led.show()
+            return Response(request, "OK")
+        
+        @server.route("/bright", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            led.brightness = float(rq_d["an"])
+            led.show()
+            return Response(request, "OK")
 
         @server.route("/update-host-name", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             global cfg
             data_object = request.json()
             cfg["HOST_NAME"] = data_object["text"]
@@ -464,22 +452,22 @@ if (web):
             return Response(request, cfg["HOST_NAME"])
 
         @server.route("/get-host-name", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             return Response(request, cfg["HOST_NAME"])
 
         @server.route("/update-volume", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             global cfg
             data_object = request.json()
             ch_vol(data_object["action"])
             return Response(request, cfg["volume"])
 
         @server.route("/get-volume", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             return Response(request, cfg["volume"])
 
         @server.route("/update-light-string", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             global cfg
             data_object = request.json()
             if data_object["action"] == "save" or data_object["action"] == "clear" or data_object["action"] == "defaults":
@@ -503,38 +491,38 @@ if (web):
             return Response(request, cfg["light_string"])
 
         @server.route("/get-light-string", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             return Response(request, cfg["light_string"])
 
         @server.route("/get-customers-sound-tracks", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             my_string = files.json_stringify(cust_snd_opt)
             return Response(request, my_string)
 
         @server.route("/get-built-in-sound-tracks", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             sounds = []
             sounds.extend(snd_opt)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
 
         @server.route("/get-bar-colors", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             my_string = files.json_stringify(cfg["bars"])
             return Response(request, my_string)
 
         @server.route("/get-bolt-colors", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             my_string = files.json_stringify(cfg["bolts"])
             return Response(request, my_string)
 
         @server.route("/get-color-variation", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             my_string = files.json_stringify(cfg["variation"])
             return Response(request, my_string)
 
         @server.route("/set-lights", [POST])
-        def buttonpress(request: Request):
+        def btn(request: Request):
             global cfg
             data_object = request.json()
             command_sent = "set-lights"
@@ -586,8 +574,8 @@ def rst_l_def():
 
 def rst_def_col():
     global cfg
-    cfg["bars"] = {"r": 255, "g": 197, "b": 143}
-    cfg["bolts"] = {"r": 255, "g": 197, "b": 143}
+    cfg["bars"] = {"r": 255, "g": 136, "b": 26}
+    cfg["bolts"] = {"r": 255, "g": 136, "b": 26}
     cfg["variation"] = {"r1": 20, "g1": 8, "b1": 5, "r2": 20, "g2": 8, "b2": 5}
 
 def rst_wht_col():
