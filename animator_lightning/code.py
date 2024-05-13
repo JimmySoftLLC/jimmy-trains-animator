@@ -741,39 +741,20 @@ def spk_web():
 ################################################################################
 # animations
 
-
-l_o = ""
-
-
 def an(fn):
-    global cfg, l_o
+    global cfg
     print("Filename: " + fn)
     cur = fn
     try:
         if fn == "random built in":
             hi = len(s_o) - 1
-            cur = s_o[random.randint(
-                0, hi)]
-            while l_o == cur and len(s_o) > 1:
-                cur = s_o[random.randint(
-                    0, hi)]
-            l_o = cur
+            cur = s_o[random.randint(0, hi)]
         elif fn == "random my":
             hi = len(c_s_o) - 1
-            cur = c_s_o[random.randint(
-                0, hi)]
-            while l_o == cur and len(c_s_o) > 1:
-                cur = c_s_o[random.randint(
-                    0, hi)]
-            l_o = cur
+            cur = c_s_o[random.randint(0, hi)]
         elif fn == "random all":
             hi = len(a_s_o) - 1
-            cur = a_s_o[random.randint(
-                0, hi)]
-            while l_o == cur and len(a_s_o) > 1:
-                cur = a_s_o[random.randint(
-                    0, hi)]
-            l_o = cur
+            cur = a_s_o[random.randint(0, hi)]
         if ts_mode:
             ts(cur)
         else:
@@ -1577,6 +1558,9 @@ class Light(Ste):
     def __init__(self):
         self.i = 0
         self.sel_i = 0
+        self.li = 0
+        self.sel_li = 0
+
 
     @property
     def name(self):
@@ -1620,27 +1604,25 @@ class Light(Ste):
                     sw = utilities.switch_state(
                         l_sw, r_sw, upd_vol, 3.0)
                     if sw == "left":
-                        self.i -= 1
-                        if self.i < 0:
-                            self.i = len(l_o)-1
-                        self.sel_i = self.i
-                        ply_a_0("/sd/mvc/" +
-                                l_o[self.i] + ".wav")
+                        self.li -= 1
+                        if self.li < 0:
+                            self.li = len(l_o)-1
+                        self.sel_li = self.li
+                        ply_a_0("/sd/mvc/" + l_o[self.li] + ".wav")
                     elif sw == "right":
-                        self.i += 1
-                        if self.i > len(l_o)-1:
-                            self.i = 0
-                        self.sel_i = self.i
-                        ply_a_0("/sd/mvc/" +
-                                l_o[self.i] + ".wav")
+                        self.li += 1
+                        if self.li > len(l_o)-1:
+                            self.li = 0
+                        self.sel_li = self.li
+                        ply_a_0("/sd/mvc/" + l_o[self.li] + ".wav")
                     elif sw == "right_held":
                         if cfg["light_string"] == "":
-                            cfg["light_string"] = l_o[self.sel_i]
+                            cfg["light_string"] = l_o[self.sel_li]
                         else:
                             cfg["light_string"] = cfg["light_string"] + \
-                                "," + l_o[self.sel_i]
+                                "," + l_o[self.sel_li]
                         ply_a_0("/sd/mvc/" +
-                                l_o[self.sel_i] + ".wav")
+                                l_o[self.sel_li] + ".wav")
                         ply_a_0("/sd/mvc/added.wav")
                     elif sw == "left_held":
                         files.write_json_file("/sd/cfg.json", cfg)
@@ -1695,5 +1677,6 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
 
 
