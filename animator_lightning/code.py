@@ -151,6 +151,8 @@ l_mu = c_l["light_string_menu"]
 c_l_o = files.read_json_file("/sd/mvc/light_options.json")
 l_o = c_l_o["light_options"]
 
+print(l_o)
+
 c_v = files.read_json_file("/sd/mvc/volume_settings.json")
 v_s = c_v["volume_settings"]
 
@@ -358,14 +360,14 @@ if (web):
                 rst_def()
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                st_mch.go_to_state('base_state')
+                st_mch.go_to('base_state')
             elif rq_d["an"] == "reset_incandescent_colors":
                 rst_def_col()
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 s = files.json_stringify(
                     {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
-                st_mch.go_to_state('base_state')
+                st_mch.go_to('base_state')
                 return Response(req, s)
             elif rq_d["an"] == "reset_white_colors":
                 rst_wht_col()
@@ -373,7 +375,7 @@ if (web):
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 s = files.json_stringify(
                     {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
-                st_mch.go_to_state('base_state')
+                st_mch.go_to('base_state')
                 return Response(req, s)
             return Response(req, "Utility: " + rq_d["an"])
 
@@ -563,7 +565,7 @@ gc_col("web server")
 
 def rst_l_def():
     global cfg
-    cfg["light_string"] = "bar-10,bolt-4,bar-10,bolt-4,bar-10,bolt-4"
+    cfg["light_string"] = "bar-10,bolt-1,bar-10,bolt-1,bar-10,bolt-1"
 
 
 def rst_def_col():
@@ -746,45 +748,45 @@ l_o = ""
 def an(fn):
     global cfg, l_o
     print("Filename: " + fn)
-    c_o = fn
+    cur = fn
     try:
         if fn == "random built in":
             hi = len(s_o) - 1
-            c_o = s_o[random.randint(
+            cur = s_o[random.randint(
                 0, hi)]
-            while l_o == c_o and len(s_o) > 1:
-                c_o = s_o[random.randint(
+            while l_o == cur and len(s_o) > 1:
+                cur = s_o[random.randint(
                     0, hi)]
-            l_o = c_o
+            l_o = cur
         elif fn == "random my":
             hi = len(c_s_o) - 1
-            c_o = c_s_o[random.randint(
+            cur = c_s_o[random.randint(
                 0, hi)]
-            while l_o == c_o and len(c_s_o) > 1:
-                c_o = c_s_o[random.randint(
+            while l_o == cur and len(c_s_o) > 1:
+                cur = c_s_o[random.randint(
                     0, hi)]
-            l_o = c_o
+            l_o = cur
         elif fn == "random all":
             hi = len(a_s_o) - 1
-            c_o = a_s_o[random.randint(
+            cur = a_s_o[random.randint(
                 0, hi)]
-            while l_o == c_o and len(a_s_o) > 1:
-                c_o = a_s_o[random.randint(
+            while l_o == cur and len(a_s_o) > 1:
+                cur = a_s_o[random.randint(
                     0, hi)]
-            l_o = c_o
+            l_o = cur
         if ts_mode:
-            ts(c_o)
+            ts(cur)
         else:
-            if "customers_owned_music_" in c_o:
-                an_ls(c_o)
-            elif c_o == "alien lightshow":
-                an_ls(c_o)
-            elif c_o == "inspiring cinematic ambient lightshow":
-                an_ls(c_o)
-            elif c_o == "fireworks":
-                an_ls(c_o)
+            if "customers_owned_music_" in cur:
+                an_ls(cur)
+            elif cur == "alien lightshow":
+                an_ls(cur)
+            elif cur == "inspiring cinematic ambient lightshow":
+                an_ls(cur)
+            elif cur == "fireworks":
+                an_ls(cur)
             else:
-                t_l(c_o)
+                t_l(cur)
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -1022,16 +1024,16 @@ def candle(dur):
 
 
 def fwrk_sprd(arr):
-    center = len(arr) // 2
-    for i in range(center):
-        left_index = center - 1 - i
-        right_index = center + i
-        yield (arr[left_index], arr[right_index])
+    c = len(arr) // 2
+    for i in range(c):
+        l_i = c - 1 - i
+        r_i = c + i
+        yield (arr[l_i], arr[r_i])
 
 
 def rst_bar():
-    for bar in bars:
-        for i in bar:
+    for b in bars:
+        for i in b:
             led[i] = (0, 0, 0)
 
 
@@ -1058,17 +1060,17 @@ def fwrk(duration):
 
     # choose which bar none to all to fire
     bar_f = []
-    for index, my_array in enumerate(bars):
-        if index == random.randint(0, (len(bars)-1)):
-            bar_f.append(index)
+    for i in enumerate(bars):
+        if i == random.randint(0, (len(bars)-1)):
+            bar_f.append(i)
 
     if len(bar_f) == 0:
-        index == random.randint(0, (len(bars)-1))
-        bar_f.append(index)
+        i == random.randint(0, (len(bars)-1))
+        bar_f.append(i)
 
-    for bolt in bolts:
+    for b in bolts:
         r, g, b = r_w_b()
-        for i in bolt:
+        for i in b:
             led[i] = (r, g, b)
 
     # Burst from center
@@ -1101,93 +1103,93 @@ def fwrk(duration):
             return
 
 
-def mlt_c(duration):
-    startTime = time.monotonic()
+def mlt_c(dur):
+    st = time.monotonic()
     led.brightness = 1.0
 
     # Flicker, based on our initial RGB values
     while True:
         for i in range(0, n_px):
-            red = random.randint(128, 255)
-            green = random.randint(128, 255)
-            blue = random.randint(128, 255)
-            whichColor = random.randint(0, 2)
-            if whichColor == 0:
-                r1 = red
+            r = random.randint(128, 255)
+            g = random.randint(128, 255)
+            b = random.randint(128, 255)
+            c = random.randint(0, 2)
+            if c == 0:
+                r1 = r
                 g1 = 0
                 b1 = 0
-            elif whichColor == 1:
+            elif c == 1:
                 r1 = 0
-                g1 = green
+                g1 = g
                 b1 = 0
-            elif whichColor == 2:
+            elif c == 2:
                 r1 = 0
                 g1 = 0
-                b1 = blue
+                b1 = b
             led[i] = (r1, g1, b1)
             led.show()
         upd_vol(random.uniform(.2, 0.3))
-        timeElasped = time.monotonic()-startTime
-        if timeElasped > duration:
+        te = time.monotonic()-st
+        if te > dur:
             return
 
 
 def col_it(col, var):
     col = int(col)
     var = int(var)
-    low = int(bnd(col-var/100*col,0,255))
-    high = int(bnd(col+var/100*col,0,255))
-    return random.randint(low, high)
+    l = int(bnd(col-var/100*col,0,255))
+    h = int(bnd(col+var/100*col,0,255))
+    return random.randint(l, h)
 
 
 def ltng():
     # choose which bolt or no bolt to fire
-    bolt_indexes = []
-    which_bolt = random.randint(-1, (len(bolts)-1))
-    if which_bolt != -1:
-        for index, my_array in enumerate(bolts):
-            if index == which_bolt:
-                bolt_indexes.extend(my_array)
+    bolt = []
+    b_i = random.randint(-1, (len(bolts)-1))
+    if b_i != -1:
+        for i, arr in enumerate(bolts):
+            if i == b_i:
+                bolt.extend(arr)
 
     # choose which bar one to all to fire
-    bar_indexes = []
-    for index, my_array in enumerate(bars):
-        if index == random.randint(0, (len(bars)-1)):
-            bar_indexes.extend(my_array)
+    bar = []
+    for i, arr in enumerate(bars):
+        if i == random.randint(0, (len(bars)-1)):
+            bar.extend(arr)
 
     # choose which nood or no nood to fire
-    nood_indexes = []
-    which_nood = random.randint(-1, (len(nood)-1))
-    if which_nood != -1:
-        for index, my_array in enumerate(nood):
-            if index == which_nood:
-                nood_indexes.extend(my_array)
+    nood = []
+    nood_i = random.randint(-1, (len(nood)-1))
+    if nood_i != -1:
+        for i, arr in enumerate(nood):
+            if i == nood_i:
+                nood.extend(arr)
 
-    if len(nood_indexes) > 0 and len(bolt_indexes) > 0:
-        which_bolt = random.randint(0, 1)
-        if which_bolt == 0:
-            bolt_indexes = []
+    if len(nood) > 0 and len(bolt) > 0:
+        b_i = random.randint(0, 1)
+        if b_i == 0:
+            bolt = []
         else:
-            nood_indexes = []
+            nood = []
 
     # number of flashes
-    flashCount = random.randint(5, 10)
+    f_num = random.randint(5, 10)
 
-    if len(nood_indexes) > 0:
-        if nood_indexes[1] == 1:
+    if len(nood) > 0:
+        if nood[1] == 1:
             l1 = 1
             l2 = 0
             l3 = 0
-        if nood_indexes[1] == 2:
+        if nood[1] == 2:
             l1 = random.randint(0, 1)
             l2 = 0
             l3 = random.randint(0, 1)
-        if nood_indexes[1] == 3:
+        if nood[1] == 3:
             l1 = random.randint(0, 1)
             l2 = random.randint(0, 1)
             l3 = random.randint(0, 1)
 
-    for i in range(0, flashCount):
+    for i in range(0, f_num):
         # set bolt base color
         bolt_r = col_it(cfg["bolts"]["r"], cfg["v"]["r1"])
         bolt_g = col_it(cfg["bolts"]["g"], cfg["v"]["g1"])
@@ -1199,74 +1201,60 @@ def ltng():
         bar_b = col_it(cfg["bars"]["b"], cfg["v"]["b2"])
 
         led.brightness = random.randint(150, 255) / 255
-        for j in range(4):
-            if len(nood_indexes) > 0:
-                led[nood_indexes[0]] = (
+        for _ in range(4):
+            if len(nood) > 0:
+                led[nood[0]] = (
                     (255)*l2, (255)*l1, (255)*l3)
-            for led_index in bolt_indexes:
-                led[led_index] = (
+            for j in bolt:
+                led[j] = (
                     bolt_r, bolt_g, bolt_b)
-            for led_index in bar_indexes:
-                led[led_index] = (
+            for j in bar:
+                led[j] = (
                     bar_r, bar_g, bar_b)
             led.show()
-            delay = random.randint(0, 75)  # flash offset range - ms
-            delay = delay/1000
-            time.sleep(delay)
+            dly = random.randint(0, 75)  # flash offset range - ms
+            dly = dly/1000
+            time.sleep(dly)
             led.fill((0, 0, 0))
             led.show()
 
-        delay = random.randint(1, 50)  # time to next flash range - ms
-        delay = delay/1000
-        time.sleep(delay)
+        dly = random.randint(1, 50)  # time to next flash range - ms
+        dly = dly/1000
+        time.sleep(dly)
         led.fill((0, 0, 0))
         led.show()
 
 
-def bnd(my_color, lower, upper):
-    if (my_color < lower):
-        my_color = lower
-    if (my_color > upper):
-        my_color = upper
-    return my_color
+def bnd(cd, l, u):
+    if (cd < l):
+        cd = l
+    if (cd > u):
+        cd = u
+    return cd
 
 ################################################################################
 # State Machine
 
 
-class StateMachine(object):
+class StMch(object):
 
     def __init__(self):
         self.state = None
         self.states = {}
         self.paused_state = None
 
-    def add_state(self, state):
+    def add(self, state):
         self.states[state.name] = state
 
-    def go_to_state(self, state_name):
+    def go_to(self, state_name):
         if self.state:
             self.state.exit(self)
         self.state = self.states[state_name]
         self.state.enter(self)
 
-    def update(self):
+    def upd(self):
         if self.state:
-            self.state.update(self)
-
-    # When pausing, don't exit the state
-    def pause(self):
-        self.state = self.states['paused']
-        self.state.enter(self)
-
-    # When resuming, don't re-enter the state
-    def resume_state(self, state_name):
-        if self.state:
-            self.state.exit(self)
-        self.state = self.states[state_name]
-
-    def reset(self):
-        rst()
+            self.state.upd(self)
 
 ################################################################################
 # States
@@ -1274,7 +1262,7 @@ class StateMachine(object):
 # Abstract parent state class.
 
 
-class State(object):
+class Ste(object):
 
     def __init__(self):
         pass
@@ -1283,17 +1271,17 @@ class State(object):
     def name(self):
         return ''
 
-    def enter(self, machine):
+    def enter(self, mch):
         pass
 
-    def exit(self, machine):
+    def exit(self, mch):
         pass
 
-    def update(self, machine):
+    def upd(self, mch):
         pass
 
 
-class BaseState(State):
+class BseSt(Ste):
 
     def __init__(self):
         pass
@@ -1302,32 +1290,32 @@ class BaseState(State):
     def name(self):
         return 'base_state'
 
-    def enter(self, machine):
+    def enter(self, mch):
         ply_a_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
-        State.enter(self, machine)
+        Ste.enter(self, mch)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-    def update(self, machine):
+    def upd(self, mch):
         global c_run
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, upd_vol, 3.0)
-        if switch_state == "left_held":
+        if sw == "left_held":
             if c_run:
                 c_run = False
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 c_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif switch_state == "left" or c_run:
+        elif sw == "left" or c_run:
             an(cfg["option_selected"])
-        elif switch_state == "right":
-            machine.go_to_state('main_menu')
+        elif sw == "right":
+            mch.go_to('main_menu')
 
 
-class MainMenu(State):
+class Main(Ste):
 
     def __init__(self):
         self.menuIndex = 0
@@ -1337,15 +1325,15 @@ class MainMenu(State):
     def name(self):
         return 'main_menu'
 
-    def enter(self, machine):
+    def enter(self, mch):
         ply_a_0("/sd/mvc/main_menu.wav")
         l_r_but()
-        State.enter(self, machine)
+        Ste.enter(self, mch)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-    def update(self, machine):
+    def upd(self, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1355,42 +1343,42 @@ class MainMenu(State):
             if self.menuIndex > len(m_mu)-1:
                 self.menuIndex = 0
         if r_sw.fell:
-            selected_menu_item = m_mu[self.selectedMenuIndex]
-            if selected_menu_item == "choose_sounds":
-                machine.go_to_state('choose_sounds')
-            elif selected_menu_item == "add_sounds_animate":
-                machine.go_to_state('add_sounds_animate')
-            elif selected_menu_item == "light_string_setup_menu":
-                machine.go_to_state('light_string_setup_menu')
-            elif selected_menu_item == "web_options":
-                machine.go_to_state('web_options')
-            elif selected_menu_item == "volume_settings":
-                machine.go_to_state('volume_settings')
+            sel_mnu = m_mu[self.selectedMenuIndex]
+            if sel_mnu == "choose_sounds":
+                mch.go_to('choose_sounds')
+            elif sel_mnu == "add_sounds_animate":
+                mch.go_to('add_sounds_animate')
+            elif sel_mnu == "light_string_setup_menu":
+                mch.go_to('light_string_setup_menu')
+            elif sel_mnu == "web_options":
+                mch.go_to('web_options')
+            elif sel_mnu == "volume_settings":
+                mch.go_to('volume_settings')
             else:
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to_state('base_state')
+                mch.go_to('base_state')
 
 
-class ChooseSounds(State):
+class Snds(Ste):
 
     def __init__(self):
-        self.optionIndex = 0
-        self.currentOption = 0
+        self.i = 0
+        self.sel_i = 0
 
     @property
     def name(self):
         return 'choose_sounds'
 
-    def enter(self, machine):
+    def enter(self, mch):
         files.log_item('Choose sounds menu')
         ply_a_0("/sd/mvc/sound_selection_menu.wav")
         l_r_but()
-        State.enter(self, machine)
+        Ste.enter(self, mch)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-    def update(self, machine):
+    def upd(self, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1400,15 +1388,15 @@ class ChooseSounds(State):
                     pass
             else:
                 try:
-                    wave0 = audiocore.WaveFile(open(
-                        "/sd/snd_opt/option_" + m_s_o[self.optionIndex] + ".wav", "rb"))
-                    mix.voice[0].play(wave0, loop=False)
+                    w0 = audiocore.WaveFile(open(
+                        "/sd/snd_opt/option_" + m_s_o[self.i] + ".wav", "rb"))
+                    mix.voice[0].play(w0, loop=False)
                 except:
-                    spk_sng_num(str(self.optionIndex+1))
-                self.currentOption = self.optionIndex
-                self.optionIndex += 1
-                if self.optionIndex > len(m_s_o)-1:
-                    self.optionIndex = 0
+                    spk_sng_num(str(self.i+1))
+                self.sel_i = self.i
+                self.i += 1
+                if self.i > len(m_s_o)-1:
+                    self.i = 0
                 while mix.voice[0].playing:
                     pass
         if r_sw.fell:
@@ -1417,98 +1405,93 @@ class ChooseSounds(State):
                 while mix.voice[0].playing:
                     pass
             else:
-                cfg["option_selected"] = m_s_o[self.currentOption]
+                cfg["option_selected"] = m_s_o[self.sel_i]
                 files.write_json_file("/sd/cfg.json", cfg)
-                wave0 = audiocore.WaveFile(
+                w0 = audiocore.WaveFile(
                     open("/sd/mvc/option_selected.wav", "rb"))
-                mix.voice[0].play(wave0, loop=False)
+                mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
-            machine.go_to_state('base_state')
+            mch.go_to('base_state')
 
-# class AddSoundsAnimate(State):
-
-#     def __init__(self):
-#         self.menuIndex = 0
-#         self.selectedMenuIndex = 0
-
-#     @property
-#     def name(self):
-#         return 'add_sounds_animate'
-
-#     def enter(self, machine):
-#         files.log_item('Add sounds animate')
-#         play_audio_0("/sd/mvc/add_sounds_animate.wav")
-#         left_right_mouse_button()
-#         State.enter(self, machine)
-
-#     def exit(self, machine):
-#         State.exit(self, machine)
-
-#     def update(self, machine):
-#         global time_stamp_mode
-#         l_sw.update()
-#         right_switch.update()
-#         if l_sw.fell:
-#             play_audio_0("/sd/mvc/" + add_sounds_animate[self.menuIndex] + ".wav")
-#             self.selectedMenuIndex = self.menuIndex
-#             self.menuIndex +=1
-#             if self.menuIndex > len(add_sounds_animate)-1:
-#                 self.menuIndex = 0
-#         if right_switch.fell:
-#             if mixer.voice[0].playing:
-#                 mixer.voice[0].stop()
-#                 while mixer.voice[0].playing:
-#                     pass
-#             else:
-#                 selected_menu_item = add_sounds_animate[self.selectedMenuIndex]
-#                 if selected_menu_item == "hear_instructions":
-#                     play_audio_0("/sd/mvc/create_sound_track_files.wav")
-#                 elif selected_menu_item == "timestamp_mode_on":
-#                     time_stamp_mode = True
-#                     play_audio_0("/sd/mvc/timestamp_mode_on.wav")
-#                     play_audio_0("/sd/mvc/timestamp_instructions.wav")
-#                     machine.go_to_state('base_state')
-#                 elif selected_menu_item == "timestamp_mode_off":
-#                     time_stamp_mode = False
-#                     play_audio_0("/sd/mvc/timestamp_mode_off.wav")
-
-#                 else:
-#                     play_audio_0("/sd/mvc/all_changes_complete.wav")
-#                     machine.go_to_state('base_state')
-
-
-class VolumeSettings(State):
+class AddSnds(Ste):
 
     def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'add_sounds_animate'
+
+    def enter(self, mch):
+        files.log_item('Add sounds animate')
+        ply_a_0("/sd/mvc/add_sounds_animate.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global ts_mode
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            ply_a_0(
+                "/sd/mvc/" + a_s[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(a_s)-1:
+                self.i = 0
+        if r_sw.fell:
+            sel_mnu = a_s[self.sel_i]
+            if sel_mnu == "hear_instructions":
+                ply_a_0("/sd/mvc/create_sound_track_files.wav")
+            elif sel_mnu == "timestamp_mode_on":
+                ts_mode = True
+                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+                ply_a_0("/sd/mvc/timestamp_instructions.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "timestamp_mode_off":
+                ts_mode = False
+                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+            else:
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+
+
+class VolSet(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
     @property
     def name(self):
         return 'volume_settings'
 
-    def enter(self, machine):
+    def enter(self, mch):
         files.log_item('Set Web Options')
         ply_a_0("/sd/mvc/volume_settings_menu.wav")
         l_r_but()
-        State.enter(self, machine)
+        Ste.enter(self, mch)
 
-    def exit(self, machine):
-        State.exit(self, machine)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-    def update(self, machine):
+    def upd(self, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + v_s[self.menuIndex] + ".wav")
-            self.selectedMenuIndex = self.menuIndex
-            self.menuIndex += 1
-            if self.menuIndex > len(v_s)-1:
-                self.menuIndex = 0
+            ply_a_0("/sd/mvc/" + v_s[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(v_s)-1:
+                self.i = 0
         if r_sw.fell:
-            selected_menu_item = v_s[self.selectedMenuIndex]
-            if selected_menu_item == "volume_level_adjustment":
+            sel_mnu = v_s[self.sel_i]
+            if sel_mnu == "volume_level_adjustment":
                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
                 done = False
                 while not done:
@@ -1519,31 +1502,32 @@ class VolumeSettings(State):
                     elif switch_state == "right":
                         ch_vol("raise")
                     elif switch_state == "right_held":
-                        files.write_json_file("/sd/cfg.json", cfg)
+                        files.write_json_file(
+                            "/sd/cfg.json", cfg)
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
                         done = True
-                        machine.go_to_state('base_state')
+                        mch.go_to('base_state')
                     upd_vol(0.1)
                     pass
-            elif selected_menu_item == "volume_pot_off":
+            elif sel_mnu == "volume_pot_off":
                 cfg["volume_pot"] = False
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to_state('base_state')
-            elif selected_menu_item == "volume_pot_on":
+                mch.go_to('base_state')
+            elif sel_mnu == "volume_pot_on":
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to_state('base_state')
+                mch.go_to('base_state')
 
 
-class WebOptions(State):
+class WebOpt(Ste):
 
     def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+        self.i = 0
+        self.sel_i = 0
 
     @property
     def name(self):
@@ -1552,47 +1536,47 @@ class WebOptions(State):
     def enter(self, machine):
         files.log_item('Set Web Options')
         sel_web()
-        State.enter(self, machine)
+        Ste.enter(self, machine)
 
     def exit(self, machine):
-        State.exit(self, machine)
+        Ste.exit(self, machine)
 
-    def update(self, machine):
+    def upd(self, machine):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + w_mu[self.menuIndex] + ".wav")
-            self.selectedMenuIndex = self.menuIndex
-            self.menuIndex += 1
-            if self.menuIndex > len(w_mu)-1:
-                self.menuIndex = 0
+            ply_a_0("/sd/mvc/" + w_mu[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(w_mu)-1:
+                self.i = 0
         if r_sw.fell:
-            selected_menu_item = w_mu[self.selectedMenuIndex]
-            if selected_menu_item == "web_on":
+            sel_mnu = w_mu[self.sel_i]
+            if sel_mnu == "web_on":
                 cfg["serve_webpage"] = True
                 opt_sel()
                 sel_web()
-            elif selected_menu_item == "web_off":
+            elif sel_mnu == "web_off":
                 cfg["serve_webpage"] = False
                 opt_sel()
                 sel_web()
-            elif selected_menu_item == "hear_url":
+            elif sel_mnu == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
-            elif selected_menu_item == "hear_instr_web":
+            elif sel_mnu == "hear_instr_web":
                 ply_a_0("/sd/mvc/web_instruct.wav")
                 sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to_state('base_state')
+                machine.go_to('base_state')
 
 
-class LightStringSetupMenu(State):
+class Light(Ste):
 
     def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+        self.i = 0
+        self.sel_i = 0
 
     @property
     def name(self):
@@ -1602,88 +1586,88 @@ class LightStringSetupMenu(State):
         files.log_item('Light string menu')
         ply_a_0("/sd/mvc/light_string_setup_menu.wav")
         l_r_but()
-        State.enter(self, machine)
+        Ste.enter(self, machine)
 
     def exit(self, machine):
-        State.exit(self, machine)
+        Ste.exit(self, machine)
 
-    def update(self, machine):
+    def upd(self, machine):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + l_mu[self.menuIndex] + ".wav")
-            self.selectedMenuIndex = self.menuIndex
-            self.menuIndex += 1
-            if self.menuIndex > len(l_mu)-1:
-                self.menuIndex = 0
+            ply_a_0("/sd/mvc/" + l_mu[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(l_mu)-1:
+                self.i = 0
         if r_sw.fell:
-            selected_menu_item = l_mu[self.selectedMenuIndex]
-            if selected_menu_item == "hear_light_setup_instructions":
+            sel_mnu = l_mu[self.sel_i]
+            if sel_mnu == "hear_light_setup_instructions":
                 ply_a_0("/sd/mvc/string_instructions.wav")
-            elif selected_menu_item == "reset_lights_defaults":
+            elif sel_mnu == "reset_lights_defaults":
                 rst_l_def()
                 ply_a_0("/sd/mvc/lights_reset_to.wav")
                 spk_lght(False)
-            elif selected_menu_item == "hear_current_light_settings":
+            elif sel_mnu == "hear_current_light_settings":
                 spk_lght(True)
-            elif selected_menu_item == "clear_light_string":
+            elif sel_mnu == "clear_light_string":
                 cfg["light_string"] = ""
                 ply_a_0("/sd/mvc/lights_cleared.wav")
-            elif selected_menu_item == "add_lights":
+            elif sel_mnu == "add_lights":
                 ply_a_0("/sd/mvc/add_light_menu.wav")
-                adding = True
-                while adding:
-                    switch_state = utilities.switch_state(
+                a = True
+                while a:
+                    sw = utilities.switch_state(
                         l_sw, r_sw, upd_vol, 3.0)
-                    if switch_state == "left":
-                        self.menuIndex -= 1
-                        if self.menuIndex < 0:
-                            self.menuIndex = len(l_o)-1
-                        self.selectedMenuIndex = self.menuIndex
+                    if sw == "left":
+                        self.i -= 1
+                        if self.i < 0:
+                            self.i = len(l_o)-1
+                        self.sel_i = self.i
                         ply_a_0("/sd/mvc/" +
-                                l_o[self.menuIndex] + ".wav")
-                    elif switch_state == "right":
-                        self.menuIndex += 1
-                        if self.menuIndex > len(l_o)-1:
-                            self.menuIndex = 0
-                        self.selectedMenuIndex = self.menuIndex
+                                l_o[self.i] + ".wav")
+                    elif sw == "right":
+                        self.i += 1
+                        if self.i > len(l_o)-1:
+                            self.i = 0
+                        self.sel_i = self.i
                         ply_a_0("/sd/mvc/" +
-                                l_o[self.menuIndex] + ".wav")
-                    elif switch_state == "right_held":
+                                l_o[self.i] + ".wav")
+                    elif sw == "right_held":
                         if cfg["light_string"] == "":
-                            cfg["light_string"] = l_o[self.selectedMenuIndex]
+                            cfg["light_string"] = l_o[self.sel_i]
                         else:
                             cfg["light_string"] = cfg["light_string"] + \
-                                "," + l_o[self.selectedMenuIndex]
+                                "," + l_o[self.sel_i]
                         ply_a_0("/sd/mvc/" +
-                                l_o[self.selectedMenuIndex] + ".wav")
+                                l_o[self.sel_i] + ".wav")
                         ply_a_0("/sd/mvc/added.wav")
-                    elif switch_state == "left_held":
+                    elif sw == "left_held":
                         files.write_json_file("/sd/cfg.json", cfg)
                         upd_l_str()
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
-                        adding = False
-                        machine.go_to_state('base_state')
+                        a = False
+                        machine.go_to('base_state')
                     upd_vol(0.1)
                     pass
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 upd_l_str()
-                machine.go_to_state('base_state')
+                machine.go_to('base_state')
 
 ###############################################################################
 # Create the state machine
 
 
-st_mch = StateMachine()
-st_mch.add_state(BaseState())
-st_mch.add_state(MainMenu())
-st_mch.add_state(ChooseSounds())
-# state_machine.add_state(AddSoundsAnimate())
-st_mch.add_state(VolumeSettings())
-st_mch.add_state(WebOptions())
-st_mch.add_state(LightStringSetupMenu())
+st_mch = StMch()
+st_mch.add(BseSt())
+st_mch.add(Main())
+st_mch.add(Snds())
+st_mch.add(AddSnds())
+st_mch.add(VolSet())
+st_mch.add(WebOpt())
+st_mch.add(Light())
 
 aud_en.value = True
 
@@ -1698,12 +1682,12 @@ if (web):
         files.log_item("restarting...")
         rst()
 
-st_mch.go_to_state('base_state')
+st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
 while True:
-    st_mch.update()
+    st_mch.upd()
     upd_vol(.02)
     if (web):
         try:
