@@ -103,12 +103,13 @@ spi = busio.SPI(sck, si, so)
 
 # Setup the mixer it can play higher quality audio wav using larger wave files
 # wave files are less cpu intensive since they are not compressed
-num_voices = 1
+num_voices = 2
 mixer = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,bits_per_sample=16, samples_signed=True, buffer_size=4096)
 audio.play(mixer)
 
 volume = .2
 mixer.voice[0].level = volume
+mixer.voice[1].level = volume
 
 try:
   sdcard = sdcardio.SDCard(spi, cs)
@@ -162,7 +163,7 @@ def returnMaxChops(min_chops, max_chops):
     return str(max_chops)
 
 # get the calibration settings from various json files which are stored on the sdCard
-config = files.read_json_file("/sd/config_feller.json")
+config = files.read_json_file("/sd/cfg.json")
 
 tree_last_pos = config["tree_up_pos"]
 tree_min = 60
@@ -280,11 +281,11 @@ if (serve_webpage):
         
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.css", "/")
+            return FileResponse(request, "/sd/mui.min.css", "/")
         
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.js", "/")
+            return FileResponse(request, "/sd/mui.min.js", "/")
 
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
@@ -414,7 +415,7 @@ if (serve_webpage):
             elif "feller_advice_off" in raw_text: 
                 config["feller_advice"] = False
                 
-            files.write_json_file("/sd/config_feller.json",config)
+            files.write_json_file("/sd/cfg.json",config)
             play_audio_0("/sd/mvc/all_changes_complete.wav")
 
             return Response(request, "Dialog option cal saved.")
@@ -427,15 +428,15 @@ if (serve_webpage):
                 play_audio_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif "volume_pot_off" in raw_text:
                 config["volume_pot"] = False
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/cfg.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 config["volume_pot"] = True
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/cfg.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 reset_to_defaults()      
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/cfg.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 state_machine.go_to_state('base_state')
 
@@ -446,7 +447,7 @@ if (serve_webpage):
             global config
             data_object = request.json()
             config["HOST_NAME"] = data_object["text"]  
-            files.write_json_file("/sd/config_feller.json",config)       
+            files.write_json_file("/sd/cfg.json",config)       
             mdns_server.hostname = config["HOST_NAME"]
             speak_webpage()
             return Response(request, config["HOST_NAME"])
@@ -471,7 +472,7 @@ if (serve_webpage):
             global config
             data_object = request.json()
             config["min_chops"] = returnMinChops(int(data_object["text"]),int(config["max_chops"]))
-            files.write_json_file("/sd/config_feller.json",config)
+            files.write_json_file("/sd/cfg.json",config)
             speak_this_string(config["min_chops"], False)
             return Response(request, config["min_chops"])
         
@@ -485,7 +486,7 @@ if (serve_webpage):
             global config
             data_object = request.json()
             config["max_chops"] = returnMaxChops(int(config["min_chops"]),int(data_object["text"]))
-            files.write_json_file("/sd/config_feller.json",config)
+            files.write_json_file("/sd/cfg.json",config)
             speak_this_string(config["max_chops"], False)
             return Response(request, config["max_chops"])
         
@@ -515,13 +516,14 @@ def reset_to_defaults():
     config["feller_rest_pos"] = 0
     config["feller_chop_pos"] = 150
     config["opening_dialog"] = False
-    config["feller_advice"] = True
+    config["feller_advice"] = False
     config["HOST_NAME"] = "animator-feller"
     config["volume_pot"] = True
     config["min_chops"] = "2"
     config["max_chops"] = "7"
     config["volume"] = "20"
     config["can_cancel"] = True
+    config["option_selected"] = "birds_dogs_short_version"
 
 def changeVolume(action):
     volume = int(config["volume"])
@@ -548,7 +550,7 @@ def changeVolume(action):
         volume = 1
     config["volume"] = str(volume)
     config["volume_pot"] = False
-    files.write_json_file("/sd/config_feller.json",config)
+    files.write_json_file("/sd/cfg.json",config)
     play_audio_0("/sd/mvc/volume.wav")
     speak_this_string(config["volume"], False)
 
@@ -564,6 +566,7 @@ def sleepAndUpdateVolume(seconds):
         if volume < 0 or volume > 1:
             volume = .5
         mixer.voice[0].level = volume
+        mixer.voice[1].level = volume
         time.sleep(seconds)
 
 garbage_collect("global variable and methods")
@@ -663,7 +666,7 @@ def calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max
 def write_calibrations_to_config_file():
     play_audio_0("/sd/mvc/all_changes_complete.wav")
     global config
-    files.write_json_file("/sd/config_feller.json",config)
+    files.write_json_file("/sd/cfg.json",config)
     
 def calibratePosition(servo, movement_type):  
     if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
@@ -834,7 +837,7 @@ def animate_feller():
             feller_talking_movement()
             wave0.deinit()
             garbage_collect("deinit wave0")
-            
+                        
         chop_track = random.randint(1,7)
         print("Chop track: " + str(chop_track))
             
@@ -858,7 +861,7 @@ def animate_feller():
                 moveFellerServo( feller_angle )
                 sleepAndUpdateVolume(0.02)
     while mixer.voice[0].playing:
-        pass
+        sleepAndUpdateVolume(0.1)     
     mixer.voice[0].play( wave1, loop=False )
     for tree_angle in range(config["tree_up_pos"], config["tree_down_pos"], -5): # 180 - 0 degrees, 5 degrees at a time.
         moveTreeServo(tree_angle)
@@ -1166,7 +1169,7 @@ class SetDialogOptions(State):
                 option_selected_announcement()
                 selectDialogOptionsAnnouncement()
             else:
-                files.write_json_file("/sd/config_feller.json",config)
+                files.write_json_file("/sd/cfg.json",config)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 machine.go_to_state('base_state')
                     
@@ -1219,7 +1222,7 @@ class WebOptions(State):
                     play_audio_0("/sd/mvc/web_instruct.wav")
                     selectWebOptionsAnnouncement()
                 else:
-                    files.write_json_file("/sd/config_feller.json",config)
+                    files.write_json_file("/sd/cfg.json",config)
                     play_audio_0("/sd/mvc/all_changes_complete.wav")
                     machine.go_to_state('base_state')   
                                      
@@ -1259,7 +1262,7 @@ class ChooseSounds(State):
         if right_switch.fell:
             config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
             files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
-            files.write_json_file("/sd/config_feller.json",config)
+            files.write_json_file("/sd/cfg.json",config)
             option_selected_announcement()
             machine.go_to_state('base_state')
 
@@ -1375,3 +1378,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
