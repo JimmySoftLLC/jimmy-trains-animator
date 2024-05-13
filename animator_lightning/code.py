@@ -151,8 +151,6 @@ l_mu = c_l["light_string_menu"]
 c_l_o = files.read_json_file("/sd/mvc/light_options.json")
 l_o = c_l_o["light_options"]
 
-print(l_o)
-
 c_v = files.read_json_file("/sd/mvc/volume_settings.json")
 v_s = c_v["volume_settings"]
 
@@ -169,7 +167,7 @@ gc_col("config setup")
 # Setup neo pixels
 bars = []
 bolts = []
-nood = []
+noods = []
 
 bar_arr = []
 bolt_arr = []
@@ -224,7 +222,7 @@ def l_tst():
         time.sleep(.3)
         led.fill((0, 0, 0))
         led.show()
-    for n in nood:
+    for n in noods:
         led[n[0]] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -233,10 +231,10 @@ def l_tst():
 
 
 def upd_l_str():
-    global bars, bolts, nood, n_px, led
+    global bars, bolts, noods, n_px, led
     bars = []
     bolts = []
-    nood = []
+    noods = []
 
     n_px = 0
 
@@ -253,7 +251,7 @@ def upd_l_str():
                 n_px += qty
             elif typ == 'bolt' and qty < 4:
                 s = [n_px, qty]
-                nood.append(s)
+                noods.append(s)
                 n_px += 1
             elif typ == 'bolt' and qty == 4:
                 s = list(range(n_px, n_px + qty))
@@ -270,6 +268,7 @@ def upd_l_str():
 
 
 upd_l_str()
+
 gc_col("Neopixels setup")
 
 ################################################################################
@@ -1140,9 +1139,9 @@ def ltng():
 
     # choose which nood or no nood to fire
     nood = []
-    nood_i = random.randint(-1, (len(nood)-1))
+    nood_i = random.randint(-1, (len(noods)-1))
     if nood_i != -1:
-        for i, arr in enumerate(nood):
+        for i, arr in enumerate(noods):
             if i == nood_i:
                 nood.extend(arr)
 
@@ -1677,6 +1676,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
-
 
