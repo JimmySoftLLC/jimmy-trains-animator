@@ -298,41 +298,36 @@ if (web):
     files.log_item("Connecting to WiFi")
 
     #default for manufacturing and shows
-    WIFI_SSID="jimmytrainsguest"
-    WIFI_PASSWORD=""
+    SSID="jimmytrainsguest"
+    PASSWORD=""
 
     try:
         env = files.read_json_file("/sd/env.json")
-        WIFI_SSID = env["WIFI_SSID"]
-        WIFI_PASSWORD = env["WIFI_PASSWORD"]
+        SSID = env["WIFI_SSID"]
+        PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
-        print("Using env ssid and password")
+        print("Using env ssid")
     except:
-        print("Using default ssid and password")
+        print("Using default ssid")
 
     try:
         # connect to your SSID
-        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+        wifi.radio.connect(SSID, PASSWORD)
         gc_col("wifi connect")
         
         # setup mdns server
-        mdns_server = mdns.Server(wifi.radio)
-        mdns_server.hostname = cfg["HOST_NAME"]
-        mdns_server.advertise_service(service_type="_http", protocol="_tcp", port=80)
-        
-        # files.log_items MAC address to REPL
-        mystring = [hex(i) for i in wifi.radio.mac_address]
-        files.log_item("My MAC addr:" + str(mystring))
-
-        ip_address = str(wifi.radio.ipv4_address)
+        mdns = mdns.Server(wifi.radio)
+        mdns.hostname = cfg["HOST_NAME"]
+        mdns.advertise_service(service_type="_http", protocol="_tcp", port=80)
 
         # files.log_items IP address to REPL
-        files.log_item("My IP address is" + ip_address)
-        files.log_item("Connected to WiFi")
-        
+        files.log_item("IP is" + str(wifi.radio.ipv4_address))
+        files.log_item("Connected")
+
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
+
         gc_col("wifi server")
         
         ################################################################################
@@ -471,7 +466,7 @@ if (web):
             data_object = request.json()
             cfg["HOST_NAME"] = data_object["text"]
             files.write_json_file("/sd/config_christmas_park.json",cfg)       
-            mdns_server.hostname = cfg["HOST_NAME"]
+            mdns.hostname = cfg["HOST_NAME"]
             speak_webpage()
             return Response(request, cfg["HOST_NAME"])
         
