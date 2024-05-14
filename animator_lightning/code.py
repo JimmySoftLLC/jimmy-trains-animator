@@ -118,38 +118,38 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-s_o = files.return_directory("", "/sd/snd", ".wav")
+snd_o = files.return_directory("", "/sd/snd", ".wav")
 
-c_s_o = files.return_directory(
+cus_o = files.return_directory(
     "customers_owned_music_", "/sd/customers_owned_music", ".wav")
 
-a_s_o = []
-a_s_o.extend(s_o)
-a_s_o.extend(c_s_o)
+all_o = []
+all_o.extend(snd_o)
+all_o.extend(cus_o)
 
-m_s_o = []
-m_s_o.extend(s_o)
-rnd_opt = ['random all', 'random built in', 'random my']
-m_s_o.extend(rnd_opt)
-m_s_o.extend(c_s_o)
+mnu_o = []
+mnu_o.extend(snd_o)
+rnd_o = ['random all', 'random built in', 'random my']
+mnu_o.extend(rnd_o)
+mnu_o.extend(cus_o)
 
-t_s_j = files.return_directory(
+ts_json = files.return_directory(
     "", "/sd/t_s_def", ".json")
 
 web = cfg["serve_webpage"]
 
 c_m = files.read_json_file("/sd/mvc/main_menu.json")
-m_mu = c_m["main_menu"]
+m_mnu = c_m["main_menu"]
 
 c_w = files.read_json_file("/sd/mvc/web_menu.json")
-w_mu = c_w["web_menu"]
+w_mnu = c_w["web_menu"]
 
 c_l = files.read_json_file(
     "/sd/mvc/light_string_menu.json")
-l_mu = c_l["light_string_menu"]
+l_mnu = c_l["light_string_menu"]
 
 c_l_o = files.read_json_file("/sd/mvc/light_options.json")
-l_o = c_l_o["light_options"]
+l_opt = c_l_o["light_options"]
 
 c_v = files.read_json_file("/sd/mvc/volume_settings.json")
 v_s = c_v["volume_settings"]
@@ -349,7 +349,7 @@ if (web):
             global cfg
             rq_d = req.json()
             if rq_d["an"] == "reset_animation_timing_to_defaults":
-                for ts_fn in t_s_j:
+                for ts_fn in ts_json:
                     ts = files.read_json_file(
                         "/sd/t_s_def/" + ts_fn + ".json")
                     files.write_json_file(
@@ -495,13 +495,13 @@ if (web):
 
         @server.route("/get-customers-sound-tracks", [POST])
         def btn(req: Request):
-            s = files.json_stringify(c_s_o)
+            s = files.json_stringify(cus_o)
             return Response(req, s)
 
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(req: Request):
             s = []
-            s.extend(s_o)
+            s.extend(snd_o)
             s = files.json_stringify(s)
             return Response(req, s)
 
@@ -746,14 +746,14 @@ def an(fn):
     cur = fn
     try:
         if fn == "random built in":
-            hi = len(s_o) - 1
-            cur = s_o[random.randint(0, hi)]
+            hi = len(snd_o) - 1
+            cur = snd_o[random.randint(0, hi)]
         elif fn == "random my":
-            hi = len(c_s_o) - 1
-            cur = c_s_o[random.randint(0, hi)]
+            hi = len(cus_o) - 1
+            cur = cus_o[random.randint(0, hi)]
         elif fn == "random all":
-            hi = len(a_s_o) - 1
-            cur = a_s_o[random.randint(0, hi)]
+            hi = len(all_o) - 1
+            cur = all_o[random.randint(0, hi)]
         if ts_mode:
             ts(cur)
         else:
@@ -1317,13 +1317,13 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + m_mu[self.menuIndex] + ".wav")
+            ply_a_0("/sd/mvc/" + m_mnu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex += 1
-            if self.menuIndex > len(m_mu)-1:
+            if self.menuIndex > len(m_mnu)-1:
                 self.menuIndex = 0
         if r_sw.fell:
-            sel_mnu = m_mu[self.selectedMenuIndex]
+            sel_mnu = m_mnu[self.selectedMenuIndex]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
             elif sel_mnu == "add_sounds_animate":
@@ -1369,13 +1369,13 @@ class Snds(Ste):
             else:
                 try:
                     w0 = audiocore.WaveFile(open(
-                        "/sd/snd_opt/option_" + m_s_o[self.i] + ".wav", "rb"))
+                        "/sd/snd_opt/option_" + mnu_o[self.i] + ".wav", "rb"))
                     mix.voice[0].play(w0, loop=False)
                 except:
                     spk_sng_num(str(self.i+1))
                 self.sel_i = self.i
                 self.i += 1
-                if self.i > len(m_s_o)-1:
+                if self.i > len(mnu_o)-1:
                     self.i = 0
                 while mix.voice[0].playing:
                     pass
@@ -1385,7 +1385,7 @@ class Snds(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
-                cfg["option_selected"] = m_s_o[self.sel_i]
+                cfg["option_selected"] = mnu_o[self.sel_i]
                 files.write_json_file("/sd/cfg.json", cfg)
                 w0 = audiocore.WaveFile(
                     open("/sd/mvc/option_selected.wav", "rb"))
@@ -1525,13 +1525,13 @@ class WebOpt(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + w_mu[self.i] + ".wav")
+            ply_a_0("/sd/mvc/" + w_mnu[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(w_mu)-1:
+            if self.i > len(w_mnu)-1:
                 self.i = 0
         if r_sw.fell:
-            sel_mnu = w_mu[self.sel_i]
+            sel_mnu = w_mnu[self.sel_i]
             if sel_mnu == "web_on":
                 cfg["serve_webpage"] = True
                 opt_sel()
@@ -1578,13 +1578,13 @@ class Light(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + l_mu[self.i] + ".wav")
+            ply_a_0("/sd/mvc/" + l_mnu[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(l_mu)-1:
+            if self.i > len(l_mnu)-1:
                 self.i = 0
         if r_sw.fell:
-            sel_mnu = l_mu[self.sel_i]
+            sel_mnu = l_mnu[self.sel_i]
             if sel_mnu == "hear_light_setup_instructions":
                 ply_a_0("/sd/mvc/string_instructions.wav")
             elif sel_mnu == "reset_lights_defaults":
@@ -1605,23 +1605,23 @@ class Light(Ste):
                     if sw == "left":
                         self.li -= 1
                         if self.li < 0:
-                            self.li = len(l_o)-1
+                            self.li = len(l_opt)-1
                         self.sel_li = self.li
-                        ply_a_0("/sd/mvc/" + l_o[self.li] + ".wav")
+                        ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
                     elif sw == "right":
                         self.li += 1
-                        if self.li > len(l_o)-1:
+                        if self.li > len(l_opt)-1:
                             self.li = 0
                         self.sel_li = self.li
-                        ply_a_0("/sd/mvc/" + l_o[self.li] + ".wav")
+                        ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
                     elif sw == "right_held":
                         if cfg["light_string"] == "":
-                            cfg["light_string"] = l_o[self.sel_li]
+                            cfg["light_string"] = l_opt[self.sel_li]
                         else:
                             cfg["light_string"] = cfg["light_string"] + \
-                                "," + l_o[self.sel_li]
+                                "," + l_opt[self.sel_li]
                         ply_a_0("/sd/mvc/" +
-                                l_o[self.sel_li] + ".wav")
+                                l_opt[self.sel_li] + ".wav")
                         ply_a_0("/sd/mvc/added.wav")
                     elif sw == "left_held":
                         files.write_json_file("/sd/cfg.json", cfg)
