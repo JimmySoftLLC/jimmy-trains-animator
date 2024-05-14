@@ -152,106 +152,106 @@ ts_mode = False
 ################################################################################
 # Setup neo pixels
 
-grand_trees = []
+trees = []
 canes = []
-tree_ornaments = []
-tree_stars = []
-tree_branches  = []
-cane_starts  = []
-cane_ends  = []
+ornmnts = []
+stars = []
+brnchs  = []
+cane_s  = []
+cane_e  = []
 
-num_pixels = 0
+n_px = 0
 
 #15 on demo 17 tiny 10 on large
-ledStrip = neopixel.NeoPixel(board.GP15, num_pixels)
+led = neopixel.NeoPixel(board.GP15, n_px)
 
-def return_tree_parts(part):
-    my_indexes = []
-    for grand_tree in grand_trees:
-        for led_index in grand_tree:
-            start_index=led_index
+def bld_tree(p):
+    i = []
+    for t in trees:
+        for ledi in t:
+            si=ledi
             break
-        if part == "ornaments":
-            for led_index in range(0,7):
-                my_indexes.append(led_index+start_index)
-        if part == "star":
-            for led_index in range(7,14):
-                my_indexes.append(led_index+start_index)
-        if part == "branches":        
-            for led_index in range(14,21):
-                my_indexes.append(led_index+start_index)
-    return my_indexes
+        if p == "ornaments":
+            for ledi in range(0,7):
+                i.append(ledi+si)
+        if p == "star":
+            for ledi in range(7,14):
+                i.append(ledi+si)
+        if p == "branches":        
+            for ledi in range(14,21):
+                i.append(ledi+si)
+    return i
 
-def return_cane_parts(part):
-    my_indexes = []
-    for cane in canes:
-        for led_index in cane:
-            start_index=led_index
+def bld_cane(p):
+    i = []
+    for c in canes:
+        for led_i in c:
+            si=led_i
             break
-        if part == "end":
-            for led_index in range(0,2):
-                my_indexes.append(led_index+start_index)
-        if part == "start":
-            for led_index in range(2,4):
-                my_indexes.append(led_index+start_index)
-    return my_indexes
+        if p == "end":
+            for led_i in range(0,2):
+                i.append(led_i+si)
+        if p == "start":
+            for led_i in range(2,4):
+                i.append(led_i+si)
+    return i
 
-def show_Lights():
-    ledStrip.show()
+def show_l():
+    led.show()
     time.sleep(.3)
-    ledStrip.fill((0, 0, 0))
-    ledStrip.show()
+    led.fill((0, 0, 0))
+    led.show()
 
-def runLightTest():
-    global tree_ornaments,tree_stars,tree_branches,cane_starts,cane_ends
-    tree_ornaments = return_tree_parts("ornaments")
-    tree_stars = return_tree_parts("star")
-    tree_branches = return_tree_parts("branches")
-    cane_starts = return_cane_parts("start")
-    cane_ends = return_cane_parts("end")
+def l_tst():
+    global ornmnts,stars,brnchs,cane_s,cane_e
+    ornmnts = bld_tree("ornaments")
+    stars = bld_tree("star")
+    brnchs = bld_tree("branches")
+    cane_s = bld_cane("start")
+    cane_e = bld_cane("end")
 
     # cane test
-    count = 0
-    for led_index in cane_starts:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
-        if count > 1:
-            show_Lights()
-            count = 0
-    for led_index in cane_ends:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
-        if count > 1:
-            show_Lights()
-            count = 0
+    cnt = 0
+    for i in cane_s:
+        led[i]=(50, 50, 50)
+        cnt+=1
+        if cnt > 1:
+            show_l()
+            cnt = 0
+    for i in cane_e:
+        led[i]=(50, 50, 50)
+        cnt+=1
+        if cnt > 1:
+            show_l()
+            cnt = 0
 
     #tree test
-    count = 0
-    for led_index in tree_ornaments:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
-        if count > 6:
-            show_Lights()
-            count = 0
-    for led_index in tree_stars:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
-        if count > 6:
-            show_Lights()
-            count = 0
-    for led_index in tree_branches:
-        ledStrip[led_index]=(50, 50, 50)
-        count+=1
-        if count > 6:
-            show_Lights()
-            count = 0
+    cnt = 0
+    for i in ornmnts:
+        led[i]=(50, 50, 50)
+        cnt+=1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in stars:
+        led[i]=(50, 50, 50)
+        cnt+=1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in brnchs:
+        led[i]=(50, 50, 50)
+        cnt+=1
+        if cnt > 6:
+            show_l()
+            cnt = 0
 
 def updateLightString():
-    global grand_trees, canes, num_pixels, ledStrip, num_pixels
-    grand_trees = []
+    global trees, canes, n_px, led, n_px
+    trees = []
     canes = []
 
-    num_pixels = 0
+    n_px = 0
     
     elements = cfg["light_string"].split(',')
 
@@ -263,22 +263,22 @@ def updateLightString():
             quantity = int(quantity)
 
             if christmas_park_type == 'grandtree':
-                grand_tree_sequence = list(range(num_pixels, num_pixels + quantity))
-                grand_trees.append(grand_tree_sequence)
-                num_pixels += quantity
+                grand_tree_sequence = list(range(n_px, n_px + quantity))
+                trees.append(grand_tree_sequence)
+                n_px += quantity
             elif christmas_park_type == 'cane':
-                cane_sequence = list(range(num_pixels, num_pixels + quantity))
+                cane_sequence = list(range(n_px, n_px + quantity))
                 canes.append(cane_sequence)
-                num_pixels += quantity
+                n_px += quantity
 
-    print ("Number of pixels total: ", num_pixels)
-    ledStrip.deinit()
+    print ("Number of pixels total: ", n_px)
+    led.deinit()
     gc_col("Deinit ledStrip")
     #15 on demo 17 tiny 10 on large
-    ledStrip = neopixel.NeoPixel(board.GP15, num_pixels)
-    ledStrip.auto_write = False
-    ledStrip.brightness = 1.0
-    runLightTest()
+    led = neopixel.NeoPixel(board.GP15, n_px)
+    led.auto_write = False
+    led.brightness = 1.0
+    l_tst()
     
 updateLightString()
 gc_col("Neopixels setup")
@@ -434,35 +434,35 @@ if (web):
             command_sent = ""
             raw_text = request.raw_request.decode("utf8")
             if "set_to_red" in raw_text:
-                ledStrip.fill((255, 0, 0))
-                ledStrip.show()
+                led.fill((255, 0, 0))
+                led.show()
             elif "set_to_green" in raw_text:
-                ledStrip.fill((0, 255, 0))
-                ledStrip.show()
+                led.fill((0, 255, 0))
+                led.show()
             elif "set_to_blue" in raw_text:
-                ledStrip.fill((0, 0, 255))
-                ledStrip.show()
+                led.fill((0, 0, 255))
+                led.show()
             elif "set_to_white" in raw_text:
-                ledStrip.fill((255, 255, 255))
-                ledStrip.show()
+                led.fill((255, 255, 255))
+                led.show()
             elif "set_to_0" in raw_text:
-                ledStrip.brightness = 0.0
-                ledStrip.show()
+                led.brightness = 0.0
+                led.show()
             elif "set_to_20" in raw_text:
-                ledStrip.brightness = 0.2
-                ledStrip.show()
+                led.brightness = 0.2
+                led.show()
             elif "set_to_40" in raw_text:
-                ledStrip.brightness = 0.4
-                ledStrip.show()
+                led.brightness = 0.4
+                led.show()
             elif "set_to_60" in raw_text:
-                ledStrip.brightness = 0.6
-                ledStrip.show()
+                led.brightness = 0.6
+                led.show()
             elif "set_to_80" in raw_text:
-                ledStrip.brightness = 0.8
-                ledStrip.show()
+                led.brightness = 0.8
+                led.show()
             elif "set_to_100" in raw_text:
-                ledStrip.brightness = 1.0
-                ledStrip.show()
+                led.brightness = 1.0
+                led.show()
             return Response(request, "Utility: " + "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
@@ -808,8 +808,8 @@ def animation_light_show(file_name):
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
-            ledStrip.fill((0, 0, 0))
-            ledStrip.show()
+            led.fill((0, 0, 0))
+            led.show()
             break
         upd_vol(.001)
          
@@ -840,8 +840,8 @@ def animation_timestamp(file_name):
             my_time_stamps["flashTime"].append(time_elasped) 
             print(time_elasped)
         if not mix.voice[0].playing:
-            ledStrip.fill((0, 0, 0))
-            ledStrip.show()
+            led.fill((0, 0, 0))
+            led.show()
             my_time_stamps["flashTime"].append(5000)
             if customers_file:
                 files.write_json_file("/sd/customers_owned_music/" + file_name + ".json",my_time_stamps)
@@ -858,29 +858,29 @@ def animation_timestamp(file_name):
 # Led color effects
         
 def change_color():
-    ledStrip.brightness = 1.0
+    led.brightness = 1.0
     color_r = random.randint(0, 255)
     color_g = random.randint(0, 255)
     color_b = random.randint(0, 255)     
-    ledStrip.fill((color_r, color_g, color_b))
-    ledStrip.show()
+    led.fill((color_r, color_g, color_b))
+    led.show()
 
 def rainbow(speed,duration):
     startTime = time.monotonic()
     for j in range(0,255,1):
-        for i in range(num_pixels):
-            pixel_index = (i * 256 // num_pixels) + j
-            ledStrip[i] = colorwheel(pixel_index & 255)
-        ledStrip.show()
+        for i in range(n_px):
+            pixel_index = (i * 256 // n_px) + j
+            led[i] = colorwheel(pixel_index & 255)
+        led.show()
         upd_vol(speed)
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
     for j in reversed(range(0,255,1)):
-        for i in range(num_pixels):
-            pixel_index = (i * 256 // num_pixels) + j
-            ledStrip[i] = colorwheel(pixel_index & 255)
-        ledStrip.show()
+        for i in range(n_px):
+            pixel_index = (i * 256 // n_px) + j
+            led[i] = colorwheel(pixel_index & 255)
+        led.show()
         upd_vol(speed)
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
@@ -888,25 +888,25 @@ def rainbow(speed,duration):
 
 def fire(duration):
     startTime = time.monotonic()
-    ledStrip.brightness = 1.0
+    led.brightness = 1.0
 
     fire_indexes = []
     
-    fire_indexes.extend(tree_ornaments)
-    fire_indexes.extend(cane_starts)
-    fire_indexes.extend(cane_ends)
+    fire_indexes.extend(ornmnts)
+    fire_indexes.extend(cane_s)
+    fire_indexes.extend(cane_e)
     
     star_indexes = []
-    star_indexes.extend(tree_stars)
+    star_indexes.extend(stars)
     
     for i in star_indexes:
-        ledStrip[i] = (255,255,255)
+        led[i] = (255,255,255)
         
     branches_indexes = []
-    branches_indexes.extend((tree_branches))
+    branches_indexes.extend((brnchs))
     
     for i in branches_indexes:
-        ledStrip[i] = (50,50,50)
+        led[i] = (50,50,50)
     
     r = random.randint(0,255)
     g = random.randint(0,255)
@@ -922,8 +922,8 @@ def fire(duration):
             r1 = bounds(r-flicker, 0, 255)
             g1 = bounds(g-flicker, 0, 255)
             b1 = bounds(b-flicker, 0, 255)
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
+            led[i] = (r1,g1,b1)
+            led.show()
         upd_vol(random.uniform(0.05,0.1))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
@@ -931,11 +931,11 @@ def fire(duration):
                
 def christmas_fire(duration):
     startTime=time.monotonic()
-    ledStrip.brightness = 1.0
+    led.brightness = 1.0
 
     #Flicker, based on our initial RGB values
     while True:
-        for i in range (0, num_pixels):
+        for i in range (0, n_px):
             red = random.randint(0,255)
             green = random.randint(0,255)
             blue = random.randint(0,255)
@@ -952,8 +952,8 @@ def christmas_fire(duration):
                 r1=0
                 g1=0
                 b1=blue
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
+            led[i] = (r1,g1,b1)
+            led.show()
         upd_vol(random.uniform(.2,0.3))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
@@ -966,11 +966,11 @@ def bounds(my_color, lower, upper):
 
 def multicolor(duration):
     startTime=time.monotonic()
-    ledStrip.brightness = 1.0
+    led.brightness = 1.0
 
     #Flicker, based on our initial RGB values
     while True:
-        for i in range (0, num_pixels):
+        for i in range (0, n_px):
             red = random.randint(128,255)
             green = random.randint(128,255)
             blue = random.randint(128,255)
@@ -987,8 +987,8 @@ def multicolor(duration):
                 r1=0
                 g1=0
                 b1=blue
-            ledStrip[i] = (r1,g1,b1)
-            ledStrip.show()
+            led[i] = (r1,g1,b1)
+            led.show()
         upd_vol(random.uniform(.2,0.3))
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
