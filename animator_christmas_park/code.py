@@ -246,30 +246,29 @@ def l_tst():
             show_l()
             cnt = 0
 
-def updateLightString():
-    global trees, canes, n_px, led, n_px
+def upd_l_str():
+    global trees, canes, n_px, led
     trees = []
     canes = []
 
     n_px = 0
     
-    elements = cfg["light_string"].split(',')
+    els = cfg["light_string"].split(',')
 
-    for element in elements:
-        parts = element.split('-')
+    for el in els:
+        p = el.split('-')
+        if len(p) == 2:
+            typ, qty = p
+            qty = int(qty)
 
-        if len(parts) == 2:
-            christmas_park_type, quantity = parts
-            quantity = int(quantity)
-
-            if christmas_park_type == 'grandtree':
-                grand_tree_sequence = list(range(n_px, n_px + quantity))
-                trees.append(grand_tree_sequence)
-                n_px += quantity
-            elif christmas_park_type == 'cane':
-                cane_sequence = list(range(n_px, n_px + quantity))
-                canes.append(cane_sequence)
-                n_px += quantity
+            if typ == 'grandtree':
+                s = list(range(n_px, n_px + qty))
+                trees.append(s)
+                n_px += qty
+            elif typ == 'cane':
+                s = list(range(n_px, n_px + qty))
+                canes.append(s)
+                n_px += qty
 
     print ("Number of pixels total: ", n_px)
     led.deinit()
@@ -280,7 +279,8 @@ def updateLightString():
     led.brightness = 1.0
     l_tst()
     
-updateLightString()
+upd_l_str()
+
 gc_col("Neopixels setup")
 
 ################################################################################
@@ -498,7 +498,7 @@ if (web):
                 cfg["light_string"] = data_object["text"]
                 print("action: " + data_object["action"]+ " data: " + cfg["light_string"])
                 files.write_json_file("/sd/config_christmas_park.json",cfg)
-                updateLightString()
+                upd_l_str()
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
                 return Response(request, cfg["light_string"])
             if cfg["light_string"] =="":
@@ -507,7 +507,7 @@ if (web):
                 cfg["light_string"] = cfg["light_string"] + "," + data_object["text"]
             print("action: " + data_object["action"]+ " data: " + cfg["light_string"])
             files.write_json_file("/sd/config_christmas_park.json",cfg)
-            updateLightString()
+            upd_l_str()
             play_audio_0("/sd/mvc/all_changes_complete.wav")
             return Response(request, cfg["light_string"])
         
@@ -1403,7 +1403,7 @@ class LightStringSetupMenu(State):
                         play_audio_0("/sd/mvc/added.wav")    
                     elif switch_state == "left_held":
                         files.write_json_file("/sd/config_christmas_park.json",cfg)   
-                        updateLightString()
+                        upd_l_str()
                         play_audio_0("/sd/mvc/all_changes_complete.wav")
                         adding = False
                         machine.go_to_state('base_state')  
@@ -1412,7 +1412,7 @@ class LightStringSetupMenu(State):
             else:
                 files.write_json_file("/sd/config_christmas_park.json",cfg)
                 play_audio_0("/sd/mvc/all_changes_complete.wav")
-                updateLightString()
+                upd_l_str()
                 machine.go_to_state('base_state')  
 
 ###############################################################################
