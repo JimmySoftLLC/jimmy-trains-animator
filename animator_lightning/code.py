@@ -1298,8 +1298,8 @@ class BseSt(Ste):
 class Main(Ste):
 
     def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
+        self.i = 0
+        self.sel_i = 0
 
     @property
     def name(self):
@@ -1317,13 +1317,13 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/sd/mvc/" + m_mnu[self.menuIndex] + ".wav")
-            self.selectedMenuIndex = self.menuIndex
-            self.menuIndex += 1
-            if self.menuIndex > len(m_mnu)-1:
-                self.menuIndex = 0
+            ply_a_0("/sd/mvc/" + m_mnu[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(m_mnu)-1:
+                self.i = 0
         if r_sw.fell:
-            sel_mnu = m_mnu[self.selectedMenuIndex]
+            sel_mnu = m_mnu[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
             elif sel_mnu == "add_sounds_animate":
