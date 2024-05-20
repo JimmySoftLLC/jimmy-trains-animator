@@ -1475,13 +1475,13 @@ class VolSet(Ste):
                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
                 done = False
                 while not done:
-                    switch_state = utilities.switch_state(
+                    sw = utilities.switch_state(
                         l_sw, r_sw, upd_vol, 3.0)
-                    if switch_state == "left":
+                    if sw == "left":
                         ch_vol("lower")
-                    elif switch_state == "right":
+                    elif sw == "right":
                         ch_vol("raise")
-                    elif switch_state == "right_held":
+                    elif sw == "right_held":
                         files.write_json_file(
                             "/sd/cfg.json", cfg)
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1513,15 +1513,15 @@ class WebOpt(Ste):
     def name(self):
         return 'web_options'
 
-    def enter(self, machine):
+    def enter(self, mch):
         files.log_item('Set Web Options')
         sel_web()
-        Ste.enter(self, machine)
+        Ste.enter(self, mch)
 
-    def exit(self, machine):
-        Ste.exit(self, machine)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-    def upd(self, machine):
+    def upd(self, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1549,7 +1549,7 @@ class WebOpt(Ste):
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-                machine.go_to('base_state')
+                mch.go_to('base_state')
 
 
 class Light(Ste):
@@ -1565,16 +1565,16 @@ class Light(Ste):
     def name(self):
         return 'light_string_setup_menu'
 
-    def enter(self, machine):
+    def enter(self, mch):
         files.log_item('Light string menu')
         ply_a_0("/sd/mvc/light_string_setup_menu.wav")
         l_r_but()
-        Ste.enter(self, machine)
+        Ste.enter(self, mch)
 
-    def exit(self, machine):
-        Ste.exit(self, machine)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-    def upd(self, machine):
+    def upd(self, mch):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1628,14 +1628,14 @@ class Light(Ste):
                         upd_l_str()
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
                         a = False
-                        machine.go_to('base_state')
+                        mch.go_to('base_state')
                     upd_vol(0.1)
                     pass
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 upd_l_str()
-                machine.go_to('base_state')
+                mch.go_to('base_state')
 
 ###############################################################################
 # Create the state machine
