@@ -37,7 +37,7 @@ gc_col("Imports gc, files")
 a_in = AnalogIn(board.A0)
 
 # setup pin for audio enable 22 on tiny 28 on large
-au_en = digitalio.DigitalInOut(board.GP22)
+au_en = digitalio.DigitalInOut(board.GP28)
 au_en.direction = digitalio.Direction.OUTPUT
 au_en.value = False
 
@@ -170,7 +170,7 @@ cane_e = []
 n_px = 0
 
 # 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP15, n_px)
+led = neopixel.NeoPixel(board.GP10, n_px)
 
 
 def bld_tree(p):
@@ -286,7 +286,7 @@ def upd_l_str():
     led.deinit()
     gc_col("Deinit ledStrip")
     # 15 on demo 17 tiny 10 on large
-    led = neopixel.NeoPixel(board.GP15, n_px)
+    led = neopixel.NeoPixel(board.GP10, n_px)
     led.auto_write = False
     led.brightness = 1.0
     l_tst()
@@ -1040,7 +1040,7 @@ class StMch(object):
 
     def upd(self):
         if self.state:
-            self.state.update(self)
+            self.state.upd(self)
 
 ################################################################################
 # States
@@ -1414,19 +1414,19 @@ class Light(Ste):
                         self.sel_li = self.li
                         ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
                     elif sw == "right":
-                        self.i += 1
-                        if self.i > len(l_opt)-1:
-                            self.i = 0
-                        self.sel_i = self.i
-                        ply_a_0("/sd/mvc/" + l_opt[self.i] + ".wav")
+                        self.li += 1
+                        if self.li > len(l_opt)-1:
+                            self.li = 0
+                        self.sel_li = self.li
+                        ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
                     elif sw == "right_held":
                         if cfg["light_string"] == "":
-                            cfg["light_string"] = l_opt[self.sel_i]
+                            cfg["light_string"] = l_opt[self.sel_li]
                         else:
                             cfg["light_string"] = cfg["light_string"] + \
-                                "," + l_opt[self.sel_i]
+                                "," + l_opt[self.sel_li]
                         ply_a_0("/sd/mvc/" +
-                                l_opt[self.sel_i] + ".wav")
+                                l_opt[self.sel_li] + ".wav")
                         ply_a_0("/sd/mvc/added.wav")
                     elif sw == "left_held":
                         files.write_json_file(
@@ -1482,3 +1482,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
