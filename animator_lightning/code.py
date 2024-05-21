@@ -446,7 +446,7 @@ if (web):
             rq_d = req.json()
             cfg["HOST_NAME"] = rq_d["text"]
             files.write_json_file("/sd/cfg.json", cfg)
-            mdns_server.hostname = cfg["HOST_NAME"]
+            mdns.hostname = cfg["HOST_NAME"]
             spk_web()
             return Response(req, cfg["HOST_NAME"])
 
@@ -645,8 +645,8 @@ def ply_a_0(file_name):
         mix.voice[0].stop()
         while mix.voice[0].playing:
             upd_vol(0.02)
-    wave0 = audiocore.WaveFile(open(file_name, "rb"))
-    mix.voice[0].play(wave0, loop=False)
+    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
 
