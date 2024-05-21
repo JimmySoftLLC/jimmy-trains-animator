@@ -1040,7 +1040,7 @@ def fwrk(duration):
 
     # choose which bar none to all to fire
     bar_f = []
-    for i in enumerate(bars):
+    for i, arr in enumerate(bars):
         if i == random.randint(0, (len(bars)-1)):
             bar_f.append(i)
 
@@ -1052,7 +1052,7 @@ def fwrk(duration):
         r, g, b = r_w_b()
         for i in b:
             led[i] = (r, g, b)
-
+               
     # Burst from center
     ext = False
     while not ext:
