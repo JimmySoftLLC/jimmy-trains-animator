@@ -112,9 +112,9 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # Sd card data Variables
 
-cfg = files.read_json_file("/sd/config_christmas_park.json")
+cfg = files.read_json_file("/sd/cfg.json")
 
-snd_o = files.return_directory("", "/sd/christmas_park_sounds", ".wav")
+snd_o = files.return_directory("", "/sd/snd", ".wav")
 
 cus_o = files.return_directory(
     "customers_owned_music_", "/sd/customers_owned_music", ".wav")
@@ -129,7 +129,7 @@ rnd_o = ['random all', 'random built in', 'random my']
 mnu_o.extend(rnd_o)
 mnu_o.extend(cus_o)
 
-ts_json = files.return_directory("", "/sd/time_stamp_defaults", ".json")
+ts_json = files.return_directory("", "/sd/ts_d", ".json")
 
 web = cfg["serve_webpage"]
 
@@ -375,7 +375,7 @@ if (web):
                         cfg["option_selected"] = sound_file
                         an(cfg["option_selected"])
                         break
-            files.write_json_file("/sd/config_christmas_park.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             return Response(req, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/defaults", [POST])
@@ -386,14 +386,14 @@ if (web):
             if "reset_animation_timing_to_defaults" in raw_text:
                 for time_stamp_file in ts_json:
                     time_stamps = files.read_json_file(
-                        "/sd/time_stamp_defaults/" + time_stamp_file + ".json")
+                        "/sd/ts_d/" + time_stamp_file + ".json")
                     files.write_json_file(
-                        "/sd/christmas_park_sounds/"+time_stamp_file+".json", time_stamps)
+                        "/sd/snd/"+time_stamp_file+".json", time_stamps)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
             elif "reset_to_defaults" in raw_text:
                 command_sent = "reset_to_defaults"
                 reset_to_defaults()
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 st_mch.go_to('base_state')
             return Response(req, "Utility: " + command_sent)
@@ -429,12 +429,12 @@ if (web):
             elif "volume_pot_off" in raw_text:
                 command_sent = "volume_pot_off"
                 cfg["volume_pot"] = False
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
             elif "volume_pot_on" in raw_text:
                 command_sent = "volume_pot_on"
                 cfg["volume_pot"] = True
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
             return Response(req, "Utility: " + command_sent)
 
@@ -480,7 +480,7 @@ if (web):
             global cfg
             data_object = req.json()
             cfg["HOST_NAME"] = data_object["text"]
-            files.write_json_file("/sd/config_christmas_park.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             mdns.hostname = cfg["HOST_NAME"]
             spk_web()
             return Response(req, cfg["HOST_NAME"])
@@ -508,7 +508,7 @@ if (web):
                 cfg["light_string"] = data_object["text"]
                 print("action: " +
                       data_object["action"] + " data: " + cfg["light_string"])
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 upd_l_str()
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 return Response(req, cfg["light_string"])
@@ -519,7 +519,7 @@ if (web):
                     "," + data_object["text"]
             print("action: " + data_object["action"] +
                   " data: " + cfg["light_string"])
-            files.write_json_file("/sd/config_christmas_park.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             upd_l_str()
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             return Response(req, cfg["light_string"])
@@ -775,7 +775,7 @@ def an_ls(fn):
                     return
     else:
         fls_t = files.read_json_file(
-            "/sd/christmas_park_sounds/" + fn + ".json")
+            "/sd/snd/" + fn + ".json")
     ft = fls_t["flashTime"]
 
     ftl = len(ft)
@@ -786,7 +786,7 @@ def an_ls(fn):
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
         w0 = audiocore.WaveFile(
-            open("/sd/christmas_park_sounds/" + fn + ".wav", "rb"))
+            open("/sd/snd/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     startTime = time.monotonic()
     i = 0
@@ -841,7 +841,7 @@ def ts(fn):
     cf = "customers_owned_music_" in fn
 
     ts = files.read_json_file(
-        "/sd/time_stamp_defaults/timestamp_mode.json")
+        "/sd/ts_d/timestamp mode.json")
     ts["flashTime"] = []
 
     fn = fn.replace("customers_owned_music_", "")
@@ -851,7 +851,7 @@ def ts(fn):
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
         w0 = audiocore.WaveFile(
-            open("/sd/christmas_park_sounds/" + fn + ".wav", "rb"))
+            open("/sd/snd/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
 
     st = time.monotonic()
@@ -872,7 +872,7 @@ def ts(fn):
                     "/sd/customers_owned_music/" + fn + ".json", ts)
             else:
                 files.write_json_file(
-                    "/sd/christmas_park_sounds/" + fn + ".json", ts)
+                    "/sd/snd/" + fn + ".json", ts)
             break
 
     ts_mode = False
@@ -1175,7 +1175,7 @@ class Snds(Ste):
             else:
                 try:
                     w0 = audiocore.WaveFile(open(
-                        "/sd/christmas_park_options_voice_commands/option_" + mnu_o[self.i] + ".wav", "rb"))
+                        "/sd/snd_o/option_" + mnu_o[self.i] + ".wav", "rb"))
                     mix.voice[0].play(w0, loop=False)
                 except:
                     spk_sng_num(str(self.i+1))
@@ -1192,7 +1192,7 @@ class Snds(Ste):
                     pass
             else:
                 cfg["option_selected"] = mnu_o[self.sel_i]
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 w0 = audiocore.WaveFile(
                     open("/sd/mvc/option_selected.wav", "rb"))
                 mix.voice[0].play(w0, loop=False)
@@ -1290,7 +1290,7 @@ class VolSet(Ste):
                         ch_vol("raise")
                     elif sw == "right_held":
                         files.write_json_file(
-                            "/sd/config_christmas_park.json", cfg)
+                            "/sd/cfg.json", cfg)
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
                         done = True
                         mch.go_to('base_state')
@@ -1300,12 +1300,12 @@ class VolSet(Ste):
                 cfg["volume_pot"] = False
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "volume_pot_on":
                 cfg["volume_pot"] = True
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
@@ -1353,7 +1353,7 @@ class WebOpt(Ste):
                 ply_a_0("/sd/mvc/web_instruct.wav")
                 sel_web()
             else:
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
@@ -1430,7 +1430,7 @@ class Light(Ste):
                         ply_a_0("/sd/mvc/added.wav")
                     elif sw == "left_held":
                         files.write_json_file(
-                            "/sd/config_christmas_park.json", cfg)
+                            "/sd/cfg.json", cfg)
                         upd_l_str()
                         ply_a_0("/sd/mvc/all_changes_complete.wav")
                         a = False
@@ -1438,7 +1438,7 @@ class Light(Ste):
                     upd_vol(0.1)
                     pass
             else:
-                files.write_json_file("/sd/config_christmas_park.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 upd_l_str()
                 mch.go_to('base_state')
