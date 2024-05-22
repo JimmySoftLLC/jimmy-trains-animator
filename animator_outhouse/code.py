@@ -819,16 +819,16 @@ def cyc_d_asy(spd, pos_up, pos_down,r, g, b):
     while mix.voice[0].playing:
         exit_early()
         n_pos = pos_up
-        sign = 1
+        sign = 3
         if d_lst_p > n_pos:
-            sign = - 1
+            sign = - 3
         for ang in range(d_lst_p, n_pos, sign):
             mov_d(ang)
             fr_asy(r, g, b, spd)
         n_pos = pos_down
-        sign = 1
+        sign = 3
         if d_lst_p > n_pos:
-            sign = - 1
+            sign = - 3
         for ang in range(d_lst_p, n_pos, sign):
             mov_d(ang)
             fr_asy(r, g, b, spd)
