@@ -1,12 +1,10 @@
 import http.server
 import socket
 import socketserver
-import ssl
 import threading
 from zeroconf import ServiceInfo, Zeroconf
 import json
 import os
-import cgi
 
 # Function to get the local IP address
 
