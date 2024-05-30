@@ -76,46 +76,33 @@ try:
             return Response(req, "Invalid content type", 400)
 
         boundary = content_type.split("boundary=")[1].encode()
-        boundary_start = b"--" + boundary + b"\r\n"
         boundary_end = b"--" + boundary + b"--"
 
-        remaining = content_length
-        buffer = b""
+        # Read the raw request body
+        body = req.raw_request
+
+        parts = body.split(b"--" + boundary)
 
         file = None
         file_path = None
 
-        while remaining > 0:
-            chunk = req.raw_request.read(min(remaining, 1024))
-            if not chunk:
-                break
-            remaining -= len(chunk)
-            buffer += chunk
+        index = 0
+        for part in parts:
+            index +=1
+            print("part: " + str(index))
+            if b"filename=" in part:
+                headers, file_data = part.split(b"\r\n\r\n", 1)
+                headers = headers.decode()
+                file_data = file_data.rstrip(b"\r\n")
 
-            if boundary_start in buffer:
-                parts = buffer.split(boundary_start)
-                header, buffer = parts[1].split(b"\r\n\r\n", 1)
-                header = header.decode()
-                for line in header.split("\r\n"):
+                for line in headers.split("\r\n"):
                     if "filename=" in line:
                         file_name = line.split("filename=")[1].strip('"')
                         file_path = f"/sd/{file_name}"
-                        file = open(file_path, "wb")
+                        with open(file_path, "wb") as file:
+                            file.write(file_data)
                         break
-
-            if file and boundary_end in buffer:
-                body, buffer = buffer.split(boundary_end, 1)
-                file.write(body[:-2])  # Remove trailing CRLF
-                file.close()
                 break
-
-            if file:
-                if boundary_start in buffer:
-                    part, buffer = buffer.split(boundary_start, 1)
-                    file.write(part)
-                else:
-                    file.write(buffer)
-                    buffer = b""
 
         if file_path:
             return Response(req, f"File uploaded successfully to {file_path}")
@@ -133,4 +120,3 @@ print("My IP address is " + str(wifi.radio.ipv4_address))
 
 while True:
     server.poll()
-
