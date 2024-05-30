@@ -1,11 +1,16 @@
 import http.server
 import socket
 import socketserver
+import ssl
 import threading
-import json
 from zeroconf import ServiceInfo, Zeroconf
+import json
+import os
+import cgi
 
 # Function to get the local IP address
+
+
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -19,6 +24,8 @@ def get_local_ip():
     return ip
 
 # Define the web server handler
+
+
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         # Handle /get-host-name endpoint
@@ -29,7 +36,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             response = {"hostname": socket.gethostname()}
             self.wfile.write(json.dumps(response).encode('utf-8'))
             return
-        
+
         # Serve the HTML content from a local file
         if self.path == "/":
             self.path = "/index.html"
@@ -54,16 +61,68 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(b"File not found")
 
     def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length)
-        print(f"Received POST data: {post_data.decode('utf-8')}")
-        
-        # Respond to the POST request
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        response = {"status": "success", "data": post_data.decode('utf-8')}
-        self.wfile.write(json.dumps(response).encode('utf-8'))    
+        if self.path == "/upload":
+            content_length = int(self.headers['Content-Length'])
+            content_type = self.headers['Content-Type']
+
+            if 'multipart/form-data' in content_type:
+                boundary = content_type.split("boundary=")[1].encode()
+                body = self.rfile.read(content_length)
+                
+                parts = body.split(b'--' + boundary)
+                for part in parts:
+                    if part:
+                        try:
+                            headers, content = part.split(b'\r\n\r\n', 1)
+                        except ValueError:
+                            continue
+                        content = content.rstrip(b'\r\n--')
+                        header_lines = headers.decode().split('\r\n')
+                        headers_dict = {}
+                        for line in header_lines:
+                            if ': ' in line:
+                                key, value = line.split(': ', 1)
+                                headers_dict[key] = value
+                        
+                        if 'Content-Disposition' in headers_dict:
+                            disposition = headers_dict['Content-Disposition']
+                            if 'filename=' in disposition:
+                                file_name = disposition.split('filename=')[1].strip('"')
+                                # Ensure the uploads directory exists
+                                os.makedirs("uploads", exist_ok=True)
+                                file_path = os.path.join("uploads", file_name)
+
+                                with open(file_path, "wb") as f:
+                                    f.write(content)
+
+                                self.send_response(200)
+                                self.send_header("Content-type", "application/json")
+                                self.end_headers()
+                                response = {"status": "success", "message": "File uploaded successfully"}
+                                self.wfile.write(json.dumps(response).encode('utf-8'))
+                                return
+                
+                self.send_response(400)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                response = {"status": "error", "message": "No file part"}
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+            else:
+                self.send_response(400)
+                self.end_headers()
+        else:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            print(f"Received POST data: {post_data.decode('utf-8')}")
+
+            # Respond to the POST request
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            response = {"status": "success",
+                        "data": post_data.decode('utf-8')}
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+
 
 # Get the local IP address
 local_ip = get_local_ip()
@@ -75,9 +134,12 @@ handler = MyHttpRequestHandler
 httpd = socketserver.TCPServer((local_ip, PORT), handler)
 
 # Function to start the web server
+
+
 def start_server():
     print(f"Serving on {local_ip}:{PORT}")
     httpd.serve_forever()
+
 
 # Set up mDNS service info
 desc = {'path': '/'}

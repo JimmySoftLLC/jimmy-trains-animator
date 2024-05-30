@@ -7,6 +7,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
     <script src="/mui.min.js"></script>
+    <style>
+        #progressContainer {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            width: 0;
+            height: 30px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+    </style>
 </head>
 
 <body>
@@ -51,12 +69,24 @@
                     type="button">
                     Continuous Mode On
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off"
-                    data-url="/mode" type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
                     Continuous Mode Off
                 </button>
             </div>
+            <div class="mui-textfield">
+                <h2>Upload a File</h1>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
+                    <input type="file" id="fileInput" name="file" style="display: none;" required>            
+                </form>
+                <div id="progressContainer">
+                    <div id="progressBar">0%</div>
+                </div>
+                <p id="status"></p>
+            </div>
         </div>
+
         <div class="mui-tabs__pane" id="my_animations" style="padding-top:0.5rem;">
             <h2>My sound tracks:</h2>
             <div id="myTracksContainer"></div>
@@ -599,6 +629,44 @@
                 console.log(error);
                 websiteSubmitButton.removeAttribute('disabled')
             });
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function() {
+        if (this.files.length > 0) {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+
+            xhr.upload.onprogress = function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    const progressBar = document.getElementById('progressBar');
+                    progressBar.style.width = percentComplete + '%';
+                    progressBar.innerText = percentComplete.toFixed(2) + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    document.getElementById('status').innerText = 'File uploaded successfully!';
+                    document.getElementById('progressBar').style.backgroundColor = '#4caf50';
+                } else {
+                    document.getElementById('status').innerText = 'File upload failed!';
+                    document.getElementById('progressBar').style.backgroundColor = '#f44336';
+                }
+            };
+
+            xhr.onerror = function() {
+                document.getElementById('status').innerText = 'File upload failed!';
+                document.getElementById('progressBar').style.backgroundColor = '#f44336';
+            };
+
+            xhr.send(formData);
+        }
     });
 </script>
 
