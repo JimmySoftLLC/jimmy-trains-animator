@@ -37,7 +37,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         # Serve the HTML content from a local file
         if self.path == "/":
-            self.path = "/index.html"
+            self.path = "/indexmdns.html"
         # Set content type based on file extension
         if self.path.endswith(".css"):
             content_type = "text/css"

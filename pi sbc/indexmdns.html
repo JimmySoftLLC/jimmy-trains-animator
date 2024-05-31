@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Animator - Christmas in the park</title>
+    <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/mui.min.css" />
+    <script src="/mui.min.js"></script>
+    <style>
+        #progressContainer {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            width: 0;
+            height: 30px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="mui-container">
+        <h1>Animator - Christmas in the park</h1>
+        <p style="padding-top:0.5rem;">
+            Use this web app to control and setup your animator - Christmas in the park
+            product. Have fun animating.
+        </p>
+        <ul class="mui-tabs__bar">
+            <li class="mui--is-active">
+                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="my_animations">my animations</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="lightning">light string</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
+            </li>
+        </ul>
+        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random built in" data-url="/animation"
+                type="button">
+                Random only built in sound tracks
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random my" data-url="/animation"
+                type="button">
+                Random only my sound tracks
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
+                type="button">
+                Random all sound tracks
+            </button>
+            <h2>Built in sound tracks:</h2>
+            <div id="builtInTracksContainer"></div>
+            <h2>Animation settings:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
+            <div class="mui-textfield">
+                <h2>Upload a File</h1>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
+                    <input type="file" id="fileInput" name="file" style="display: none;" required>            
+                </form>
+                <div id="progressContainer">
+                    <div id="progressBar">0%</div>
+                </div>
+                <p id="status"></p>
+            </div>
+        </div>
+
+        <div class="mui-tabs__pane" id="my_animations" style="padding-top:0.5rem;">
+            <h2>My sound tracks:</h2>
+            <div id="myTracksContainer"></div>
+            <h2>Instructions on how to add your own sound tracks:</h2>
+            <p>
+                You can create your own sound track files by putting wav files in the folder called
+                "customers_owned_music" on the microSD card that is inserted
+                in your animator. The files must be named with only lower case letters, numbers and spaces. For example
+                "white christmas". The files must be wav files encoded with a sample rate of 22050Hz and a sample format
+                of 16 bits.
+                You can create files of this type using Audacity, a free application.
+            </p>
+            <p>
+                Once you have your files on the microSD card reinsert it into the animator and power it back on. The
+                animator will scan for new files and populate the web page with your sound tracks. Next you animate them
+                by selecting one of your sound tracks and follow the spoken instructions.
+            </p>
+        </div>
+        <div class="mui-tabs__pane" id="lightning" style="padding-top:0.5rem;">
+            <h2>Setup light string:</h2>
+            <div class="mui-textfield">
+                <p>
+                    Enter your light string in the order which each component is connected together by pressing cane-4,
+                    cane-4...
+                    When finished press "Save".
+                </p>
+                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
+                    data-url="/update-light-string">
+                    Save
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
+                    data-url="/update-light-string">
+                    Clear
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
+                    data-url="/update-light-string">
+                    Set to defaults
+                </button>
+            </div>
+            <div class="mui-textfield">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
+                    data-url="/update-light-string">
+                    cane-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
+                    data-url="/update-light-string">
+                    grandtree-21
+                </button>
+            </div>
+            <h2>Test lights:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_red" data-url="/lights"
+                    type="button">
+                    Red
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_green" data-url="/lights"
+                    type="button">
+                    Green
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_blue" data-url="/lights"
+                    type="button">
+                    Blue
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_white" data-url="/lights"
+                    type="button">
+                    White
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_0" data-url="/lights"
+                    type="button">
+                    Off
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_20" data-url="/lights"
+                    type="button">
+                    20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_40" data-url="/lights"
+                    type="button">
+                    40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_60" data-url="/lights"
+                    type="button">
+                    60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_80" data-url="/lights"
+                    type="button">
+                    80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_100" data-url="/lights"
+                    type="button">
+                    100
+                </button>
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="settings">
+            <h2>Volume:</h2>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
+                type="button">
+                Volume Pot On
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_off" data-url="/speaker"
+                type="button">
+                Volume Pot Off
+            </button>
+            <div class="mui-textfield">
+                <input class="input" id="volume" type="number" disabled>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume10">
+                    Volume 10
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume20">
+                    Volume 20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume30">
+                    Volume 30
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume40">
+                    Volume 40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume50">
+                    Volume 50
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume60">
+                    Volume 60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume70">
+                    Volume 70
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume80">
+                    Volume 80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume90">
+                    Volume 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume100">
+                    Volume 100
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="lower1">
+                    Lower Volume by 1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="raise1">
+                    Raise Volume by 1
+                </button>
+            </div>
+
+            <p>
+                Valid volume levels are from 1 to 100
+            </p>
+
+            <h2>Animator web page name:</h2>
+
+            <div class="mui-textfield">
+                <input class="input" id="websiteUrl" type="text" placeholder="Enter website name">
+                <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/update-host-name">
+                    Change
+                </button>
+            </div>
+
+            <p>
+                Use alphanumerics and dashes only. All names are automatically
+                appended with .local. So your website url will be something like
+                "website-name.local"
+            </p>
+
+            <h2>Utilities:</h2>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
+                type="button">
+                Speaker Test
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
+                type="button">
+                Reset to defaults
+            </button>
+            <h2>Animation timing:</h2>
+            <p>
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
+                left button to start your animation. Once the sound track starts press the right button for each point
+                that you want an animation change. Time your button presses to key moments in the sound track. Continue
+                to do this until the animation finishes. Then
+                timestamp mode will be automatically turned off and your animation will be ready.
+            </p>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
+                    type="button">
+                    Timestamp Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/mode" type="button">
+                    Timestamp Mode Off
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_animation_timing_to_defaults"
+                    data-url="/defaults" type="button">
+                    Reset animation timing to factory defaults
+                </button>
+            </div>
+
+        </div>
+    </div>
+</body>
+
+<script>
+    // Load initial data after webpage loads
+    document.addEventListener('DOMContentLoaded', function () {
+        // get website url
+        fetch('/get-host-name', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                websiteUrl.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get volume
+        fetch('/get-volume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get light string
+        fetch('/get-light-string', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lightString.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+
+        // get built in sound tracks
+        fetch('/get-built-in-sound-tracks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                // Loop through the data and create a button for each item
+
+                my_data.forEach((item) => {
+                    const button = document.createElement("button");
+                    button.textContent = item;
+                    button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+                    button.setAttribute("data-value", item);
+                    button.setAttribute("data-url", "/animation");
+                    button.setAttribute("type", "button");
+                    button.addEventListener('click', function () {
+                        var url = button.getAttribute('data-url');
+                        var animation = button.getAttribute('data-value');
+                        var redirectUrl = button.getAttribute('data-redirect');
+
+                        // Create an object with the data to be sent in the request
+                        var data = {
+                            animation: animation,
+                        };
+
+                        button.setAttribute('disabled', 'true')
+
+                        // Make a POST request using fetch
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(data),
+                        })
+                            .then(function (response) {
+                                // Handle the response from the server
+                                if (redirectUrl) {
+                                    window.location.href = redirectUrl;
+                                } else {
+                                    button.removeAttribute('disabled');
+                                }
+                            })
+                            .catch(function (error) {
+                                button.removeAttribute('disabled');
+                                alert('Try Again');
+                            });
+                    });
+                    builtInTracksContainer.appendChild(button);
+                });
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get customers sound tracks
+        fetch('/get-customers-sound-tracks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                // Loop through the data and create a button for each item
+
+                my_data.forEach((item) => {
+                    const button = document.createElement("button");
+                    button.textContent = item.replace("customers_owned_music_", "");
+                    button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+                    button.setAttribute("data-value", item);
+                    button.setAttribute("data-url", "/animation");
+                    button.setAttribute("type", "button");
+                    button.addEventListener('click', function () {
+                        var url = button.getAttribute('data-url');
+                        var animation = button.getAttribute('data-value');
+                        var redirectUrl = button.getAttribute('data-redirect');
+
+                        // Create an object with the data to be sent in the request
+                        var data = {
+                            animation: animation,
+                        };
+
+                        button.setAttribute('disabled', 'true')
+
+                        // Make a POST request using fetch
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(data),
+                        })
+                            .then(function (response) {
+                                // Handle the response from the server
+                                if (redirectUrl) {
+                                    window.location.href = redirectUrl;
+                                } else {
+                                    button.removeAttribute('disabled');
+                                }
+                            })
+                            .catch(function (error) {
+                                button.removeAttribute('disabled');
+                                alert('Try Again');
+                            });
+                    });
+                    myTracksContainer.appendChild(button);
+                });
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    });
+
+    // Get all buttons with the 'animator-action' class
+    // Add click event listener to each button
+    var actionButtons = document.querySelectorAll('.animator-action');
+    actionButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = button.getAttribute('data-url');
+            var animation = button.getAttribute('data-value');
+            var redirectUrl = button.getAttribute('data-redirect');
+
+            // Create an object with the data to be sent in the request
+            var data = {
+                animation: animation,
+            };
+
+            button.setAttribute('disabled', 'true')
+
+            // Make a POST request using fetch
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    // Handle the response from the server
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                    } else {
+                        button.removeAttribute('disabled');
+                    }
+                })
+                .catch(function (error) {
+                    button.removeAttribute('disabled');
+                    alert('Try Again');
+                });
+        });
+    });
+
+    // Get all buttons with the 'animator-light-update' class
+    // Add click event listener to each button
+    var lightUpdateButtons = document.querySelectorAll('.animator-light-update');
+    lightUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            var data = {}
+            if (action == "save" || action == "clear" || action == "defaults") {
+                var lightStringElement = document.getElementById('lightString');
+                lightStringValue = lightStringElement.value
+                if (action == "defaults") lightStringValue = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
+                if (action == "clear") lightStringValue = ""
+                data = {
+                    text: lightStringValue,
+                    action: action
+                }
+            } else {
+                data = {
+                    text: action,
+                    action: action
+                }
+            }
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    lightString.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    // Get all buttons with the 'animator-light-update' class
+    // Add click event listener to each button
+    var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
+    volumeUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            data = {
+                action: action
+            }
+
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    volume.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    // Add click event listener to website submit button
+    var websiteSubmitButton = document.getElementById('websiteSubmitButton');
+    websiteSubmitButton.addEventListener('click', function () {
+        var websiteUrl = document.getElementById('websiteUrl');
+        var websiteUrlText = websiteUrl.value;
+        var url = this.getAttribute('data-url');
+
+        var data = {
+            text: websiteUrlText,
+        };
+
+        websiteSubmitButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                websiteUrl.value = data; // Set the value of the input field with the received data
+                websiteSubmitButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                websiteSubmitButton.removeAttribute('disabled')
+            });
+    });
+
+    document.getElementById('fileInput').addEventListener('change', function() {
+        if (this.files.length > 0) {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+
+            xhr.upload.onprogress = function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    const progressBar = document.getElementById('progressBar');
+                    progressBar.style.width = percentComplete + '%';
+                    progressBar.innerText = percentComplete.toFixed(2) + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    document.getElementById('status').innerText = 'File uploaded successfully!';
+                    document.getElementById('progressBar').style.backgroundColor = '#4caf50';
+                } else {
+                    document.getElementById('status').innerText = 'File upload failed!';
+                    document.getElementById('progressBar').style.backgroundColor = '#f44336';
+                }
+            };
+
+            xhr.onerror = function() {
+                document.getElementById('status').innerText = 'File upload failed!';
+                document.getElementById('progressBar').style.backgroundColor = '#f44336';
+            };
+
+            xhr.send(formData);
+        }
+    });
+</script>
+
+</html>
