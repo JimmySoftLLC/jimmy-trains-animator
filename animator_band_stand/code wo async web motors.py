@@ -3,8 +3,8 @@ from adafruit_debouncer import Debouncer
 from rainbowio import colorwheel
 import neopixel
 from analogio import AnalogIn
-from adafruit_motor import servo
-import pwmio
+# from adafruit_motor import servo
+# import pwmio
 import microcontroller
 import rtc
 import random
@@ -121,23 +121,23 @@ except:
 aud_en.value = False
 
 # Setup the servos
-s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
-s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
-s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+# s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
+# s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+# s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 
-s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
-s_5 = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
-s_6 = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
+# s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
+# s_5 = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
+# s_6 = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
 
-s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
-s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
-s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
+# s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+# s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
+# s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
 
-s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
-s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
-s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
+# s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
+# s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
+# s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
 
-s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
+# s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
 
 # Setup time
 r = rtc.RTC()
@@ -619,7 +619,7 @@ def m_servo(n, p):
         p = 0
     if p > 180:
         p = 180
-    s_arr[n].angle = p
+    #s_arr[n].angle = p
     p_arr[n][n] = p
 
 ################################################################################
@@ -825,11 +825,11 @@ def set_hdw(input_string):
         if seg[0] == 'S':  # servos
             num = int(seg[1])
             v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    s_arr[i].angle = v
-            else:
-                s_arr[num-1].angle = int(v)
+            # if num == 0:
+            #     for i in range(6):
+            #         s_arr[i].angle = v
+            # else:
+            #     s_arr[num-1].angle = int(v)
         if seg[0] == 'B':  # brightness
             br = int(seg[1:])
             led.brightness = float(br/100)
