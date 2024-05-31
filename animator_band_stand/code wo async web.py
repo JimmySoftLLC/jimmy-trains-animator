@@ -198,7 +198,7 @@ gc_col("Neopixels setup")
 
 ################################################################################
 # Setup wifi and web server
-web = False
+# web = False
 
 # if (web):
 #     import socketpool
@@ -970,172 +970,172 @@ class Main(Ste):
                 mch.go_to('base_state')
 
 
-# class Snds(Ste):
+class Snds(Ste):
 
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-#     @property
-#     def name(self):
-#         return 'choose_sounds'
+    @property
+    def name(self):
+        return 'choose_sounds'
 
-#     def enter(self, mch):
-#         files.log_item('Choose sounds menu')
-#         play_a_0("/sd/mvc/sound_selection_menu.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
+    def enter(self, mch):
+        files.log_item('Choose sounds menu')
+        play_a_0("/sd/mvc/sound_selection_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def upd(self, mch):
-#         l_sw.update()
-#         r_sw.update()
-#         if l_sw.fell:
-#             if mix.voice[0].playing:
-#                 mix.voice[0].stop()
-#                 while mix.voice[0].playing:
-#                     pass
-#             else:
-#                 try:
-#                     wave0 = audiocore.WaveFile(open(
-#                         "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
-#                     mix.voice[0].play(wave0, loop=False)
-#                 except:
-#                     spk_sng_num(str(self.i+1))
-#                 self.sel_i = self.i
-#                 self.i += 1
-#                 if self.i > len(menu_snd_opt)-1:
-#                     self.i = 0
-#                 while mix.voice[0].playing:
-#                     pass
-#         if r_sw.fell:
-#             if mix.voice[0].playing:
-#                 mix.voice[0].stop()
-#                 while mix.voice[0].playing:
-#                     pass
-#             else:
-#                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 wave0 = audiocore.WaveFile(
-#                     open("/sd/mvc/option_selected.wav", "rb"))
-#                 mix.voice[0].play(wave0, loop=False)
-#                 while mix.voice[0].playing:
-#                     pass
-#             mch.go_to('base_state')
-
-
-# class AddSnds(Ste):
-
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
-
-#     @property
-#     def name(self):
-#         return 'add_sounds_animate'
-
-#     def enter(self, mch):
-#         files.log_item('Add sounds animate')
-#         play_a_0("/sd/mvc/add_sounds_animate.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
-
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
-
-#     def upd(self, mch):
-#         global ts_mode
-#         l_sw.update()
-#         r_sw.update()
-#         if l_sw.fell:
-#             play_a_0(
-#                 "/sd/mvc/" + add_snd[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(add_snd)-1:
-#                 self.i = 0
-#         if r_sw.fell:
-#             sel_mnu = add_snd[self.sel_i]
-#             if sel_mnu == "hear_instructions":
-#                 play_a_0("/sd/mvc/create_sound_track_files.wav")
-#             elif sel_mnu == "timestamp_mode_on":
-#                 ts_mode = True
-#                 play_a_0("/sd/mvc/timestamp_mode_on.wav")
-#                 play_a_0("/sd/mvc/timestamp_instructions.wav")
-#                 mch.go_to('base_state')
-#             elif sel_mnu == "timestamp_mode_off":
-#                 ts_mode = False
-#                 play_a_0("/sd/mvc/timestamp_mode_off.wav")
-#             else:
-#                 play_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
+    def upd(self, mch):
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            if mix.voice[0].playing:
+                mix.voice[0].stop()
+                while mix.voice[0].playing:
+                    pass
+            else:
+                try:
+                    wave0 = audiocore.WaveFile(open(
+                        "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
+                    mix.voice[0].play(wave0, loop=False)
+                except:
+                    spk_sng_num(str(self.i+1))
+                self.sel_i = self.i
+                self.i += 1
+                if self.i > len(menu_snd_opt)-1:
+                    self.i = 0
+                while mix.voice[0].playing:
+                    pass
+        if r_sw.fell:
+            if mix.voice[0].playing:
+                mix.voice[0].stop()
+                while mix.voice[0].playing:
+                    pass
+            else:
+                cfg["option_selected"] = menu_snd_opt[self.sel_i]
+                files.write_json_file("/sd/cfg.json", cfg)
+                wave0 = audiocore.WaveFile(
+                    open("/sd/mvc/option_selected.wav", "rb"))
+                mix.voice[0].play(wave0, loop=False)
+                while mix.voice[0].playing:
+                    pass
+            mch.go_to('base_state')
 
 
-# class VolSet(Ste):
+class AddSnds(Ste):
 
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-#     @property
-#     def name(self):
-#         return 'volume_settings'
+    @property
+    def name(self):
+        return 'add_sounds_animate'
 
-#     def enter(self, mch):
-#         files.log_item('Set Web Options')
-#         play_a_0("/sd/mvc/volume_settings_menu.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
+    def enter(self, mch):
+        files.log_item('Add sounds animate')
+        play_a_0("/sd/mvc/add_sounds_animate.wav")
+        l_r_but()
+        Ste.enter(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def upd(self, mch):
-#         l_sw.update()
-#         r_sw.update()
-#         if l_sw.fell:
-#             play_a_0("/sd/mvc/" + vol_set[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(vol_set)-1:
-#                 self.i = 0
-#         if r_sw.fell:
-#             sel_mnu = vol_set[self.sel_i]
-#             if sel_mnu == "volume_level_adjustment":
-#                 play_a_0("/sd/mvc/volume_adjustment_menu.wav")
-#                 done = False
-#                 while not done:
-#                     switch_state = utilities.switch_state(
-#                         l_sw, r_sw, upd_vol, 3.0)
-#                     if switch_state == "left":
-#                         ch_vol("lower")
-#                     elif switch_state == "right":
-#                         ch_vol("raise")
-#                     elif switch_state == "right_held":
-#                         files.write_json_file(
-#                             "/sd/cfg.json", cfg)
-#                         play_a_0("/sd/mvc/all_changes_complete.wav")
-#                         done = True
-#                         mch.go_to('base_state')
-#                     upd_vol(0.1)
-#                     pass
-#             elif sel_mnu == "volume_pot_off":
-#                 cfg["volume_pot"] = False
-#                 if cfg["volume"] == 0:
-#                     cfg["volume"] = 10
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 play_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
-#             elif sel_mnu == "volume_pot_on":
-#                 cfg["volume_pot"] = True
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 play_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
+    def upd(self, mch):
+        global ts_mode
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            play_a_0(
+                "/sd/mvc/" + add_snd[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(add_snd)-1:
+                self.i = 0
+        if r_sw.fell:
+            sel_mnu = add_snd[self.sel_i]
+            if sel_mnu == "hear_instructions":
+                play_a_0("/sd/mvc/create_sound_track_files.wav")
+            elif sel_mnu == "timestamp_mode_on":
+                ts_mode = True
+                play_a_0("/sd/mvc/timestamp_mode_on.wav")
+                play_a_0("/sd/mvc/timestamp_instructions.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "timestamp_mode_off":
+                ts_mode = False
+                play_a_0("/sd/mvc/timestamp_mode_off.wav")
+            else:
+                play_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 
-# class WebOpt(Ste):
+class VolSet(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'volume_settings'
+
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        play_a_0("/sd/mvc/volume_settings_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            play_a_0("/sd/mvc/" + vol_set[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(vol_set)-1:
+                self.i = 0
+        if r_sw.fell:
+            sel_mnu = vol_set[self.sel_i]
+            if sel_mnu == "volume_level_adjustment":
+                play_a_0("/sd/mvc/volume_adjustment_menu.wav")
+                done = False
+                while not done:
+                    switch_state = utilities.switch_state(
+                        l_sw, r_sw, upd_vol, 3.0)
+                    if switch_state == "left":
+                        ch_vol("lower")
+                    elif switch_state == "right":
+                        ch_vol("raise")
+                    elif switch_state == "right_held":
+                        files.write_json_file(
+                            "/sd/cfg.json", cfg)
+                        play_a_0("/sd/mvc/all_changes_complete.wav")
+                        done = True
+                        mch.go_to('base_state')
+                    upd_vol(0.1)
+                    pass
+            elif sel_mnu == "volume_pot_off":
+                cfg["volume_pot"] = False
+                if cfg["volume"] == 0:
+                    cfg["volume"] = 10
+                files.write_json_file("/sd/cfg.json", cfg)
+                play_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "volume_pot_on":
+                cfg["volume_pot"] = True
+                files.write_json_file("/sd/cfg.json", cfg)
+                play_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+
+
+class WebOpt(Ste):
     def __init__(self):
         self.i = 0
         self.sel_i = 0
@@ -1189,25 +1189,25 @@ class Main(Ste):
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-# st_mch.add(Snds())
-# st_mch.add(AddSnds())
-# st_mch.add(VolSet())
-# st_mch.add(WebOpt())
+st_mch.add(Snds())
+st_mch.add(AddSnds())
+st_mch.add(VolSet())
+st_mch.add(WebOpt())
 
 aud_en.value = True
 
 upd_vol(.5)
 
-if (web):
-    files.log_item("starting server...")
-    try:
-        server.start(str(wifi.radio.ipv4_address))
-        files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        spk_web()
-    except OSError:
-        time.sleep(5)
-        files.log_item("restarting...")
-        rst()
+# if (web):
+#     files.log_item("starting server...")
+#     try:
+#         server.start(str(wifi.radio.ipv4_address))
+#         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+#         spk_web()
+#     except OSError:
+#         time.sleep(5)
+#         files.log_item("restarting...")
+#         rst()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -1216,12 +1216,12 @@ gc_col("animations started.")
 while True:
     st_mch.upd()
     upd_vol(.02)
-    if (web):
-        try:
-            server.poll()
-            gc.collect()
-        except Exception as e:
-            files.log_item(e)
-            continue
+    # if (web):
+    #     try:
+    #         server.poll()
+    #         gc.collect()
+    #     except Exception as e:
+    #         files.log_item(e)
+    #         continue
 
 
