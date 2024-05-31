@@ -76,14 +76,14 @@
             </div>
             <div class="mui-textfield">
                 <h2>Upload a File</h1>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
-                    <input type="file" id="fileInput" name="file" style="display: none;" required>            
-                </form>
-                <div id="progressContainer">
-                    <div id="progressBar">0%</div>
-                </div>
-                <p id="status"></p>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
+                        <input type="file" id="fileInput" name="file" style="display: none;" required>
+                    </form>
+                    <div id="progressContainer">
+                        <div id="progressBar">0%</div>
+                    </div>
+                    <p id="status"></p>
             </div>
         </div>
 
@@ -631,56 +631,56 @@
             });
     });
 
-            document.getElementById('fileInput').addEventListener('change', function() {
-            if (this.files.length > 0) {
-                const fileInput = document.getElementById('fileInput');
-                const file = fileInput.files[0];
-                const chunkSize = 2048;  // Chunk size in bytes
-                const totalChunks = Math.ceil(file.size / chunkSize);
-                let currentChunk = 0;
-                const progressBar = document.getElementById('progressBar');
-                const status = document.getElementById('status');
+    document.getElementById('fileInput').addEventListener('change', function () {
+        if (this.files.length > 0) {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const chunkSize = 1024;  // Chunk size in bytes
+            const totalChunks = Math.ceil(file.size / chunkSize);
+            let currentChunk = 0;
+            const progressBar = document.getElementById('progressBar');
+            const status = document.getElementById('status');
 
-                function sendChunk() {
-                    const start = currentChunk * chunkSize;
-                    const end = Math.min(start + chunkSize, file.size);
-                    const chunk = file.slice(start, end);
-                    const formData = new FormData();
-                    formData.append('file', chunk, file.name);
+            function sendChunk() {
+                const start = currentChunk * chunkSize;
+                const end = Math.min(start + chunkSize, file.size);
+                const chunk = file.slice(start, end);
+                const formData = new FormData();
+                formData.append('file', chunk, file.name);
 
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', '/upload', true);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/upload', true);
 
-                    xhr.onload = function() {
-                        if (xhr.status === 200) {
-                            currentChunk++;
-                            const percentComplete = (currentChunk / totalChunks) * 100;
-                            progressBar.style.width = percentComplete + '%';
-                            progressBar.innerText = percentComplete.toFixed(2) + '%';
+                xhr.onload = function () {
+                    if (xhr.status === 200) {
+                        currentChunk++;
+                        const percentComplete = (currentChunk / totalChunks) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                        progressBar.innerText = percentComplete.toFixed(2) + '%';
 
-                            if (currentChunk < totalChunks) {
-                                sendChunk();
-                            } else {
-                                status.innerText = 'File uploaded successfully!';
-                                progressBar.style.backgroundColor = '#4caf50';
-                            }
+                        if (currentChunk < totalChunks) {
+                            sendChunk();
                         } else {
-                            status.innerText = 'File upload failed!';
-                            progressBar.style.backgroundColor = '#f44336';
+                            status.innerText = 'File uploaded successfully!';
+                            progressBar.style.backgroundColor = '#4caf50';
                         }
-                    };
-
-                    xhr.onerror = function() {
+                    } else {
                         status.innerText = 'File upload failed!';
                         progressBar.style.backgroundColor = '#f44336';
-                    };
+                    }
+                };
 
-                    xhr.send(formData);
-                }
+                xhr.onerror = function () {
+                    status.innerText = 'File upload failed!';
+                    progressBar.style.backgroundColor = '#f44336';
+                };
 
-                sendChunk();
+                xhr.send(formData);
             }
-        });
+
+            sendChunk();
+        }
+    });
 
 </script>
 
