@@ -631,43 +631,57 @@
             });
     });
 
-    document.getElementById('fileInput').addEventListener('change', function() {
-        if (this.files.length > 0) {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append('file', file);
+            document.getElementById('fileInput').addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const fileInput = document.getElementById('fileInput');
+                const file = fileInput.files[0];
+                const chunkSize = 2048;  // Chunk size in bytes
+                const totalChunks = Math.ceil(file.size / chunkSize);
+                let currentChunk = 0;
+                const progressBar = document.getElementById('progressBar');
+                const status = document.getElementById('status');
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/upload', true);
+                function sendChunk() {
+                    const start = currentChunk * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
+                    const chunk = file.slice(start, end);
+                    const formData = new FormData();
+                    formData.append('file', chunk, file.name);
 
-            xhr.upload.onprogress = function(event) {
-                if (event.lengthComputable) {
-                    const percentComplete = (event.loaded / event.total) * 100;
-                    const progressBar = document.getElementById('progressBar');
-                    progressBar.style.width = percentComplete + '%';
-                    progressBar.innerText = percentComplete.toFixed(2) + '%';
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/upload', true);
+
+                    xhr.onload = function() {
+                        if (xhr.status === 200) {
+                            currentChunk++;
+                            const percentComplete = (currentChunk / totalChunks) * 100;
+                            progressBar.style.width = percentComplete + '%';
+                            progressBar.innerText = percentComplete.toFixed(2) + '%';
+
+                            if (currentChunk < totalChunks) {
+                                sendChunk();
+                            } else {
+                                status.innerText = 'File uploaded successfully!';
+                                progressBar.style.backgroundColor = '#4caf50';
+                            }
+                        } else {
+                            status.innerText = 'File upload failed!';
+                            progressBar.style.backgroundColor = '#f44336';
+                        }
+                    };
+
+                    xhr.onerror = function() {
+                        status.innerText = 'File upload failed!';
+                        progressBar.style.backgroundColor = '#f44336';
+                    };
+
+                    xhr.send(formData);
                 }
-            };
 
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    document.getElementById('status').innerText = 'File uploaded successfully!';
-                    document.getElementById('progressBar').style.backgroundColor = '#4caf50';
-                } else {
-                    document.getElementById('status').innerText = 'File upload failed!';
-                    document.getElementById('progressBar').style.backgroundColor = '#f44336';
-                }
-            };
+                sendChunk();
+            }
+        });
 
-            xhr.onerror = function() {
-                document.getElementById('status').innerText = 'File upload failed!';
-                document.getElementById('progressBar').style.backgroundColor = '#f44336';
-            };
-
-            xhr.send(formData);
-        }
-    });
 </script>
 
 </html>
