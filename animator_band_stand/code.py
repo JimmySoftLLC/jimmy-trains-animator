@@ -511,7 +511,7 @@ def play_a_0(file_name):
     if mix.voice[0].playing:
         mix.voice[0].stop()
         while mix.voice[0].playing:
-            upd_vol(0.02)
+            upd_vol(0.1)
     wave0 = audiocore.WaveFile(open(file_name, "rb"))
     mix.voice[0].play(wave0, loop=False)
     while mix.voice[0].playing:
@@ -525,7 +525,7 @@ def stop_a_0():
 
 
 def exit_early():
-    upd_vol(0.02)
+    upd_vol(0.1)
     l_sw.update()
     if l_sw.fell:
         mix.voice[0].stop()
@@ -687,8 +687,10 @@ def an(f_nm):
             print("Sound file: " + cur_opt)
         if ts_mode:
             an_ts(cur_opt)
+            gc_col("animation cleanup")
         else:
             an_light(cur_opt)
+            gc_col("animation cleanup")
     except:
         no_trk()
         cfg["option_selected"] = "random built in"
@@ -770,7 +772,7 @@ def an_light(f_nm):
             led.fill((0, 0, 0))
             led.show()
             return
-        upd_vol(.001)
+        upd_vol(.1)
 
 
 def an_ts(f_nm):
@@ -1222,7 +1224,7 @@ st_mch.add(WebOpt())
 
 aud_en.value = True
 
-upd_vol(.5)
+upd_vol(.1)
 
 if (web):
     files.log_item("starting server...")
@@ -1241,7 +1243,7 @@ gc_col("animations started.")
 
 while True:
     st_mch.upd()
-    upd_vol(.02)
+    upd_vol(.1)
     if (web):
         try:
             server.poll()
