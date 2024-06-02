@@ -255,11 +255,11 @@ if (web):
 
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.css", "/")
+            return FileResponse(request, "/sd/mui.min.css", "/")
 
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.js", "/")
+            return FileResponse(request, "/sd/mui.min.js", "/")
 
         @server.route("/animation", [POST])
         def btn(request: Request):
