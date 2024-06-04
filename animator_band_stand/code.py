@@ -747,7 +747,8 @@ def an_light(f_nm):
 
     while True:
         t_past = time.monotonic()-srt_t
-        if flsh_i < len(flsh_t)-2:
+
+        if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
             dur = float(ft2[0]) - float(ft1[0]) - 0.25
@@ -755,16 +756,16 @@ def an_light(f_nm):
             dur = 0.25
         if dur < 0:
             dur = 0
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-2:
-            print("time elapsed: " + str(t_past) +
+        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
+            files.log_item("time elapsed: " + str(t_past) +
                   " Timestamp: " + ft1[0])
-            flsh_i += 1
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
                 set_hdw("L0" + str(lgt) + ",S0" + str(pos))
             else:
                 set_hdw(ft1[1])
+            flsh_i += 1
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
@@ -801,11 +802,10 @@ def an_ts(f_nm):
         r_sw.update()
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
-            print(t_elsp)
+            files.log_item(t_elsp)
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            t_s.append(5000)
             if cust_f:
                 files.write_json_file(
                     "/sd/customers_owned_music/" + f_nm + ".json", t_s)
