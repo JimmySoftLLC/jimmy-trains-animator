@@ -1237,6 +1237,10 @@ if (web):
         files.log_item("restarting...")
         rst()
 
+#  set all servos to 90
+set_hdw("S090")
+upd_vol(.5)
+
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
