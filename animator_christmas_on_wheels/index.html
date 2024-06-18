@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - Christmas in the park</title>
+    <title>Animator - Christmas on wheels</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
@@ -11,9 +11,9 @@
 
 <body>
     <div class="mui-container">
-        <h1>Animator - Christmas in the park</h1>
+        <h1>Animator - Christmas on wheels</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your animator - Christmas in the park
+            Use this web app to control and setup your animator - Christmas on wheels
             product. Have fun animating.
         </p>
         <ul class="mui-tabs__bar">
@@ -51,8 +51,8 @@
                     type="button">
                     Continuous Mode On
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off"
-                    data-url="/mode" type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
                     Continuous Mode Off
                 </button>
             </div>
@@ -77,13 +77,54 @@
         </div>
         <div class="mui-tabs__pane" id="lightning" style="padding-top:0.5rem;">
             <h2>Setup light string:</h2>
+            <p>
+                Enter your light string in the order which each component is connected together by pressing cane-4,
+                cane-4...
+                When finished press "Save".
+            </p>
+            <h3>Left:</h3>
             <div class="mui-textfield">
-                <p>
-                    Enter your light string in the order which each component is connected together by pressing cane-4,
-                    cane-4...
-                    When finished press "Save".
-                </p>
-                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
+                <input class="input" id="lightStringLeft" type="text" disabled placeholder="No lights setup">
+            </div>
+            <div class="mui-textfield">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="0-cane-4"
+                    data-url="/update-light-string">
+                    cane-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="0-grandtree-21"
+                    data-url="/update-light-string">
+                    grandtree-21
+                </button>
+            </div>
+            <h3>Middle:</h3>
+            <div class="mui-textfield">
+                <input class="input" id="lightStringMiddle" type="text" disabled placeholder="No lights setup">
+            </div>
+            <div class="mui-textfield">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="1-cane-4"
+                    data-url="/update-light-string">
+                    cane-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="1-grandtree-21"
+                    data-url="/update-light-string">
+                    grandtree-21
+                </button>
+            </div>
+            <h3>Right:</h3>
+            <div class="mui-textfield">
+                <input class="input" id="lightStringRight" type="text" disabled placeholder="No lights setup">
+            </div>
+            <div class="mui-textfield">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="2-cane-4"
+                    data-url="/update-light-string">
+                    cane-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="2-grandtree-21"
+                    data-url="/update-light-string">
+                    grandtree-21
+                </button>
+            </div>
+            <div class="mui-textfield">
                 <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
                     data-url="/update-light-string">
                     Save
@@ -95,16 +136,6 @@
                 <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
                     data-url="/update-light-string">
                     Set to defaults
-                </button>
-            </div>
-            <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
-                    data-url="/update-light-string">
-                    cane-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
-                    data-url="/update-light-string">
-                    grandtree-21
                 </button>
             </div>
             <h2>Test lights:</h2>
@@ -321,7 +352,10 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                lightString.value = data; // Set the value of the input field with the received data
+                const lightString = data.split("|")
+                lightStringLeft.value = lightString[0]; // Set the value of the input field with the received data
+                lightStringMiddle.value = lightString[1]; // Set the value of the input field with the received data
+                lightStringRight.value = lightString[2]; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
@@ -356,7 +390,7 @@
 
                         // Create an object with the data to be sent in the request
                         var data = {
-                            animation: animation,
+                            an: animation,
                         };
 
                         button.setAttribute('disabled', 'true')
@@ -417,7 +451,7 @@
 
                         // Create an object with the data to be sent in the request
                         var data = {
-                            animation: animation,
+                            an: animation,
                         };
 
                         button.setAttribute('disabled', 'true')
@@ -462,7 +496,7 @@
 
             // Create an object with the data to be sent in the request
             var data = {
-                animation: animation,
+                an: animation,
             };
 
             button.setAttribute('disabled', 'true')
@@ -499,10 +533,12 @@
             var action = this.getAttribute('data-action');
             var data = {}
             if (action == "save" || action == "clear" || action == "defaults") {
-                var lightStringElement = document.getElementById('lightString');
-                lightStringValue = lightStringElement.value
-                if (action == "defaults") lightStringValue = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
-                if (action == "clear") lightStringValue = ""
+                var lightStringElementLeft = document.getElementById('lightStringLeft');
+                var lightStringElementMiddle = document.getElementById('lightStringMiddle');
+                var lightStringElementRight = document.getElementById('lightStringRight');
+                lightStringValue = lightStringElementLeft.value + "|" + lightStringElementMiddle.value + "|" + lightStringElementRight.value
+                if (action == "defaults") lightStringValue = "cane-4,cane-4,cane-4|grandtree-21|cane-4,cane-4,cane-4"
+                if (action == "clear") lightStringValue = "||"
                 data = {
                     text: lightStringValue,
                     action: action
@@ -525,7 +561,10 @@
                     return response.text(); // assuming the response is plain text
                 })
                 .then(function (data) {
-                    lightString.value = data; // Set the value of the input field with the received data
+                    const lightString = data.split("|")
+                    lightStringLeft.value = lightString[0]; // Set the value of the input field with the received data
+                    lightStringMiddle.value = lightString[1]; // Set the value of the input field with the received data
+                    lightStringRight.value = lightString[2]; // Set the value of the input field with the received data
                     button.removeAttribute('disabled')
                 })
                 .catch(function (error) {

@@ -169,7 +169,7 @@ cane_e = []
 
 n_px = 0
 
-# 15 on demo 17 tiny 10 on large
+# 15 left 10 mid tiny 15 right
 led_l = neopixel.NeoPixel(board.GP15, n_px)
 led_m = neopixel.NeoPixel(board.GP10, n_px)
 led_r = neopixel.NeoPixel(board.GP16, n_px)
@@ -268,7 +268,9 @@ def upd_l_str():
 
     n_px = 0
 
-    els = cfg["light_string"].split(',')
+    els_all = cfg["light_string"].split('|')
+
+    els = els_all[1].split(',')
 
     for el in els:
         p = el.split('-')
@@ -290,20 +292,14 @@ def upd_l_str():
     l_arr[1].deinit()
     l_arr[2].deinit()
     gc_col("Deinit ledStrip")
-    # 15 on demo 17 tiny 10 on large
+    # 15 left 10 mid tiny 15 right
     l_arr[0] = neopixel.NeoPixel(board.GP15, n_px)
-    l_arr[0].auto_write = False
-    l_arr[0].brightness = 1.0
     l_arr[1] = neopixel.NeoPixel(board.GP10, n_px)
-    l_arr[1].auto_write = False
-    l_arr[1].brightness = 1.0
     l_arr[2] = neopixel.NeoPixel(board.GP16, n_px)
-    l_arr[2].auto_write = False
-    l_arr[2].brightness = 1.0
-
-
+    for i in range(3):
+        l_arr[1].auto_write = False
+        l_arr[1].brightness = 1.0
     l_tst()
-
 
 upd_l_str()
 
@@ -375,16 +371,16 @@ if (web):
         @server.route("/animation", [POST])
         def btn(req: Request):
             global cfg, c_run, ts_mode
-            raw_text = req.raw_request.decode("utf8")
-            if "customers_owned_music_" in raw_text:
+            rq_d = req.json()
+            if rq_d["an"] == "customers_owned_music_":
                 for sound_file in cus_o:
-                    if sound_file in raw_text:
+                    if rq_d["an"] == sound_file:
                         cfg["option_selected"] = sound_file
                         an(cfg["option_selected"])
                         break
             else:  # built in animations
                 for sound_file in mnu_o:
-                    if sound_file in raw_text:
+                    if rq_d["an"] == sound_file:
                         cfg["option_selected"] = sound_file
                         an(cfg["option_selected"])
                         break
@@ -395,15 +391,15 @@ if (web):
         def btn(req: Request):
             global cfg
             command_sent = ""
-            raw_text = req.raw_request.decode("utf8")
-            if "reset_animation_timing_to_defaults" in raw_text:
+            rq_d = req.json()
+            if rq_d["an"] == "reset_animation_timing_to_defaults":
                 for time_stamp_file in ts_json:
                     time_stamps = files.read_json_file(
                         "/sd/ts_d/" + time_stamp_file + ".json")
                     files.write_json_file(
                         "/sd/snd/"+time_stamp_file+".json", time_stamps)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "reset_to_defaults" in raw_text:
+            elif rq_d["an"] == "reset_to_defaults":
                 command_sent = "reset_to_defaults"
                 reset_to_defaults()
                 files.write_json_file("/sd/cfg.json", cfg)
@@ -415,18 +411,18 @@ if (web):
         def btn(req: Request):
             global cfg, c_run, ts_mode
             command_sent = ""
-            raw_text = req.raw_request.decode("utf8")
-            if "cont_mode_on" in raw_text:
+            rq_d = req.json()
+            if rq_d["an"] == "cont_mode_on":
                 c_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" in raw_text:
+            elif rq_d["an"] == "cont_mode_off":
                 c_run = False
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            elif "timestamp_mode_on" in raw_text:
+            elif rq_d["an"] == "timestamp_mode_on":
                 ts_mode = True
                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
                 ply_a_0("/sd/mvc/timestamp_instructions.wav")
-            elif "timestamp_mode_off" in raw_text:
+            elif rq_d["an"] == "timestamp_mode_off":
                 ts_mode = False
                 ply_a_0("/sd/mvc/timestamp_mode_off.wav")
             return Response(req, "Utility: " + command_sent)
@@ -435,16 +431,16 @@ if (web):
         def btn(req: Request):
             global cfg
             command_sent = ""
-            raw_text = req.raw_request.decode("utf8")
-            if "speaker_test" in raw_text:
+            rq_d = req.json()
+            if rq_d["an"] == "speaker_test":
                 command_sent = "speaker_test"
                 ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif "volume_pot_off" in raw_text:
+            elif rq_d["an"] == "volume_pot_off":
                 command_sent = "volume_pot_off"
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "volume_pot_on" in raw_text:
+            elif rq_d["an"] == "volume_pot_on":
                 command_sent = "volume_pot_on"
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
@@ -454,38 +450,27 @@ if (web):
         @server.route("/lights", [POST])
         def btn(req: Request):
             global cfg
-            command_sent = ""
-            raw_text = req.raw_request.decode("utf8")
-            if "set_to_red" in raw_text:
-                l_arr[1].fill((255, 0, 0))
-                l_arr[1].show()
-            elif "set_to_green" in raw_text:
-                l_arr[1].fill((0, 255, 0))
-                l_arr[1].show()
-            elif "set_to_blue" in raw_text:
-                l_arr[1].fill((0, 0, 255))
-                l_arr[1].show()
-            elif "set_to_white" in raw_text:
-                l_arr[1].fill((255, 255, 255))
-                l_arr[1].show()
-            elif "set_to_0" in raw_text:
-                l_arr[1].brightness = 0.0
-                l_arr[1].show()
-            elif "set_to_20" in raw_text:
-                l_arr[1].brightness = 0.2
-                l_arr[1].show()
-            elif "set_to_40" in raw_text:
-                l_arr[1].brightness = 0.4
-                l_arr[1].show()
-            elif "set_to_60" in raw_text:
-                l_arr[1].brightness = 0.6
-                l_arr[1].show()
-            elif "set_to_80" in raw_text:
-                l_arr[1].brightness = 0.8
-                l_arr[1].show()
-            elif "set_to_100" in raw_text:
-                l_arr[1].brightness = 1.0
-                l_arr[1].show()
+            rq_d = req.json()
+            if rq_d["an"] ==  "set_to_red":
+                set_hdw("L0255_0_0")
+            elif rq_d["an"] ==  "set_to_green":
+                set_hdw("L00_255_0")
+            elif rq_d["an"] ==  "set_to_blue":
+                set_hdw("L00_0_255")
+            elif rq_d["an"] ==  "set_to_white":
+                set_hdw("L0255_255_255")
+            elif rq_d["an"] ==  "set_to_0":
+                set_hdw("B0")
+            elif rq_d["an"] ==  "set_to_20":
+                set_hdw("B20")
+            elif rq_d["an"] ==  "set_to_40":
+                set_hdw("B40")
+            elif rq_d["an"] ==  "set_to_60":
+                set_hdw("B60")
+            elif rq_d["an"] ==  "set_to_80":
+                set_hdw("B80")
+            elif rq_d["an"] ==  "set_to_100":
+                set_hdw("B100")
             return Response(req, "Utility: " + "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
@@ -525,13 +510,14 @@ if (web):
                 upd_l_str()
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 return Response(req, cfg["light_string"])
-            if cfg["light_string"] == "":
-                cfg["light_string"] = data_object["text"]
             else:
-                cfg["light_string"] = cfg["light_string"] + \
-                    "," + data_object["text"]
-            print("action: " + data_object["action"] +
-                  " data: " + cfg["light_string"])
+                cfg_parts = cfg["light_string"].split("|")
+                data_parts = data_object["text"].split("-")
+                cma = ","
+                if cfg_parts[int(data_parts[0])] == "": cma = ""
+                cfg_parts[int(data_parts[0])] = cfg_parts[int(data_parts[0])] + cma + data_parts[1] + data_parts[2]
+                cfg["light_string"] = cfg_parts[0] + "|" + cfg_parts[1] + "|" + cfg_parts[2]
+                print("action: " + data_object["action"] + " data: " + cfg["light_string"])
             files.write_json_file("/sd/cfg.json", cfg)
             upd_l_str()
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1030,6 +1016,27 @@ def mlt_c(dur):
         te = time.monotonic()-st
         if te > dur:
             return
+        
+def set_hdw(input_string):
+    # Split the input string into segments
+    segs = input_string.split(",")
+
+    # Process each segment
+    for seg in segs:
+        if seg[0] == 'L':  # lights
+            num = int(seg[1])
+            color = seg[2:]
+            color = color.split("_")
+            if num == 0:
+                for i in range(3):
+                    l_arr[i].fill((int(color[0]), int(color[1]), int(color[2])))
+            else:
+                print("light not 0")
+        if seg[0] == 'B':  # brightness
+            br = int(seg[1:])
+            for i in range(3):
+                l_arr[i].brightness = float(br/100)
+
 
 ################################################################################
 # State Machine
