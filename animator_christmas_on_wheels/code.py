@@ -174,6 +174,8 @@ led_l = neopixel.NeoPixel(board.GP15, n_px)
 led_m = neopixel.NeoPixel(board.GP10, n_px)
 led_r = neopixel.NeoPixel(board.GP16, n_px)
 
+l_arr = [led_l, led_m, led_r]
+
 def bld_tree(p):
     i = []
     for t in trees:
@@ -208,10 +210,10 @@ def bld_cane(p):
 
 
 def show_l():
-    led_m.show()
+    l_arr[1].show()
     time.sleep(.3)
-    led_m.fill((0, 0, 0))
-    led_m.show()
+    l_arr[1].fill((0, 0, 0))
+    l_arr[1].show()
 
 
 def l_tst():
@@ -225,13 +227,13 @@ def l_tst():
     # cane test
     cnt = 0
     for i in cane_s:
-        led_m[i] = (50, 50, 50)
+        l_arr[1][i] = (50, 50, 50)
         cnt += 1
         if cnt > 1:
             show_l()
             cnt = 0
     for i in cane_e:
-        led_m[i] = (50, 50, 50)
+        l_arr[1][i] = (50, 50, 50)
         cnt += 1
         if cnt > 1:
             show_l()
@@ -240,19 +242,19 @@ def l_tst():
     # tree test
     cnt = 0
     for i in ornmnts:
-        led_m[i] = (50, 50, 50)
+        l_arr[1][i] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
             show_l()
             cnt = 0
     for i in stars:
-        led_m[i] = (50, 50, 50)
+        l_arr[1][i] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
             show_l()
             cnt = 0
     for i in brnchs:
-        led_m[i] = (50, 50, 50)
+        l_arr[1][i] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
             show_l()
@@ -260,7 +262,7 @@ def l_tst():
 
 
 def upd_l_str():
-    global trees, canes, n_px, led_m
+    global trees, canes, n_px, l_arr
     trees = []
     canes = []
 
@@ -284,12 +286,22 @@ def upd_l_str():
                 n_px += qty
 
     print("Number of pixels total: ", n_px)
-    led_m.deinit()
+    l_arr[0].deinit()
+    l_arr[1].deinit()
+    l_arr[2].deinit()
     gc_col("Deinit ledStrip")
     # 15 on demo 17 tiny 10 on large
-    led_m = neopixel.NeoPixel(board.GP10, n_px)
-    led_m.auto_write = False
-    led_m.brightness = 1.0
+    l_arr[0] = neopixel.NeoPixel(board.GP15, n_px)
+    l_arr[0].auto_write = False
+    l_arr[0].brightness = 1.0
+    l_arr[1] = neopixel.NeoPixel(board.GP10, n_px)
+    l_arr[1].auto_write = False
+    l_arr[1].brightness = 1.0
+    l_arr[2] = neopixel.NeoPixel(board.GP16, n_px)
+    l_arr[2].auto_write = False
+    l_arr[2].brightness = 1.0
+
+
     l_tst()
 
 
@@ -445,35 +457,35 @@ if (web):
             command_sent = ""
             raw_text = req.raw_request.decode("utf8")
             if "set_to_red" in raw_text:
-                led_m.fill((255, 0, 0))
-                led_m.show()
+                l_arr[1].fill((255, 0, 0))
+                l_arr[1].show()
             elif "set_to_green" in raw_text:
-                led_m.fill((0, 255, 0))
-                led_m.show()
+                l_arr[1].fill((0, 255, 0))
+                l_arr[1].show()
             elif "set_to_blue" in raw_text:
-                led_m.fill((0, 0, 255))
-                led_m.show()
+                l_arr[1].fill((0, 0, 255))
+                l_arr[1].show()
             elif "set_to_white" in raw_text:
-                led_m.fill((255, 255, 255))
-                led_m.show()
+                l_arr[1].fill((255, 255, 255))
+                l_arr[1].show()
             elif "set_to_0" in raw_text:
-                led_m.brightness = 0.0
-                led_m.show()
+                l_arr[1].brightness = 0.0
+                l_arr[1].show()
             elif "set_to_20" in raw_text:
-                led_m.brightness = 0.2
-                led_m.show()
+                l_arr[1].brightness = 0.2
+                l_arr[1].show()
             elif "set_to_40" in raw_text:
-                led_m.brightness = 0.4
-                led_m.show()
+                l_arr[1].brightness = 0.4
+                l_arr[1].show()
             elif "set_to_60" in raw_text:
-                led_m.brightness = 0.6
-                led_m.show()
+                l_arr[1].brightness = 0.6
+                l_arr[1].show()
             elif "set_to_80" in raw_text:
-                led_m.brightness = 0.8
-                led_m.show()
+                l_arr[1].brightness = 0.8
+                l_arr[1].show()
             elif "set_to_100" in raw_text:
-                led_m.brightness = 1.0
-                led_m.show()
+                l_arr[1].brightness = 1.0
+                l_arr[1].show()
             return Response(req, "Utility: " + "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
@@ -829,8 +841,8 @@ def an_ls(fn):
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
-            led_m.fill((0, 0, 0))
-            led_m.show()
+            l_arr[1].fill((0, 0, 0))
+            l_arr[1].show()
             break
         upd_vol(.001)
 
@@ -865,8 +877,8 @@ def ts(fn):
             ts["flashTime"].append(te)
             print(te)
         if not mix.voice[0].playing:
-            led_m.fill((0, 0, 0))
-            led_m.show()
+            l_arr[1].fill((0, 0, 0))
+            l_arr[1].show()
             ts["flashTime"].append(5000)
             if cf:
                 files.write_json_file(
@@ -889,8 +901,8 @@ def rainbow(spd, dur):
     for j in range(0, 255, 1):
         for i in range(n_px):
             pi = (i * 256 // n_px) + j
-            led_m[i] = colorwheel(pi & 255)
-        led_m.show()
+            l_arr[1][i] = colorwheel(pi & 255)
+        l_arr[1].show()
         upd_vol(spd)
         te = time.monotonic()-startTime
         if te > dur:
@@ -898,8 +910,8 @@ def rainbow(spd, dur):
     for j in reversed(range(0, 255, 1)):
         for i in range(n_px):
             pi = (i * 256 // n_px) + j
-            led_m[i] = colorwheel(pi & 255)
-        led_m.show()
+            l_arr[1][i] = colorwheel(pi & 255)
+        l_arr[1].show()
         upd_vol(spd)
         te = time.monotonic()-startTime
         if te > dur:
@@ -908,7 +920,7 @@ def rainbow(spd, dur):
 
 def fire(dur):
     st = time.monotonic()
-    led_m.brightness = 1.0
+    l_arr[1].brightness = 1.0
 
     firei = []
 
@@ -920,13 +932,13 @@ def fire(dur):
     stari.extend(stars)
 
     for i in stari:
-        led_m[i] = (255, 255, 255)
+        l_arr[1][i] = (255, 255, 255)
 
     brnchsi = []
     brnchsi.extend((brnchs))
 
     for i in brnchsi:
-        led_m[i] = (50, 50, 50)
+        l_arr[1][i] = (50, 50, 50)
 
     r = random.randint(0, 255)
     g = random.randint(0, 255)
@@ -942,8 +954,8 @@ def fire(dur):
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
             b1 = bnd(b-f, 0, 255)
-            led_m[i] = (r1, g1, b1)
-            led_m.show()
+            l_arr[1][i] = (r1, g1, b1)
+            l_arr[1].show()
         upd_vol(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
@@ -952,7 +964,7 @@ def fire(dur):
 
 def c_fire(dur):
     st = time.monotonic()
-    led_m.brightness = 1.0
+    l_arr[1].brightness = 1.0
 
     # Flicker, based on our initial RGB values
     while True:
@@ -973,8 +985,8 @@ def c_fire(dur):
                 r1 = 0
                 g1 = 0
                 b1 = b
-            led_m[i] = (r1, g1, b1)
-            led_m.show()
+            l_arr[1][i] = (r1, g1, b1)
+            l_arr[1].show()
         upd_vol(random.uniform(.2, 0.3))
         te = time.monotonic()-st
         if te > dur:
@@ -991,7 +1003,7 @@ def bnd(c, l, u):
 
 def mlt_c(dur):
     st = time.monotonic()
-    led_m.brightness = 1.0
+    l_arr[1].brightness = 1.0
 
     # Flicker, based on our initial RGB values
     while True:
@@ -1012,8 +1024,8 @@ def mlt_c(dur):
                 r1 = 0
                 g1 = 0
                 b1 = b
-            led_m[i] = (r1, g1, b1)
-            led_m.show()
+            l_arr[1][i] = (r1, g1, b1)
+            l_arr[1].show()
         upd_vol(random.uniform(.2, 0.3))
         te = time.monotonic()-st
         if te > dur:
