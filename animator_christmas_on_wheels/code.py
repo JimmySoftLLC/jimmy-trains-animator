@@ -451,27 +451,8 @@ if (web):
         def btn(req: Request):
             global cfg
             rq_d = req.json()
-            if rq_d["an"] ==  "set_to_red":
-                set_hdw("L0255_0_0")
-            elif rq_d["an"] ==  "set_to_green":
-                set_hdw("L00_255_0")
-            elif rq_d["an"] ==  "set_to_blue":
-                set_hdw("L00_0_255")
-            elif rq_d["an"] ==  "set_to_white":
-                set_hdw("L0255_255_255")
-            elif rq_d["an"] ==  "set_to_0":
-                set_hdw("B0")
-            elif rq_d["an"] ==  "set_to_20":
-                set_hdw("B20")
-            elif rq_d["an"] ==  "set_to_40":
-                set_hdw("B40")
-            elif rq_d["an"] ==  "set_to_60":
-                set_hdw("B60")
-            elif rq_d["an"] ==  "set_to_80":
-                set_hdw("B80")
-            elif rq_d["an"] ==  "set_to_100":
-                set_hdw("B100")
-            return Response(req, "Utility: " + "Utility: set lights")
+            set_hdw(rq_d["an"])
+            return Response(req, "Utility: " + "Utility: set lights " + rq_d["an"])
 
         @server.route("/update-host-name", [POST])
         def btn(req: Request):
