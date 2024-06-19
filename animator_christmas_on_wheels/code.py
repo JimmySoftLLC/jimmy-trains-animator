@@ -161,7 +161,7 @@ ts_mode = False
 
 trees = []
 canes = []
-logo = []
+logos = []
 ornmnts = []
 stars = []
 brnchs = []
@@ -189,7 +189,6 @@ def bld_tree(p):
         if p == "branches":
             for j in range(14, 21):
                 i.append(t[j])
-    print(i)
     return i
 
 
@@ -202,7 +201,6 @@ def bld_cane(p):
         if p == "start":
             for j in range(2, 4):
                 i.append(c[j])
-    print(i)
     return i
 
 
@@ -263,11 +261,22 @@ def l_tst():
             show_l(int(s[0]))
             cnt = 0
 
+    # logo test
+    cnt = 0
+    for i in logos:
+        for j in i: 
+            s = str(j).split("-")
+            l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
+            cnt += 1
+            if cnt > 13:
+                show_l(int(s[0]))
+                cnt = 0
+
 def upd_l_str():
-    global trees, canes, n_px, l_arr
+    global trees, canes, logos, n_px, l_arr
     trees = []
     canes = []
-    logo = []
+    logos = []
 
     n_px[0] = 0
     n_px[1] = 0
@@ -295,15 +304,13 @@ def upd_l_str():
                 elif typ == 'logo':
                     s = list(range(n_px[i], n_px[i] + qty))
                     ps = [f"{i}-{num}" for num in s]
-                    logo.append(ps)
+                    logos.append(ps)
                     n_px[i] += qty
 
     print("Num px left: ", n_px[0])
     print("Num px mid", n_px[1])
     print("Num px right: ", n_px[2])
     
-
-
     l_arr[0].deinit()
     l_arr[1].deinit()
     l_arr[2].deinit()
@@ -1027,12 +1034,14 @@ def set_hdw(input_string):
             if num == 0:
                 for i in range(3):
                     l_arr[i].fill((int(color[0]), int(color[1]), int(color[2])))
+                    l_arr[i].show()
             else:
                 print("light not 0")
         if seg[0] == 'B':  # brightness
             br = int(seg[1:])
             for i in range(3):
                 l_arr[i].brightness = float(br/100)
+                l_arr[i].show()
 
 
 ################################################################################
@@ -1499,4 +1508,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
 
