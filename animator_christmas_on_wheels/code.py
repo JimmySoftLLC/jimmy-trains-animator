@@ -168,14 +168,15 @@ brnchs = []
 cane_s = []
 cane_e = []
 
-n_px = [0,0,0]
+n_px = [0, 0, 0]
 
 # 15 left 10 mid tiny 15 right
-led_l = neopixel.NeoPixel(board.GP15, n_px[0])
+led_l = neopixel.NeoPixel(board.GP16, n_px[0])
 led_m = neopixel.NeoPixel(board.GP10, n_px[1])
-led_r = neopixel.NeoPixel(board.GP16, n_px[2])
+led_r = neopixel.NeoPixel(board.GP15, n_px[2])
 
 l_arr = [led_l, led_m, led_r]
+
 
 def bld_tree(p):
     i = []
@@ -222,14 +223,14 @@ def l_tst():
 
     # cane test
     cnt = 0
-    for i in cane_s:  
+    for i in cane_s:
         s = str(i).split("-")
         l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
         if cnt > 1:
             show_l(int(s[0]))
             cnt = 0
-    for i in cane_e:  
+    for i in cane_e:
         s = str(i).split("-")
         l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
@@ -239,14 +240,14 @@ def l_tst():
 
     # tree test
     cnt = 0
-    for i in ornmnts:   
+    for i in ornmnts:
         s = str(i).split("-")
         l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
             show_l(int(s[0]))
             cnt = 0
-    for i in stars: 
+    for i in stars:
         s = str(i).split("-")
         l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
@@ -264,13 +265,14 @@ def l_tst():
     # logo test
     cnt = 0
     for i in logos:
-        for j in i: 
+        for j in i:
             s = str(j).split("-")
             l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
             cnt += 1
             if cnt > 13:
                 show_l(int(s[0]))
                 cnt = 0
+
 
 def upd_l_str():
     global trees, canes, logos, n_px, l_arr
@@ -283,7 +285,7 @@ def upd_l_str():
     n_px[2] = 0
 
     els_all = cfg["light_string"].split('|')
-    
+
     for i in range(3):
         els = els_all[i].split(',')
         for el in els:
@@ -310,19 +312,20 @@ def upd_l_str():
     print("Num px left: ", n_px[0])
     print("Num px mid", n_px[1])
     print("Num px right: ", n_px[2])
-    
+
     l_arr[0].deinit()
     l_arr[1].deinit()
     l_arr[2].deinit()
     gc_col("Deinit ledStrip")
     # 15 left 10 mid tiny 15 right
-    l_arr[0] = neopixel.NeoPixel(board.GP15, n_px[0])
+    l_arr[0] = neopixel.NeoPixel(board.GP16, n_px[0])
     l_arr[1] = neopixel.NeoPixel(board.GP10, n_px[1])
-    l_arr[2] = neopixel.NeoPixel(board.GP16, n_px[2])
+    l_arr[2] = neopixel.NeoPixel(board.GP15, n_px[2])
     for i in range(3):
         l_arr[i].auto_write = False
         l_arr[i].brightness = 1.0
     l_tst()
+
 
 upd_l_str()
 
@@ -518,10 +521,14 @@ if (web):
                 cfg_parts = cfg["light_string"].split("|")
                 data_parts = data_object["text"].split("-")
                 cma = ","
-                if cfg_parts[int(data_parts[0])] == "": cma = ""
-                cfg_parts[int(data_parts[0])] = cfg_parts[int(data_parts[0])] + cma + data_parts[1] + "-" + data_parts[2]
-                cfg["light_string"] = cfg_parts[0] + "|" + cfg_parts[1] + "|" + cfg_parts[2]
-                print("action: " + data_object["action"] + " data: " + cfg["light_string"])
+                if cfg_parts[int(data_parts[0])] == "":
+                    cma = ""
+                cfg_parts[int(data_parts[0])] = cfg_parts[int(
+                    data_parts[0])] + cma + data_parts[1] + "-" + data_parts[2]
+                cfg["light_string"] = cfg_parts[0] + \
+                    "|" + cfg_parts[1] + "|" + cfg_parts[2]
+                print("action: " +
+                      data_object["action"] + " data: " + cfg["light_string"])
             files.write_json_file("/sd/cfg.json", cfg)
             upd_l_str()
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -750,10 +757,10 @@ def an_ls(fn):
     global ts_mode
     il = 1
     ih = 3
-    if fn == "silent night":
+    if fn == "silent night":  # 3
         il = 3
         ih = 3
-    if fn == "away in a manger":
+    if fn == "away in a manger":  # 3
         il = 3
         ih = 3
 
@@ -792,11 +799,13 @@ def an_ls(fn):
             open("/sd/snd/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     startTime = time.monotonic()
-    i = 0
+    
+    r = random.randint(il, ih)
+    rpt = 0
 
-    mlt_c(.01)
+    mlt_c()
+
     while True:
-        pi = 0
         te = time.monotonic()-startTime
         if fti < len(ft)-2:
             d = ft[fti+1] - \
@@ -809,30 +818,30 @@ def an_ls(fn):
             print("time elasped: " + str(te) +
                   " Timestamp: " + str(ft[fti]))
             fti += 1
-            i = random.randint(il, ih)
-            while i == pi:
-                print("regenerating random selection")
-                i = random.randint(il, ih)
-            if i == 1:
-                rainbow(.005, d)
-            elif i == 2:
-                mlt_c(.01)
+            rpt += 1
+            if rpt > 1:
+                r = random.randint(il, ih)
+                rpt = 0
+            if r == 1:
+                rainbow(.002, d)
+            elif r == 2:
+                mlt_c()
                 upd_vol(d)
-            elif i == 3:
+            elif r == 3:
                 fire(d)
-            elif i == 4:
-                c_fire(d)
-            elif i == 5:
-                mlt_c(d)
-            pi = i
+
         if ftl == fti:
             fti = 0
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
+            l_arr[0].fill((0, 0, 0))
+            l_arr[0].show()
             l_arr[1].fill((0, 0, 0))
             l_arr[1].show()
+            l_arr[2].fill((0, 0, 0))
+            l_arr[2].show()
             break
         upd_vol(.001)
 
@@ -886,22 +895,40 @@ def ts(fn):
 ##############################
 # Led color effects
 
+
 def rainbow(spd, dur):
     startTime = time.monotonic()
+    px_t = n_px[0] + n_px[1] + n_px[2]
     for j in range(0, 255, 1):
-        for i in range(n_px):
-            pi = (i * 256 // n_px) + j
+        for i in range(n_px[0]):
+            pi = (i * 256 // px_t) + j
+            l_arr[0][i] = colorwheel(pi & 255)  
+        for i in range(n_px[1]):
+            pi = ((i+n_px[0]) * 256 // px_t) + j
             l_arr[1][i] = colorwheel(pi & 255)
+        for i in range(n_px[2]):
+            pi = ((i+n_px[0]+n_px[1]) * 256 // px_t) + j
+            l_arr[2][n_px[2]-i-1] = colorwheel(pi & 255)   
+        l_arr[0].show()
         l_arr[1].show()
+        l_arr[2].show()
         upd_vol(spd)
         te = time.monotonic()-startTime
         if te > dur:
             return
     for j in reversed(range(0, 255, 1)):
-        for i in range(n_px):
-            pi = (i * 256 // n_px) + j
+        for i in range(n_px[0]):
+            pi = (i * 256 // px_t) + j
+            l_arr[0][i] = colorwheel(pi & 255)  
+        for i in range(n_px[1]):
+            pi = ((i+n_px[0]) * 256 // px_t) + j
             l_arr[1][i] = colorwheel(pi & 255)
+        for i in range(n_px[2]):
+            pi = ((i+n_px[0]+n_px[1]) * 256 // px_t) + j
+            l_arr[2][n_px[2]-i-1] = colorwheel(pi & 255)   
+        l_arr[0].show()
         l_arr[1].show()
+        l_arr[2].show()
         upd_vol(spd)
         te = time.monotonic()-startTime
         if te > dur:
@@ -918,109 +945,74 @@ def fire(dur):
     firei.extend(cane_s)
     firei.extend(cane_e)
 
-    stari = []
-    stari.extend(stars)
+    for i in range(len(logos)):
+        firei.extend(logos[i])
 
-    for i in stari:
-        l_arr[1][i] = (255, 255, 255)
+    for i in stars:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (255, 255, 255)
 
-    brnchsi = []
-    brnchsi.extend((brnchs))
+    for i in brnchs:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
 
-    for i in brnchsi:
-        l_arr[1][i] = (50, 50, 50)
-
-    r = random.randint(0, 255)
-    g = random.randint(0, 255)
-    b = random.randint(0, 255)
-
-    print(len(firei))
+    r, g, b = r_rgb(0, 255)
 
     # Flicker, based on our initial RGB values
     while True:
-        # for i in range (0, num_pixels):
         for i in firei:
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
             b1 = bnd(b-f, 0, 255)
-            l_arr[1][i] = (r1, g1, b1)
-            l_arr[1].show()
+            s = str(i).split("-")
+            l_arr[int(s[0])][int(s[1])] = (r1, g1, b1)
+            l_arr[int(s[0])].show()
         upd_vol(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
             return
 
-
-def c_fire(dur):
-    st = time.monotonic()
+def mlt_c():
+    l_arr[0].brightness = 1.0
     l_arr[1].brightness = 1.0
+    l_arr[2].brightness = 1.0
 
-    # Flicker, based on our initial RGB values
-    while True:
-        for i in range(0, n_px):
-            r = random.randint(0, 255)
-            g = random.randint(0, 255)
-            b = random.randint(0, 255)
-            whichColor = random.randint(0, 1)
-            if whichColor == 0:
-                r1 = r
-                g1 = 0
-                b1 = 0
-            elif whichColor == 1:
-                r1 = 0
-                g1 = g
-                b1 = 0
-            elif whichColor == 2:
-                r1 = 0
-                g1 = 0
-                b1 = b
-            l_arr[1][i] = (r1, g1, b1)
-            l_arr[1].show()
-        upd_vol(random.uniform(.2, 0.3))
-        te = time.monotonic()-st
-        if te > dur:
-            return
+    for i in brnchs:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (7, 163, 30)
 
-
-def bnd(c, l, u):
-    if (c < l):
-        c = l
-    if (c > u):
-        c = u
-    return c
-
-
-def mlt_c(dur):
-    st = time.monotonic()
-    l_arr[1].brightness = 1.0
-
-    # Flicker, based on our initial RGB values
-    while True:
-        for i in range(0, n_px):
-            r = random.randint(128, 255)
-            g = random.randint(128, 255)
-            b = random.randint(128, 255)
-            c = random.randint(0, 2)
-            if c == 0:
-                r1 = r
-                g1 = 0
-                b1 = 0
-            elif c == 1:
-                r1 = 0
-                g1 = g
-                b1 = 0
-            elif c == 2:
-                r1 = 0
-                g1 = 0
-                b1 = b
-            l_arr[1][i] = (r1, g1, b1)
-            l_arr[1].show()
-        upd_vol(random.uniform(.2, 0.3))
-        te = time.monotonic()-st
-        if te > dur:
-            return
+    for i in stars:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (255, 255, 255)
         
+    for i in cane_e:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (255, 255, 255)
+
+    color = colorwheel(random.randint(0, 255))
+
+    for i in ornmnts:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = color
+        
+    for i in cane_s:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = color
+        
+    logoi = []
+    for i in range(len(logos)):
+        logoi.extend(logos[i])
+
+    for i in logoi:
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = color
+
+
+    for k in range(3):
+        l_arr[k].show()
+
+
 def set_hdw(input_string):
     # Split the input string into segments
     segs = input_string.split(",")
@@ -1033,7 +1025,8 @@ def set_hdw(input_string):
             color = color.split("_")
             if num == 0:
                 for i in range(3):
-                    l_arr[i].fill((int(color[0]), int(color[1]), int(color[2])))
+                    l_arr[i].fill(
+                        (int(color[0]), int(color[1]), int(color[2])))
                     l_arr[i].show()
             else:
                 print("light not 0")
@@ -1042,6 +1035,19 @@ def set_hdw(input_string):
             for i in range(3):
                 l_arr[i].brightness = float(br/100)
                 l_arr[i].show()
+
+def bnd(c, l, u):
+    if (c < l):
+        c = l
+    if (c > u):
+        c = u
+    return c
+
+def r_rgb(l,h):
+    r = random.randint(l, h)
+    g = random.randint(l, h)
+    b = random.randint(l, h)
+    return (r, g, b)
 
 
 ################################################################################
