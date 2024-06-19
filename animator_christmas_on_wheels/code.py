@@ -161,63 +161,61 @@ ts_mode = False
 
 trees = []
 canes = []
+logo = []
 ornmnts = []
 stars = []
 brnchs = []
 cane_s = []
 cane_e = []
 
-n_px = 0
+n_px = [0,0,0]
 
 # 15 left 10 mid tiny 15 right
-led_l = neopixel.NeoPixel(board.GP15, n_px)
-led_m = neopixel.NeoPixel(board.GP10, n_px)
-led_r = neopixel.NeoPixel(board.GP16, n_px)
+led_l = neopixel.NeoPixel(board.GP15, n_px[0])
+led_m = neopixel.NeoPixel(board.GP10, n_px[1])
+led_r = neopixel.NeoPixel(board.GP16, n_px[2])
 
 l_arr = [led_l, led_m, led_r]
 
 def bld_tree(p):
     i = []
     for t in trees:
-        for ledi in t:
-            si = ledi
-            break
         if p == "ornaments":
-            for ledi in range(0, 7):
-                i.append(ledi+si)
+            for j in range(0, 7):
+                i.append(t[j])
         if p == "star":
-            for ledi in range(7, 14):
-                i.append(ledi+si)
+            for j in range(7, 14):
+                i.append(t[j])
         if p == "branches":
-            for ledi in range(14, 21):
-                i.append(ledi+si)
+            for j in range(14, 21):
+                i.append(t[j])
+    print(i)
     return i
 
 
 def bld_cane(p):
     i = []
     for c in canes:
-        for led_i in c:
-            si = led_i
-            break
         if p == "end":
-            for led_i in range(0, 2):
-                i.append(led_i+si)
+            for j in range(0, 2):
+                i.append(c[j])
         if p == "start":
-            for led_i in range(2, 4):
-                i.append(led_i+si)
+            for j in range(2, 4):
+                i.append(c[j])
+    print(i)
     return i
 
 
-def show_l():
-    l_arr[1].show()
+def show_l(i):
+    l_arr[i].show()
     time.sleep(.3)
-    l_arr[1].fill((0, 0, 0))
-    l_arr[1].show()
+    l_arr[i].fill((0, 0, 0))
+    l_arr[i].show()
 
 
 def l_tst():
     global ornmnts, stars, brnchs, cane_s, cane_e
+
     ornmnts = bld_tree("ornaments")
     stars = bld_tree("star")
     brnchs = bld_tree("branches")
@@ -226,79 +224,97 @@ def l_tst():
 
     # cane test
     cnt = 0
-    for i in cane_s:
-        l_arr[1][i] = (50, 50, 50)
+    for i in cane_s:  
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
         if cnt > 1:
-            show_l()
+            show_l(int(s[0]))
             cnt = 0
-    for i in cane_e:
-        l_arr[1][i] = (50, 50, 50)
+    for i in cane_e:  
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
         if cnt > 1:
-            show_l()
+            show_l(int(s[0]))
             cnt = 0
 
     # tree test
     cnt = 0
-    for i in ornmnts:
-        l_arr[1][i] = (50, 50, 50)
+    for i in ornmnts:   
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
-            show_l()
+            show_l(int(s[0]))
             cnt = 0
-    for i in stars:
-        l_arr[1][i] = (50, 50, 50)
+    for i in stars: 
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
-            show_l()
+            show_l(int(s[0]))
             cnt = 0
     for i in brnchs:
-        l_arr[1][i] = (50, 50, 50)
+        s = str(i).split("-")
+        l_arr[int(s[0])][int(s[1])] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
-            show_l()
+            show_l(int(s[0]))
             cnt = 0
-
 
 def upd_l_str():
     global trees, canes, n_px, l_arr
     trees = []
     canes = []
+    logo = []
 
-    n_px = 0
+    n_px[0] = 0
+    n_px[1] = 0
+    n_px[2] = 0
 
     els_all = cfg["light_string"].split('|')
+    
+    for i in range(3):
+        els = els_all[i].split(',')
+        for el in els:
+            p = el.split('-')
+            if len(p) == 2:
+                typ, qty = p
+                qty = int(qty)
+                if typ == 'grandtree':
+                    s = list(range(n_px[i], n_px[i] + qty))
+                    ps = [f"{i}-{num}" for num in s]
+                    trees.append(ps)
+                    n_px[i] += qty
+                elif typ == 'cane':
+                    s = list(range(n_px[i], n_px[i] + qty))
+                    ps = [f"{i}-{num}" for num in s]
+                    canes.append(ps)
+                    n_px[i] += qty
+                elif typ == 'logo':
+                    s = list(range(n_px[i], n_px[i] + qty))
+                    ps = [f"{i}-{num}" for num in s]
+                    logo.append(ps)
+                    n_px[i] += qty
 
-    els = els_all[1].split(',')
+    print("Num px left: ", n_px[0])
+    print("Num px mid", n_px[1])
+    print("Num px right: ", n_px[2])
+    
 
-    for el in els:
-        p = el.split('-')
-        if len(p) == 2:
-            typ, qty = p
-            qty = int(qty)
 
-            if typ == 'grandtree':
-                s = list(range(n_px, n_px + qty))
-                trees.append(s)
-                n_px += qty
-            elif typ == 'cane':
-                s = list(range(n_px, n_px + qty))
-                canes.append(s)
-                n_px += qty
-
-    print("Number of pixels total: ", n_px)
     l_arr[0].deinit()
     l_arr[1].deinit()
     l_arr[2].deinit()
     gc_col("Deinit ledStrip")
     # 15 left 10 mid tiny 15 right
-    l_arr[0] = neopixel.NeoPixel(board.GP15, n_px)
-    l_arr[1] = neopixel.NeoPixel(board.GP10, n_px)
-    l_arr[2] = neopixel.NeoPixel(board.GP16, n_px)
+    l_arr[0] = neopixel.NeoPixel(board.GP15, n_px[0])
+    l_arr[1] = neopixel.NeoPixel(board.GP10, n_px[1])
+    l_arr[2] = neopixel.NeoPixel(board.GP16, n_px[2])
     for i in range(3):
-        l_arr[1].auto_write = False
-        l_arr[1].brightness = 1.0
+        l_arr[i].auto_write = False
+        l_arr[i].brightness = 1.0
     l_tst()
 
 upd_l_str()
@@ -496,7 +512,7 @@ if (web):
                 data_parts = data_object["text"].split("-")
                 cma = ","
                 if cfg_parts[int(data_parts[0])] == "": cma = ""
-                cfg_parts[int(data_parts[0])] = cfg_parts[int(data_parts[0])] + cma + data_parts[1] + data_parts[2]
+                cfg_parts[int(data_parts[0])] = cfg_parts[int(data_parts[0])] + cma + data_parts[1] + "-" + data_parts[2]
                 cfg["light_string"] = cfg_parts[0] + "|" + cfg_parts[1] + "|" + cfg_parts[2]
                 print("action: " + data_object["action"] + " data: " + cfg["light_string"])
             files.write_json_file("/sd/cfg.json", cfg)
