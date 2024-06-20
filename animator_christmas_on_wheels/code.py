@@ -286,7 +286,7 @@ def upd_l_str():
 
     els_all = cfg["light_string"].split('|')
 
-    for i in range(3):
+    for i in range(len(els_all)):
         els = els_all[i].split(',')
         for el in els:
             p = el.split('-')
@@ -1425,18 +1425,19 @@ class Light(Ste):
             if self.i > len(l_mnu)-1:
                 self.i = 0
         if r_sw.fell:
-            if self.sel_i == "hear_light_setup_instructions":
+            sel_mnu = l_mnu[self.sel_i]
+            if sel_mnu == "hear_light_setup_instructions":
                 ply_a_0("/sd/mvc/light_string_instructions.wav")
-            elif self.sel_i == "reset_lights_defaults":
+            elif sel_mnu == "reset_lights_defaults":
                 reset_lights_to_defaults()
                 ply_a_0("/sd/mvc/lights_reset_to.wav")
                 spk_lght(False)
-            elif self.sel_i == "hear_current_light_settings":
+            elif sel_mnu == "hear_current_light_settings":
                 spk_lght(True)
-            elif self.sel_i == "clear_light_string":
+            elif sel_mnu == "clear_light_string":
                 cfg["light_string"] = ""
                 ply_a_0("/sd/mvc/lights_cleared.wav")
-            elif self.sel_i == "add_lights":
+            elif sel_mnu == "add_lights":
                 ply_a_0("/sd/mvc/add_light_menu.wav")
                 a = True
                 while a:
@@ -1455,14 +1456,17 @@ class Light(Ste):
                         self.sel_li = self.li
                         ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
                     elif sw == "right_held":
-                        if cfg["light_string"] == "":
-                            cfg["light_string"] = l_opt[self.sel_li]
+                        cfg_opt = l_opt[self.sel_li]
+                        print(cfg_opt)
+                        if cfg_opt == "control_car_connection": cfg_opt = "|"
+                        if cfg["light_string"] == "": cfg["light_string"] = cfg_opt
+                        elif cfg_opt == "|": cfg["light_string"] = cfg["light_string"] + cfg_opt
                         else:
-                            cfg["light_string"] = cfg["light_string"] + \
-                                "," + l_opt[self.sel_li]
+                            cfg["light_string"] = cfg["light_string"] + "," + cfg_opt
                         ply_a_0("/sd/mvc/" +
                                 l_opt[self.sel_li] + ".wav")
                         ply_a_0("/sd/mvc/added.wav")
+                        print(cfg["light_string"])
                     elif sw == "left_held":
                         files.write_json_file(
                             "/sd/cfg.json", cfg)
@@ -1517,6 +1521,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
-
 
