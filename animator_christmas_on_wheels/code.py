@@ -807,7 +807,9 @@ def an_ls(fn):
     r = random.randint(il, ih)
     rpt = 0
 
+    set_hdw("B0")
     mlt_c()
+    set_hdw("F100")
 
     while True:
         te = time.monotonic()-startTime
@@ -840,6 +842,7 @@ def an_ls(fn):
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
+            set_hdw("F0")
             l_arr[0].fill((0, 0, 0))
             l_arr[0].show()
             l_arr[1].fill((0, 0, 0))
@@ -978,10 +981,6 @@ def fire(dur):
             return
 
 def mlt_c():
-    l_arr[0].brightness = 1.0
-    l_arr[1].brightness = 1.0
-    l_arr[2].brightness = 1.0
-
     for i in brnchs:
         s = str(i).split("-")
         l_arr[int(s[0])][int(s[1])] = (7, 163, 30)
@@ -1018,6 +1017,7 @@ def mlt_c():
 
 
 def set_hdw(input_string):
+    global br
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -1039,6 +1039,20 @@ def set_hdw(input_string):
             for i in range(3):
                 l_arr[i].brightness = float(br/100)
                 l_arr[i].show()
+        if seg[0] == 'F':  # fade in or out
+            v = int(seg[1:])
+            while not br == v:
+                if br < v:
+                    br += 1
+                    for i in range(3):
+                        l_arr[i].brightness = float(br/100)
+                        l_arr[i].show()
+                else:
+                    br -= 1
+                    for i in range(3):
+                        l_arr[i].brightness = float(br/100)
+                        l_arr[i].show()
+                upd_vol(.01)
 
 def bnd(c, l, u):
     if (c < l):
@@ -1461,6 +1475,7 @@ class Light(Ste):
                         if cfg_opt == "control_car_connection": cfg_opt = "|"
                         if cfg["light_string"] == "": cfg["light_string"] = cfg_opt
                         elif cfg_opt == "|": cfg["light_string"] = cfg["light_string"] + cfg_opt
+                        elif cfg["light_string"][-1] == "|": cfg["light_string"] = cfg["light_string"] + cfg_opt
                         else:
                             cfg["light_string"] = cfg["light_string"] + "," + cfg_opt
                         ply_a_0("/sd/mvc/" +
