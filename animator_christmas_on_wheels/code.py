@@ -565,13 +565,13 @@ gc_col("utilities")
 
 def reset_lights_to_defaults():
     global cfg
-    cfg["light_string"] = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
+    cfg["light_string"] = "cane-4,cane-4,cane-4|grandtree-21|cane-4,cane-4,cane-4"
 
 
 def reset_to_defaults():
     global cfg
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-christmas-park"
+    cfg["HOST_NAME"] = "animator-christmas-wheels"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
     cfg["can_cancel"] = True
@@ -687,15 +687,19 @@ def spk_sng_num(song_number):
 
 def spk_lght(play_intro):
     try:
-        elements = cfg["light_string"].split(',')
         if play_intro:
             ply_a_0("/sd/mvc/current_light_settings_are.wav")
-        for index, element in enumerate(elements):
-            ply_a_0("/sd/mvc/position.wav")
-            ply_a_0("/sd/mvc/" + str(index+1) + ".wav")
-            ply_a_0("/sd/mvc/is.wav")
-            ply_a_0("/sd/mvc/" + element + ".wav")
-    except:
+        s_ls = cfg["light_string"].split('|')
+        for i in range(len(s_ls)):
+            elements = s_ls[i].split(',')
+            for index, element in enumerate(elements):
+                ply_a_0("/sd/mvc/position.wav")
+                ply_a_0("/sd/mvc/" + str(index+1) + ".wav")
+                ply_a_0("/sd/mvc/is.wav")
+                ply_a_0("/sd/mvc/" + element + ".wav")
+            if i == 0 or i == 1: ply_a_0("/sd/mvc/control_car_connection.wav")
+    except Exception as e:
+        files.log_item(e)
         ply_a_0("/sd/mvc/no_lights_in_light_string.wav")
         return
 
@@ -715,8 +719,8 @@ def no_trk():
 def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-christmas-park":
-        ply_a_0("/sd/mvc/animator_dash_christmas_dash_park.wav")
+    if cfg["HOST_NAME"] == "animator-christmas-wheels":
+        ply_a_0("/sd/mvc/animator_dash_christmas_dash_wheels.wav")
         ply_a_0("/sd/mvc/dot.wav")
         ply_a_0("/sd/mvc/local.wav")
     else:
@@ -1421,19 +1425,18 @@ class Light(Ste):
             if self.i > len(l_mnu)-1:
                 self.i = 0
         if r_sw.fell:
-            sel_i = l_mnu[self.sel_i]
-            if sel_i == "hear_light_setup_instructions":
-                ply_a_0("/sd/mvc/park_string_instructions.wav")
-            elif sel_i == "reset_lights_defaults":
+            if self.sel_i == "hear_light_setup_instructions":
+                ply_a_0("/sd/mvc/light_string_instructions.wav")
+            elif self.sel_i == "reset_lights_defaults":
                 reset_lights_to_defaults()
                 ply_a_0("/sd/mvc/lights_reset_to.wav")
                 spk_lght(False)
-            elif sel_i == "hear_current_light_settings":
+            elif self.sel_i == "hear_current_light_settings":
                 spk_lght(True)
-            elif sel_i == "clear_light_string":
+            elif self.sel_i == "clear_light_string":
                 cfg["light_string"] = ""
                 ply_a_0("/sd/mvc/lights_cleared.wav")
-            elif sel_i == "add_lights":
+            elif self.sel_i == "add_lights":
                 ply_a_0("/sd/mvc/add_light_menu.wav")
                 a = True
                 while a:
@@ -1514,5 +1517,6 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
 
 

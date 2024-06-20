@@ -25,8 +25,14 @@ switch_io_4 = digitalio.DigitalInOut(board.D5)
 switch_io_4.direction = digitalio.Direction.INPUT
 switch_io_4.pull = digitalio.Pull.UP
 
+aud_en = digitalio.DigitalInOut(board.D26)
+aud_en.direction = digitalio.Direction.OUTPUT
+aud_en.value = True
+
 left_switch = Debouncer(switch_io_1)
 right_switch = Debouncer(switch_io_2)
+white_switch = Debouncer(switch_io_3)
+blue_switch = Debouncer(switch_io_4)
 
 # Setup the servo
 m1_pwm = pwmio.PWMOut(board.D6, duty_cycle=2 ** 15, frequency=50)
@@ -57,39 +63,40 @@ m7_servo.angle = 180
 m8_servo.angle = 180
 
 # setup neopixels on spi GP10
-num_pixels_rgb=40
+num_pixels_rgb=10
 ledStripRGB = neopixel_spi.NeoPixel_SPI(board.SPI(), num_pixels_rgb, brightness=1.0, auto_write=False)
+
 
 # create vlc media player object for playing video, music etc
 media_player = vlc.MediaPlayer()
 media_player.toggle_fullscreen()
+
+movie = []
   
-movie1 = ("/home/pi/Videos/oldmovie.mp4")
-movie2 = ("/home/pi/Videos/commercial.mp4")
+movie.append("/home/pi/Videos/oldmovie.mp4")
+movie.append("/home/pi/Videos/commercial.mp4")
+movie.append("/home/pi/Videos/toystory.mp4")
+movie.append("/home/pi/Videos/BeautifulThings.mp4")
+movie.append("/home/pi/Videos/PetshopBoys.mp4")
+movie.append("/home/pi/Videos/toystory2.mp4")
 
-movie_playing = False
+run_movie_cont = False
+volume = 70
+movie_index = 0
 
-def play_movie_1():
-    media = vlc.Media(movie1)
+def play_movies():
+    global movie_index
+    if movie_index > 5: movie_index = 0
+    media = vlc.Media(movie[movie_index])
     media_player.set_media(media)
-    media_player.audio_set_volume(50)
     play_movie()
-    
-def play_movie_2():
-    media = vlc.Media(movie2)
-    media_player.set_media(media)
-    media_player.audio_set_volume(50)
-    play_movie()
+    movie_index +=1
     
 def pause_movie():
-    global movie_playing
     media_player.pause()
-    movie_playing = False
     
 def play_movie():
-    global movie_playing
     media_player.play()
-    movie_playing = True
 
 def rainbow(speed,duration):
     startTime = time.monotonic()
@@ -111,21 +118,42 @@ def rainbow(speed,duration):
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
-  
+        
+media_player.audio_set_volume(volume)
+
 while True:
+    if not media_player.is_playing() and run_movie_cont:
+        print("play movies: " + str(run_movie_cont))
+        play_movies()
+        while not media_player.is_playing():
+            time.sleep(.5)
     left_switch.update()
     right_switch.update()
+    white_switch.update()
+    blue_switch.update()
     if left_switch.fell:
+        if media_player.is_playing(): pause_movie()
+        run_movie_cont = True
         print ("left fell")
-        play_movie_1()
-        
     if right_switch.fell:
         print ("right fell")
-        if movie_playing:
+        if media_player.is_playing():
+            run_movie_cont = False
             pause_movie()
         else:
             play_movie()
             rainbow(.005,5)
+    if white_switch.fell:
+        print ("white fell")
+        volume = volume - 10
+        if volume < 0: volume = 0
+        media_player.audio_set_volume(volume)
+    if blue_switch.fell:
+        print ("blue fell")
+        volume = volume + 10
+        if volume > 100: volume = 100
+        media_player.audio_set_volume(volume)
+    time.sleep(.1)
     pass
 
 media_player.stop()      
