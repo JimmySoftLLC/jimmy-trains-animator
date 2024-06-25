@@ -94,7 +94,8 @@ try:
     sd = sdcardio.SDCard(spi, cs)
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
-except:
+except Exception as e:
+    files.log_item(e)
     w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
@@ -113,7 +114,8 @@ except:
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
-            except:
+            except Exception as e:
+                files.log_item(e)
                 w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
@@ -221,7 +223,8 @@ if (web):
         WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
         print("Using env ssid and password")
-    except:
+    except Exception as e:
+        files.log_item(e)
         print("Using default ssid and password")
 
     try:
@@ -329,7 +332,7 @@ if (web):
         @server.route("/lights", [POST])
         def btn(request: Request):
             rq_d = request.json()
-            set_hdw(rq_d["an"])
+            set_hdw(rq_d["an"],0)
             return Response(request, "Utility: " + "Utility: set lights")
 
         @server.route("/update-host-name", [POST])
@@ -374,7 +377,7 @@ if (web):
             rq_d = request.json()
             print(rq_d["an"])
             gc_col("Save Data.")
-            set_hdw(rq_d["an"])
+            set_hdw(rq_d["an"],0)
             return Response(request, "success")
 
         @server.route("/get-animation", [POST])
@@ -434,7 +437,8 @@ if (web):
                     files.write_json_file(f_n, data)
                     data = []
                     gc_col("get data")
-            except:
+            except Exception as e:
+                files.log_item(e)
                 data = []
                 gc_col("get data")
                 return Response(request, "out of memory")
@@ -469,7 +473,8 @@ def upd_vol(seconds):
     else:
         try:
             volume = int(cfg["volume"]) / 100
-        except:
+        except Exception as e:
+            files.log_item(e)
             volume = .5
         if volume < 0 or volume > 1:
             volume = .5
@@ -541,7 +546,8 @@ def spk_str(str_to_speak, addLocal):
             if character == ".":
                 character = "dot"
             play_a_0("/sd/mvc/" + character + ".wav")
-        except:
+        except Exception as e:
+            files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
         play_a_0("/sd/mvc/dot.wav")
@@ -605,7 +611,8 @@ async def upd_vol_async(s):
     else:
         try:
             v = int(cfg["volume"]) / 100
-        except:
+        except Exception as e:
+            files.log_item(e)
             v = .5
         if v < 0 or v > 1:
             v = .5
@@ -691,14 +698,18 @@ def an(f_nm):
         else:
             an_light(cur_opt)
             gc_col("animation cleanup")
-    except:
+    except Exception as e:
+        files.log_item(e)
         no_trk()
         cfg["option_selected"] = "random built in"
         return
     gc_col("Animation complete.")
 
-
 def an_light(f_nm):
+    loop.create_task(async_an_light(f_nm))
+    loop.run_forever()
+
+async def async_an_light(f_nm):
     global ts_mode
 
     cust_f = "customers_owned_music_" in f_nm
@@ -714,7 +725,8 @@ def an_light(f_nm):
             try:
                 flsh_t = files.read_json_file(
                     "/sd/customers_owned_music/" + f_nm + ".json")
-            except:
+            except Exception as e:
+                files.log_item(e)
                 play_a_0("/sd/mvc/no_timestamp_file_found.wav")
                 while True:
                     l_sw.update()
@@ -762,9 +774,9 @@ def an_light(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                set_hdw("L0" + str(lgt) + ",S0" + str(pos))
+                loop.create_task(set_hdw_async("L0" + str(lgt) + ",S0" + str(pos),dur))           
             else:
-                set_hdw(ft1[1])
+                loop.create_task(set_hdw_async(ft1[1],dur))
             flsh_i += 1
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
@@ -774,7 +786,6 @@ def an_light(f_nm):
             led.show()
             return
         upd_vol(.1)
-
 
 def an_ts(f_nm):
     print("time stamp mode")
@@ -827,12 +838,7 @@ sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
 
-def set_hdw(input_string):
-    loop.create_task(set_hdw_async(input_string))
-    loop.run_forever()
-
-
-async def set_hdw_async(input_string):
+async def set_hdw_async(input_string, dur):
     global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
@@ -850,7 +856,7 @@ async def set_hdw_async(input_string):
             led[0] = (sp[1], sp[0], sp[2])
             led[1] = (sp[4], sp[3], sp[5])
             led.show()
-        if seg[0] == 'S':  # servos
+        if seg[0] == 'S':  # servos S
             num = int(seg[1])
             v = int(seg[2:])
             if num == 0:
@@ -871,6 +877,27 @@ async def set_hdw_async(input_string):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
+        if seg[0] == "C": #cycle motors
+            ts = time.monotonic()
+            cyc = True
+            while cyc:
+                for v in range(90, 100, 1):
+                    for i in range(6):
+                        s_arr[i].angle = v
+                    upd_vol_async(.1)
+                    els =  time.monotonic()-ts
+                    if dur < els: break
+                for v in range(100, 90, -1):
+                    for i in range(6):
+                        s_arr[i].angle = v
+                    upd_vol_async(.1)
+                    els =  time.monotonic()-ts
+                    if dur < els: break
+                    
+                
+
+        
+        
 
 ################################################################################
 # State Machine
@@ -1030,7 +1057,8 @@ class Snds(Ste):
                     wave0 = audiocore.WaveFile(open(
                         "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
                     mix.voice[0].play(wave0, loop=False)
-                except:
+                except Exception as e:
+                    files.log_item(e)
                     spk_sng_num(str(self.i+1))
                 self.sel_i = self.i
                 self.i += 1
@@ -1238,12 +1266,13 @@ if (web):
         rst()
 
 #  set all servos to 90
-set_hdw("S090")
+set_hdw_async("S090",0)
 upd_vol(.5)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
+
 
 while True:
     st_mch.upd()
@@ -1255,3 +1284,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
+
