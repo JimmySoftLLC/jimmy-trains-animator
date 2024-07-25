@@ -4,6 +4,7 @@ import digitalio
 from adafruit_motor import servo
 import pwmio
 import random
+import asyncio
 
 # Define the pins connected to the stepper motor driver
 coil_A_1 = digitalio.DigitalInOut(board.GP10)
@@ -68,7 +69,10 @@ kite_rot.angle = lst_kite_pos
 kite_min = 0
 kite_max = 180
 
-def kite_move_smooth(n_pos, spd, acceleration):
+# Create an event loop
+loop = asyncio.get_event_loop()
+
+async def kite_move_smooth(n_pos, spd, acceleration):
     global lst_kite_pos
     sign = 1
     if lst_kite_pos > n_pos:
@@ -88,7 +92,7 @@ def kite_move_smooth(n_pos, spd, acceleration):
         lst_kite_pos = n_pos
         move_kite(n_pos)
 
-def kite_move(n_pos, spd):
+async def kite_move(n_pos, spd):
     global lst_kite_pos
     sign = 1
     if lst_kite_pos > n_pos:
