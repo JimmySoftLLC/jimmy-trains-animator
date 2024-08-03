@@ -4,80 +4,81 @@ import json
 def log_item(item):
     print(item)
 
-def print_directory(p, t=0):
-    itm_nme = ""
-    str_s = ""
+def print_directory(path, tabs=0):
+    log_item_name = ""
+    size_str = ""
     log_item("Files on filesystem:")
     log_item("====================")
-    for f in os.listdir(p):
-        sts = os.stat(p + "/" + f)
-        f_sz = sts[6]
-        is_dir = sts[0] & 0x4000
+    for file in os.listdir(path):
+        stats = os.stat(path + "/" + file)
+        filesize = stats[6]
+        isdir = stats[0] & 0x4000
 
-        if f_sz < 1000:
-            str_s = str(f_sz) + " by"
-        elif f_sz < 1000000:
-            str_s = "%0.1f KB" % (f_sz / 1000)
+        if filesize < 1000:
+            size_str = str(filesize) + " by"
+        elif filesize < 1000000:
+            size_str = "%0.1f KB" % (filesize / 1000)
         else:
-            str_s = "%0.1f MB" % (f_sz / 1000000)
+            size_str = "%0.1f MB" % (filesize / 1000000)
 
-        itm_nme = ""
-        for _ in range(t):
-            itm_nme += "   "
-        itm_nme += f
-        if is_dir:
-            itm_nme += "/"
-        log_item('{0:<40} Size: {1:>10}'.format(itm_nme, str_s))
+        log_item_name = ""
+        for _ in range(tabs):
+            log_item_name += "   "
+        log_item_name += file
+        if isdir:
+            log_item_name += "/"
+        log_item('{0:<40} Size: {1:>10}'.format(log_item_name, size_str))
 
         # recursively files.log_item directory contents
-        if is_dir:
-            print_directory(p + "/" + f, t + 1)
+        if isdir:
+            print_directory(path + "/" + file, tabs + 1)
 
-def return_directory(pfx, p, type):
+def return_directory(prefix, path, fileType):
     file_list = []
-    for file in os.listdir(p):  
-        if "._" not in file and type in file:
-            file_name = pfx + file.replace(type, '')
+    for file in os.listdir(path):  
+        if "._" not in file and fileType in file:
+            file_name = prefix + file.replace(fileType, '')
             file_list.append(file_name)
     file_list.sort()
     return file_list
  
-def write_file_lines(f, ls):
-    with open(f, "w") as f:
-        for l in ls:
-            f.write(l + "\n")
+def write_file_lines(file_name, lines):
+    with open(file_name, "w") as f:
+        for line in lines:
+            f.write(line + "\n")
 
-def read_file_lines(f):
-    with open(f, "r") as f:
-        ls = f.readlines()
-        o_ls = [] 
-        for l in ls:
-            o_ls.append(l.strip())
-        return o_ls
+def read_file_lines(file_name):
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+        output_lines = [] 
+        for line in lines:
+            output_lines.append(line.strip())
+        return output_lines
     
-def write_file_line(f, l):
-    with open(f, "w") as f:
-        f.write(l + "\n")
+def write_file_line(file_name, line):
+    with open(file_name, "w") as f:
+        f.write(line + "\n")
 
-def read_file_line(f):
-    with open(f, "r") as f:
-        l = f.read()
-        o_l=l.strip()
-        return o_l
+def read_file_line(file_name):
+    with open(file_name, "r") as f:
+        line = f.read()
+        output_line=line.strip()
+        return output_line
     
-def json_stringify(dict):
-    json_s = json_s.dumps(dict)
-    return json_s
+def json_stringify(python_dictionary):
+    json_string = json.dumps(python_dictionary)
+    return json_string
 
-def json_parse(obj):
-    dict = json.loads(obj)
-    return dict
+def json_parse(my_object):
+    python_dictionary = json.loads(my_object)
+    return python_dictionary
 
-def write_json_file(f, dict):
-    json_s=json_stringify(dict)
-    write_file_line(f, json_s)
+def write_json_file(file_name, python_dictionary):
+    json_string=json_stringify(python_dictionary)
+    write_file_line(file_name, json_string)
     
-def read_json_file(f):
-    json_s=read_file_line(f)
-    dict=json_parse(json_s)
-    return dict
+def read_json_file(file_name):
+    json_string=read_file_line(file_name)
+    python_dictionary=json_parse(json_string)
+    return python_dictionary
+

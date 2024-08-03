@@ -12,6 +12,7 @@ import audiomp3
 import asyncio
 from analogio import AnalogIn
 import files
+import gc
 
 def gc_col(collection_point):
     gc.collect()
@@ -43,6 +44,16 @@ coil_A_1.direction = digitalio.Direction.OUTPUT
 coil_A_2.direction = digitalio.Direction.OUTPUT
 coil_B_1.direction = digitalio.Direction.OUTPUT
 coil_B_2.direction = digitalio.Direction.OUTPUT
+
+################################################################################
+# Sd card config variables
+
+cfg = files.read_json_file("/cfg.json")
+
+print(cfg)
+
+cfg["volume_pot"] = False
+files.write_json_file("/cfg.json", cfg)
 
 # Define the step sequence for a unipolar stepper motor
 step_down = [
@@ -86,17 +97,28 @@ def move_motor(steps, direction, delay=0.005):
             set_step(step)
             time.sleep(delay)
             
-def upd_vol(seconds):
-    volume = a_in.value / 65536
-    mix.voice[0].level = volume
-    time.sleep(seconds)
+def upd_vol(s):
+    if cfg["volume_pot"]:
+        v = a_in.value / 65536
+        mix.voice[0].level = v
+        time.sleep(s)
+    else:
+        try:
+            v = int(cfg["volume"]) / 100
+        except:
+            v = .5
+        if v < 0 or v > 1:
+            v = .5
+        mix.voice[0].level = v
+        time.sleep(s)
 
 # Setup the servos
 kite_rot = pwmio.PWMOut(board.GP17, duty_cycle=2 ** 15, frequency=50)
 kite_rot = servo.Servo(kite_rot, min_pulse=500, max_pulse=2500)
 
+kite_deploy_max = 1700
 lst_kite_pos = 90
-lst_kite_deploy_pos = 1200
+lst_kite_deploy_pos = kite_deploy_max
 kite_rot.angle = lst_kite_pos
 kite_min = 0
 kite_max = 180
@@ -157,23 +179,25 @@ din = board.GP20  # DIN on MAX98357A
 aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
 # Setup the mixer to play wav files
-mix = audiomixer.Mixer(voice_count=1, sample_rate=22050, channel_count=2,
-                       bits_per_sample=16, samples_signed=True, buffer_size=8192)
+mix = audiomixer.Mixer(voice_count=2, sample_rate=22050, channel_count=2,
+                       bits_per_sample=16, samples_signed=True, buffer_size=16384) #this it lowest setting with out noises
 aud.play(mix)
 
 upd_vol(.1)
 
-w0 = audiomp3.MP3Decoder(open("wav/kids_playing.mp3", "rb"))
-
-#mix.voice[0].play(w0, loop=False)
+w0 = audiomp3.MP3Decoder(open("mp3/wind.mp3", "rb"))
+w1 = audiomp3.MP3Decoder(open("mp3/a_on_net.mp3", "rb"))
 
 def rotate_kite():
-    for _ in range(10):
-        dist = random.randint(75, 75)
-        kite_move (90 + dist, .02)
-        time.sleep(1)
-        kite_move (90 - dist, .02)
-        time.sleep(1)
+    dist = random.randint(75, 75)
+    kite_move (90 + dist, .005)
+    if not mix.voice[0].playing:
+        return
+    time.sleep(.1)
+    kite_move (90 - dist, .005)
+    if not mix.voice[0].playing:
+        return
+    time.sleep(.1)
 
 ################################################################################
 # async methods
@@ -182,11 +206,6 @@ def rotate_kite():
 loop = asyncio.get_event_loop()
 
 async_running = False
-
-async def upd_vol_async(sec):
-        v = a_in.value / 65536
-        mix.voice[0].level = v
-        await asyncio.sleep(sec)
 
 async def kite_move_async():
     global lst_kite_pos, async_running
@@ -206,7 +225,7 @@ async def kite_move_async():
             await asyncio.sleep(spd)
         await asyncio.sleep(2*spd)    
         sign = 1
-        if lst_kite_pos > rand_pos_2:
+        if lst_kite_pos > rand_pos_2:#
             sign = -1
         total_steps = abs(rand_pos_2 - lst_kite_pos)
         for _ in range(total_steps + 1):
@@ -236,11 +255,22 @@ async def rn_exp(steps, direction):
     async_running = True
     cyc_k = asyncio.create_task(kite_move_async())
     cyc_g = asyncio.create_task(move_motor_async(steps, direction))
-    await asyncio.gather(cyc_g, cyc_k)
+    await asyncio.gather(cyc_g,cyc_k)
 
+#sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
+#print(sw)
+    
+    
+def rnd_prob(c):
+    y = random.random()
+    if y < c: return True
+    return False
 
 while True:
-    rand_deploy_pos = random.randint(0, 1200)
+
+    rand_deploy_pos = random.randint(0, kite_deploy_max)
+    if rnd_prob(.3) and not mix.voice[0].playing:
+        mix.voice[0].play(w0, loop=False)
     direction = "up"
     if lst_kite_deploy_pos > rand_deploy_pos:
         direction = "down"
