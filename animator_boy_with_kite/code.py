@@ -7,6 +7,7 @@ import random
 import audiobusio
 import audiomixer
 import audiomp3
+import asyncio
 from analogio import AnalogIn
 
 # Define the pins connected to the stepper motor driver
@@ -73,6 +74,7 @@ kite_rot = pwmio.PWMOut(board.GP17, duty_cycle=2 ** 15, frequency=50)
 kite_rot = servo.Servo(kite_rot, min_pulse=500, max_pulse=2500)
 
 lst_kite_pos = 90
+lst_kite_deploy_pos = 1200
 kite_rot.angle = lst_kite_pos
 kite_min = 0
 kite_max = 180
@@ -105,16 +107,16 @@ def kite_move(n_pos, spd):
 
     total_steps = abs(n_pos - lst_kite_pos)
     
-    for step in range(total_steps + 1):
+    for _ in range(total_steps + 1):
         kite_ang = lst_kite_pos + 1 * sign
         move_kite(kite_ang)
         time.sleep(spd)       
 
 def move_kite (servo_pos):
+    global lst_kite_pos
     if servo_pos < kite_min: servo_pos = kite_min
     if servo_pos > kite_max: servo_pos = kite_max
     kite_rot.angle = servo_pos
-    global lst_kite_pos
     lst_kite_pos = servo_pos
     
 # Setup pin for vol on 5v aud board
@@ -147,27 +149,81 @@ def rotate_kite():
     for _ in range(10):
         dist = random.randint(75, 75)
         kite_move (90 + dist, .02)
+        time.sleep(1)
         kite_move (90 - dist, .02)
+        time.sleep(1)
+
+################################################################################
+# async methods
+
+# Create an event loop
+loop = asyncio.get_event_loop()
+
+async_running = False
+
+async def upd_vol_async(sec):
+        v = a_in.value / 65536
+        mix.voice[0].level = v
+        await asyncio.sleep(sec)
+
+async def kite_move_async():
+    global lst_kite_pos, async_running
+    spd = .02
+    while async_running:
+        rand_pos_1 = random.randint(15, 40) 
+        rand_pos_2 = random.randint(110, 165)  
+        sign = 1
+        if lst_kite_pos > rand_pos_1:
+            sign = -1
+        total_steps = abs(rand_pos_1 - lst_kite_pos)
+        for _ in range(total_steps + 1):
+            kite_ang = lst_kite_pos + 1 * sign
+            move_kite(kite_ang)
+            if not async_running:
+                break
+            await asyncio.sleep(spd)
+        await asyncio.sleep(2*spd)    
+        sign = 1
+        if lst_kite_pos > rand_pos_2:
+            sign = -1
+        total_steps = abs(rand_pos_2 - lst_kite_pos)
+        for _ in range(total_steps + 1):
+            kite_ang = lst_kite_pos + 1 * sign
+            move_kite(kite_ang)
+            if not async_running:
+                break
+            await asyncio.sleep(spd)
+        await asyncio.sleep(2*spd)    
+        
+async def move_motor_async(steps, direction, spd=0.005):
+    global async_running
+    if direction == 'down':
+        seq = step_down
+    elif direction == 'up':
+        seq = step_up
+    else:
+        raise ValueError("Direction must be 'down' or 'up'")
+    for i in range(steps):
+        for step in seq:
+            set_step(step)
+            await asyncio.sleep(spd)
+    async_running = False
+
+async def rn_exp(steps, direction):
+    global async_running
+    async_running = True
+    cyc_k = asyncio.create_task(kite_move_async())
+    cyc_g = asyncio.create_task(move_motor_async(steps, direction))
+    await asyncio.gather(cyc_g, cyc_k)
 
 
-# Main loop to raise flag up and down and wave it at the top
 while True:
-    move_motor(400, 'down')  # Kite down
-    coils_off()
-    rotate_kite()
-    move_motor(400, 'down')  # Kite down
-    coils_off()
-    rotate_kite()
-    move_motor(400, 'down')  # Kite down
-    coils_off()
-    rotate_kite()
-    move_motor(400, 'up')  # Kite up
-    coils_off()
-    rotate_kite()
-    move_motor(400, 'up')  # Kite up
-    coils_off()
-    rotate_kite()
-    move_motor(400, 'up')  # Kite up
-    coils_off()
-    rotate_kite()
-
+    rand_deploy_pos = random.randint(0, 1200)
+    direction = "up"
+    if lst_kite_deploy_pos > rand_deploy_pos:
+        direction = "down"
+    total_steps = abs(rand_deploy_pos - lst_kite_deploy_pos)
+    asyncio.run(rn_exp(total_steps, direction))
+    lst_kite_deploy_pos = rand_deploy_pos
+    print(rand_deploy_pos)
+    
