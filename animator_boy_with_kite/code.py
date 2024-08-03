@@ -1,3 +1,5 @@
+import utilities
+from adafruit_debouncer import Debouncer
 import time
 import board
 import digitalio
@@ -9,6 +11,26 @@ import audiomixer
 import audiomp3
 import asyncio
 from analogio import AnalogIn
+import files
+
+def gc_col(collection_point):
+    gc.collect()
+    start_mem = gc.mem_free()
+    files.log_item("Point " + collection_point +
+                   " Available memory: {} bytes".format(start_mem))
+    
+gc_col("Imports gc, files")
+
+# Setup the switches
+l_sw = digitalio.DigitalInOut(board.GP2)
+l_sw.direction = digitalio.Direction.INPUT
+l_sw.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw)
+
+r_sw = digitalio.DigitalInOut(board.GP3)
+r_sw.direction = digitalio.Direction.INPUT
+r_sw.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw)
 
 # Define the pins connected to the stepper motor driver
 coil_A_1 = digitalio.DigitalInOut(board.GP4)

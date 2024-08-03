@@ -1,51 +1,51 @@
-def switch_state(left_switch, right_switch, sleepAndUpdateVolume, held_down_seconds):
-    left_switch.update()
-    right_switch.update()
-    if left_switch.fell: 
-        button_check = True
-        number_cycles = 0  
-        while button_check:
-            sleepAndUpdateVolume(.1)
-            left_switch.update()
-            number_cycles += 1
-            if number_cycles > held_down_seconds*10:
+def switch_state(l_sw, r_sw, upd_vol, h_down_sec):
+    l_sw.update()
+    r_sw.update()
+    if l_sw.fell: 
+        chk = True
+        cyc = 0  
+        while chk:
+            upd_vol(.1)
+            l_sw.update()
+            cyc += 1
+            if cyc > h_down_sec*10:
                 return "left_held" 
-            if left_switch.rose:
+            if l_sw.rose:
                 print ("left pressed")
                 return "left" 
-    if right_switch.fell:
-        button_check = True
-        number_cycles = 0  
-        while button_check:
-            sleepAndUpdateVolume(.1)
-            right_switch.update()
-            number_cycles += 1
-            if number_cycles > held_down_seconds*10:
+    if r_sw.fell:
+        chk = True
+        cyc = 0  
+        while chk:
+            upd_vol(.1)
+            r_sw.update()
+            cyc += 1
+            if cyc > h_down_sec*10:
                 return "right_held" 
-            if right_switch.rose:
+            if r_sw.rose:
                 print ("right pressed")
                 return "right"
-    if not left_switch.value:
-        button_check = True
-        number_cycles = 0  
-        while button_check:
-            sleepAndUpdateVolume(.1)
-            left_switch.update()
-            number_cycles += 1
-            if number_cycles > held_down_seconds*10:
+    if not l_sw.value:
+        chk = True
+        cyc = 0  
+        while chk:
+            upd_vol(.1)
+            l_sw.update()
+            cyc += 1
+            if cyc > h_down_sec*10:
                 return "left_held" 
-            if left_switch.rose:
+            if l_sw.rose:
                 return "none"
-    if not right_switch.value:
-        button_check = True
-        number_cycles = 0  
-        while button_check:
-            sleepAndUpdateVolume(.1)
-            right_switch.update()
-            number_cycles += 1
-            if number_cycles > held_down_seconds*10:
+    if not r_sw.value:
+        chk = True
+        cyc = 0  
+        while chk:
+            upd_vol(.1)
+            r_sw.update()
+            cyc += 1
+            if cyc > h_down_sec*10:
                 return "right_held" 
-            if right_switch.rose:
+            if r_sw.rose:
                 return "none"
-    sleepAndUpdateVolume(0.1)
+    upd_vol(0.1)
     return "none"
