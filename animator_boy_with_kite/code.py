@@ -34,11 +34,12 @@ kite_max = 180
 kill_process = False
 async_running = False
 cont_run = False
+rand_timer = 0
 
 ################################################################################
 # config variables
 
-cfg = files.read_json_file("/cfg.json")
+cfg = files.read_json_file("cfg.json")
 
 cfg_main = files.read_json_file("main_menu.json")
 main_m = cfg_main["main_menu"]
@@ -182,7 +183,8 @@ def spk_str(str_to_speak):
         str_to_speak == "timer" or 
         str_to_speak == "lower" or 
         str_to_speak == "raise" or 
-        str_to_speak == "no" or 
+        str_to_speak == "no" or
+        str_to_speak == "random" or 
         str_to_speak == "wind"):
         ply_a_0(str_to_speak)
         return
@@ -332,40 +334,39 @@ def rnd_prob(c):
         return True
     return False
 
-
 def an():
     global kill_process
+    down = True
     kill_process = False
-    if cfg["option_selected"] == "wind" or  cfg["option_selected"] == "no_wind":
-        w0 = audiomp3.MP3Decoder(open("mp3/wind.mp3", "rb"))
-        for _ in range(2):
-            if kill_process:
-                return
-            rand_deploy_pos = random.randint(0, kite_deploy_max)
-            if rnd_prob(.6) and not mix.voice[0].playing and not cfg["option_selected"] == "no_wind":
-                mix.voice[0].play(w0, loop=False)
+    w0 = audiomp3.MP3Decoder(open("mp3/wind_effect.mp3", "rb"))
+    cycles = 8
+    if cfg["random"] == False:
+        cycles = 4
+    for _ in range(cycles):
+        if kill_process:
+            coils_off()
+            return 
+        if rnd_prob(.2) and not mix.voice[0].playing and cfg["wind"] == True:
+            mix.voice[0].play(w0, loop=False)
+        if cfg["random"] == True:
+            rand_deploy_pos = random.randint(0, kite_deploy_max) 
             direction = "up"
             if lst_kite_deploy_pos > rand_deploy_pos:
                 direction = "down"
             total_steps = abs(rand_deploy_pos - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, direction))
-        w0.deinit()
-        gc_col("Sound cleanup")
-        total_steps = abs(0 - lst_kite_deploy_pos)
-        asyncio.run(rn_an(total_steps, "down"))
-    options = cfg["option_selected"].split("_")
-    if options[0]=="raise":
-        for _ in range(2):
-            if kill_process:
-                return
+        else:
             total_steps = abs(0 - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, "down"))
             total_steps = abs(kite_deploy_max - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, "up"))
-            total_steps = abs(0 - lst_kite_deploy_pos)
-            asyncio.run(rn_an(total_steps, "down"))
-
-
+    w0.deinit()
+    gc_col("An done clean up sound")
+    total_steps = abs(0 - lst_kite_deploy_pos)
+    asyncio.run(rn_an(total_steps, "down"))
+    coils_off()
+        
+        
 ################################################################################
 # State Machine
 
@@ -415,6 +416,7 @@ class Ste(object):
 
 
 class BseSt(Ste):
+    global rand_timer
 
     def __init__(self):
         pass
@@ -433,16 +435,32 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, fig_web
+        global cont_run, fig_web,rand_timer
         sw = utilities.switch_state(
             l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
+            if cfg["timer"]==True:
+               cfg["timer"] = False
+               cont_run = False
+               aud_en.value = False
+               files.write_json_file("cfg.json", cfg)
+               aud_en.value = True
+               ply_a_0("t_m_off")
+               return
             if cont_run:
                 cont_run = False
                 ply_a_0("c_m_off")
-            else:
+            elif cfg["timer"] == False:
                 cont_run = True
                 ply_a_0("c_m_on")
+        elif cfg["timer"]==True:
+            if rand_timer <= 0:
+                an()
+                print("an done")
+                rand_timer = int(cfg["timer"])*60
+            else:
+                upd_vol(1)
+                rand_timer -= 1
         elif sw == "left" or cont_run:
             an()
             print("an done")
@@ -480,8 +498,8 @@ class Main(Ste):
                 self.i = 0
         if r_sw.fell:
             sel_i = main_m[self.sel_i]
-            if sel_i == "choose_sounds":
-                mch.go_to('choose_sounds')
+            if sel_i == "options":
+                mch.go_to('options')
             elif sel_i == "volume_settings":
                 mch.go_to('volume_settings')
             else:
@@ -557,7 +575,7 @@ class VolSet(Ste):
 
 
 
-class Snds(Ste):
+class Opt(Ste):
 
     def __init__(self):
         self.i = 0
@@ -565,11 +583,11 @@ class Snds(Ste):
 
     @property
     def name(self):
-        return 'choose_sounds'
+        return 'options'
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_0("sound_selection_menu")
+        ply_a_0("options_menu")
         ply_a_0("l_r_but")
         Ste.enter(self, mch)
 
@@ -577,6 +595,7 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global rand_timer
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -590,21 +609,25 @@ class Snds(Ste):
         if r_sw.fell:
             options = mnu_o[self.sel_i].split("_")
             if options[0]=="timer":
-                print("timer")
-                cfg["timer_on"] = True
+                cfg["timer"] = True
                 cfg["timer_val"] = str(options[1])
-                ply_a_0("all_changes_complete")
+                rand_timer = 0
+            elif mnu_o[self.sel_i]=="wind":
+                cfg["wind"] = True
+            elif mnu_o[self.sel_i]=="no_wind":
+                cfg["wind"] = False
+            elif mnu_o[self.sel_i]=="random_raise_lower":
+                cfg["random"] = True
+            elif mnu_o[self.sel_i]=="raise_lower":
+                cfg["random"] = False
             elif mnu_o[self.sel_i]=="exit_this_menu":
-                print("exit menu")
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 ply_a_0("all_changes_complete")
                 mch.go_to('base_state')
-            else:
-                print("snd option")
-                cfg["option_selected"] = mnu_o[self.sel_i]
-                ply_a_0("all_changes_complete")
+                return
+            ply_a_0("option_set")
 
 
 ###############################################################################
@@ -614,14 +637,14 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(VolSet())
-st_mch.add(Snds())
+st_mch.add(Opt())
 
 aud_en.value = True
 
 upd_vol(0.01)
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
-gc_col("animations started.")
+gc_col("animations started")
 
 while True:
     st_mch.upd()
