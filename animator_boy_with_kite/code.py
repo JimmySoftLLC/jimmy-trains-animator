@@ -168,15 +168,18 @@ def ch_vol(action):
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
     ply_a_0("volume")
-    spk_str(cfg["volume"])
+    spk_word(cfg["volume"])
 
-def spk_snd (snd):
+def spk_sentence(snd):
     print(snd)
-    snd_split = snd.split("_")
-    for snd in snd_split:
-        spk_str(snd)
+    try:
+        ply_a_0(snd)
+    except:
+        snd_split = snd.split("_")
+        for snd in snd_split:
+            spk_word(snd)
 
-def spk_str(str_to_speak):
+def spk_word(str_to_speak):
     print(str_to_speak)
     if (str_to_speak == "minute" or 
         str_to_speak == "minutes" or 
@@ -184,7 +187,22 @@ def spk_str(str_to_speak):
         str_to_speak == "lower" or 
         str_to_speak == "raise" or 
         str_to_speak == "no" or
-        str_to_speak == "random" or 
+        str_to_speak == "continuous" or 
+        str_to_speak == "options" or 
+        str_to_speak == "this" or 
+        str_to_speak == "exit" or 
+        str_to_speak == "settings" or 
+        str_to_speak == "main" or 
+        str_to_speak == "menu" or 
+        str_to_speak == "adjustment" or 
+        str_to_speak == "volume" or 
+        str_to_speak == "pot" or 
+        str_to_speak == "off" or
+        str_to_speak == "on" or
+        str_to_speak == "random" or
+        str_to_speak == "to" or
+        str_to_speak == "lowerraisesavevol" or
+        str_to_speak == "mode" or
         str_to_speak == "wind"):
         ply_a_0(str_to_speak)
         return
@@ -201,7 +219,6 @@ def spk_str(str_to_speak):
 
 def exit_early():
     global kill_process
-    upd_vol(0.01)
     l_sw.update()
     if l_sw.fell:
         kill_process = True
@@ -266,16 +283,16 @@ def rotate_spd():
 async def rotate_kite_async():
     global lst_kite_rot_pos, async_running
     while async_running:
-        rand_pos_1 = random.randint(15, 40)
-        rand_pos_2 = random.randint(110, 165)
+        rand_pos_1 = random.randint(15, 15)
+        rand_pos_2 = random.randint(165, 165)
         sign = 1
         if lst_kite_rot_pos > rand_pos_1:
             sign = -1
         total_steps = abs(rand_pos_1 - lst_kite_rot_pos)
         exit_early()
-        for _ in range(total_steps + 1):
-            if not async_running or kill_process:
+        if not async_running or kill_process:
                 break
+        for _ in range(total_steps + 1):
             spd = rotate_spd()
             kite_ang = lst_kite_rot_pos + 1 * sign
             servo_m(kite_ang)
@@ -286,9 +303,9 @@ async def rotate_kite_async():
             sign = -1
         total_steps = abs(rand_pos_2 - lst_kite_rot_pos)
         exit_early()
-        for _ in range(total_steps + 1):
-            if not async_running or kill_process:
+        if not async_running or kill_process:
                 break
+        for _ in range(total_steps + 1):
             spd = rotate_spd()
             kite_ang = lst_kite_rot_pos + 1 * sign
             servo_m(kite_ang)
@@ -445,14 +462,14 @@ class BseSt(Ste):
                aud_en.value = False
                files.write_json_file("cfg.json", cfg)
                aud_en.value = True
-               ply_a_0("t_m_off")
+               spk_sentence("timer_mode_off")
                return
             if cont_run:
                 cont_run = False
-                ply_a_0("c_m_off")
+                spk_sentence("continuous_mode_off")
             elif cfg["timer"] == False:
                 cont_run = True
-                ply_a_0("c_m_on")
+                spk_sentence("continuous_mode_on")
         elif cfg["timer"]==True:
             if rand_timer <= 0:
                 an()
@@ -480,8 +497,8 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_0("m_mnu")
-        ply_a_0("l_r_but")
+        spk_sentence("main_menu")
+        spk_sentence("r_l_but")
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -491,7 +508,7 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0(main_m[self.i])
+            spk_sentence(main_m[self.i])
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -519,8 +536,8 @@ class VolSet(Ste):
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        ply_a_0("volume_settings_menu")
-        ply_a_0("l_r_but")
+        spk_sentence("volume_settings_menu")
+        spk_sentence("r_l_but")
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -530,15 +547,15 @@ class VolSet(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0(v_set[self.i])
+            spk_sentence(v_set[self.i])
             self.sel_i = self.i
             self.i += 1
             if self.i > len(v_set)-1:
                 self.i = 0
         if r_sw.fell:
             sel_mnu = v_set[self.sel_i]
-            if sel_mnu == "volume_level_adjustment":
-                ply_a_0("volume_adjustment_menu")
+            if sel_mnu == "volume_adjustment":
+                spk_sentence("volume_adjustment_menu_lowerraisesavevol")
                 done = False
                 while not done:
                     sw = utilities.switch_state(
@@ -587,8 +604,8 @@ class Opt(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_0("options_menu")
-        ply_a_0("l_r_but")
+        spk_sentence("options_menu")
+        spk_sentence("r_l_but")
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -599,10 +616,7 @@ class Opt(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            if mnu_o[self.i]=="exit_this_menu":
-                ply_a_0(mnu_o[self.i])  
-            else:
-                spk_snd(mnu_o[self.i])
+            spk_sentence(mnu_o[self.i])
             self.sel_i = self.i
             self.i += 1
             if self.i > len(mnu_o)-1:self.i = 0
