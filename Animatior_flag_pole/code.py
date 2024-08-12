@@ -197,6 +197,12 @@ def spk_word(str_to_speak):
         str_to_speak == "to" or
         str_to_speak == "lowerraisesavevol" or
         str_to_speak == "mode" or
+        str_to_speak == "sound" or
+        str_to_speak == "otaps" or
+        str_to_speak == "oretreat" or
+        str_to_speak == "oreveille" or
+        str_to_speak == "only" or
+        str_to_speak == "wave" or
         str_to_speak == "wind"):
         ply_a_0(str_to_speak)
         return
