@@ -101,7 +101,7 @@ aud.play(mix)
 upd_vol(.1)
 
 def play_taps():
-    w0 = audiomp3.MP3Decoder(open("wav/taps.mp3", "rb"))
+    w0 = audiomp3.MP3Decoder(open("mp3/taps.mp3", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         upd_vol(.1)
@@ -115,7 +115,7 @@ fl_shk = servo.Servo(fl_shk, min_pulse=500, max_pulse=2500)
 digitalio.DigitalInOut
 led = pwmio.PWMOut(board.GP8, frequency=5000, duty_cycle=0)
 
-play_taps()
+#play_taps()
 
 # Main loop to raise flag up and down and wave it at the top
 while True:
@@ -130,4 +130,3 @@ while True:
     fl_shk.angle = 180
     move_motor(100, 'up', False, 180, 180)  # Flag up to orient it before going down
     time.sleep(1)
-
