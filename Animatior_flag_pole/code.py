@@ -304,11 +304,21 @@ def rnd_prob(c):
 def an():
     global kill_process
     kill_process = False
-    if cfg["mode"]=="raise_lower":
+    cfg_temp = files.read_json_file("cfg.json")
+    if cfg_temp["random"] == True:
+        pick = random.randint(0, 2)
+        print(pick)
+        if pick == 0:
+            cfg_temp["sound"]="sound_off"
+        elif pick == 1:
+            cfg_temp["sound"]="sound_otaps"
+        elif pick == 2:
+            cfg_temp["sound"]="sound_oreveille_oretreat"  
+    if cfg_temp["mode"]=="raise_wave_lower":
         move_motor_keep_track(500)  # Flag up
         if kill_process: return
         led.duty_cycle = 65000
-        if cfg["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
+        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
         move_motor_keep_track(1000)  # Flag up
         if kill_process: return
         move_motor(1000, 'up', 95, 105, False)  # Flag wave
@@ -317,12 +327,31 @@ def an():
         move_motor(100, 'up', 180, 180, False)  # Flag up to orient it before going down
         if kill_process: return
         move_motor_keep_track(500)  # Flag down
-        if cfg["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
-        if cfg["sound"] == "sound_otaps": ply_a_0("taps")
+        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
+        if cfg_temp["sound"] == "sound_otaps": ply_a_0("taps")
         led.duty_cycle = 0
         move_motor_keep_track(0)  # Flag down
         if kill_process: return
-    else: # just wave
+    elif cfg_temp["mode"]=="raise_lower":
+        move_motor_keep_track(500)  # Flag up
+        if kill_process: return
+        led.duty_cycle = 65000
+        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
+        move_motor_keep_track(1000)  # Flag up
+        if kill_process: return
+        wait_period = random.randint(5, 10)
+        time_done = time.monotonic() + wait_period
+        while time.monotonic() < time_done:
+            time.sleep(.05)
+            exit_early()
+            if kill_process: return
+        move_motor_keep_track(500)  # Flag down
+        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
+        if cfg_temp["sound"] == "sound_otaps": ply_a_0("taps")
+        led.duty_cycle = 0
+        move_motor_keep_track(0)  # Flag down
+        if kill_process: return
+    elif cfg_temp["mode"]=="raise_wave":
         move_motor_keep_track(1000)  # Flag up
         led.duty_cycle = 65000
         if kill_process: return
@@ -596,14 +625,16 @@ class Opt(Ste):
                 cfg["sound"] = "sound_otaps"
             elif mnu_o[self.sel_i]=="sound_oreveille_oretreat":
                 cfg["sound"] = "sound_oreveille_oretreat"
-            elif mnu_o[self.sel_i]=="random_off":
+            elif mnu_o[self.sel_i]=="random_sound_off":
                 cfg["random"] = False
-            elif mnu_o[self.sel_i]=="random_on":
+            elif mnu_o[self.sel_i]=="random_sound_on":
                 cfg["random"] = True
             elif mnu_o[self.sel_i]=="raise_lower":
                 cfg["mode"] = "raise_lower"
-            elif mnu_o[self.sel_i]=="wave_only":
-                cfg["mode"] = "wave_only"    
+            elif mnu_o[self.sel_i]=="raise_wave_lower":
+                cfg["mode"] = "raise_wave_lower"
+            elif mnu_o[self.sel_i]=="raise_wave":
+                cfg["mode"] = "raise_wave"    
             elif mnu_o[self.sel_i]=="exit_this_menu":
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
