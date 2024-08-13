@@ -28,7 +28,7 @@ gc_col("Imports gc, files")
 kill_process = False
 cont_run = False
 rand_timer = 0
-lst_flag_pos = 0
+lst_flag_pos = 1000
 
 ################################################################################
 # config variables
@@ -114,6 +114,8 @@ upd_vol(0.01)
 fl_shk = pwmio.PWMOut(board.GP16, duty_cycle=2 ** 15, frequency=50)
 fl_shk = servo.Servo(fl_shk, min_pulse=500, max_pulse=2500)
 
+fl_shk.angle = 180
+
 # Set up the led
 digitalio.DigitalInOut
 led = pwmio.PWMOut(board.GP8, frequency=5000, duty_cycle=0)
@@ -136,7 +138,26 @@ def ply_a_0(file_name):
     gc_col("Clear w0")
     print("done playing")
 
-
+def ch_servo(action):
+    global kill_process
+    s = int(cfg["servo"])
+    if "servo" in action:
+        s = action.split("servo")
+        s = int(s[1])
+    if action == "lower":
+        s -= 1
+    elif action == "raise":
+        s += 1
+    if s > 180:
+        s = 100
+    if s < 0:
+        s = 0
+    cfg["servo"] = str(s)
+    ply_a_0("wave")
+    spk_word(cfg["servo"])
+    kill_process = False
+    move_motor(100, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
+            
 def ch_vol(action):
     v = int(cfg["volume"])
     if "volume" in action:
@@ -204,6 +225,7 @@ def spk_word(str_to_speak):
         str_to_speak == "oreveille" or
         str_to_speak == "only" or
         str_to_speak == "wave" or
+        str_to_speak == "lrdiseng" or
         str_to_speak == "wind"):
         ply_a_0(str_to_speak)
         return
@@ -322,7 +344,7 @@ def an():
         if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
         move_motor_keep_track(1000)  # Flag up
         if kill_process: return
-        move_motor(1000, 'up', 95, 105, False)  # Flag wave
+        move_motor(1000, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
         if kill_process: return
         fl_shk.angle = 180
         move_motor(100, 'up', 180, 180, False)  # Flag up to orient it before going down
@@ -357,16 +379,24 @@ def an():
         led.duty_cycle = 65000
         if kill_process: return
         while not kill_process:
-            steps = random.randint(300, 600)
-            move_motor(steps, 'up', 95, 105, False)  # Flag wave
-            if kill_process: return
+            steps = random.randint(300, 600)    
+            move_motor(steps, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
+            if kill_process:
+                fl_shk.angle = 180
+                kill_process = False
+                move_motor_keep_track(0)  # Flag down
+                return
             coils_off()
             wait_period = random.randint(2, 7)
             time_done = time.monotonic() + wait_period
             while time.monotonic() < time_done:
                 time.sleep(.05)
                 exit_early()
-                if kill_process: return
+                if kill_process:
+                    fl_shk.angle = 180
+                    kill_process = False
+                    move_motor_keep_track(0)  # Flag down
+                    return
 
 
 ################################################################################
@@ -649,7 +679,7 @@ class Opt(Ste):
 
 
 class ServoSet(Ste):
-
+    
     def __init__(self):
         self.i = 0
         self.sel_i = 0
@@ -659,9 +689,13 @@ class ServoSet(Ste):
         return 'wave_settings'
 
     def enter(self, mch):
+        global kill_process
         files.log_item('Set Web Options')
-        spk_sentence("volume_settings_menu")
-        spk_sentence("r_l_but")
+        spk_sentence("wave_settings_menu")
+        spk_sentence("lrdiseng")
+        cfg["servo"] = 110
+        kill_process = False
+        move_motor_keep_track(1000)  # Flag up
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -675,9 +709,9 @@ class ServoSet(Ste):
             sw = utilities.switch_state(
                 l_sw, r_sw, upd_vol, 3.0)
             if sw == "left":
-                ch_vol("lower")
+                ch_servo("lower")
             elif sw == "right":
-                ch_vol("raise")
+                ch_servo("raise")
             elif sw == "right_held":
                 aud_en.value = False
                 files.write_json_file(
@@ -702,6 +736,8 @@ st_mch.add(ServoSet())
 aud_en.value = True
 
 upd_vol(0.01)
+
+move_motor_keep_track(0)  # Flag up
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started")
@@ -709,5 +745,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
-
 
