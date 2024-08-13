@@ -1,0 +1,6 @@
+Press left button to scroll through items.
+Press right button to select the item.
+Press left button to decrease engaugement.
+Press right button to increase engaugement.
+To save, press and hold the right button until you hear all changes complete.
+
