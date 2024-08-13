@@ -24,6 +24,7 @@ gc_col("Imports gc, files")
 
 ################################################################################
 # globals
+
 kill_process = False
 cont_run = False
 rand_timer = 0
@@ -509,6 +510,8 @@ class Main(Ste):
                 mch.go_to('options')
             elif sel_i == "volume_settings":
                 mch.go_to('volume_settings')
+            elif sel_i == "wave_settings":
+                mch.go_to('wave_settings')
             else:
                 ply_a_0("all_changes_complete")
                 mch.go_to('base_state')
@@ -645,6 +648,47 @@ class Opt(Ste):
             ply_a_0("option_set")
 
 
+class ServoSet(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'wave_settings'
+
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        spk_sentence("volume_settings_menu")
+        spk_sentence("r_l_but")
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        l_sw.update()
+        r_sw.update()
+        done = False
+        while not done:
+            sw = utilities.switch_state(
+                l_sw, r_sw, upd_vol, 3.0)
+            if sw == "left":
+                ch_vol("lower")
+            elif sw == "right":
+                ch_vol("raise")
+            elif sw == "right_held":
+                aud_en.value = False
+                files.write_json_file(
+                    "cfg.json", cfg)
+                aud_en.value = True
+                ply_a_0("all_changes_complete")
+                done = True
+                mch.go_to('base_state')
+            pass
+
+
 ###############################################################################
 # Create the Ste mch
 
@@ -653,6 +697,7 @@ st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(VolSet())
 st_mch.add(Opt())
+st_mch.add(ServoSet())
 
 aud_en.value = True
 
@@ -664,6 +709,5 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
-
 
 
