@@ -473,8 +473,9 @@ class BseSt(Ste):
         elif cfg["timer"]==True:
             if rand_timer <= 0:
                 an()
-                print("an done")
+                coils_off()
                 rand_timer = int(cfg["timer"])*60
+                print("an done")
             else:
                 upd_vol(1)
                 rand_timer -= 1

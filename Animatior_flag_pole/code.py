@@ -25,9 +25,9 @@ gc_col("Imports gc, files")
 ################################################################################
 # globals
 kill_process = False
-async_running = False
 cont_run = False
 rand_timer = 0
+lst_flag_pos = 0
 
 ################################################################################
 # config variables
@@ -222,6 +222,8 @@ def exit_early():
     if l_sw.fell:
         kill_process = True
         mix.voice[0].stop()
+        coils_off()
+        fl_shk.angle = 180
 
 ################################################################################
 # motors
@@ -240,13 +242,21 @@ step_up = [
     [0, 0, 1, 1]   # Step 1
 ]
 
+def coils_off():
+    coil_A_1.value = 0
+    coil_A_2.value = 0
+    coil_B_1.value = 0
+    coil_B_2.value = 0
+
 def set_step(step):
     coil_A_1.value = step[0]
     coil_A_2.value = step[1]
     coil_B_1.value = step[2]
     coil_B_2.value = step[3]
 
-def move_motor(steps, direction, shk, min_sk, max_sk, delay=0.005):
+def move_motor(steps, direction, min_sk, max_sk, keep_track):
+    global lst_flag_pos
+    delay=0.005
     call_interval = 10
     max_min = 0
     if direction == 'down':
@@ -256,6 +266,12 @@ def move_motor(steps, direction, shk, min_sk, max_sk, delay=0.005):
     else:
         raise ValueError("Direction must be 'down' or 'up'")
     for i in range(steps):
+        exit_early()
+        if kill_process: return
+        if direction == 'down':
+            if keep_track:  lst_flag_pos -=1
+        elif direction == 'up':
+            if keep_track:  lst_flag_pos +=1
         if i % call_interval == 0:
             if max_min == 0:
                 fl_shk.angle = max_sk
@@ -267,12 +283,14 @@ def move_motor(steps, direction, shk, min_sk, max_sk, delay=0.005):
             set_step(step)
             time.sleep(delay)
 
-def play_taps():
-    w0 = audiomp3.MP3Decoder(open("mp3/taps.mp3", "rb"))
-    mix.voice[0].play(w0, loop=False)
-    while mix.voice[0].playing:
-        upd_vol(.1)
-        pass
+def move_motor_keep_track(pos):
+    global lst_flag_pos, async_running
+    direction = "up"
+    if lst_flag_pos > pos:
+        direction = "down"
+    total_steps = abs(pos - lst_flag_pos)
+    move_motor(total_steps, direction, 180, 180, True)
+
 
 ################################################################################
 # Animations
@@ -284,18 +302,42 @@ def rnd_prob(c):
     return False
 
 def an():
-    move_motor(500, 'up', False, 180, 180)  # Flag up
-    led.duty_cycle = 65000
-    ply_a_0("reveille")
-    move_motor(500, 'up', False, 180, 180)  # Flag up
-    move_motor(1000, 'up', True, 110, 105)  # Flag wave
-    fl_shk.angle = 180
-    move_motor(100, 'up', False, 180, 180)  # Flag up to orient it before going down
-    move_motor(500, 'down', False, 180, 180)  # Flag down
-    ply_a_0("retreat")
-    led.duty_cycle = 0
-    move_motor(500, 'down', False, 180, 180)  # Flag down
-    time.sleep(1)
+    global kill_process
+    kill_process = False
+    if cfg["mode"]=="raise_lower":
+        move_motor_keep_track(500)  # Flag up
+        if kill_process: return
+        led.duty_cycle = 65000
+        if cfg["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
+        move_motor_keep_track(1000)  # Flag up
+        if kill_process: return
+        move_motor(1000, 'up', 95, 105, False)  # Flag wave
+        if kill_process: return
+        fl_shk.angle = 180
+        move_motor(100, 'up', 180, 180, False)  # Flag up to orient it before going down
+        if kill_process: return
+        move_motor_keep_track(500)  # Flag down
+        if cfg["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
+        if cfg["sound"] == "sound_otaps": ply_a_0("taps")
+        led.duty_cycle = 0
+        move_motor_keep_track(0)  # Flag down
+        if kill_process: return
+    else: # just wave
+        move_motor_keep_track(1000)  # Flag up
+        led.duty_cycle = 65000
+        if kill_process: return
+        while not kill_process:
+            steps = random.randint(300, 600)
+            move_motor(steps, 'up', 95, 105, False)  # Flag wave
+            if kill_process: return
+            coils_off()
+            wait_period = random.randint(2, 7)
+            time_done = time.monotonic() + wait_period
+            while time.monotonic() < time_done:
+                time.sleep(.05)
+                exit_early()
+                if kill_process: return
+
 
 ################################################################################
 # State Machine
@@ -386,13 +428,19 @@ class BseSt(Ste):
         elif cfg["timer"]==True:
             if rand_timer <= 0:
                 an()
+                coils_off()
+                fl_shk.angle = 180
+                led.duty_cycle = 0
+                rand_timer = int(cfg["timer_val"])*60
                 print("an done")
-                rand_timer = int(cfg["timer"])*60
             else:
                 upd_vol(1)
                 rand_timer -= 1
         elif sw == "left" or cont_run:
             an()
+            coils_off()
+            fl_shk.angle = 180
+            led.duty_cycle = 0
             print("an done")
         elif sw == "right":
             mch.go_to('main_menu')
@@ -535,18 +583,27 @@ class Opt(Ste):
             if self.i > len(mnu_o)-1:self.i = 0
         if r_sw.fell:
             options = mnu_o[self.sel_i].split("_")
-            if options[0]=="timer":
+            if  mnu_o[self.sel_i] != "timer_off" and options[0]=="timer":
                 cfg["timer"] = True
                 cfg["timer_val"] = str(options[1])
                 rand_timer = 0
-            elif mnu_o[self.sel_i]=="wind":
-                cfg["wind"] = True
-            elif mnu_o[self.sel_i]=="no_wind":
-                cfg["wind"] = False
-            elif mnu_o[self.sel_i]=="random_raise_lower":
+            elif mnu_o[self.sel_i]=="timer_off":
+                cfg["timer"] = "timer_off"
+                rand_timer = 0
+            elif mnu_o[self.sel_i]=="sound_off":
+                cfg["sound"] = "sound_off"
+            elif mnu_o[self.sel_i]=="sound_otaps":
+                cfg["sound"] = "sound_otaps"
+            elif mnu_o[self.sel_i]=="sound_oreveille_oretreat":
+                cfg["sound"] = "sound_oreveille_oretreat"
+            elif mnu_o[self.sel_i]=="random_off":
+                cfg["random"] = False
+            elif mnu_o[self.sel_i]=="random_on":
                 cfg["random"] = True
             elif mnu_o[self.sel_i]=="raise_lower":
-                cfg["random"] = False
+                cfg["mode"] = "raise_lower"
+            elif mnu_o[self.sel_i]=="wave_only":
+                cfg["mode"] = "wave_only"    
             elif mnu_o[self.sel_i]=="exit_this_menu":
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
@@ -576,3 +633,6 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
+
+
+
