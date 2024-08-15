@@ -268,6 +268,23 @@ def servo_m(servo_pos):
     kite_rot.angle = servo_pos
     lst_kite_rot_pos = servo_pos
 
+def ch_servo(action):
+    s = int(cfg["servo"])
+    if "servo" in action:
+        s = action.split("servo")
+        s = int(s[1])
+    if action == "left":
+        s -= 1
+    elif action == "right":
+        s += 1
+    if s > 180:
+        s = 180
+    if s < 0:
+        s = 0
+    cfg["servo"] = str(s)
+    servo_m(int(cfg["servo"]))
+    spk_word(cfg["servo"])
+
 ################################################################################
 # async methods
 
@@ -277,16 +294,17 @@ loop = asyncio.get_event_loop()
 
 def rotate_spd():
     if mix.voice[0].playing:
-        return 0.002
+        return 0.005
     else:
         return 0.02
 
-
+                                                                                                                                                                                                                                                                                
 async def rotate_kite_async():
     global lst_kite_rot_pos, async_running
     while async_running:
-        rand_pos_1 = random.randint(15, 15)
-        rand_pos_2 = random.randint(165, 165)
+        center_servo_pos = int(cfg["servo"])
+        rand_pos_1 = random.randint(center_servo_pos-70, center_servo_pos-70)
+        rand_pos_2 = random.randint(center_servo_pos+70, center_servo_pos+70)
         sign = 1
         if lst_kite_rot_pos > rand_pos_1:
             sign = -1
@@ -476,7 +494,7 @@ class BseSt(Ste):
             if rand_timer <= 0:
                 an()
                 coils_off()
-                rand_timer = int(cfg["timer"])*60
+                rand_timer = int(cfg["timer_val"])*60
                 print("an done")
             else:
                 upd_vol(1)
@@ -522,6 +540,8 @@ class Main(Ste):
                 mch.go_to('options')
             elif sel_i == "volume_settings":
                 mch.go_to('volume_settings')
+            elif sel_i == "centerfig":
+                mch.go_to('servo_settings')    
             else:
                 ply_a_0("all_changes_complete")
                 mch.go_to('base_state')
@@ -646,6 +666,50 @@ class Opt(Ste):
                 return
             ply_a_0("option_set")
 
+class ServoSet(Ste):
+    
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'servo_settings'
+
+    def enter(self, mch):
+        global kill_process
+        files.log_item('Set Web Options')
+        spk_sentence("centerfig_menu")
+        spk_sentence("alignlrsave")
+        cfg["servo"] = 90
+        kill_process = False
+        servo_m(int(cfg["servo"]))
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        l_sw.update()
+        r_sw.update()
+        done = False
+        while not done:
+            sw = utilities.switch_state(
+                l_sw, r_sw, upd_vol, 3.0)
+            if sw == "left":
+                ch_servo("left")
+            elif sw == "right":
+                ch_servo("right")
+            elif sw == "right_held":
+                aud_en.value = False
+                files.write_json_file(
+                    "cfg.json", cfg)
+                aud_en.value = True
+                ply_a_0("all_changes_complete")
+                done = True
+                mch.go_to('base_state')
+            pass
+
 
 ###############################################################################
 # Create the Ste mch
@@ -655,6 +719,7 @@ st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(VolSet())
 st_mch.add(Opt())
+st_mch.add(ServoSet())
 
 aud_en.value = True
 
@@ -666,5 +731,6 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
+
 
 
