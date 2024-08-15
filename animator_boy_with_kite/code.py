@@ -203,6 +203,8 @@ def spk_word(str_to_speak):
         str_to_speak == "to" or
         str_to_speak == "lowerraisesavevol" or
         str_to_speak == "mode" or
+        str_to_speak == "centerfig" or
+        str_to_speak == "alignlrsave" or
         str_to_speak == "wind"):
         ply_a_0(str_to_speak)
         return
@@ -664,4 +666,5 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
+
 

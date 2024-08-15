@@ -1,0 +1,13 @@
+{
+  "options": [
+    "wind",
+    "no_wind",
+    "raise_lower",
+    "random_raise_lower",
+    "timer_1_minute",
+    "timer_2_minutes",
+    "timer_5_minutes",
+    "timer_10_minutes",
+    "exit_this_menu"
+  ]
+}

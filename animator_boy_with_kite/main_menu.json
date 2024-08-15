@@ -1,0 +1,7 @@
+{
+  "main_menu": [
+    "options",
+    "volume_settings",
+    "exit_this_menu"
+  ]
+}
