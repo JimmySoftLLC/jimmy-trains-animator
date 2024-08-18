@@ -28,7 +28,11 @@ gc_col("Imports gc, files")
 kill_process = False
 cont_run = False
 rand_timer = 0
-lst_flag_pos = 1000
+max_flag_pos = 1100
+lst_flag_pos = max_flag_pos
+half_mast_pos = max_flag_pos/2
+flag_up_extra = 50
+wave_motor_steps = 1000
 
 ################################################################################
 # config variables
@@ -113,8 +117,6 @@ upd_vol(0.01)
 # Setup the servos
 fl_shk = pwmio.PWMOut(board.GP16, duty_cycle=2 ** 15, frequency=50)
 fl_shk = servo.Servo(fl_shk, min_pulse=500, max_pulse=2500)
-
-fl_shk.angle = 180
 
 # Set up the led
 digitalio.DigitalInOut
@@ -247,6 +249,14 @@ def exit_early():
         mix.voice[0].stop()
         coils_off()
         fl_shk.angle = 180
+        
+def reset_motors():
+    global kill_process
+    kill_process = False
+    fl_shk.angle = 180
+    move_motor_keep_track(0)  # Flag down
+    coils_off()
+    led.duty_cycle = 0
 
 ################################################################################
 # motors
@@ -305,6 +315,9 @@ def move_motor(steps, direction, min_sk, max_sk, keep_track):
         for step in seq:
             set_step(step)
             time.sleep(delay)
+    if max_min == 0:
+        avg_fl_shk = (min_sk+max_sk)/2
+        fl_shk.angle = avg_fl_shk
 
 def move_motor_keep_track(pos):
     global lst_flag_pos, async_running
@@ -324,6 +337,8 @@ def rnd_prob(c):
         return True
     return False
 
+
+
 def an():
     global kill_process
     kill_process = False
@@ -338,29 +353,29 @@ def an():
         elif pick == 2:
             cfg_temp["sound"]="sound_oreveille_oretreat"  
     if cfg_temp["mode"]=="raise_wave_lower":
-        move_motor_keep_track(500)  # Flag up
+        move_motor_keep_track(half_mast_pos)  # Flag up
         if kill_process: return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
-        move_motor_keep_track(1000)  # Flag up
+        move_motor_keep_track(max_flag_pos+flag_up_extra)  # Flag up
         if kill_process: return
-        move_motor(1000, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
+        move_motor(wave_motor_steps, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
         if kill_process: return
         fl_shk.angle = 180
-        move_motor(100, 'up', 180, 180, False)  # Flag up to orient it before going down
+        move_motor(flag_up_extra, 'up', 180, 180, False)  # Flag up to orient it before going down
         if kill_process: return
-        move_motor_keep_track(500)  # Flag down
+        move_motor_keep_track(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps": ply_a_0("taps")
         led.duty_cycle = 0
         move_motor_keep_track(0)  # Flag down
         if kill_process: return
     elif cfg_temp["mode"]=="raise_lower":
-        move_motor_keep_track(500)  # Flag up
+        move_motor_keep_track(half_mast_pos)  # Flag up
         if kill_process: return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
-        move_motor_keep_track(1000)  # Flag up
+        move_motor_keep_track(max_flag_pos+flag_up_extras)  # Flag up
         if kill_process: return
         wait_period = random.randint(5, 10)
         time_done = time.monotonic() + wait_period
@@ -368,35 +383,27 @@ def an():
             time.sleep(.05)
             exit_early()
             if kill_process: return
-        move_motor_keep_track(500)  # Flag down
+        move_motor_keep_track(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps": ply_a_0("taps")
         led.duty_cycle = 0
         move_motor_keep_track(0)  # Flag down
         if kill_process: return
     elif cfg_temp["mode"]=="raise_wave":
-        move_motor_keep_track(1000)  # Flag up
+        move_motor_keep_track(max_flag_pos+flag_up_extra)  # Flag up
         led.duty_cycle = 65000
         if kill_process: return
         while not kill_process:
             steps = random.randint(300, 600)    
             move_motor(steps, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
-            if kill_process:
-                fl_shk.angle = 180
-                kill_process = False
-                move_motor_keep_track(0)  # Flag down
-                return
+            if kill_process: return
             coils_off()
             wait_period = random.randint(2, 7)
             time_done = time.monotonic() + wait_period
             while time.monotonic() < time_done:
                 time.sleep(.05)
                 exit_early()
-                if kill_process:
-                    fl_shk.angle = 180
-                    kill_process = False
-                    move_motor_keep_track(0)  # Flag down
-                    return
+                if kill_process: return
 
 
 ################################################################################
@@ -488,19 +495,16 @@ class BseSt(Ste):
         elif cfg["timer"]==True:
             if rand_timer <= 0:
                 an()
-                coils_off()
-                fl_shk.angle = 180
-                led.duty_cycle = 0
+                reset_motors()
                 rand_timer = int(cfg["timer_val"])*60
-                print("an done")
+                print("an time done")
             else:
                 upd_vol(1)
                 rand_timer -= 1
         elif sw == "left" or cont_run:
             an()
-            coils_off()
-            fl_shk.angle = 180
-            led.duty_cycle = 0
+            kill_process = False
+            reset_motors()
             print("an done")
         elif sw == "right":
             mch.go_to('main_menu')
@@ -693,9 +697,9 @@ class ServoSet(Ste):
         files.log_item('Set Web Options')
         spk_sentence("wave_settings_menu")
         spk_sentence("lrdiseng")
-        cfg["servo"] = 110
+        cfg["servo"] = 120
         kill_process = False
-        move_motor_keep_track(1000)  # Flag up
+        move_motor_keep_track(max_flag_pos+flag_up_extra)  # Flag up
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -737,7 +741,7 @@ aud_en.value = True
 
 upd_vol(0.01)
 
-move_motor_keep_track(0)  # Flag up
+reset_motors()
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started")
