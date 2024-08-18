@@ -9,15 +9,18 @@ import random
 import audiobusio
 import audiomixer
 import audiomp3
+import asyncio
 from analogio import AnalogIn
 import files
 import gc
 
+
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
-    files.log_item("Point " + collection_point +
-                   " Available memory: {} bytes".format(start_mem))
+    files.log_item(
+        "Point " + collection_point + " Available memory: {} bytes".format(start_mem)
+    )
 
 
 gc_col("Imports gc, files")
@@ -28,11 +31,15 @@ gc_col("Imports gc, files")
 kill_process = False
 cont_run = False
 rand_timer = 0
-max_flag_pos = 1100
-lst_flag_pos = max_flag_pos
-half_mast_pos = max_flag_pos/2
+flag_deploy_max = 1100
+lst_flag_deploy_pos = flag_deploy_max
+half_mast_pos = flag_deploy_max / 2
 flag_up_extra = 50
+
 wave_motor_steps = 1000
+flag_rot_min=0
+flag_rot_max=180
+lst_flag_rot_pos = flag_rot_max 
 
 ################################################################################
 # config variables
@@ -92,10 +99,17 @@ din = board.GP20  # DIN on MAX98357A
 aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
 # Setup the mixer to play wav files
-mix = audiomixer.Mixer(voice_count=1, sample_rate=22050, channel_count=2,
-                       bits_per_sample=16, samples_signed=True, buffer_size=8192)
+mix = audiomixer.Mixer(
+    voice_count=1,
+    sample_rate=22050,
+    channel_count=2,
+    bits_per_sample=16,
+    samples_signed=True,
+    buffer_size=8192,
+)
 
 aud.play(mix)
+
 
 def upd_vol(s):
     if cfg["volume_pot"]:
@@ -106,17 +120,18 @@ def upd_vol(s):
         try:
             v = int(cfg["volume"]) / 100
         except:
-            v = .5
+            v = 0.5
         if v < 0 or v > 1:
-            v = .5
+            v = 0.5
         mix.voice[0].level = v
         time.sleep(s)
+
 
 upd_vol(0.01)
 
 # Setup the servos
-fl_shk = pwmio.PWMOut(board.GP16, duty_cycle=2 ** 15, frequency=50)
-fl_shk = servo.Servo(fl_shk, min_pulse=500, max_pulse=2500)
+flag_rot = pwmio.PWMOut(board.GP16, duty_cycle=2**15, frequency=50)
+flag_rot = servo.Servo(flag_rot, min_pulse=500, max_pulse=2500)
 
 # Set up the led
 digitalio.DigitalInOut
@@ -124,6 +139,7 @@ led = pwmio.PWMOut(board.GP8, frequency=5000, duty_cycle=0)
 
 ################################################################################
 # sound
+
 
 def ply_a_0(file_name):
     upd_vol(0.01)
@@ -139,6 +155,7 @@ def ply_a_0(file_name):
     w0.deinit()
     gc_col("Clear w0")
     print("done playing")
+
 
 def ch_servo(action):
     global kill_process
@@ -158,8 +175,11 @@ def ch_servo(action):
     ply_a_0("wave")
     spk_word(cfg["servo"])
     kill_process = False
-    move_motor(100, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
-            
+    move_motor(
+        100, "up", int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False
+    )  # Flag wave
+
+
 def ch_vol(action):
     v = int(cfg["volume"])
     if "volume" in action:
@@ -188,6 +208,7 @@ def ch_vol(action):
     ply_a_0("volume")
     spk_word(cfg["volume"])
 
+
 def spk_sentence(snd):
     print(snd)
     try:
@@ -197,38 +218,41 @@ def spk_sentence(snd):
         for snd in snd_split:
             spk_word(snd)
 
+
 def spk_word(str_to_speak):
     print(str_to_speak)
-    if (str_to_speak == "minute" or 
-        str_to_speak == "minutes" or 
-        str_to_speak == "timer" or 
-        str_to_speak == "lower" or 
-        str_to_speak == "raise" or 
-        str_to_speak == "no" or
-        str_to_speak == "continuous" or 
-        str_to_speak == "options" or 
-        str_to_speak == "this" or 
-        str_to_speak == "exit" or 
-        str_to_speak == "settings" or 
-        str_to_speak == "main" or 
-        str_to_speak == "menu" or 
-        str_to_speak == "adjustment" or 
-        str_to_speak == "volume" or 
-        str_to_speak == "pot" or 
-        str_to_speak == "off" or
-        str_to_speak == "on" or
-        str_to_speak == "random" or
-        str_to_speak == "to" or
-        str_to_speak == "lowerraisesavevol" or
-        str_to_speak == "mode" or
-        str_to_speak == "sound" or
-        str_to_speak == "otaps" or
-        str_to_speak == "oretreat" or
-        str_to_speak == "oreveille" or
-        str_to_speak == "only" or
-        str_to_speak == "wave" or
-        str_to_speak == "lrdiseng" or
-        str_to_speak == "wind"):
+    if (
+        str_to_speak == "minute"
+        or str_to_speak == "minutes"
+        or str_to_speak == "timer"
+        or str_to_speak == "lower"
+        or str_to_speak == "raise"
+        or str_to_speak == "no"
+        or str_to_speak == "continuous"
+        or str_to_speak == "options"
+        or str_to_speak == "this"
+        or str_to_speak == "exit"
+        or str_to_speak == "settings"
+        or str_to_speak == "main"
+        or str_to_speak == "menu"
+        or str_to_speak == "adjustment"
+        or str_to_speak == "volume"
+        or str_to_speak == "pot"
+        or str_to_speak == "off"
+        or str_to_speak == "on"
+        or str_to_speak == "random"
+        or str_to_speak == "to"
+        or str_to_speak == "lowerraisesavevol"
+        or str_to_speak == "mode"
+        or str_to_speak == "sound"
+        or str_to_speak == "otaps"
+        or str_to_speak == "oretreat"
+        or str_to_speak == "oreveille"
+        or str_to_speak == "only"
+        or str_to_speak == "wave"
+        or str_to_speak == "lrdiseng"
+        or str_to_speak == "wind"
+    ):
         ply_a_0(str_to_speak)
         return
     for character in str_to_speak:
@@ -238,8 +262,10 @@ def spk_word(str_to_speak):
             files.log_item(e)
             print("Invalid character in string to speak")
 
+
 ################################################################################
 # misc
+
 
 def exit_early():
     global kill_process
@@ -248,15 +274,17 @@ def exit_early():
         kill_process = True
         mix.voice[0].stop()
         coils_off()
-        fl_shk.angle = 180
-        
+        flag_rot.angle = 180
+
+
 def reset_motors():
     global kill_process
     kill_process = False
-    fl_shk.angle = 180
+    flag_rot.angle = 180
     move_motor_keep_track(0)  # Flag down
     coils_off()
     led.duty_cycle = 0
+
 
 ################################################################################
 # motors
@@ -265,15 +293,16 @@ step_down = [
     [0, 0, 1, 1],  # Step 1
     [0, 1, 1, 0],  # Step 2
     [1, 1, 0, 0],  # Step 3
-    [1, 0, 0, 1]   # Step 4
+    [1, 0, 0, 1],  # Step 4
 ]
 
 step_up = [
     [1, 0, 0, 1],  # Step 4
     [1, 1, 0, 0],  # Step 3
     [0, 1, 1, 0],  # Step 2
-    [0, 0, 1, 1]   # Step 1
+    [0, 0, 1, 1],  # Step 1
 ]
+
 
 def coils_off():
     coil_A_1.value = 0
@@ -281,55 +310,78 @@ def coils_off():
     coil_B_1.value = 0
     coil_B_2.value = 0
 
+
 def set_step(step):
     coil_A_1.value = step[0]
     coil_A_2.value = step[1]
     coil_B_1.value = step[2]
     coil_B_2.value = step[3]
 
+def servo_m(servo_pos):
+    global lst_flag_rot_pos
+    if servo_pos < flag_rot_min:
+        servo_pos = flag_rot_min
+    if servo_pos > flag_rot_max:
+        servo_pos = flag_rot_max
+    flag_rot.angle = servo_pos
+    lst_flag_rot_pos = servo_pos    
+
+
 def move_motor(steps, direction, min_sk, max_sk, keep_track):
-    global lst_flag_pos
-    delay=0.005
+    global lst_flag_deploy_pos
+    delay = 0.005
     call_interval = 10
     max_min = 0
-    if direction == 'down':
+    if direction == "down":
         seq = step_down
-    elif direction == 'up':
+    elif direction == "up":
         seq = step_up
     else:
         raise ValueError("Direction must be 'down' or 'up'")
     for i in range(steps):
         exit_early()
-        if kill_process: return
-        if direction == 'down':
-            if keep_track:  lst_flag_pos -=1
+        if kill_process:
+            return
+        if direction == "down":
+            if keep_track:
+                lst_flag_deploy_pos -= 1
         elif direction == 'up':
-            if keep_track:  lst_flag_pos +=1
+            if keep_track:  lst_flag_deploy_pos +=1
         if i % call_interval == 0:
             if max_min == 0:
-                fl_shk.angle = max_sk
+                flag_rot.angle = max_sk
                 max_min = 1
             else:
-                fl_shk.angle = min_sk
+                flag_rot.angle = min_sk
                 max_min = 0
+                
         for step in seq:
             set_step(step)
             time.sleep(delay)
     if max_min == 0:
-        avg_fl_shk = (min_sk+max_sk)/2
-        fl_shk.angle = avg_fl_shk
+        avg_fl_shk = (min_sk + max_sk) / 2
+        flag_rot.angle = avg_fl_shk
+
 
 def move_motor_keep_track(pos):
-    global lst_flag_pos, async_running
+    global lst_flag_deploy_pos, async_running
     direction = "up"
-    if lst_flag_pos > pos:
+    if lst_flag_deploy_pos > pos:
         direction = "down"
-    total_steps = abs(pos - lst_flag_pos)
+    total_steps = abs(pos - lst_flag_deploy_pos)
     move_motor(total_steps, direction, 180, 180, True)
 
 
 ################################################################################
-# Animations
+# async methods
+
+loop = asyncio.get_event_loop()
+
+def rotate_spd():
+    if mix.voice[0].playing:
+        return 0.005
+    else:
+        return 0.02
 
 def rnd_prob(c):
     y = random.random()
@@ -338,7 +390,70 @@ def rnd_prob(c):
     return False
 
 
+async def wave_flag():
+    global lst_wave_pos, async_running
+    while async_running:
+        center_servo_pos = int(cfg["servo"])
+        rand_pos_1 = random.randint(center_servo_pos - 70, center_servo_pos - 70)
+        rand_pos_2 = random.randint(center_servo_pos + 70, center_servo_pos + 70)
+        sign = 1
+        if lst_wave_pos > rand_pos_1:
+            sign = -1
+        total_steps = abs(rand_pos_1 - lst_wave_pos)
+        exit_early()
+        if not async_running or kill_process:
+            break
+        for _ in range(total_steps + 1):
+            spd = rotate_spd()
+            flag_ang = lst_wave_pos + 1 * sign
+            servo_m(flag_ang)
+            await asyncio.sleep(spd)
+        await asyncio.sleep(2 * spd)
+        sign = 1
+        if lst_wave_pos > rand_pos_2:
+            sign = -1
+        total_steps = abs(rand_pos_2 - lst_wave_pos)
+        exit_early()
+        if not async_running or kill_process:
+            break
+        for _ in range(total_steps + 1):
+            spd = rotate_spd()
+            flag_ang = lst_wave_pos + 1 * sign
+            servo_m(flag_ang)
+            await asyncio.sleep(spd)
+        await asyncio.sleep(2 * spd)
 
+
+async def deploy_flag(steps, direction, min_sk, max_sk, keep_track):
+    global async_running, lst_kite_deploy_pos
+    if direction == "down":
+        seq = step_down
+    elif direction == "up":
+        seq = step_up
+    else:
+        raise ValueError("Direction must be 'down' or 'up'")
+    for i in range(steps):
+        if kill_process:
+            break
+        if direction == "down":
+            lst_kite_deploy_pos -= 1
+        elif direction == "up":
+            lst_kite_deploy_pos += 1
+        for step in seq:
+            set_step(step)
+            await asyncio.sleep(spd)
+    async_running = False
+
+
+async def rn_an(steps, direction):
+    global async_running
+    async_running = True
+    rot_f = asyncio.create_task(wave_flag())
+    deploy_f = asyncio.create_task(deploy_flag(steps, direction))
+    await asyncio.gather(deploy_f, rot_f)
+
+################################################################################
+# Animations
 def an():
     global kill_process
     kill_process = False
@@ -347,67 +462,92 @@ def an():
         pick = random.randint(0, 2)
         print(pick)
         if pick == 0:
-            cfg_temp["sound"]="sound_off"
+            cfg_temp["sound"] = "sound_off"
         elif pick == 1:
-            cfg_temp["sound"]="sound_otaps"
+            cfg_temp["sound"] = "sound_otaps"
         elif pick == 2:
-            cfg_temp["sound"]="sound_oreveille_oretreat"  
-    if cfg_temp["mode"]=="raise_wave_lower":
+            cfg_temp["sound"] = "sound_oreveille_oretreat"
+    if cfg_temp["mode"] == "raise_wave_lower":
         move_motor_keep_track(half_mast_pos)  # Flag up
-        if kill_process: return
+        if kill_process:
+            return
         led.duty_cycle = 65000
-        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
-        move_motor_keep_track(max_flag_pos+flag_up_extra)  # Flag up
-        if kill_process: return
-        move_motor(wave_motor_steps, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
-        if kill_process: return
-        fl_shk.angle = 180
-        move_motor(flag_up_extra, 'up', 180, 180, False)  # Flag up to orient it before going down
-        if kill_process: return
+        if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            ply_a_0("reveille")
+        move_motor_keep_track(flag_deploy_max + flag_up_extra)  # Flag up
+        if kill_process:
+            return
+        move_motor(
+            wave_motor_steps, "up", int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False
+        )  # Flag wave
+        if kill_process:
+            return
+        flag_rot.angle = 180
+        move_motor(
+            flag_up_extra, "up", 180, 180, False
+        )  # Flag up to orient it before going down
+        if kill_process:
+            return
         move_motor_keep_track(half_mast_pos)  # Flag down
-        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
-        if cfg_temp["sound"] == "sound_otaps": ply_a_0("taps")
+        if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            ply_a_0("retreat")
+        if cfg_temp["sound"] == "sound_otaps":
+            ply_a_0("taps")
         led.duty_cycle = 0
         move_motor_keep_track(0)  # Flag down
-        if kill_process: return
-    elif cfg_temp["mode"]=="raise_lower":
+        if kill_process:
+            return
+    elif cfg_temp["mode"] == "raise_lower":
         move_motor_keep_track(half_mast_pos)  # Flag up
-        if kill_process: return
+        if kill_process:
+            return
         led.duty_cycle = 65000
-        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("reveille")
-        move_motor_keep_track(max_flag_pos+flag_up_extras)  # Flag up
-        if kill_process: return
+        if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            ply_a_0("reveille")
+        move_motor_keep_track(flag_deploy_max + flag_up_extras)  # Flag up
+        if kill_process:
+            return
         wait_period = random.randint(5, 10)
         time_done = time.monotonic() + wait_period
         while time.monotonic() < time_done:
-            time.sleep(.05)
+            time.sleep(0.05)
             exit_early()
-            if kill_process: return
+            if kill_process:
+                return
         move_motor_keep_track(half_mast_pos)  # Flag down
-        if cfg_temp["sound"] == "sound_oreveille_oretreat": ply_a_0("retreat")
-        if cfg_temp["sound"] == "sound_otaps": ply_a_0("taps")
+        if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            ply_a_0("retreat")
+        if cfg_temp["sound"] == "sound_otaps":
+            ply_a_0("taps")
         led.duty_cycle = 0
         move_motor_keep_track(0)  # Flag down
-        if kill_process: return
-    elif cfg_temp["mode"]=="raise_wave":
-        move_motor_keep_track(max_flag_pos+flag_up_extra)  # Flag up
+        if kill_process:
+            return
+    elif cfg_temp["mode"] == "raise_wave":
+        move_motor_keep_track(flag_deploy_max + flag_up_extra)  # Flag up
         led.duty_cycle = 65000
-        if kill_process: return
+        if kill_process:
+            return
         while not kill_process:
-            steps = random.randint(300, 600)    
-            move_motor(steps, 'up', int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False)  # Flag wave
-            if kill_process: return
+            steps = random.randint(300, 600)
+            move_motor(
+                steps, "up", int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False
+            )  # Flag wave
+            if kill_process:
+                return
             coils_off()
             wait_period = random.randint(2, 7)
             time_done = time.monotonic() + wait_period
             while time.monotonic() < time_done:
-                time.sleep(.05)
+                time.sleep(0.05)
                 exit_early()
-                if kill_process: return
+                if kill_process:
+                    return
 
 
 ################################################################################
 # State Machine
+
 
 class StMch(object):
 
@@ -429,6 +569,7 @@ class StMch(object):
         if s.ste:
             s.ste.upd(s)
 
+
 ################################################################################
 # States
 
@@ -442,7 +583,7 @@ class Ste(object):
 
     @property
     def name(s):
-        return ''
+        return ""
 
     def enter(s, mch):
         pass
@@ -462,7 +603,7 @@ class BseSt(Ste):
 
     @property
     def name(self):
-        return 'base_state'
+        return "base_state"
 
     def enter(self, mch):
         # set servos to starting position
@@ -474,29 +615,28 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, fig_web,rand_timer
-        sw = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 3.0)
+        global cont_run, fig_web, rand_timer
+        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
-            if cfg["timer"]==True:
-               cfg["timer"] = False
-               cont_run = False
-               aud_en.value = False
-               files.write_json_file("cfg.json", cfg)
-               aud_en.value = True
-               spk_sentence("timer_mode_off")
-               return
+            if cfg["timer"] == True:
+                cfg["timer"] = False
+                cont_run = False
+                aud_en.value = False
+                files.write_json_file("cfg.json", cfg)
+                aud_en.value = True
+                spk_sentence("timer_mode_off")
+                return
             if cont_run:
                 cont_run = False
                 spk_sentence("continuous_mode_off")
             elif cfg["timer"] == False:
                 cont_run = True
                 spk_sentence("continuous_mode_on")
-        elif cfg["timer"]==True:
+        elif cfg["timer"] == True:
             if rand_timer <= 0:
                 an()
                 reset_motors()
-                rand_timer = int(cfg["timer_val"])*60
+                rand_timer = int(cfg["timer_val"]) * 60
                 print("an time done")
             else:
                 upd_vol(1)
@@ -507,7 +647,7 @@ class BseSt(Ste):
             reset_motors()
             print("an done")
         elif sw == "right":
-            mch.go_to('main_menu')
+            mch.go_to("main_menu")
 
 
 class Main(Ste):
@@ -518,10 +658,10 @@ class Main(Ste):
 
     @property
     def name(self):
-        return 'main_menu'
+        return "main_menu"
 
     def enter(self, mch):
-        files.log_item('Main menu')
+        files.log_item("Main menu")
         spk_sentence("main_menu")
         spk_sentence("r_l_but")
         Ste.enter(self, mch)
@@ -536,19 +676,19 @@ class Main(Ste):
             spk_sentence(main_m[self.i])
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(main_m)-1:
+            if self.i > len(main_m) - 1:
                 self.i = 0
         if r_sw.fell:
             sel_i = main_m[self.sel_i]
             if sel_i == "options":
-                mch.go_to('options')
+                mch.go_to("options")
             elif sel_i == "volume_settings":
-                mch.go_to('volume_settings')
+                mch.go_to("volume_settings")
             elif sel_i == "wave_settings":
-                mch.go_to('wave_settings')
+                mch.go_to("wave_settings")
             else:
                 ply_a_0("all_changes_complete")
-                mch.go_to('base_state')
+                mch.go_to("base_state")
 
 
 class VolSet(Ste):
@@ -559,10 +699,10 @@ class VolSet(Ste):
 
     @property
     def name(self):
-        return 'volume_settings'
+        return "volume_settings"
 
     def enter(self, mch):
-        files.log_item('Set Web Options')
+        files.log_item("Set Web Options")
         spk_sentence("volume_settings_menu")
         spk_sentence("r_l_but")
         Ste.enter(self, mch)
@@ -577,7 +717,7 @@ class VolSet(Ste):
             spk_sentence(v_set[self.i])
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(v_set)-1:
+            if self.i > len(v_set) - 1:
                 self.i = 0
         if r_sw.fell:
             sel_mnu = v_set[self.sel_i]
@@ -585,20 +725,18 @@ class VolSet(Ste):
                 spk_sentence("volume_adjustment_menu_lowerraisesavevol")
                 done = False
                 while not done:
-                    sw = utilities.switch_state(
-                        l_sw, r_sw, upd_vol, 3.0)
+                    sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
                     if sw == "left":
                         ch_vol("lower")
                     elif sw == "right":
                         ch_vol("raise")
                     elif sw == "right_held":
                         aud_en.value = False
-                        files.write_json_file(
-                            "cfg.json", cfg)
+                        files.write_json_file("cfg.json", cfg)
                         aud_en.value = True
                         ply_a_0("all_changes_complete")
                         done = True
-                        mch.go_to('base_state')
+                        mch.go_to("base_state")
                     pass
             elif sel_mnu == "volume_pot_off":
                 cfg["volume_pot"] = False
@@ -608,15 +746,14 @@ class VolSet(Ste):
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 ply_a_0("all_changes_complete")
-                mch.go_to('base_state')
+                mch.go_to("base_state")
             elif sel_mnu == "volume_pot_on":
                 cfg["volume_pot"] = True
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 ply_a_0("all_changes_complete")
-                mch.go_to('base_state')
-
+                mch.go_to("base_state")
 
 
 class Opt(Ste):
@@ -627,10 +764,10 @@ class Opt(Ste):
 
     @property
     def name(self):
-        return 'options'
+        return "options"
 
     def enter(self, mch):
-        files.log_item('Choose sounds menu')
+        files.log_item("Choose sounds menu")
         spk_sentence("options_menu")
         spk_sentence("r_l_but")
         Ste.enter(self, mch)
@@ -646,60 +783,61 @@ class Opt(Ste):
             spk_sentence(mnu_o[self.i])
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(mnu_o)-1:self.i = 0
+            if self.i > len(mnu_o) - 1:
+                self.i = 0
         if r_sw.fell:
             options = mnu_o[self.sel_i].split("_")
-            if  mnu_o[self.sel_i] != "timer_off" and options[0]=="timer":
+            if mnu_o[self.sel_i] != "timer_off" and options[0] == "timer":
                 cfg["timer"] = True
                 cfg["timer_val"] = str(options[1])
                 rand_timer = 0
-            elif mnu_o[self.sel_i]=="timer_off":
+            elif mnu_o[self.sel_i] == "timer_off":
                 cfg["timer"] = "timer_off"
                 rand_timer = 0
-            elif mnu_o[self.sel_i]=="sound_off":
+            elif mnu_o[self.sel_i] == "sound_off":
                 cfg["sound"] = "sound_off"
-            elif mnu_o[self.sel_i]=="sound_otaps":
+            elif mnu_o[self.sel_i] == "sound_otaps":
                 cfg["sound"] = "sound_otaps"
-            elif mnu_o[self.sel_i]=="sound_oreveille_oretreat":
+            elif mnu_o[self.sel_i] == "sound_oreveille_oretreat":
                 cfg["sound"] = "sound_oreveille_oretreat"
-            elif mnu_o[self.sel_i]=="random_sound_off":
+            elif mnu_o[self.sel_i] == "random_sound_off":
                 cfg["random"] = False
-            elif mnu_o[self.sel_i]=="random_sound_on":
+            elif mnu_o[self.sel_i] == "random_sound_on":
                 cfg["random"] = True
-            elif mnu_o[self.sel_i]=="raise_lower":
+            elif mnu_o[self.sel_i] == "raise_lower":
                 cfg["mode"] = "raise_lower"
-            elif mnu_o[self.sel_i]=="raise_wave_lower":
+            elif mnu_o[self.sel_i] == "raise_wave_lower":
                 cfg["mode"] = "raise_wave_lower"
-            elif mnu_o[self.sel_i]=="raise_wave":
-                cfg["mode"] = "raise_wave"    
-            elif mnu_o[self.sel_i]=="exit_this_menu":
+            elif mnu_o[self.sel_i] == "raise_wave":
+                cfg["mode"] = "raise_wave"
+            elif mnu_o[self.sel_i] == "exit_this_menu":
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 ply_a_0("all_changes_complete")
-                mch.go_to('base_state')
+                mch.go_to("base_state")
                 return
             ply_a_0("option_set")
 
 
 class ServoSet(Ste):
-    
+
     def __init__(self):
         self.i = 0
         self.sel_i = 0
 
     @property
     def name(self):
-        return 'wave_settings'
+        return "wave_settings"
 
     def enter(self, mch):
         global kill_process
-        files.log_item('Set Web Options')
+        files.log_item("Set Web Options")
         spk_sentence("wave_settings_menu")
         spk_sentence("lrdiseng")
         cfg["servo"] = 120
         kill_process = False
-        move_motor_keep_track(max_flag_pos+flag_up_extra)  # Flag up
+        move_motor_keep_track(flag_deploy_max + flag_up_extra)  # Flag up
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -710,20 +848,18 @@ class ServoSet(Ste):
         r_sw.update()
         done = False
         while not done:
-            sw = utilities.switch_state(
-                l_sw, r_sw, upd_vol, 3.0)
+            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
             if sw == "left":
                 ch_servo("lower")
             elif sw == "right":
                 ch_servo("raise")
             elif sw == "right_held":
                 aud_en.value = False
-                files.write_json_file(
-                    "cfg.json", cfg)
+                files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 ply_a_0("all_changes_complete")
                 done = True
-                mch.go_to('base_state')
+                mch.go_to("base_state")
             pass
 
 
@@ -742,11 +878,10 @@ aud_en.value = True
 upd_vol(0.01)
 
 reset_motors()
-st_mch.go_to('base_state')
+st_mch.go_to("base_state")
 files.log_item("animator has started...")
 gc_col("animations started")
 
 while True:
     st_mch.upd()
     upd_vol(0.01)
-
