@@ -541,7 +541,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        play_a_0("/sd/mvc/animations_are_now_active.wav")
+        play_a_0("/home/pi/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -555,10 +555,10 @@ class BseSt(Ste):
         if switch_state == "left_held":
             if cont_run:
                 cont_run = False
-                play_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+                play_a_0("/home/pi/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
-                play_a_0("/sd/mvc/continuous_mode_activated.wav")
+                play_a_0("/home/pi/mvc/continuous_mode_activated.wav")
         elif switch_state == "left" or cont_run:
             an(cfg["option_selected"])
         elif switch_state == "right":
@@ -577,7 +577,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        play_a_0("/sd/mvc/main_menu.wav")
+        play_a_0("/home/pi/mvc/main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -588,7 +588,7 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
+            play_a_0("/home/pi/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -604,7 +604,7 @@ class Main(Ste):
             elif sel_mnu == "volume_settings":
                 mch.go_to('volume_settings')
             else:
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -620,7 +620,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        play_a_0("/sd/mvc/sound_selection_menu.wav")
+        play_a_0("/home/pi/mvc/sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -658,7 +658,7 @@ class Snds(Ste):
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
                 files.write_json_file("/sd/cfg.json", cfg)
                 wave0 = audiocore.WaveFile(
-                    open("/sd/mvc/option_selected.wav", "rb"))
+                    open("/home/pi/mvc/option_selected.wav", "rb"))
                 mix.voice[0].play(wave0, loop=False)
                 while mix.voice[0].playing:
                     pass
@@ -677,7 +677,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        play_a_0("/sd/mvc/add_sounds_animate.wav")
+        play_a_0("/home/pi/mvc/add_sounds_animate.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -690,7 +690,7 @@ class AddSnds(Ste):
         r_sw.update()
         if l_sw.fell:
             play_a_0(
-                "/sd/mvc/" + add_snd[self.i] + ".wav")
+                "/home/pi/mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(add_snd)-1:
@@ -698,17 +698,17 @@ class AddSnds(Ste):
         if r_sw.fell:
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                play_a_0("/sd/mvc/create_sound_track_files.wav")
+                play_a_0("/home/pi/mvc/create_sound_track_files.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                play_a_0("/sd/mvc/timestamp_mode_on.wav")
-                play_a_0("/sd/mvc/timestamp_instructions.wav")
+                play_a_0("/home/pi/mvc/timestamp_mode_on.wav")
+                play_a_0("/home/pi/mvc/timestamp_instructions.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                play_a_0("/sd/mvc/timestamp_mode_off.wav")
+                play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
             else:
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -724,7 +724,7 @@ class VolSet(Ste):
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        play_a_0("/sd/mvc/volume_settings_menu.wav")
+        play_a_0("/home/pi/mvc/volume_settings_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -735,7 +735,7 @@ class VolSet(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + vol_set[self.i] + ".wav")
+            play_a_0("/home/pi/mvc/" + vol_set[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(vol_set)-1:
@@ -743,7 +743,7 @@ class VolSet(Ste):
         if r_sw.fell:
             sel_mnu = vol_set[self.sel_i]
             if sel_mnu == "volume_level_adjustment":
-                play_a_0("/sd/mvc/volume_adjustment_menu.wav")
+                play_a_0("/home/pi/mvc/volume_adjustment_menu.wav")
                 done = False
                 while not done:
                     switch_state = utilities.switch_state(
@@ -755,7 +755,7 @@ class VolSet(Ste):
                     elif switch_state == "right_held":
                         files.write_json_file(
                             "/sd/cfg.json", cfg)
-                        play_a_0("/sd/mvc/all_changes_complete.wav")
+                        play_a_0("/home/pi/mvc/all_changes_complete.wav")
                         done = True
                         mch.go_to('base_state')
                     upd_vol(0.1)
@@ -765,12 +765,12 @@ class VolSet(Ste):
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "volume_pot_on":
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -795,7 +795,7 @@ class WebOpt(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
+            play_a_0("/home/pi/mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -814,11 +814,11 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif selected_menu_item == "hear_instr_web":
-                play_a_0("/sd/mvc/web_instruct.wav")
+                play_a_0("/home/pi/mvc/web_instruct.wav")
                 sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
-                play_a_0("/sd/mvc/all_changes_complete.wav")
+                play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 ###############################################################################
