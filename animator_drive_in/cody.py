@@ -64,9 +64,9 @@ b_s = Debouncer(switch_io_4)
 # Setup the mixer to play wav files
 pygame.mixer.init()
 mix = pygame.mixer.music
-mix.load('/home/pi/Videos/left_speaker_right_speaker.wav')
-mix.set_volume(.05)
-mix.play(loops=0)
+# mix.load('/home/pi/Videos/left_speaker_right_speaker.wav')
+# mix.set_volume(.05)
+# mix.play(loops=0)
 
 #audio experiments to understand
 # pygame.mixer.init()
@@ -176,6 +176,8 @@ led = neopixel_spi.NeoPixel_SPI(board.SPI(), num_px, brightness=1.0, auto_write=
 # Sd card config variables
 
 cfg = files.read_json_file("/home/pi/cfg.json")
+
+cfg["volume"]="5"
 print(cfg)
 
 snd_opt = files.return_directory("", "/home/pi/snds", ".wav")
@@ -390,7 +392,7 @@ def upd_vol(seconds):
         volume = .5
     if volume < 0 or volume > 1:
         volume = .5
-    mix.voice[0].level = volume
+    mix.set_volume(volume)
     time.sleep(seconds)
 
 
@@ -425,19 +427,19 @@ def ch_vol(action):
 
 
 def play_a_0(file_name):
-    if mix.voice[0].playing:
+    if mix.get_busy():
         mix.stop()
-        while mix.voice[0].playing:
+        while mix.get_busy():
             upd_vol(0.1)
-    wave0 = audiocore.WaveFile(open(file_name, "rb"))
-    mix.voice[0].play(wave0, loop=False)
-    while mix.voice[0].playing:
+    mix.load(file_name)
+    mix.play(loops=0)
+    while mix.get_busy():
         exit_early()
 
 
 def stop_a_0():
     mix.stop()
-    while mix.voice[0].playing:
+    while mix.get_busy():
         pass
 
 
@@ -499,13 +501,15 @@ def no_trk():
 def spk_web():
     play_a_0("/home/pi/mvc/animator_available_on_network.wav")
     play_a_0("/home/pi/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-bandstand":
+    if cfg["HOST_NAME"] == "animator-drive-in":
         play_a_0("/home/pi/mvc/animator_dash_bandstand.wav")
         play_a_0("/home/pi/mvc/dot.wav")
         play_a_0("/home/pi/mvc/local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    play_a_0("/home/pi/mvc/in_your_browser.wav")    
+    play_a_0("/home/pi/mvc/in_your_browser.wav")   
+
+spk_web()
 
 while True:
     if not media_player.is_playing() and run_movie_cont:
