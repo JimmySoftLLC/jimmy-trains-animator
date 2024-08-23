@@ -52,10 +52,10 @@ aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = True
 
-l_s = Debouncer(switch_io_1)
-r_s = Debouncer(switch_io_2)
-w_s = Debouncer(switch_io_3)
-b_s = Debouncer(switch_io_4)
+l_sw = Debouncer(switch_io_1)
+r_sw = Debouncer(switch_io_2)
+w_sw = Debouncer(switch_io_3)
+b_sw = Debouncer(switch_io_4)
 
 ################################################################################
 # Setup sound hardware
@@ -517,15 +517,15 @@ while True:
         play_movies()
         while not media_player.is_playing():
             time.sleep(.5)
-    l_s.update()
-    r_s.update()
-    w_s.update()
-    b_s.update()
-    if l_s.fell:
+    l_sw.update()
+    r_sw.update()
+    w_sw.update()
+    b_sw.update()
+    if l_sw.fell:
         if media_player.is_playing(): pause_movie()
         run_movie_cont = True
         print ("left fell")
-    if r_s.fell:
+    if r_sw.fell:
         print ("right fell")
         if media_player.is_playing():
             run_movie_cont = False
@@ -533,12 +533,12 @@ while True:
         else:
             play_movie()
             rainbow(.005,5)
-    if w_s.fell:
+    if w_sw.fell:
         print ("white fell")
         volume = volume - 10
         if volume < 0: volume = 0
         media_player.audio_set_volume(volume)
-    if b_s.fell:
+    if b_sw.fell:
         print ("blue fell")
         volume = volume + 10
         if volume > 100: volume = 100
