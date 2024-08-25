@@ -330,6 +330,7 @@ def start_server():
     httpd.serve_forever()
 
 # Set up mDNS service info
+
 desc = {'path': '/'}
 info = ServiceInfo(
     "_http._tcp.local.",
@@ -339,6 +340,7 @@ info = ServiceInfo(
     properties=desc,
     server="animator-drive-in.local."
 )
+
 
 gc_col("web server")
 
@@ -631,37 +633,19 @@ class Snds(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            if mix.voice[0].playing:
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-            else:
-                try:
-                    wave0 = audiocore.WaveFile(open(
-                        "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
-                    mix.voice[0].play(wave0, loop=False)
-                except Exception as e:
-                    files.log_item(e)
-                    spk_sng_num(str(self.i+1))
-                self.sel_i = self.i
-                self.i += 1
-                if self.i > len(menu_snd_opt)-1:
-                    self.i = 0
-                while mix.voice[0].playing:
-                    pass
+            try:
+                play_a_0("/home/pi/o_snds/" + menu_snd_opt[self.i] + ".wav")
+            except Exception as e:
+                files.log_item(e)
+                spk_sng_num(str(self.i+1))
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(menu_snd_opt)-1:
+                self.i = 0
         if r_sw.fell:
-            if mix.voice[0].playing:
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-            else:
-                cfg["option_selected"] = menu_snd_opt[self.sel_i]
-                files.write_json_file("/sd/cfg.json", cfg)
-                wave0 = audiocore.WaveFile(
-                    open("/home/pi/mvc/option_selected.wav", "rb"))
-                mix.voice[0].play(wave0, loop=False)
-                while mix.voice[0].playing:
-                    pass
+            cfg["option_selected"] = menu_snd_opt[self.sel_i]
+            files.write_json_file("/home/pi/cfg.json", cfg)
+            play_a_0("/home/pi/mvc/option_selected.wav", "rb")
             mch.go_to('base_state')
 
 
@@ -754,7 +738,7 @@ class VolSet(Ste):
                         ch_vol("raise")
                     elif switch_state == "right_held":
                         files.write_json_file(
-                            "/sd/cfg.json", cfg)
+                            "/home/pi/cfg.json", cfg)
                         play_a_0("/home/pi/mvc/all_changes_complete.wav")
                         done = True
                         mch.go_to('base_state')
@@ -764,12 +748,12 @@ class VolSet(Ste):
                 cfg["volume_pot"] = False
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
-                files.write_json_file("/sd/cfg.json", cfg)
+                files.write_json_file("/home/pi/cfg.json", cfg)
                 play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "volume_pot_on":
                 cfg["volume_pot"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
+                files.write_json_file("/home/pi/cfg.json", cfg)
                 play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
@@ -817,7 +801,7 @@ class WebOpt(Ste):
                 play_a_0("/home/pi/mvc/web_instruct.wav")
                 sel_web()
             else:
-                files.write_json_file("/sd/cfg.json", cfg)
+                files.write_json_file("/home/pi/cfg.json", cfg)
                 play_a_0("/home/pi/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
@@ -849,7 +833,7 @@ if (web):
         server_thread = threading.Thread(target=start_server)
         server_thread.daemon = True
         server_thread.start()
-        spk_web()
+        #spk_web()
     except OSError:
         time.sleep(5)
         files.log_item("server did not start...")
@@ -863,7 +847,7 @@ gc_col("animations started.")
 while True:
     st_mch.upd()
     upd_vol(.1)
-    if not media_player.is_playing() and run_movie_cont:
+    if not media_player.is_playing() and run_movie_cont and False:
         print("play movies: " + str(run_movie_cont))
         play_movies()
         while not media_player.is_playing():

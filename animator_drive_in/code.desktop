@@ -1,0 +1,4 @@
+[Desktop Entry]
+Type=Application
+Name=code.desktop
+Exec=xterm -hold -e '/usr/bin/python3 /home/pi/code.py'
