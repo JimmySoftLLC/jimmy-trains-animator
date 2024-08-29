@@ -176,7 +176,7 @@ def ch_servo(action):
     ply_a_0("wave")
     spk_word(cfg["servo"])
     kill_process = False
-    asyncio.run(rn_an(100, "up", False))  # Flag wave
+    asyncio.run( rn_an(100, "up", False))  # Flag wave
 
 
 def ch_vol(action):
@@ -283,6 +283,13 @@ def reset_motors():
     move_motor(0)  # Flag down
     coils_off()
     led.duty_cycle = 0
+    
+def flash_led():
+    for _ in range(3):
+        led.duty_cycle = 65000
+        time.sleep(.75)
+        led.duty_cycle = 0
+        time.sleep(.75)
 
 
 ################################################################################
@@ -463,7 +470,7 @@ def an():
         move_motor(flag_deploy_max + flag_up_extra, False)  # Flag up dont keep track
         if kill_process:
             return
-        asyncio.run(rn_an(wave_motor_steps, "up", True))  # Flag wave
+        asyncio.run(rn_an(wave_motor_steps, "up", False))  # Flag wave
         if kill_process:
             return
         flag_rot.angle = 180
@@ -515,7 +522,7 @@ def an():
             return
         while not kill_process:
             steps = random.randint(300, 600)
-            asyncio.run(rn_an(steps, "up", True))  # Flag wave
+            asyncio.run(rn_an(steps, "up", False))  # Flag wave
             if kill_process:
                 return
             coils_off()
@@ -863,6 +870,9 @@ aud_en.value = True
 upd_vol(0.01)
 
 reset_motors()
+
+flash_led()
+
 st_mch.go_to("base_state")
 files.log_item("animator has started...")
 gc_col("animations started")
