@@ -1,0 +1,4 @@
+[Desktop Entry]
+Type=Application
+Name=midori.desktop
+Exec=midori -e Fullscreen http://animator-drive-in.local:8083/
