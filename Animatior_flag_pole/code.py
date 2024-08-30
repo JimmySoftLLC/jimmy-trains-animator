@@ -73,10 +73,10 @@ r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
 
 # Define the pins connected to the stepper motor driver
-coil_A_1 = digitalio.DigitalInOut(board.GP7)
-coil_A_2 = digitalio.DigitalInOut(board.GP6)
-coil_B_1 = digitalio.DigitalInOut(board.GP5)
-coil_B_2 = digitalio.DigitalInOut(board.GP4)
+coil_A_1 = digitalio.DigitalInOut(board.GP4)
+coil_A_2 = digitalio.DigitalInOut(board.GP5)
+coil_B_1 = digitalio.DigitalInOut(board.GP6)
+coil_B_2 = digitalio.DigitalInOut(board.GP7)
 
 # Set the pins as outputs
 coil_A_1.direction = digitalio.Direction.OUTPUT
@@ -880,3 +880,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
+
