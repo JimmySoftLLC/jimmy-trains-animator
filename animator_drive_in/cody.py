@@ -218,29 +218,42 @@ def get_local_ip():
 ################################################################################
 # Setup routes
 
-class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        # Handle /get-host-name endpoint
-        if self.path == "/get-host-name":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            response = {"hostname": socket.gethostname()}
-            self.wfile.write(json.dumps(response).encode('utf-8'))
-            return
+import http.server
+import socket
+import json
+import os
+import gc
 
-        # Serve the HTML content from a local file
-        if self.path == "/":
-            self.path = "/index.html"
-        # Set content type based on file extension
-        if self.path.endswith(".css"):
-            content_type = "text/css"
+class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+
+    def do_GET(self):
+        if self.path == "/get-host-name":
+            self.handle_get_hostname()
+        elif self.path == "/":
+            self.handle_serve_file("/index.html")
+        elif self.path.endswith(".css"):
+            self.handle_serve_file(self.path, "text/css")
         elif self.path.endswith(".js"):
-            content_type = "application/javascript"
+            self.handle_serve_file(self.path, "application/javascript")
         else:
-            content_type = "text/html"
+            self.handle_serve_file(self.path)
+
+    def do_POST(self):
+        if self.path == "/upload":
+            self.handle_file_upload()
+        else:
+            self.handle_generic_post()
+
+    def handle_get_hostname(self):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        response = {"hostname": socket.gethostname()}
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+
+    def handle_serve_file(self, path, content_type="text/html"):
+        file_path = path.lstrip("/")
         try:
-            file_path = self.path.lstrip("/")
             with open(file_path, 'rb') as file:
                 self.send_response(200)
                 self.send_header("Content-type", content_type)
@@ -252,69 +265,69 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"File not found")
 
-    def do_POST(self):
-        if self.path == "/upload":
-            content_length = int(self.headers['Content-Length'])
-            content_type = self.headers['Content-Type']
+    def handle_file_upload(self):
+        content_length = int(self.headers['Content-Length'])
+        content_type = self.headers['Content-Type']
 
-            if 'multipart/form-data' in content_type:
-                boundary = content_type.split("boundary=")[1].encode()
-                body = self.rfile.read(content_length)
-                
-                parts = body.split(b'--' + boundary)
-                for part in parts:
-                    gc.collect()
-                    if part:
-                        try:
-                            headers, content = part.split(b'\r\n\r\n', 1)
-                        except ValueError:
-                            continue
-                        content = content.rstrip(b'\r\n--')
-                        header_lines = headers.decode().split('\r\n')
-                        headers_dict = {}
-                        for line in header_lines:
-                            if ': ' in line:
-                                key, value = line.split(': ', 1)
-                                headers_dict[key] = value
-                        
-                        if 'Content-Disposition' in headers_dict:
-                            disposition = headers_dict['Content-Disposition']
-                            if 'filename=' in disposition:
-                                file_name = disposition.split('filename=')[1].strip('"')
-                                # Ensure the uploads directory exists
-                                os.makedirs("uploads", exist_ok=True)
-                                file_path = os.path.join("uploads", file_name)
+        if 'multipart/form-data' in content_type:
+            boundary = content_type.split("boundary=")[1].encode()
+            body = self.rfile.read(content_length)
+            parts = body.split(b'--' + boundary)
 
-                                with open(file_path, "wb") as f:
-                                    f.write(content)
+            for part in parts:
+                gc.collect()
+                if part:
+                    try:
+                        headers, content = part.split(b'\r\n\r\n', 1)
+                    except ValueError:
+                        continue
+                    content = content.rstrip(b'\r\n--')
+                    header_lines = headers.decode().split('\r\n')
+                    headers_dict = {}
+                    for line in header_lines:
+                        if ': ' in line:
+                            key, value = line.split(': ', 1)
+                            headers_dict[key] = value
 
-                                self.send_response(200)
-                                self.send_header("Content-type", "application/json")
-                                self.end_headers()
-                                response = {"status": "success", "message": "File uploaded successfully"}
-                                self.wfile.write(json.dumps(response).encode('utf-8'))
-                                return
-                
-                self.send_response(400)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                response = {"status": "error", "message": "No file part"}
-                self.wfile.write(json.dumps(response).encode('utf-8'))
-            else:
-                self.send_response(400)
-                self.end_headers()
-        else:
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            print(f"Received POST data: {post_data.decode('utf-8')}")
+                    if 'Content-Disposition' in headers_dict:
+                        disposition = headers_dict['Content-Disposition']
+                        if 'filename=' in disposition:
+                            file_name = disposition.split('filename=')[1].strip('"')
+                            # Ensure the uploads directory exists
+                            os.makedirs("uploads", exist_ok=True)
+                            file_path = os.path.join("uploads", file_name)
 
-            # Respond to the POST request
-            self.send_response(200)
+                            with open(file_path, "wb") as f:
+                                f.write(content)
+
+                            self.send_response(200)
+                            self.send_header("Content-type", "application/json")
+                            self.end_headers()
+                            response = {"status": "success", "message": "File uploaded successfully"}
+                            self.wfile.write(json.dumps(response).encode('utf-8'))
+                            return
+
+            self.send_response(400)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            response = {"status": "success",
-                        "data": post_data.decode('utf-8')}
+            response = {"status": "error", "message": "No file part"}
             self.wfile.write(json.dumps(response).encode('utf-8'))
+        else:
+            self.send_response(400)
+            self.end_headers()
+
+    def handle_generic_post(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        print(f"Received POST data: {post_data.decode('utf-8')}")
+
+        # Respond to the POST request
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        response = {"status": "success", "data": post_data.decode('utf-8')}
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+
 
 # Get the local IP address
 local_ip = get_local_ip()
@@ -324,6 +337,7 @@ print(f"Local IP address: {local_ip}")
 PORT = 8083  # Use port 80 for default HTTP access
 handler = MyHttpRequestHandler
 httpd = socketserver.TCPServer((local_ip, PORT), handler)
+httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 def start_server():
     print(f"Serving on {local_ip}:{PORT}")
