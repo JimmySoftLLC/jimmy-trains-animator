@@ -242,7 +242,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         if self.path == "/upload":
             self.handle_file_upload()
         else:
-            self.handle_generic_post()
+            self.handle_generic_post(self.path)
 
     def handle_get_hostname(self):
         self.send_response(200)
@@ -316,7 +316,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
 
-    def handle_generic_post(self):
+    def handle_generic_post(self, path):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
         print(f"Received POST data: {post_data.decode('utf-8')}")
@@ -325,10 +325,37 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        response = {"status": "success", "data": post_data.decode('utf-8')}
-        self.wfile.write(json.dumps(response).encode('utf-8'))
+        
+        post_data_str = post_data.decode('utf-8')  # Decode the byte string to a regular string
+        post_data_obj = json.loads(post_data_str)
+        
+        response = {"status": "success", "data": post_data_str}
+        if self.path == "/animation":
+            self.animation_post(post_data_obj)
+        elif self.path == "/mode":
+            self.mode_post(post_data_obj)
+    
+    def animation_post(self, rq_d):
+        print (rq_d)
 
-
+    def mode_post(self, rq_d):
+        print (rq_d)
+        global cfg, cont_run, ts_mode
+        if rq_d["an"] == "cont_mode_on":
+            cont_run = True
+            play_a_0("/home/pi/mvc/continuous_mode_activated.wav")
+        elif rq_d["an"] == "cont_mode_off":
+            cont_run = False
+            play_a_0("/home/pi/mvc/continuous_mode_deactivated.wav")
+        elif rq_d["an"] == "timestamp_mode_on":
+            ts_mode = True
+            play_a_0("/home/pi/mvc/timestamp_mode_on.wav")
+            play_a_0("/home/pi/mvc/timestamp_instructions.wav")
+        elif rq_d["an"] == "timestamp_mode_off":
+            ts_mode = False
+            play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
+        self.wfile.write("Utility: " + rq_d["animation"])
+    
 # Get the local IP address
 local_ip = get_local_ip()
 print(f"Local IP address: {local_ip}")
