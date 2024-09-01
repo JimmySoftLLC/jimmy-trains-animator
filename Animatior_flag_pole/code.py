@@ -37,9 +37,10 @@ half_mast_pos = flag_deploy_max / 2
 flag_up_extra = 50
 
 wave_motor_steps = 1000
-flag_rot_min=0
-flag_rot_max=180
-lst_flag_rot_pos = flag_rot_max 
+flag_rot_min = 0
+flag_rot_max = 180
+lst_flag_rot_pos = flag_rot_max
+flag_ext = 3
 
 ################################################################################
 # config variables
@@ -72,10 +73,10 @@ r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
 
 # Define the pins connected to the stepper motor driver
-coil_A_1 = digitalio.DigitalInOut(board.GP7)
-coil_A_2 = digitalio.DigitalInOut(board.GP6)
-coil_B_1 = digitalio.DigitalInOut(board.GP5)
-coil_B_2 = digitalio.DigitalInOut(board.GP4)
+coil_A_1 = digitalio.DigitalInOut(board.GP4)
+coil_A_2 = digitalio.DigitalInOut(board.GP5)
+coil_B_1 = digitalio.DigitalInOut(board.GP6)
+coil_B_2 = digitalio.DigitalInOut(board.GP7)
 
 # Set the pins as outputs
 coil_A_1.direction = digitalio.Direction.OUTPUT
@@ -98,7 +99,7 @@ din = board.GP20  # DIN on MAX98357A
 
 aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
-# Setup the mixer to play wav files
+# Setup the mixer to play mp3 files
 mix = audiomixer.Mixer(
     voice_count=1,
     sample_rate=22050,
@@ -175,9 +176,7 @@ def ch_servo(action):
     ply_a_0("wave")
     spk_word(cfg["servo"])
     kill_process = False
-    move_motor(
-        100, "up", int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False
-    )  # Flag wave
+    asyncio.run( rn_an(100, "up", False))  # Flag wave
 
 
 def ch_vol(action):
@@ -281,9 +280,16 @@ def reset_motors():
     global kill_process
     kill_process = False
     flag_rot.angle = 180
-    move_motor_keep_track(0)  # Flag down
+    move_motor(0)  # Flag down
     coils_off()
     led.duty_cycle = 0
+    
+def flash_led():
+    for _ in range(3):
+        led.duty_cycle = 65000
+        time.sleep(.75)
+        led.duty_cycle = 0
+        time.sleep(.75)
 
 
 ################################################################################
@@ -317,6 +323,7 @@ def set_step(step):
     coil_B_1.value = step[2]
     coil_B_2.value = step[3]
 
+
 def servo_m(servo_pos):
     global lst_flag_rot_pos
     if servo_pos < flag_rot_min:
@@ -324,52 +331,34 @@ def servo_m(servo_pos):
     if servo_pos > flag_rot_max:
         servo_pos = flag_rot_max
     flag_rot.angle = servo_pos
-    lst_flag_rot_pos = servo_pos    
+    lst_flag_rot_pos = servo_pos
 
 
-def move_motor(steps, direction, min_sk, max_sk, keep_track):
-    global lst_flag_deploy_pos
+def move_motor(pos, keep_track=True):
+    global lst_flag_deploy_pos, async_running
+    direction = "up"
+    if lst_flag_deploy_pos > pos:
+        direction = "down"
+    total_steps = abs(pos - lst_flag_deploy_pos)
     delay = 0.005
-    call_interval = 10
-    max_min = 0
     if direction == "down":
         seq = step_down
     elif direction == "up":
         seq = step_up
-    else:
-        raise ValueError("Direction must be 'down' or 'up'")
-    for i in range(steps):
+    for _ in range(total_steps):
         exit_early()
         if kill_process:
             return
         if direction == "down":
             if keep_track:
                 lst_flag_deploy_pos -= 1
-        elif direction == 'up':
-            if keep_track:  lst_flag_deploy_pos +=1
-        if i % call_interval == 0:
-            if max_min == 0:
-                flag_rot.angle = max_sk
-                max_min = 1
-            else:
-                flag_rot.angle = min_sk
-                max_min = 0
-                
+        elif direction == "up":
+            if keep_track:
+                lst_flag_deploy_pos += 1
         for step in seq:
             set_step(step)
             time.sleep(delay)
-    if max_min == 0:
-        avg_fl_shk = (min_sk + max_sk) / 2
-        flag_rot.angle = avg_fl_shk
-
-
-def move_motor_keep_track(pos):
-    global lst_flag_deploy_pos, async_running
-    direction = "up"
-    if lst_flag_deploy_pos > pos:
-        direction = "down"
-    total_steps = abs(pos - lst_flag_deploy_pos)
-    move_motor(total_steps, direction, 180, 180, True)
+    print(lst_flag_deploy_pos)
 
 
 ################################################################################
@@ -377,11 +366,13 @@ def move_motor_keep_track(pos):
 
 loop = asyncio.get_event_loop()
 
+
 def rotate_spd():
     if mix.voice[0].playing:
         return 0.005
     else:
-        return 0.02
+        return random.uniform(0.03, 0.03)
+
 
 def rnd_prob(c):
     y = random.random()
@@ -390,67 +381,68 @@ def rnd_prob(c):
     return False
 
 
-async def wave_flag():
-    global lst_wave_pos, async_running
+async def wave_flag(rand):
+    global lst_flag_rot_pos, async_running
+    center_servo_pos = int(cfg["servo"])
     while async_running:
-        center_servo_pos = int(cfg["servo"])
-        rand_pos_1 = random.randint(center_servo_pos - 70, center_servo_pos - 70)
-        rand_pos_2 = random.randint(center_servo_pos + 70, center_servo_pos + 70)
+        if rand:
+            pos_1 = random.randint(center_servo_pos - flag_ext, center_servo_pos)
+            pos_2 = random.randint(center_servo_pos, center_servo_pos + flag_ext)
+        else:
+            pos_1 = center_servo_pos - flag_ext
+            pos_2 = center_servo_pos + flag_ext
         sign = 1
-        if lst_wave_pos > rand_pos_1:
+        if lst_flag_rot_pos > pos_1:
             sign = -1
-        total_steps = abs(rand_pos_1 - lst_wave_pos)
+        total_steps = abs(pos_1 - lst_flag_rot_pos)
+        exit_early()
+        if not async_running or kill_process:
+            break
+        spd = rotate_spd()
+        for _ in range(total_steps + 1):
+            flag_ang = lst_flag_rot_pos + 1 * sign
+            servo_m(flag_ang)
+            await asyncio.sleep(spd)
+        await asyncio.sleep(2 * spd)
+        sign = 1
+        if lst_flag_rot_pos > pos_2:
+            sign = -1
+        total_steps = abs(pos_2 - lst_flag_rot_pos)
         exit_early()
         if not async_running or kill_process:
             break
         for _ in range(total_steps + 1):
             spd = rotate_spd()
-            flag_ang = lst_wave_pos + 1 * sign
-            servo_m(flag_ang)
-            await asyncio.sleep(spd)
-        await asyncio.sleep(2 * spd)
-        sign = 1
-        if lst_wave_pos > rand_pos_2:
-            sign = -1
-        total_steps = abs(rand_pos_2 - lst_wave_pos)
-        exit_early()
-        if not async_running or kill_process:
-            break
-        for _ in range(total_steps + 1):
-            spd = rotate_spd()
-            flag_ang = lst_wave_pos + 1 * sign
+            flag_ang = lst_flag_rot_pos + 1 * sign
             servo_m(flag_ang)
             await asyncio.sleep(spd)
         await asyncio.sleep(2 * spd)
 
 
-async def deploy_flag(steps, direction, min_sk, max_sk, keep_track):
-    global async_running, lst_kite_deploy_pos
+async def deploy_flag(steps, direction, spd=0.005):
+    global async_running
     if direction == "down":
         seq = step_down
     elif direction == "up":
         seq = step_up
     else:
         raise ValueError("Direction must be 'down' or 'up'")
-    for i in range(steps):
+    for _ in range(steps):
         if kill_process:
             break
-        if direction == "down":
-            lst_kite_deploy_pos -= 1
-        elif direction == "up":
-            lst_kite_deploy_pos += 1
         for step in seq:
             set_step(step)
             await asyncio.sleep(spd)
     async_running = False
 
 
-async def rn_an(steps, direction):
+async def rn_an(steps, direction, rand):
     global async_running
     async_running = True
-    rot_f = asyncio.create_task(wave_flag())
+    rot_f = asyncio.create_task(wave_flag(rand))
     deploy_f = asyncio.create_task(deploy_flag(steps, direction))
     await asyncio.gather(deploy_f, rot_f)
+
 
 ################################################################################
 # Animations
@@ -468,43 +460,42 @@ def an():
         elif pick == 2:
             cfg_temp["sound"] = "sound_oreveille_oretreat"
     if cfg_temp["mode"] == "raise_wave_lower":
-        move_motor_keep_track(half_mast_pos)  # Flag up
+        move_motor(half_mast_pos)  # Flag up
         if kill_process:
             return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
             ply_a_0("reveille")
-        move_motor_keep_track(flag_deploy_max + flag_up_extra)  # Flag up
+        move_motor(flag_deploy_max)  # Flag up
+        move_motor(flag_deploy_max + flag_up_extra, False)  # Flag up dont keep track
         if kill_process:
             return
-        move_motor(
-            wave_motor_steps, "up", int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False
-        )  # Flag wave
+        asyncio.run(rn_an(wave_motor_steps, "up", False))  # Flag wave
         if kill_process:
             return
         flag_rot.angle = 180
         move_motor(
-            flag_up_extra, "up", 180, 180, False
-        )  # Flag up to orient it before going down
+            flag_deploy_max + flag_up_extra, False
+        )  # Flag up dont keep track to orient it before going down
         if kill_process:
             return
-        move_motor_keep_track(half_mast_pos)  # Flag down
+        move_motor(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
             ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps":
             ply_a_0("taps")
         led.duty_cycle = 0
-        move_motor_keep_track(0)  # Flag down
+        move_motor(0)  # Flag down
         if kill_process:
             return
     elif cfg_temp["mode"] == "raise_lower":
-        move_motor_keep_track(half_mast_pos)  # Flag up
+        move_motor(half_mast_pos)  # Flag up
         if kill_process:
             return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
             ply_a_0("reveille")
-        move_motor_keep_track(flag_deploy_max + flag_up_extras)  # Flag up
+        move_motor(flag_deploy_max + flag_up_extra)  # Flag up
         if kill_process:
             return
         wait_period = random.randint(5, 10)
@@ -514,25 +505,24 @@ def an():
             exit_early()
             if kill_process:
                 return
-        move_motor_keep_track(half_mast_pos)  # Flag down
+        move_motor(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
             ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps":
             ply_a_0("taps")
         led.duty_cycle = 0
-        move_motor_keep_track(0)  # Flag down
+        move_motor(0)  # Flag down
         if kill_process:
             return
     elif cfg_temp["mode"] == "raise_wave":
-        move_motor_keep_track(flag_deploy_max + flag_up_extra)  # Flag up
+        move_motor(flag_deploy_max)  # Flag up
+        move_motor(flag_deploy_max + flag_up_extra, False)  # Flag up dont keep track
         led.duty_cycle = 65000
         if kill_process:
             return
         while not kill_process:
             steps = random.randint(300, 600)
-            move_motor(
-                steps, "up", int(cfg["servo"]) - 5, int(cfg["servo"]) + 5, False
-            )  # Flag wave
+            asyncio.run(rn_an(steps, "up", False))  # Flag wave
             if kill_process:
                 return
             coils_off()
@@ -837,7 +827,8 @@ class ServoSet(Ste):
         spk_sentence("lrdiseng")
         cfg["servo"] = 120
         kill_process = False
-        move_motor_keep_track(flag_deploy_max + flag_up_extra)  # Flag up
+        move_motor(flag_deploy_max)  # Flag up
+        move_motor(flag_deploy_max + flag_up_extra, False)  # Flag up dont keep track
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -857,6 +848,7 @@ class ServoSet(Ste):
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
+                flag_rot.angle = 180
                 ply_a_0("all_changes_complete")
                 done = True
                 mch.go_to("base_state")
@@ -878,6 +870,9 @@ aud_en.value = True
 upd_vol(0.01)
 
 reset_motors()
+
+flash_led()
+
 st_mch.go_to("base_state")
 files.log_item("animator has started...")
 gc_col("animations started")
@@ -885,3 +880,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
+
