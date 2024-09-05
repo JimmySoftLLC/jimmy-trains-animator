@@ -20,13 +20,16 @@ import gc
 import files
 import utilities
 import psutil
+import random
+
 
 def gc_col(collection_point):
     gc.collect()
     start_mem = psutil.virtual_memory()[1]
     print("Point " + collection_point +
-                   " Available memory: {} bytes".format(start_mem))
-    
+          " Available memory: {} bytes".format(start_mem))
+
+
 gc_col("Imports gc, files")
 
 ################################################################################
@@ -59,7 +62,7 @@ b_sw = Debouncer(switch_io_4)
 
 ################################################################################
 # Setup sound
-#i2s audio is setup on pi with an overlay
+# i2s audio is setup on pi with an overlay
 
 # Setup the mixer to play wav files
 pygame.mixer.init()
@@ -73,36 +76,41 @@ media_player = vlc.MediaPlayer()
 media_player.toggle_fullscreen()
 
 movie = []
-#movie.append("/media/pi/EMBROIDERY/Videos/Addams Family Train Wreck Scenes.mp4")
+# movie.append("/media/pi/EMBROIDERY/Videos/Addams Family Train Wreck Scenes.mp4")
 movie.append("/home/pi/Videos/Addams Family Train Wreck Scenes.mp4")
-#movie.append("/home/pi/Videos/Baltimore & Ohio Railroad Passenger Train.mp4")
-#movie.append("/home/pi/Videos/Black River Railroad System.mp4")
-#movie.append("/home/pi/Videos/Classic Pennsy WideScreen DVD Preview.mp4")
-#movie.append("/home/pi/Videos/The Brave Locomotive.mp4")
-#movie.append("/home/pi/Videos/Toy Trains_Model Railroads.mp4")
+# movie.append("/home/pi/Videos/Baltimore & Ohio Railroad Passenger Train.mp4")
+# movie.append("/home/pi/Videos/Black River Railroad System.mp4")
+# movie.append("/home/pi/Videos/Classic Pennsy WideScreen DVD Preview.mp4")
+# movie.append("/home/pi/Videos/The Brave Locomotive.mp4")
+# movie.append("/home/pi/Videos/Toy Trains_Model Railroads.mp4")
 
 run_movie_cont = True
 volume = 20
 movie_index = 0
 media_player.audio_set_volume(volume)
 
+
 def play_movies():
     global movie_index
-    if movie_index > 7: movie_index = 0
+    if movie_index > 7:
+        movie_index = 0
     media = vlc.Media(movie[movie_index])
     media_player.set_media(media)
     play_movie()
-    movie_index +=1
-    
+    movie_index += 1
+
+
 def pause_movie():
     media_player.pause()
-    
+
+
 def play_movie():
     media_player.play()
 
-def rainbow(speed,duration):
+
+def rainbow(speed, duration):
     startTime = time.monotonic()
-    for j in range(0,255,1):
+    for j in range(0, 255, 1):
         for i in range(num_px):
             pixel_index = (i * 256 // num_px) + j
             led[i] = colorwheel(pixel_index & 255)
@@ -111,7 +119,7 @@ def rainbow(speed,duration):
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
-    for j in reversed(range(0,255,1)):
+    for j in reversed(range(0, 255, 1)):
         for i in range(num_px):
             pixel_index = (i * 256 // num_px) + j
             led[i] = colorwheel(pixel_index & 255)
@@ -120,17 +128,18 @@ def rainbow(speed,duration):
         timeElasped = time.monotonic()-startTime
         if timeElasped > duration:
             return
-        
+
+
 ################################################################################
 # Setup servo hardware
-m1_pwm = pwmio.PWMOut(board.D6, duty_cycle=2 ** 15, frequency=50) #D23
-m2_pwm = pwmio.PWMOut(board.D13, duty_cycle=2 ** 15, frequency=50) #D24
-m3_pwm = pwmio.PWMOut(board.D23, duty_cycle=2 ** 15, frequency=50) #D25
-m4_pwm = pwmio.PWMOut(board.D24, duty_cycle=2 ** 15, frequency=50) #D6
-m5_pwm = pwmio.PWMOut(board.D25, duty_cycle=2 ** 15, frequency=50) #D13
-m6_pwm = pwmio.PWMOut(board.D12, duty_cycle=2 ** 15, frequency=50) #D12
-m7_pwm = pwmio.PWMOut(board.D16, duty_cycle=2 ** 15, frequency=50) #D16
-m8_pwm = pwmio.PWMOut(board.D20, duty_cycle=2 ** 15, frequency=50) #D20
+m1_pwm = pwmio.PWMOut(board.D6, duty_cycle=2 ** 15, frequency=50)  # D23
+m2_pwm = pwmio.PWMOut(board.D13, duty_cycle=2 ** 15, frequency=50)  # D24
+m3_pwm = pwmio.PWMOut(board.D23, duty_cycle=2 ** 15, frequency=50)  # D25
+m4_pwm = pwmio.PWMOut(board.D24, duty_cycle=2 ** 15, frequency=50)  # D6
+m5_pwm = pwmio.PWMOut(board.D25, duty_cycle=2 ** 15, frequency=50)  # D13
+m6_pwm = pwmio.PWMOut(board.D12, duty_cycle=2 ** 15, frequency=50)  # D12
+m7_pwm = pwmio.PWMOut(board.D16, duty_cycle=2 ** 15, frequency=50)  # D16
+m8_pwm = pwmio.PWMOut(board.D20, duty_cycle=2 ** 15, frequency=50)  # D20
 
 m1_servo = servo.Servo(m1_pwm)
 m2_servo = servo.Servo(m2_pwm)
@@ -152,15 +161,16 @@ m8_servo.angle = 180
 
 ################################################################################
 # Setup neo pixels
-num_px=10
-led = neopixel_spi.NeoPixel_SPI(board.SPI(), num_px, brightness=1.0, auto_write=False)
+num_px = 10
+led = neopixel_spi.NeoPixel_SPI(
+    board.SPI(), num_px, brightness=1.0, auto_write=False)
 
 ################################################################################
 # Sd card config variables
 
 cfg = files.read_json_file("/home/pi/cfg.json")
 
-cfg["volume"]="5"
+cfg["volume"] = "5"
 print(cfg)
 
 snd_opt = files.return_directory("", "/home/pi/snds", ".wav")
@@ -218,18 +228,12 @@ def get_local_ip():
 ################################################################################
 # Setup routes
 
-import http.server
-import socket
-import json
-import os
-import gc
-
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
-        if self.path == "/get-host-name":
-            self.handle_get_hostname()
-        elif self.path == "/":
+        # if self.path == "/get-host-name":
+        #     self.handle_get_hostname()
+        if self.path == "/":
             self.handle_serve_file("/index.html")
         elif self.path.endswith(".css"):
             self.handle_serve_file(self.path, "text/css")
@@ -245,11 +249,18 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_generic_post(self.path)
 
     def handle_get_hostname(self):
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        response = {"hostname": socket.gethostname()}
-        self.wfile.write(json.dumps(response).encode('utf-8'))
+        try:
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            response = {"hostname": socket.gethostname()}
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            print("Response sent:", response)
+        except Exception as e:
+            self.send_response(500)
+            self.end_headers()
+            print("Error occurred:", e)
+
 
     def handle_serve_file(self, path, content_type="text/html"):
         file_path = path.lstrip("/")
@@ -292,7 +303,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     if 'Content-Disposition' in headers_dict:
                         disposition = headers_dict['Content-Disposition']
                         if 'filename=' in disposition:
-                            file_name = disposition.split('filename=')[1].strip('"')
+                            file_name = disposition.split(
+                                'filename=')[1].strip('"')
                             # Ensure the uploads directory exists
                             os.makedirs("uploads", exist_ok=True)
                             file_path = os.path.join("uploads", file_name)
@@ -301,10 +313,13 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                                 f.write(content)
 
                             self.send_response(200)
-                            self.send_header("Content-type", "application/json")
+                            self.send_header(
+                                "Content-type", "application/json")
                             self.end_headers()
-                            response = {"status": "success", "message": "File uploaded successfully"}
-                            self.wfile.write(json.dumps(response).encode('utf-8'))
+                            response = {"status": "success",
+                                        "message": "File uploaded successfully"}
+                            self.wfile.write(json.dumps(
+                                response).encode('utf-8'))
                             return
 
             self.send_response(400)
@@ -325,21 +340,38 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        
-        post_data_str = post_data.decode('utf-8')  # Decode the byte string to a regular string
+
+        # Decode the byte string to a regular string
+        post_data_str = post_data.decode('utf-8')
         post_data_obj = json.loads(post_data_str)
-        
-        response = {"status": "success", "data": post_data_str}
+
         if self.path == "/animation":
             self.animation_post(post_data_obj)
         elif self.path == "/mode":
             self.mode_post(post_data_obj)
-    
-    def animation_post(self, rq_d):
-        print (rq_d)
+        # elif self.path == "/defaults":
+        #     self.defaults_post(post_data_obj)
+        # elif self.path == "/speaker":
+        #     self.speaker_post(post_data_obj)
+        # elif self.path == "/lights":
+        #     self.lights_post(post_data_obj)
+        # elif self.path == "/update-host-name":
+        #     self.update_host_name_post(post_data_obj)
+        # elif self.path == "/speaker":
+        #     self.defaults_post(post_data_obj)
+        # elif self.path == "/lights":
+        #     self.defaults_post(post_data_obj)
+        # elif self.path == "/update-host-name":
+        #     self.defaults_post(post_data_obj)
+        # elif self.path == "/get-host-name":
+        #     self.get_host_name_post(post_data_obj)
+        # elif self.path == "/update-volume":
+        #     self.update_volume_post(post_data_obj)
+        # elif self.path == "/get-volume":
+        #     self.get_volume_post(post_data_obj)
 
     def mode_post(self, rq_d):
-        print (rq_d)
+        print(rq_d)
         global cfg, cont_run, ts_mode
         if rq_d["an"] == "cont_mode_on":
             cont_run = True
@@ -355,7 +387,83 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             ts_mode = False
             play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
         self.wfile.write("Utility: " + rq_d["animation"])
-    
+
+    def animation_post(self, rq_d):
+        global cfg, cont_run, ts_mode
+        cfg["option_selected"] = rq_d["an"]
+        an(cfg["option_selected"])
+        files.write_json_file("/sd/cfg.json", cfg)
+        self.wfile.write("Animation " + cfg["option_selected"] + " started.")
+
+    def defaults_post(self, rq_d):
+        global cfg
+        if rq_d["an"] == "reset_animation_timing_to_defaults":
+            for ts_fn in ts_jsons:
+                ts = files.read_json_file(
+                    "/sd/t_s_def/" + ts_fn + ".json")
+                files.write_json_file(
+                    "/sd/snds/"+ts_fn+".json", ts)
+            play_a_0("/sd/mvc/all_changes_complete.wav")
+        elif rq_d["an"] == "reset_to_defaults":
+            rst_def()
+            files.write_json_file("/sd/cfg.json", cfg)
+            play_a_0("/sd/mvc/all_changes_complete.wav")
+            st_mch.go_to('base_state')
+        self.wfile.write("Utility: " + rq_d["an"])
+
+
+    def speaker_post(self, rq_d):
+        global cfg
+        rq_d = request.json()
+        if rq_d["an"] == "speaker_test":
+            cmd_snt = "speaker_test"
+            play_a_0("/sd/mvc/left_speaker_right_speaker.wav")
+        elif rq_d["an"] == "volume_pot_off":
+            cmd_snt = "volume_pot_off"
+            cfg["volume_pot"] = False
+            files.write_json_file("/sd/cfg.json", cfg)
+            play_a_0("/sd/mvc/all_changes_complete.wav")
+        elif rq_d["an"] == "volume_pot_on":
+            cmd_snt = "volume_pot_on"
+            cfg["volume_pot"] = True
+            files.write_json_file("/sd/cfg.json", cfg)
+            play_a_0("/sd/mvc/all_changes_complete.wav")
+        self.wfile.write("Utility: " + rq_d["an"])
+
+
+    def lights_post(self, rq_d):
+        #set_hdw(rq_d["an"],0)
+        self.wfile.write("Utility: " + "Utility: set lights")
+
+    def update_host_name_post(self, rq_d):
+        global cfg
+        rq_d = request.json()
+        cfg["HOST_NAME"] = rq_d["an"]
+        files.write_json_file("/sd/cfg.json", cfg)
+        mdns.hostname = cfg["HOST_NAME"]
+        spk_web()
+        self.wfile.write(cfg["HOST_NAME"])
+
+    def get_host_name_post(self, rq_d):
+        #self.wfile.write(cfg["HOST_NAME"])
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        response = {"hostname": cfg["HOST_NAME"]}
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+
+
+    def update_volume_post(self, rq_d):
+        global cfg
+        rq_d = request.json()
+        ch_vol(rq_d["action"])
+        self.wfile.write(cfg["volume"])
+
+
+    def get_volume_post(self, rq_d):
+        self.wfile.write(cfg["volume"])
+
+
 # Get the local IP address
 local_ip = get_local_ip()
 print(f"Local IP address: {local_ip}")
@@ -366,11 +474,13 @@ handler = MyHttpRequestHandler
 httpd = socketserver.TCPServer((local_ip, PORT), handler)
 httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
+
 def start_server():
     print(f"Serving on {local_ip}:{PORT}")
     httpd.serve_forever()
 
 # Set up mDNS service info
+
 
 desc = {'path': '/'}
 info = ServiceInfo(
@@ -523,11 +633,184 @@ def spk_web():
         play_a_0("/home/pi/mvc/local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    play_a_0("/home/pi/mvc/in_your_browser.wav")   
+    play_a_0("/home/pi/mvc/in_your_browser.wav")
+
+################################################################################
+# Animation methods
+
+
+def an(f_nm):
+    global cfg, lst_opt
+    print("Filename: " + f_nm)
+    cur_opt = f_nm
+    try:
+        if f_nm == "random built in":
+            h_i = len(snd_opt) - 1
+            cur_opt = snd_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(snd_opt) > 1:
+                cur_opt = snd_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            print("Random sound option: " + f_nm)
+            print("Sound file: " + cur_opt)
+        elif f_nm == "random my":
+            h_i = len(cust_snd_opt) - 1
+            cur_opt = cust_snd_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(cust_snd_opt) > 1:
+                cur_opt = cust_snd_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            print("Random sound option: " + f_nm)
+            print("Sound file: " + cur_opt)
+        elif f_nm == "random all":
+            h_i = len(all_snd_opt) - 1
+            cur_opt = all_snd_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(all_snd_opt) > 1:
+                cur_opt = all_snd_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            print("Random sound option: " + f_nm)
+            print("Sound file: " + cur_opt)
+        if ts_mode:
+            an_ts(cur_opt)
+            gc_col("animation cleanup")
+        else:
+            an_light(cur_opt)
+            gc_col("animation cleanup")
+    except Exception as e:
+        files.log_item(e)
+        no_trk()
+        cfg["option_selected"] = "random built in"
+        return
+    gc_col("Animation complete.")
+
+def an_light(f_nm):
+    global ts_mode
+
+    cust_f = "customers_owned_music_" in f_nm
+
+    flsh_t = []
+
+    if cust_f:
+        f_nm = f_nm.replace("customers_owned_music_", "")
+        if (f_exists("/sd/customers_owned_music/" + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(
+                "/sd/customers_owned_music/" + f_nm + ".json")
+        else:
+            try:
+                flsh_t = files.read_json_file(
+                    "/sd/customers_owned_music/" + f_nm + ".json")
+            except Exception as e:
+                files.log_item(e)
+                play_a_0("/sd/mvc/no_timestamp_file_found.wav")
+                while True:
+                    l_sw.update()
+                    r_sw.update()
+                    if l_sw.fell:
+                        ts_mode = False
+                        return
+                    if r_sw.fell:
+                        ts_mode = True
+                        play_a_0("/sd/mvc/timestamp_instructions.wav")
+                        return
+    else:
+        if (f_exists("/sd/snds/" + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(
+                "/sd/snds/" + f_nm + ".json")
+
+    flsh_i = 0
+
+    if cust_f:
+        wave0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
+    else:
+        wave0 = audiocore.WaveFile(
+            open("/sd/snds/" + f_nm + ".wav", "rb"))
+    mix.voice[0].play(wave0, loop=False)
+    srt_t = time.monotonic()
+
+    ft1 = []
+    ft2 = []
+
+    while True:
+        t_past = time.monotonic()-srt_t
+
+        if flsh_i < len(flsh_t)-1:
+            ft1 = flsh_t[flsh_i].split("|")
+            ft2 = flsh_t[flsh_i+1].split("|")
+            dur = float(ft2[0]) - float(ft1[0]) - 0.25
+        else:
+            dur = 0.25
+        if dur < 0:
+            dur = 0
+        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
+            files.log_item("time elapsed: " + str(t_past) +
+                  " Timestamp: " + ft1[0])
+            if (len(ft1) == 1 or ft1[1] == ""):
+                pos = random.randint(60, 120)
+                lgt = random.randint(60, 120)
+                # loop.create_task(set_hdw_async("L0" + str(lgt) + ",S0" + str(pos),dur))           
+            # else:
+                # loop.create_task(set_hdw_async(ft1[1],dur))
+            # flsh_i += 1
+        l_sw.update()
+        if l_sw.fell and cfg["can_cancel"]:
+            mix.voice[0].stop()
+        if not mix.voice[0].playing:
+            led.fill((0, 0, 0))
+            led.show()
+            return
+        upd_vol(.1)
+
+def an_ts(f_nm):
+    print("time stamp mode")
+    global ts_mode
+
+    cust_f = "customers_owned_music_" in f_nm
+
+    t_s = []
+
+    f_nm = f_nm.replace("customers_owned_music_", "")
+
+    if cust_f:
+        wave0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
+    else:
+        wave0 = audiocore.WaveFile(
+            open("/sd/snds/" + f_nm + ".wav", "rb"))
+    mix.voice[0].play(wave0, loop=False)
+
+    startTime = time.monotonic()
+    upd_vol(.1)
+
+    while True:
+        t_elsp = round(time.monotonic()-startTime, 1)
+        r_sw.update()
+        if r_sw.fell:
+            t_s.append(str(t_elsp) + "|")
+            files.log_item(t_elsp)
+        if not mix.voice[0].playing:
+            led.fill((0, 0, 0))
+            led.show()
+            if cust_f:
+                files.write_json_file(
+                    "/sd/customers_owned_music/" + f_nm + ".json", t_s)
+            else:
+                files.write_json_file(
+                    "/sd/snds/" + f_nm + ".json", t_s)
+            break
+
+    ts_mode = False
+    play_a_0("/sd/mvc/timestamp_saved.wav")
+    play_a_0("/sd/mvc/timestamp_mode_off.wav")
+    play_a_0("/sd/mvc/animations_are_now_active.wav")
+
 
 ################################################################################
 # State Machine
-
 
 class StMch(object):
 
@@ -553,8 +836,6 @@ class StMch(object):
 # States
 
 # Abstract parent state class.
-
-
 class Ste(object):
 
     def __init__(self):
@@ -874,7 +1155,7 @@ if (web):
         server_thread = threading.Thread(target=start_server)
         server_thread.daemon = True
         server_thread.start()
-        #spk_web()
+        # spk_web()
     except OSError:
         time.sleep(5)
         files.log_item("server did not start...")
@@ -898,26 +1179,29 @@ while True:
         w_sw.update()
         b_sw.update()
         if l_sw.fell:
-            if media_player.is_playing(): pause_movie()
+            if media_player.is_playing():
+                pause_movie()
             run_movie_cont = True
-            print ("left fell")
+            print("left fell")
         if r_sw.fell:
-            print ("right fell")
+            print("right fell")
             if media_player.is_playing():
                 run_movie_cont = False
                 pause_movie()
             else:
                 play_movie()
-                rainbow(.005,5)
+                rainbow(.005, 5)
         if w_sw.fell:
-            print ("white fell")
+            print("white fell")
             volume = volume - 10
-            if volume < 0: volume = 0
+            if volume < 0:
+                volume = 0
             media_player.audio_set_volume(volume)
         if b_sw.fell:
-            print ("blue fell")
+            print("blue fell")
             volume = volume + 10
-            if volume > 100: volume = 100
+            if volume > 100:
+                volume = 100
             media_player.audio_set_volume(volume)
         time.sleep(.1)
         pass
