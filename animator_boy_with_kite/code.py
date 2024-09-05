@@ -29,7 +29,7 @@ gc_col("Imports gc, files")
 # globals
 kite_deploy_max = 1700
 lst_kite_rot_pos = 90
-lst_kite_deploy_pos = 0
+lst_kite_deploy_pos = kite_deploy_max
 kite_min = 0
 kite_max = 180
 kill_process = False
@@ -368,6 +368,7 @@ async def deploy_kite(steps, direction, spd=0.005):
         for step in seq:
             set_step(step)
             await asyncio.sleep(spd)
+        coils_off()
     async_running = False
 
 
@@ -377,6 +378,13 @@ async def rn_an(steps, direction):
     rot_k = asyncio.create_task(rotate_kite_async())
     deploy_g = asyncio.create_task(deploy_kite(steps, direction))
     await asyncio.gather(deploy_g, rot_k)
+
+
+async def rn_home(steps, direction):
+    global async_running
+    async_running = True
+    deploy_g = asyncio.create_task(deploy_kite(steps, direction))
+    await asyncio.gather(deploy_g)
 
 
 ################################################################################
@@ -421,6 +429,15 @@ def an():
     total_steps = abs(0 - lst_kite_deploy_pos)
     asyncio.run(rn_an(total_steps, "down"))
     coils_off()
+
+
+def home_motors():
+    direction = "up"
+    cfg["servo"] = 90
+    if lst_kite_deploy_pos > 0:
+        direction = "down"
+    total_steps = abs(0 - lst_kite_deploy_pos)
+    asyncio.run(rn_home(total_steps, direction))
 
 
 ################################################################################
@@ -741,6 +758,7 @@ st_mch.add(ServoSet())
 aud_en.value = True
 
 upd_vol(0.01)
+home_motors()
 st_mch.go_to("base_state")
 files.log_item("animator has started...")
 gc_col("animations started")
