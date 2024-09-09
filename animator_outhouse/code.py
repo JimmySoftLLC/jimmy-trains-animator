@@ -173,6 +173,7 @@ inst_m = cfg_inst_m["install_menu"]
 
 cont_run = False
 fig_web = False
+reset_roof = True
 
 gc_col("config setup")
 
@@ -420,8 +421,7 @@ if (web):
 gc_col("web server")
 
 ################################################################################
-# Global Methods
-
+# Misc Methods
 
 def rst_def():
     global cfg
@@ -936,6 +936,7 @@ def rnd_snd(dir, p_typ, srt, end, wait):
 
 
 def exp():
+    global reset_roof
     print("explosion")
     rnd_snd("/sd/" + cfg["rating"] + "_exp", cfg["figure"], 0, 0, False)
     time.sleep(.1)
@@ -949,6 +950,7 @@ def exp():
         mov_g_s(cfg["guy_up_position"], .05, True)
         rn_exp(0, 0, 1)
     elif cfg["figure"] == "music":
+        reset_roof = False
         rn_music(0, 1, 1)
     else:
         mov_g(cfg["guy_up_position"])
@@ -960,6 +962,8 @@ def exp():
         rn_exp(1, 0, 0)
         
 def no_exp():
+    global reset_roof
+    reset_roof = False
     print("no explosion")
     time.sleep(.1)
     led_F[0] = ((255, 147, 41))
@@ -983,7 +987,7 @@ def no_exp():
         led_F.show()
         d_snd(cfg["door_closed_position"])
 
-def rst_an():
+def rst_an(rest_roof):
     print("reset")
     led_F.fill((0, 0, 0))
     led_F.show()
@@ -992,11 +996,14 @@ def rst_an():
     mov_d(cfg["door_closed_position"])
     mov_g_s(cfg["guy_down_position"]-10, 0.001, False)
     time.sleep(.2)
-    mov_r_s(cfg["roof_closed_position"]+20, .001)
-    mov_r_s(cfg["roof_closed_position"], .05)
+    if rest_roof:
+        mov_r_s(cfg["roof_closed_position"]+20, .001)
+        mov_r_s(cfg["roof_closed_position"], .05)
 
 
 def an():
+    global reset_roof
+    reset_roof = True
     try:
         sit_d()
         run_exp = rnd_prob(cfg["explosions_freq"])
@@ -1005,7 +1012,7 @@ def an():
             exp()
         else:
             no_exp()
-        rst_an()
+        rst_an(reset_roof)
     except Exception as e:
         print(e)
         no_user_track()
