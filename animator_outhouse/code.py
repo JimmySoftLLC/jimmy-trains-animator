@@ -969,7 +969,7 @@ def no_exp():
         rn_music(0, 1, 1)
     elif cfg["figure"] == "alien":
         d_snd(cfg["door_open_position"])
-        mov_g_s(cfg["guy_down_position"]-20, 0.05, False)
+        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
         rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
         alien_tlk()
         led_F[0] = ((0, 0, 0))
@@ -977,7 +977,7 @@ def no_exp():
         d_snd(cfg["door_closed_position"])
     else:
         d_snd(cfg["door_open_position"])
-        mov_g_s(cfg["guy_down_position"]-20, 0.05, False)
+        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
         rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, True)
         led_F[0] = ((0, 0, 0))
         led_F.show()
@@ -1116,7 +1116,7 @@ class BseSt(Ste):
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif (sw == "left" or cont_run) and not fig_web:
+        elif sw == "left" or cont_run:
             an()
         elif sw == "right" and not fig_web:
             mch.go_to('main_menu')
