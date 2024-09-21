@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Stream</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        #videoStream {
+            width: 1280px;      /* Fixed width */
+            height: 720px;     /* Fixed height (16:9 aspect ratio) */
+            border: 2px solid #000;  /* Solid black border */
+            background-color: #f0f0f0; /* Gray background when no stream */
+            object-fit: cover;  /* Ensures the stream fills the area properly */
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Camera Stream</h1>
+    <img id="videoStream"/>
+    <br>
+    <button onclick="startVideo()">Start</button>
+    <button onclick="stopVideo()">Stop</button>
+
+    <script>
+        const videoElement = document.getElementById('videoStream');
+
+        function startVideo() {
+            videoElement.src = 'http://192.168.1.46:5000/video_feed';  // Replace with your Pi's URL if needed
+        }
+
+        function stopVideo() {
+            videoElement.src = '';  // Clear the source but keep dimensions
+        }
+    </script>
+</body>
+</html>
