@@ -184,30 +184,35 @@ led = neopixel_spi.NeoPixel_SPI(
 ################################################################################
 # Sd card config variables
 
-def update_media_list():
-    global snd_opt, cust_snd_opt, menu_snd_opt, ts_jsons, all_snd_opt
-    snd_opt = files.return_directory("", "/home/pi/snds", ".wav")
+cfg = files.read_json_file("/home/pi/cfg.json")
 
-    cust_snd_opt = files.return_directory(
+def upd_media():
+    global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
+    sndtrk_opt = files.return_directory("", "/home/pi/sndtrk", ".wav")
+    print("Sound tracks: " + str(sndtrk_opt))
+
+    plylst_opt = files.return_directory("plylst_", "/home/pi/plylst", ".json")
+    print("Play lists: " + str(plylst_opt))
+
+    mysndtrk_opt = files.return_directory(
         "customers_owned_music_", "/home/pi/customers_owned_music", ".wav")
+    print("My sound tracks: " + str(mysndtrk_opt))
 
     all_snd_opt = []
-    all_snd_opt.extend(snd_opt)
-    all_snd_opt.extend(cust_snd_opt)
+    all_snd_opt.extend(plylst_opt)
+    all_snd_opt.extend(sndtrk_opt)
+    all_snd_opt.extend(mysndtrk_opt)
 
     menu_snd_opt = []
-    menu_snd_opt.extend(snd_opt)
-    rnd_opt = ['random all', 'random built in', 'random my']
+    menu_snd_opt.extend(plylst_opt)
+    rnd_opt = ['rnd plylst', 'rnd sndtrk', 'rnd mysndtrk', 'rnd all']
     menu_snd_opt.extend(rnd_opt)
-    menu_snd_opt.extend(cust_snd_opt)
+    menu_snd_opt.extend(sndtrk_opt)
+    menu_snd_opt.extend(mysndtrk_opt)
+    
+    print("Menu sound tracks: " + str(menu_snd_opt))
 
-    ts_jsons = files.return_directory(
-        "", "/home/pi/t_s_def", ".json")
-
-cfg = files.read_json_file("/home/pi/cfg.json")
-print(cfg)
-
-update_media_list()
+upd_media()
 
 web = cfg["serve_webpage"]
 
@@ -456,20 +461,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def defaults_post(self, rq_d):
         global cfg
-        if rq_d["an"] == "reset_animation_timing_to_defaults":
-            for ts_fn in ts_jsons:
-                ts = files.read_json_file(
-                    "/home/pi/t_s_def/" + ts_fn + ".json")
-                files.write_json_file(
-                    "/home/pi/snds/"+ts_fn+".json", ts)
-            play_a_0("/home/pi/mvc/all_changes_complete.wav")
-        elif rq_d["an"] == "reset_to_defaults":
+        if rq_d["an"] == "reset_to_defaults":
             rst_def()
             files.write_json_file("/home/pi/cfg.json", cfg)
             play_a_0("/home/pi/mvc/all_changes_complete.wav")
             st_mch.go_to('base_state')
         self.wfile.write("Utility: " + rq_d["an"])
-
 
     def speaker_post(self, rq_d):
         global cfg
@@ -527,9 +524,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
     def get_customers_sound_tracks_post(self, rq_d):  
-        update_media_list() 
+        upd_media() 
         response = []
-        response.extend(cust_snd_opt)
+        response.extend(mysndtrk_opt)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -537,9 +534,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def get_built_in_sound_tracks_post(self, rq_d):
-        update_media_list()
+        upd_media()
         response = []
-        response.extend(snd_opt)
+        response.extend(sndtrk_opt)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -553,7 +550,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 time_stamps = files.read_json_file(
                     "/home/pi/t_s_def/" + time_stamp_file + ".json")
                 files.write_json_file(
-                    "/home/pi/snds/"+time_stamp_file+".json", time_stamps)
+                    "/home/pisndtrk/"+time_stamp_file+".json", time_stamps)
             play_a_0("/home/pi/mvc/all_changes_complete.wav")
         elif rq_d["an"] == "reset_to_defaults":
             cmd_snt = "reset_to_defaults"
@@ -757,26 +754,26 @@ def spk_web():
 
 
 def an(f_nm):
-    global cfg, lst_opt
+    global cfg, lst_opt, an_running
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
         if f_nm == "random built in":
-            h_i = len(snd_opt) - 1
-            cur_opt = snd_opt[random.randint(
+            h_i = len(sndtrk_opt) - 1
+            cur_opt = sndtrk_opt[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(snd_opt) > 1:
-                cur_opt = snd_opt[random.randint(
+            while lst_opt == cur_opt and len(sndtrk_opt) > 1:
+                cur_opt = sndtrk_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
         elif f_nm == "random my":
-            h_i = len(cust_snd_opt) - 1
-            cur_opt = cust_snd_opt[random.randint(
+            h_i = len(mysndtrk_opt) - 1
+            cur_opt = mysndtrk_opt[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(cust_snd_opt) > 1:
-                cur_opt = cust_snd_opt[random.randint(
+            while lst_opt == cur_opt and len(mysndtrk_opt) > 1:
+                cur_opt = mysndtrk_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
@@ -837,16 +834,16 @@ def an_light(f_nm):
                         play_a_0("/home/pi/mvc/timestamp_instructions.wav")
                         return
     else:
-        if (f_exists("/home/pi/snds/" + f_nm + ".json") == True):
+        if (f_exists("/home/pisndtrk/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
-                "/home/pi/snds/" + f_nm + ".json")
+                "/home/pisndtrk/" + f_nm + ".json")
 
     flsh_i = 0
 
     if cust_f:
         wave0 = "/home/pi/customers_owned_music/" + f_nm + ".wav"
     else:
-        wave0 = "/home/pi/snds/" + f_nm + ".wav"
+        wave0 = "/home/pisndtrk/" + f_nm + ".wav"
     
     play_a_0(wave0,False)
     srt_t = time.perf_counter()
@@ -900,7 +897,7 @@ def an_ts(f_nm):
     if cust_f:
         wave0 = "/home/pi/customers_owned_music/" + f_nm + ".wav"
     else:
-        wave0 = "/home/pi/snds/" + f_nm + ".wav"
+        wave0 = "/home/pisndtrk/" + f_nm + ".wav"
     play_a_0(wave0,False)
 
     startTime = time.perf_counter()
@@ -920,7 +917,7 @@ def an_ts(f_nm):
                     "/home/pi/customers_owned_music/" + f_nm + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/home/pi/snds/" + f_nm + ".json", t_s)
+                    "/home/pisndtrk/" + f_nm + ".json", t_s)
             break
 
     ts_mode = False
@@ -950,7 +947,7 @@ def set_hdw(cmd,dur):
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stop_a_0()
                     if seg[2] == "S":
-                        w0 = "/home/pi/snds/" + seg[3:] + ".wav"
+                        w0 = "/home/pisndtrk/" + seg[3:] + ".wav"
                         f_nm = seg[3:]
                     elif seg[2] == "M":
                         w0 = "/home/pi/customers_owned_music/" + seg[3:] + ".wav"
@@ -1017,6 +1014,29 @@ def set_hdw(cmd,dur):
                 print("not implemented")
     except Exception as e:
         files.log_item(e)
+
+def rbow(spd,dur):
+    st = time.monotonic()
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0,255,1):
+            for i in range(num_px):
+                pixel_index = (i * 256 // num_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            upd_vol(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0,255,1)):
+            for i in range(num_px):
+                pixel_index = (i * 256 // num_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            upd_vol(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
 
 ################################################################################
 # State Machine
