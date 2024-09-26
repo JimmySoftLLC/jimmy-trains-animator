@@ -140,9 +140,9 @@
                     concession-6
                 </button>
                 <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
-                data-url="/update-light-string">
-                sign-4
-            </button>
+                    data-url="/update-light-string">
+                    sign-4
+                </button>
             </div>
             <h2>Test lights:</h2>
             <div>
@@ -185,6 +185,66 @@
                     80
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_100" data-url="/lights"
+                    type="button">
+                    100
+                </button>
+            </div>
+            <h2>Number of light modules:</h2>
+            <div class="mui-textfield">
+                <input class="input" id="moduleNumber" type="text" placeholder="Enter 1 to 49">
+                <button id="moduleNumberSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/set-mod-num">
+                    Change
+                </button>
+                <p>
+                    Valid number of modules are from 1 to 49
+                </p>
+            </div>
+            <h2>Test lights:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000255" data-url="/lights"
+                    type="button">
+                    All 255
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000150" data-url="/lights"
+                    type="button">
+                    All 150
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000100" data-url="/lights"
+                    type="button">
+                    All 100
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00050" data-url="/lights"
+                    type="button">
+                    All 50
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L0000" data-url="/lights"
+                    type="button">
+                    All 0
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B0" data-url="/lights"
+                    type="button">
+                    Off
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B20" data-url="/lights"
+                    type="button">
+                    20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B40" data-url="/lights"
+                    type="button">
+                    40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B60" data-url="/lights"
+                    type="button">
+                    60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B80" data-url="/lights"
+                    type="button">
+                    80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B100" data-url="/lights"
                     type="button">
                     100
                 </button>
@@ -345,7 +405,7 @@
 
 <script>
 
-function createPlaylistDialog() {
+    function createPlaylistDialog() {
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
@@ -657,16 +717,15 @@ function createPlaylistDialog() {
     document.addEventListener('DOMContentLoaded', function () {
         getWebSiteUrl()
         getVolume()
-        getPlaylists()
+        // getPlaylists()
         getBuiltInSoundTracks()
         getCustomersSoundTracks()
-        getModuleNumber()
+        // getModuleNumber()
         getLightString()
     });
 
     function getLightString() {
-            // get light string
-            fetch('/get-light-string', {
+        fetch('/get-light-string', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -680,7 +739,8 @@ function createPlaylistDialog() {
             })
             .catch(function (error) {
                 console.log(error);
-            });
+            })
+    };
 
     function getCustomersSoundTracks() {
         fetch('/get-customers-sound-tracks', {
@@ -1721,7 +1781,7 @@ function createPlaylistDialog() {
 
             xhr.send(formData);
         }
-    });
+    })
 </script>
 
 </html>

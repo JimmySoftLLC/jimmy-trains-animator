@@ -481,7 +481,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
     def get_light_string_post(self, rq_d):
-        set_hdw(rq_d["an"],0)
+        # set_hdw(rq_d["an"],0)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
         self.end_headers()
@@ -550,7 +550,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 time_stamps = files.read_json_file(
                     "/home/pi/t_s_def/" + time_stamp_file + ".json")
                 files.write_json_file(
-                    "/home/pisndtrk/"+time_stamp_file+".json", time_stamps)
+                    "/home/pi/sndtrk/"+time_stamp_file+".json", time_stamps)
             play_a_0("/home/pi/mvc/all_changes_complete.wav")
         elif rq_d["an"] == "reset_to_defaults":
             cmd_snt = "reset_to_defaults"
@@ -834,16 +834,16 @@ def an_light(f_nm):
                         play_a_0("/home/pi/mvc/timestamp_instructions.wav")
                         return
     else:
-        if (f_exists("/home/pisndtrk/" + f_nm + ".json") == True):
+        if (f_exists("/home/pi/sndtrk/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
-                "/home/pisndtrk/" + f_nm + ".json")
+                "/home/pi/sndtrk/" + f_nm + ".json")
 
     flsh_i = 0
 
     if cust_f:
         wave0 = "/home/pi/customers_owned_music/" + f_nm + ".wav"
     else:
-        wave0 = "/home/pisndtrk/" + f_nm + ".wav"
+        wave0 = "/home/pi/sndtrk/" + f_nm + ".wav"
     
     play_a_0(wave0,False)
     srt_t = time.perf_counter()
@@ -897,7 +897,7 @@ def an_ts(f_nm):
     if cust_f:
         wave0 = "/home/pi/customers_owned_music/" + f_nm + ".wav"
     else:
-        wave0 = "/home/pisndtrk/" + f_nm + ".wav"
+        wave0 = "/home/pi/sndtrk/" + f_nm + ".wav"
     play_a_0(wave0,False)
 
     startTime = time.perf_counter()
@@ -917,7 +917,7 @@ def an_ts(f_nm):
                     "/home/pi/customers_owned_music/" + f_nm + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/home/pisndtrk/" + f_nm + ".json", t_s)
+                    "/home/pi/sndtrk/" + f_nm + ".json", t_s)
             break
 
     ts_mode = False
@@ -947,7 +947,7 @@ def set_hdw(cmd,dur):
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stop_a_0()
                     if seg[2] == "S":
-                        w0 = "/home/pisndtrk/" + seg[3:] + ".wav"
+                        w0 = "/home/pi/sndtrk/" + seg[3:] + ".wav"
                         f_nm = seg[3:]
                     elif seg[2] == "M":
                         w0 = "/home/pi/customers_owned_music/" + seg[3:] + ".wav"
