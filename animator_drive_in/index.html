@@ -462,7 +462,9 @@
                                 } else {
                                     button.removeAttribute('disabled');
                                 }
-                            })
+                            }
+                            
+                            )
                             .catch(function (error) {
                                 button.removeAttribute('disabled');
                                 alert('Try Again');
@@ -526,7 +528,7 @@
             if (action == "save" || action == "clear" || action == "defaults") {
                 var lightStringElement = document.getElementById('lightString');
                 lightStringValue = lightStringElement.value
-                if (action == "defaults") lightStringValue = "cane-4,cane-4,cane-4,cane-4,cane-4,cane-4,grandtree-21"
+                if (action == "defaults") lightStringValue = "projector-1, concession-6, sign-4"
                 if (action == "clear") lightStringValue = ""
                 data = {
                     text: lightStringValue,

@@ -184,26 +184,30 @@ led = neopixel_spi.NeoPixel_SPI(
 ################################################################################
 # Sd card config variables
 
+def update_media_list():
+    global snd_opt, cust_snd_opt, menu_snd_opt, ts_jsons, all_snd_opt
+    snd_opt = files.return_directory("", "/home/pi/snds", ".wav")
+
+    cust_snd_opt = files.return_directory(
+        "customers_owned_music_", "/home/pi/customers_owned_music", ".wav")
+
+    all_snd_opt = []
+    all_snd_opt.extend(snd_opt)
+    all_snd_opt.extend(cust_snd_opt)
+
+    menu_snd_opt = []
+    menu_snd_opt.extend(snd_opt)
+    rnd_opt = ['random all', 'random built in', 'random my']
+    menu_snd_opt.extend(rnd_opt)
+    menu_snd_opt.extend(cust_snd_opt)
+
+    ts_jsons = files.return_directory(
+        "", "/home/pi/t_s_def", ".json")
+
 cfg = files.read_json_file("/home/pi/cfg.json")
 print(cfg)
 
-snd_opt = files.return_directory("", "/home/pi/snds", ".wav")
-
-cust_snd_opt = files.return_directory(
-    "customers_owned_music_", "/home/pi/customers_owned_music", ".wav")
-
-all_snd_opt = []
-all_snd_opt.extend(snd_opt)
-all_snd_opt.extend(cust_snd_opt)
-
-menu_snd_opt = []
-menu_snd_opt.extend(snd_opt)
-rnd_opt = ['random all', 'random built in', 'random my']
-menu_snd_opt.extend(rnd_opt)
-menu_snd_opt.extend(cust_snd_opt)
-
-ts_jsons = files.return_directory(
-    "", "/home/pi/t_s_def", ".json")
+update_media_list()
 
 web = cfg["serve_webpage"]
 
@@ -357,18 +361,24 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.animation_post(post_data_obj)
         elif self.path == "/mode":
             self.mode_post(post_data_obj)
-        # elif self.path == "/defaults":
-        #     self.defaults_post(post_data_obj)
-        # elif self.path == "/speaker":
-        #     self.speaker_post(post_data_obj)
+        elif self.path == "/defaults":
+            self.defaults_post(post_data_obj)
+        elif self.path == "/get-built-in-sound-tracks":
+            self.get_built_in_sound_tracks_post(post_data_obj)
+        elif self.path == "/get-customers-sound-tracks":
+            self.get_customers_sound_tracks_post(post_data_obj)
+        elif self.path == "/speaker":
+            self.speaker_post(post_data_obj)
         elif self.path == "/get-light-string":
             self.get_light_string_post(post_data_obj)
-        # elif self.path == "/update-host-name":
-        #     self.update_host_name_post(post_data_obj)
+        elif self.path == "/update-host-name":
+            self.update_host_name_post(post_data_obj)
         elif self.path == "/update-light-string":
             self.update_light_string_post(post_data_obj)
-        # elif self.path == "/lights":
-        #     self.defaults_post(post_data_obj)
+        elif self.path == "/defaults":
+            self.defaults_post(post_data_obj)
+        elif self.path == "/lights":
+            self.lights_post(post_data_obj)
         elif self.path == "/update-host-name":
              self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
@@ -463,25 +473,18 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def speaker_post(self, rq_d):
         global cfg
-        rq_d = request.json()
         if rq_d["an"] == "speaker_test":
             cmd_snt = "speaker_test"
             play_a_0("/home/pi/mvc/left_speaker_right_speaker.wav")
-        elif rq_d["an"] == "volume_pot_off":
-            cmd_snt = "volume_pot_off"
-            cfg["volume_pot"] = False
-            files.write_json_file("/home/pi/cfg.json", cfg)
-            play_a_0("/home/pi/mvc/all_changes_complete.wav")
-        elif rq_d["an"] == "volume_pot_on":
-            cmd_snt = "volume_pot_on"
-            cfg["volume_pot"] = True
-            files.write_json_file("/home/pi/cfg.json", cfg)
-            play_a_0("/home/pi/mvc/all_changes_complete.wav")
-        self.wfile.write("Utility: " + rq_d["an"])
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = rq_d["an"] 
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
 
     def get_light_string_post(self, rq_d):
-        #set_hdw(rq_d["an"],0)
+        set_hdw(rq_d["an"],0)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
         self.end_headers()
@@ -523,6 +526,53 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
+    def get_customers_sound_tracks_post(self, rq_d):  
+        update_media_list() 
+        response = []
+        response.extend(cust_snd_opt)
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_built_in_sound_tracks_post(self, rq_d):
+        update_media_list()
+        response = []
+        response.extend(snd_opt)
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)   
+    
+    def defaults_post(self, rq_d):
+        global cfg
+        if rq_d["an"] == "reset_animation_timing_to_defaults":
+            for time_stamp_file in ts_jsons:
+                time_stamps = files.read_json_file(
+                    "/home/pi/t_s_def/" + time_stamp_file + ".json")
+                files.write_json_file(
+                    "/home/pi/snds/"+time_stamp_file+".json", time_stamps)
+            play_a_0("/home/pi/mvc/all_changes_complete.wav")
+        elif rq_d["an"] == "reset_to_defaults":
+            cmd_snt = "reset_to_defaults"
+            rst_def()
+            files.write_json_file("/home/pi/cfg.json", cfg)
+            play_a_0("/home/pi/mvc/all_changes_complete.wav")
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = cfg["volume"]
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+    
+    def lights_post(self, rq_d):
+        set_hdw(rq_d["an"],1)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
 # Get the local IP address
 local_ip = get_local_ip()
@@ -620,6 +670,12 @@ def play_a_0(file_name, wait_untill_done = True):
     mix.load(file_name)
     mix.play(loops=0)
     while mix.get_busy() and wait_untill_done:
+        exit_early()
+    print("done playing")
+
+
+def wait_snd():
+    while mix.get_busy():
         exit_early()
     print("done playing")
 
@@ -749,7 +805,8 @@ def an(f_nm):
     gc_col("Animation complete.")
 
 def an_light(f_nm):
-    global ts_mode
+    global ts_mode, an_running
+    an_running = True
 
     cust_f = "customers_owned_music_" in f_nm
 
@@ -772,9 +829,11 @@ def an_light(f_nm):
                     r_sw.update()
                     if l_sw.fell:
                         ts_mode = False
+                        an_running = False
                         return
                     if r_sw.fell:
                         ts_mode = True
+                        an_running = False
                         play_a_0("/home/pi/mvc/timestamp_instructions.wav")
                         return
     else:
@@ -822,13 +881,15 @@ def an_light(f_nm):
         if not mix.get_busy():
             led.fill((0, 0, 0))
             led.show()
+            an_running = False
             return
         upd_vol(.1)
 
 
 def an_ts(f_nm):
     print("time stamp mode")
-    global ts_mode
+    global ts_mode, an_running
+    an_running = True
 
     cust_f = "customers_owned_music_" in f_nm
 
@@ -867,6 +928,95 @@ def an_ts(f_nm):
     play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
     play_a_0("/home/pi/mvc/animations_are_now_active.wav")
 
+###############
+# Animation helpers
+
+br = 0
+
+def set_hdw(cmd,dur):
+    global sp, br
+    # Split the input string into segments
+    segs = cmd.split(",")
+
+    # Process each segment
+    try:
+        for seg in segs:
+            f_nm = ""
+            if seg[0] == 'E': # end an
+                return "STOP"
+            if seg[0] == 'M': # play file
+                if seg[1] == "S":
+                    stop_a_0()
+                elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
+                    stop_a_0()
+                    if seg[2] == "S":
+                        w0 = "/home/pi/snds/" + seg[3:] + ".wav"
+                        f_nm = seg[3:]
+                    elif seg[2] == "M":
+                        w0 = "/home/pi/customers_owned_music/" + seg[3:] + ".wav"
+                        f_nm = "customers_owned_music_" + seg[3:]
+                    elif seg[2] == "P":
+                        f_nm = "plylst_" + seg[3:]
+                    if seg[1] == "W" or seg[1] == "P":
+                        play_a_0(w0, False)
+                    if seg[1] == "A":    
+                        res = an(f_nm)
+                        if res == "STOP": return "STOP"
+                    if seg[1] == "W":
+                        wait_snd()
+            if seg[0] == 'L':  # lights
+                mod = (int(seg[1])*10+int(seg[2]))*2
+                mod_num = mod - 2
+                print (mod_num)
+                ind = int(seg[4])-1
+                if ind == 0:
+                    ind = 1
+                elif ind == 1:
+                    ind = 0
+                elif ind == 3:
+                    ind = 4
+                elif ind == 4:
+                    ind = 3
+                v = int(seg[5:])
+                print (v)
+                if seg[1] == "0" and seg[2] == "0":
+                    led.fill((v, v, v))
+                else:
+                    if seg[4] == "0":
+                        led[mod_num]=(v,v,v)
+                        led[mod_num+1]=(v,v,v)
+                    elif ind < 3:
+                        cur = list(led[mod_num])
+                        cur[ind] = v
+                        led[mod_num]=(cur[0],cur[1],cur[2])
+                    else:
+                        cur = list(led[mod_num+1])
+                        cur[ind-3] = v
+                        led[mod_num+1]=(cur[0],cur[1],cur[2])
+                led.show()
+            if seg[0] == 'B':  # brightness
+                br = int(seg[1:])
+                led.brightness = float(br/100)
+                led.show()
+            if seg[0] == 'F':  # fade in or out
+                v = int(seg[1])*100+int(seg[2])*10+int(seg[3])
+                s = float(seg[5:])
+                while not br == v:
+                    if br < v:
+                        br += 1
+                        led.brightness = float(br/100)
+                    else:
+                        br -= 1
+                        led.brightness = float(br/100)
+                    led.show()
+                    upd_vol(s)
+            if seg[0] == 'R':
+                v = float(seg[1:])
+                rbow(v,dur)
+            if seg[0] == 'C':
+                print("not implemented")
+    except Exception as e:
+        files.log_item(e)
 
 ################################################################################
 # State Machine
@@ -915,6 +1065,7 @@ class Ste(object):
 
 
 class BseSt(Ste):
+    global an_running
 
     def __init__(self):
         pass
@@ -942,7 +1093,7 @@ class BseSt(Ste):
             else:
                 cont_run = True
                 play_a_0("/home/pi/mvc/continuous_mode_activated.wav")
-        elif switch_state == "left" or cont_run:
+        elif switch_state == "left" or cont_run and not an_running:
             an(cfg["option_selected"])
         elif switch_state == "right":
             mch.go_to('main_menu')
