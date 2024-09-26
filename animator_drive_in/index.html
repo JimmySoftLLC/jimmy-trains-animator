@@ -76,14 +76,14 @@
             </div>
             <div class="mui-textfield">
                 <h2>Upload a File</h1>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
-                    <input type="file" id="fileInput" name="file" style="display: none;" required>            
-                </form>
-                <div id="progressContainer">
-                    <div id="progressBar">0%</div>
-                </div>
-                <p id="status"></p>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
+                        <input type="file" id="fileInput" name="file" style="display: none;" required>
+                    </form>
+                    <div id="progressContainer">
+                        <div id="progressBar">0%</div>
+                    </div>
+                    <p id="status"></p>
             </div>
         </div>
 
@@ -128,14 +128,18 @@
                 </button>
             </div>
             <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
                     data-url="/update-light-string">
-                    cane-4
+                    projector-1
                 </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
                     data-url="/update-light-string">
-                    grandtree-21
+                    concession-6
                 </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
+                data-url="/update-light-string">
+                sign-4
+            </button>
             </div>
             <h2>Test lights:</h2>
             <div>
@@ -184,15 +188,6 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="settings">
-            <h2>Volume:</h2>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
-                type="button">
-                Volume Pot On
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_off" data-url="/speaker"
-                type="button">
-                Volume Pot Off
-            </button>
             <div class="mui-textfield">
                 <input class="input" id="volume" type="number" disabled>
                 <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
@@ -261,8 +256,8 @@
 
             <p>
                 Use alphanumerics and dashes only. All names are automatically
-                appended with .local. So your website url will be something like
-                "website-name.local"
+                appended with .local:8083. So your website url will be something like
+                "website-name.local:8083"
             </p>
 
             <h2>Utilities:</h2>
@@ -631,8 +626,13 @@
             });
     });
 
-    document.getElementById('fileInput').addEventListener('change', function() {
+    document.getElementById('fileInput').addEventListener('change', function () {
         if (this.files.length > 0) {
+            document.getElementById('status').innerText = '';
+            const percentComplete = (event.loaded / event.total) * 100;
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentComplete + '%';
+            progressBar.innerText = percentComplete.toFixed(2) + '%';
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             const formData = new FormData();
@@ -641,7 +641,7 @@
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/upload', true);
 
-            xhr.upload.onprogress = function(event) {
+            xhr.upload.onprogress = function (event) {
                 if (event.lengthComputable) {
                     const percentComplete = (event.loaded / event.total) * 100;
                     const progressBar = document.getElementById('progressBar');
@@ -650,7 +650,7 @@
                 }
             };
 
-            xhr.onload = function() {
+            xhr.onload = function () {
                 if (xhr.status === 200) {
                     document.getElementById('status').innerText = 'File uploaded successfully!';
                     document.getElementById('progressBar').style.backgroundColor = '#4caf50';
@@ -660,7 +660,7 @@
                 }
             };
 
-            xhr.onerror = function() {
+            xhr.onerror = function () {
                 document.getElementById('status').innerText = 'File upload failed!';
                 document.getElementById('progressBar').style.backgroundColor = '#f44336';
             };
