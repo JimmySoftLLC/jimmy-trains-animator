@@ -270,24 +270,24 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self.handle_generic_post(self.path)
 
-    def handle_get_hostname(self):
-        try:
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            response = {"hostname": socket.gethostname()}
-            self.wfile.write(json.dumps(response).encode('utf-8'))
-            print("Response sent:", response)
-        except Exception as e:
-            self.send_response(500)
-            self.end_headers()
-            print("Error occurred:", e)
-
-
     def handle_serve_file(self, path, content_type="text/html"):
         file_path = path.lstrip("/")
         try:
             with open(file_path, 'rb') as file:
+                self.send_response(200)
+                self.send_header("Content-type", content_type)
+                self.end_headers()
+                self.wfile.write(file.read())
+        except FileNotFoundError:
+            self.send_response(404)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            self.wfile.write(b"File not found")
+
+
+    def handle_serve_file_name(self, f_n, content_type="text/html"):
+        try:
+            with open(f_n, 'rb') as file:
                 self.send_response(200)
                 self.send_header("Content-type", content_type)
                 self.end_headers()
@@ -392,6 +392,66 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
              self.update_volume_post(post_data_obj)
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
+        elif self.path == "/get-scripts":
+            self.get_scripts_post(post_data_obj)
+        elif self.path == "/create-playlist":
+            self.create_playlist_post(post_data_obj)
+        elif self.path == "/get-animation":
+            self.get_animation_post(post_data_obj)
+
+    def get_animation_post(self, rq_d):
+        global cfg, cont_run, ts_mode
+        snd_f = rq_d["an"]
+        if "plylst_" in snd_f:
+            snd_f = snd_f.replace("plylst_", "")
+            if (f_exists("/home/pi/plylst/" + snd_f + ".json") == True):
+                f_n = "/home/pi/plylst/" + snd_f + ".json"
+                self.handle_serve_file_name(f_n)
+                return
+            else:
+                f_n = "/home/pi/t_s_def/timestamp mode.json"
+                self.handle_serve_file_name(f_n)
+                return
+        if "customers_owned_music_" in snd_f:
+            snd_f = snd_f.replace("customers_owned_music_", "")
+            if (f_exists("/home/pi/customers_owned_music/" + snd_f + ".json") == True):
+                f_n = "/home/pi/customers_owned_music/" + snd_f + ".json"
+                self.handle_serve_file_name(f_n)
+            else:
+                f_n = "/home/pi/t_s_def/timestamp mode.json"
+                self.handle_serve_file_name(f_n)
+                return
+        else:
+            if (f_exists("/home/pi/sndtrk/" + snd_f + ".json") == True):
+                f_n = "/home/pi/sndtrk/" + snd_f + ".json"
+                self.handle_serve_file_name(f_n)
+                return
+            else:
+                f_n = "/home/pi/t_s_def/timestamp mode.json"
+                self.handle_serve_file_name(f_n)
+                return
+            
+    def get_scripts_post(self, rq_d):
+        sounds = []
+        sounds.extend(plylst_opt)
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        response = sounds
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)  
+
+    def create_playlist_post(self, rq_d):
+        global data
+        f_n="/home/pi/plylst/" + rq_d["fn"] + ".json"
+        files.write_json_file(f_n, ["0.0|", "1.0|"])
+        upd_media()
+        gc_col("created playlist")
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = "created " + rq_d["fn"] + " playlist"
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
     def update_light_string_post(self, rq_d):
         global cfg

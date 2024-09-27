@@ -65,7 +65,9 @@
                 type="button">
                 Random all sound tracks
             </button>
-            <h2>Built in sound tracks:</h2>
+            <h2>Playlists:</h2>
+            <div id="playlistContainer"></div>
+            <h2>Sound tracks:</h2>
             <div id="builtInTracksContainer"></div>
             <h2>Animation settings:</h2>
             <div>
@@ -717,7 +719,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         getWebSiteUrl()
         getVolume()
-        // getPlaylists()
+        getPlaylists()
         getBuiltInSoundTracks()
         getCustomersSoundTracks()
         // getModuleNumber()
