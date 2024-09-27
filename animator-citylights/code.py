@@ -129,7 +129,7 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-def getAll():
+def upd_media():
     global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
     sndtrk_opt = files.return_directory("", "/sd/sndtrk", ".wav")    
     print("Sound tracks: " + str(sndtrk_opt))
@@ -155,7 +155,7 @@ def getAll():
     
     print("Sound tracks: " + str(menu_snd_opt))
 
-getAll()
+upd_media()
 
 ts_jsons = files.return_directory(
     "", "/sd/t_s_def", ".json")
@@ -443,7 +443,7 @@ if (web):
             snd_f = rq_d["fn"].replace("plylst_", "")
             f_n = "/sd/plylst/" + snd_f + ".json"
             os.remove(f_n)
-            getAll()
+            upd_media()
             gc_col("get data")
             return JSONResponse(request, "file deleted")
         data = []
@@ -471,7 +471,7 @@ if (web):
                         f_n = "/sd/sndtrk/" + \
                             rq_d[3] + ".json"
                     files.write_json_file(f_n, data)
-                    getAll()
+                    upd_media()
                     data = []
                     gc_col("get data")
                     
@@ -487,7 +487,7 @@ if (web):
             rq_d = request.json()
             f_n="/sd/plylst/" + rq_d["fn"] + ".json"
             files.write_json_file(f_n, ["0.0|", "1.0|"])
-            getAll()
+            upd_media()
             gc_col("created playlist")
             return Response(request, "success")
         
@@ -499,7 +499,7 @@ if (web):
             fo="/sd/plylst/" + snd + ".json"
             fn="/sd/plylst/" + rq_d["fn"] + ".json"
             os.rename(fo,fn)
-            getAll()
+            upd_media()
             gc_col("renamed playlist")
             return Response(request, "success")  
 
