@@ -446,8 +446,8 @@ if (web):
             upd_media()
             gc_col("get data")
             return JSONResponse(request, "file deleted")
+        
         data = []
-
         @server.route("/save-data", [POST])
         def btn(request: Request):
             global data
