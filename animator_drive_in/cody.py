@@ -398,6 +398,100 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.create_playlist_post(post_data_obj)
         elif self.path == "/get-animation":
             self.get_animation_post(post_data_obj)
+        elif self.path == "/delete-playlist":
+            self.delete_playlist_post(post_data_obj)
+        elif self.path == "/save-data":
+            self.save_data_post(post_data_obj)
+        elif self.path == "/rename-playlist":
+            self.rename_playlist_post(post_data_obj)
+        elif self.path == "/stop":
+            self.stop_post(post_data_obj)
+        elif self.path == "/test-animation":
+            self.test_animation_post(post_data_obj)
+
+    
+    def test_animation_post(self, rq_d):
+        set_hdw(rq_d["an"],3)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = "Set hardware: " + rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        print("Response sent:", response)
+
+    def stop_post(self, rq_d):
+        rst_an()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = "rst an"
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        print("Response sent:", response)
+
+    def rename_playlist_post(self, rq_d):
+        global data
+        snd = rq_d["fo"].replace("plylst_", "")
+        fo="/home/pi/plylst/" + snd + ".json"
+        fn="/home/pi/plylst/" + rq_d["fn"] + ".json"
+        os.rename(fo,fn)
+        upd_media()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = "your response message"
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        print("Response sent:", response)
+   
+    data = []
+    def save_data_post(self, rq_d):
+        global data
+        try:
+            if rq_d[0] == 0:
+                data = []
+            data.extend(rq_d[2])
+            if rq_d[0] == rq_d[1]:
+                f_n = ""
+                an = rq_d[3].split("_")
+                if "plylst" == an[0]:
+                    snd_f = rq_d[3].replace("plylst_", "")
+                    f_n = "/home/pi/plylst/" + \
+                        snd_f + ".json"
+                elif "customers" == an[0]:
+                    snd_f = rq_d[3].replace("customers_owned_music_", "")
+                    f_n = "/home/pi/customers_owned_music/" + \
+                        snd_f + ".json" 
+                else:
+                    f_n = "/home/pi/sndtrk/" + \
+                        rq_d[3] + ".json"
+                files.write_json_file(f_n, data)
+                upd_media()
+                data = []    
+        except:
+            data = []
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+            self.end_headers()
+            response = "out of memory"
+            self.wfile.write(response.encode('utf-8'))  # Write the string directly
+            print("Response sent:", response)
+            return
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = "success"
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        print("Response sent:", response)         
+
+    def delete_playlist_post(self, rq_d):
+        snd_f = rq_d["fn"].replace("plylst_", "")
+        f_n = "/home/pi/plylst/" + snd_f + ".json"
+        os.remove(f_n)
+        upd_media()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        self.end_headers()
+        response = rq_d["fn"] + " playlist file deleted"
+        self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
     def get_animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
@@ -541,7 +635,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
     def get_light_string_post(self, rq_d):
-        # set_hdw(rq_d["an"],0)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
         self.end_headers()
@@ -638,7 +731,7 @@ print(f"Local IP address: {local_ip}")
 # Set up the HTTP server
 PORT = 8083  # Use port 80 for default HTTP access
 handler = MyHttpRequestHandler
-httpd = socketserver.TCPServer((local_ip, PORT), handler)
+httpd = socketserver.TCPServer(('0.0.0.0', PORT), handler)
 httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 
@@ -749,6 +842,10 @@ def exit_early():
     if l_sw.fell:
         mix.stop()
 
+def rst_an():
+    stop_a_0()
+    led.fill((0, 0, 0))
+    led.show()
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -1057,7 +1154,7 @@ def set_hdw(cmd,dur):
                 led.show()
             if seg[0] == 'F':  # fade in or out
                 v = int(seg[1])*100+int(seg[2])*10+int(seg[3])
-                s = float(seg[5:])
+                s = float(seg[4:])
                 while not br == v:
                     if br < v:
                         br += 1

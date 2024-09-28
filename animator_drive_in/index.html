@@ -1529,6 +1529,8 @@
         row.appendChild(anCell);
 
         var actionCell = document.createElement("td");
+        actionCell.style.paddingTop = "0px";  // Adjust top padding
+        actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
 
         var testButton = createTestButton();
         actionCell.appendChild(testButton);
@@ -1549,6 +1551,8 @@
 
     function createEditableCell(value, widthVal) {
         var cell = document.createElement("td");
+        cell.style.paddingTop = "0px";  // Adjust top padding
+        cell.style.paddingBottom = "0px";  // Adjust bottom padding
         var input = document.createElement("input");
         input.type = "text";
         input.className = "pure-input-rounded";
