@@ -4,6 +4,7 @@ def return_text_template(self, rq_d):
     self.end_headers()
     response = "your response message"
     self.wfile.write(response.encode('utf-8'))  # Write the string directly
+    print("Response sent:", response)
 
 def return_object_template(self, rq_d):
     self.send_response(200)
