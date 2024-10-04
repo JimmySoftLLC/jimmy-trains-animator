@@ -232,6 +232,7 @@ add_snd = cfg_add_song["add_sounds_animate"]
 cont_run = False
 ts_mode = False
 lst_opt = ''
+an_running = False
 
 
 ################################################################################
@@ -731,7 +732,7 @@ print(f"Local IP address: {local_ip}")
 # Set up the HTTP server
 PORT = 8083  # Use port 80 for default HTTP access
 handler = MyHttpRequestHandler
-httpd = socketserver.TCPServer(('0.0.0.0', PORT), handler)
+httpd = socketserver.TCPServer((local_ip, PORT), handler)
 httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 
