@@ -33,11 +33,14 @@ def print_directory(path, tabs=0):
         if isdir:
             print_directory(path + "/" + file, tabs + 1)
 
-def return_directory(prefix, path, fileType):
+def return_directory(prefix, path, fileType, remove_ext = True):
     file_list = []
     for file in os.listdir(path):  
         if "._" not in file and fileType in file:
-            file_name = prefix + file.replace(fileType, '')
+            if remove_ext:
+                file_name = prefix + file.replace(fileType, '')
+            else:
+                file_name = prefix + file
             file_list.append(file_name)
     file_list.sort()
     return file_list

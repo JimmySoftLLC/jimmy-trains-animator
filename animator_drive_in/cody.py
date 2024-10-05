@@ -26,6 +26,7 @@ aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
+
 def f_exists(filename):
     try:
         status = os.stat(filename)
@@ -34,15 +35,17 @@ def f_exists(filename):
         f_exists = False
     return f_exists
 
+
 def gc_col(collection_point):
     gc.collect()
     start_mem = psutil.virtual_memory()[1]
     print("Point " + collection_point +
           " Available memory: {} bytes".format(start_mem))
-    
+
 
 def restart_pi():
     os.system('sudo reboot')
+
 
 def restart_pi_timer():
     delay = 5
@@ -91,27 +94,6 @@ mix = pygame.mixer.music
 media_player = vlc.MediaPlayer()
 media_player.toggle_fullscreen()
 
-movie = []
-# movie.append("/media/pi/EMBROIDERY/Videos/Addams Family Train Wreck Scenes.mp4")
-movie.append("/home/pi/Videos/Addams Family Train Wreck Scenes.mp4")
-# movie.append("/home/pi/Videos/Baltimore & Ohio Railroad Passenger Train.mp4")
-# movie.append("/home/pi/Videos/Black River Railroad System.mp4")
-# movie.append("/home/pi/Videos/Classic Pennsy WideScreen DVD Preview.mp4")
-# movie.append("/home/pi/Videos/The Brave Locomotive.mp4")
-# movie.append("/home/pi/Videos/Toy Trains_Model Railroads.mp4")
-
-run_movie_cont = True
-movie_index = 0
-
-def play_movies():
-    global movie_index
-    if movie_index > 7:
-        movie_index = 0
-    media = vlc.Media(movie[movie_index])
-    media_player.set_media(media)
-    play_movie()
-    movie_index += 1
-
 
 def pause_movie():
     media_player.pause()
@@ -120,34 +102,13 @@ def pause_movie():
 def play_movie():
     media_player.play()
 
+
 def play_movie_file(movie_filename):
     media = vlc.Media(movie_filename)
     media_player.set_media(media)
     media_player.play()
     while not media_player.is_playing():
         upd_vol(.1)
-
-
-def rainbow(speed, duration):
-    startTime = time.perf_counter()
-    for j in range(0, 255, 1):
-        for i in range(num_px):
-            pixel_index = (i * 256 // num_px) + j
-            led[i] = colorwheel(pixel_index & 255)
-        led.show()
-        time.sleep(speed)
-        timeElasped = time.perf_counter()-startTime
-        if timeElasped > duration:
-            return
-    for j in reversed(range(0, 255, 1)):
-        for i in range(num_px):
-            pixel_index = (i * 256 // num_px) + j
-            led[i] = colorwheel(pixel_index & 255)
-        led.show()
-        time.sleep(speed)
-        timeElasped = time.perf_counter()-startTime
-        if timeElasped > duration:
-            return
 
 
 ################################################################################
@@ -170,14 +131,14 @@ m6_servo = servo.Servo(m6_pwm)
 m7_servo = servo.Servo(m7_pwm)
 m8_servo = servo.Servo(m8_pwm)
 
-m1_servo.angle = 180
-m2_servo.angle = 180
-m3_servo.angle = 180
-m4_servo.angle = 180
-m5_servo.angle = 180
-m6_servo.angle = 180
-m7_servo.angle = 180
-m8_servo.angle = 180
+m1_servo.angle = 90
+m2_servo.angle = 90
+m3_servo.angle = 90
+m4_servo.angle = 90
+m5_servo.angle = 90
+m6_servo.angle = 90
+m7_servo.angle = 90
+m8_servo.angle = 90
 
 ################################################################################
 # Setup neo pixels
@@ -190,16 +151,22 @@ led = neopixel_spi.NeoPixel_SPI(
 
 cfg = files.read_json_file("/home/pi/cfg.json")
 
+
 def upd_media():
     global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
-    sndtrk_opt = files.return_directory("", "/home/pi/sndtrk", ".wav")
+    sndtrk_opt = files.return_directory("", "/home/pi/sndtrk", ".wav", False)
+    video_opt = files.return_directory("", "/home/pi/sndtrk", ".mp4", False)
+    sndtrk_opt.extend(video_opt)
     print("Sound tracks: " + str(sndtrk_opt))
 
-    plylst_opt = files.return_directory("plylst_", "/home/pi/plylst", ".json")
+    plylst_opt = files.return_directory("plylst_", "/home/pi/plylst", ".json", True)
     print("Play lists: " + str(plylst_opt))
 
     mysndtrk_opt = files.return_directory(
-        "customers_owned_music_", "/home/pi/customers_owned_music", ".wav")
+        "customers_owned_music_", "/home/pi/customers_owned_music", ".wav", False)
+    myvideo_opt = files.return_directory(
+        "customers_owned_music_", "/home/pi/customers_owned_music", ".mp4", False)
+    mysndtrk_opt.extend(myvideo_opt)
     print("My sound tracks: " + str(mysndtrk_opt))
 
     all_snd_opt = []
@@ -213,8 +180,9 @@ def upd_media():
     menu_snd_opt.extend(rnd_opt)
     menu_snd_opt.extend(sndtrk_opt)
     menu_snd_opt.extend(mysndtrk_opt)
-    
+
     print("Menu sound tracks: " + str(menu_snd_opt))
+
 
 upd_media()
 
@@ -253,8 +221,10 @@ def wait_for_network():
             print("Waiting for network...")
             time.sleep(1)
 
+
 # Wait for the network to be ready before continuing
 wait_for_network()
+
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -270,6 +240,7 @@ def get_local_ip():
 
 ################################################################################
 # Setup routes
+
 
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
@@ -302,7 +273,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(b"File not found")
-
 
     def handle_serve_file_name(self, f_n, content_type="text/html"):
         try:
@@ -404,11 +374,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/lights":
             self.lights_post(post_data_obj)
         elif self.path == "/update-host-name":
-             self.update_host_name_post(post_data_obj)
+            self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
-             self.get_host_name_post(post_data_obj)
+            self.get_host_name_post(post_data_obj)
         elif self.path == "/update-volume":
-             self.update_volume_post(post_data_obj)
+            self.update_volume_post(post_data_obj)
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-scripts":
@@ -428,11 +398,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/test-animation":
             self.test_animation_post(post_data_obj)
 
-    
     def test_animation_post(self, rq_d):
-        set_hdw(rq_d["an"],3)
+        set_hdw(rq_d["an"], 3)
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "Set hardware: " + rq_d["an"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
@@ -441,7 +411,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def stop_post(self, rq_d):
         rst_an()
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "rst an"
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
@@ -450,18 +421,20 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def rename_playlist_post(self, rq_d):
         global data
         snd = rq_d["fo"].replace("plylst_", "")
-        fo="/home/pi/plylst/" + snd + ".json"
-        fn="/home/pi/plylst/" + rq_d["fn"] + ".json"
-        os.rename(fo,fn)
+        fo = "/home/pi/plylst/" + snd + ".json"
+        fn = "/home/pi/plylst/" + rq_d["fn"] + ".json"
+        os.rename(fo, fn)
         upd_media()
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "your response message"
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
         print("Response sent:", response)
-   
+
     data = []
+
     def save_data_post(self, rq_d):
         global data
         try:
@@ -478,28 +451,31 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 elif "customers" == an[0]:
                     snd_f = rq_d[3].replace("customers_owned_music_", "")
                     f_n = "/home/pi/customers_owned_music/" + \
-                        snd_f + ".json" 
+                        snd_f + ".json"
                 else:
                     f_n = "/home/pi/sndtrk/" + \
                         rq_d[3] + ".json"
                 files.write_json_file(f_n, data)
                 upd_media()
-                data = []    
+                data = []
         except:
             data = []
             self.send_response(500)
-            self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+            # Change the content type to text/plain
+            self.send_header("Content-type", "text/plain")
             self.end_headers()
             response = "out of memory"
-            self.wfile.write(response.encode('utf-8'))  # Write the string directly
+            # Write the string directly
+            self.wfile.write(response.encode('utf-8'))
             print("Response sent:", response)
             return
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "success"
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
-        print("Response sent:", response)         
+        print("Response sent:", response)
 
     def delete_playlist_post(self, rq_d):
         snd_f = rq_d["fn"].replace("plylst_", "")
@@ -507,7 +483,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         os.remove(f_n)
         upd_media()
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["fn"] + " playlist file deleted"
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
@@ -543,7 +520,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 f_n = "/home/pi/t_s_def/timestamp mode.json"
                 self.handle_serve_file_name(f_n)
                 return
-            
+
     def get_scripts_post(self, rq_d):
         sounds = []
         sounds.extend(plylst_opt)
@@ -552,16 +529,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = sounds
         self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)  
+        print("Response sent:", response)
 
     def create_playlist_post(self, rq_d):
         global data
-        f_n="/home/pi/plylst/" + rq_d["fn"] + ".json"
+        f_n = "/home/pi/plylst/" + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
         gc_col("created playlist")
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "created " + rq_d["fn"] + " playlist"
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
@@ -571,15 +549,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
             cfg["light_string"] = rq_d["text"]
             print("action: " +
-                    rq_d["action"] + " data: " + cfg["light_string"])
+                  rq_d["action"] + " data: " + cfg["light_string"])
             files.write_json_file("/home/pi/cfg.json", cfg)
             # upd_l_str()
             play_a_0("/home/pi/mvc/all_changes_complete.wav")
             self.send_response(200)
-            self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+            # Change the content type to text/plain
+            self.send_header("Content-type", "text/plain")
             self.end_headers()
             response = cfg["light_string"]
-            self.wfile.write(response.encode('utf-8'))  # Write the string directly
+            # Write the string directly
+            self.wfile.write(response.encode('utf-8'))
             return
         if cfg["light_string"] == "":
             cfg["light_string"] = rq_d["text"]
@@ -587,12 +567,13 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg["light_string"] = cfg["light_string"] + \
                 "," + rq_d["text"]
         print("action: " + rq_d["action"] +
-                " data: " + cfg["light_string"])
+              " data: " + cfg["light_string"])
         files.write_json_file("/home/pi/cfg.json", cfg)
         # upd_l_str()
         play_a_0("/home/pi/mvc//all_changes_complete.wav")
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["light_string"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
@@ -618,7 +599,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = {"mode processed": rq_d["an"]}
         self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)    
+        print("Response sent:", response)
 
     def animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
@@ -630,7 +611,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = {"Ran animation": cfg["option_selected"]}
         self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)    
+        print("Response sent:", response)
 
     def defaults_post(self, rq_d):
         global cfg
@@ -647,15 +628,16 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cmd_snt = "speaker_test"
             play_a_0("/home/pi/mvc/left_speaker_right_speaker.wav")
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = rq_d["an"] 
+        response = rq_d["an"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
-
 
     def get_light_string_post(self, rq_d):
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["light_string"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
@@ -667,14 +649,16 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         spk_web()
         restart_pi_timer()
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["HOST_NAME"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
     def get_host_name_post(self, rq_d):
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["HOST_NAME"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
@@ -683,20 +667,22 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         global cfg
         ch_vol(rq_d["action"])
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
     def get_volume_post(self, rq_d):
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
 
-    def get_customers_sound_tracks_post(self, rq_d):  
-        upd_media() 
+    def get_customers_sound_tracks_post(self, rq_d):
+        upd_media()
         response = []
         response.extend(mysndtrk_opt)
         self.send_response(200)
@@ -713,8 +699,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)   
-    
+        print("Response sent:", response)
+
     def defaults_post(self, rq_d):
         global cfg
         if rq_d["an"] == "reset_animation_timing_to_defaults":
@@ -730,18 +716,21 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             files.write_json_file("/home/pi/cfg.json", cfg)
             play_a_0("/home/pi/mvc/all_changes_complete.wav")
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
-    
+
     def lights_post(self, rq_d):
-        set_hdw(rq_d["an"],1)
+        set_hdw(rq_d["an"], 1)
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")  # Change the content type to text/plain
+        # Change the content type to text/plain
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["an"]
         self.wfile.write(response.encode('utf-8'))  # Write the string directly
+
 
 # Get the local IP address
 local_ip = get_local_ip()
@@ -757,6 +746,7 @@ httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 def start_server():
     print(f"Serving on {local_ip}:{PORT}")
     httpd.serve_forever()
+
 
 # Set up mDNS service info
 name_str = cfg["HOST_NAME"] + "._http._tcp.local."
@@ -831,7 +821,7 @@ def ch_vol(action):
     spk_str(cfg["volume"], False)
 
 
-def play_a_0(file_name, wait_untill_done = True):
+def play_a_0(file_name, wait_untill_done=True):
     print("playing " + file_name)
     if mix.get_busy():
         mix.stop()
@@ -862,10 +852,12 @@ def exit_early():
     if l_sw.fell:
         mix.stop()
 
+
 def rst_an():
     stop_a_0()
     led.fill((0, 0, 0))
     led.show()
+
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -930,6 +922,13 @@ def spk_web():
 # Animation methods
 
 
+def stop_all_media():
+    mix.stop()
+    media_player.stop()
+    led.fill((0, 0, 0))
+    led.show()
+
+
 def an(f_nm):
     global cfg, lst_opt, an_running
     print("Filename: " + f_nm)
@@ -978,6 +977,7 @@ def an(f_nm):
         return
     gc_col("Animation complete.")
 
+
 def an_light(f_nm):
     global ts_mode, an_running
     an_running = True
@@ -985,18 +985,23 @@ def an_light(f_nm):
     upd_vol(.1)
 
     cust_f = "customers_owned_music_" in f_nm
+    is_video = ".mp4" in f_nm
+    json_fn = f_nm.replace(".mp4", "")
+    json_fn = json_fn.replace(".wav", "")
+    json_fn = json_fn.replace("customers_owned_music_", "")
 
     flsh_t = []
 
+
     if cust_f:
         f_nm = f_nm.replace("customers_owned_music_", "")
-        if (f_exists("/home/pi/customers_owned_music/" + f_nm + ".json") == True):
+        if (f_exists("/home/pi/customers_owned_music/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
-                "/home/pi/customers_owned_music/" + f_nm + ".json")
+                "/home/pi/customers_owned_music/" + json_fn + ".json")
         else:
             try:
                 flsh_t = files.read_json_file(
-                    "/home/pi/customers_owned_music/" + f_nm + ".json")
+                    "/home/pi/customers_owned_music/" + json_fn + ".json")
             except Exception as e:
                 files.log_item(e)
                 play_a_0("/home/pi/mvc/no_timestamp_file_found.wav")
@@ -1013,20 +1018,22 @@ def an_light(f_nm):
                         play_a_0("/home/pi/mvc/timestamp_instructions.wav")
                         return
     else:
-        if (f_exists("/home/pi/sndtrk/" + f_nm + ".json") == True):
+        if (f_exists("/home/pi/sndtrk/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
-                "/home/pi/sndtrk/" + f_nm + ".json")
+                "/home/pi/sndtrk/" + json_fn + ".json")
 
     flsh_i = 0
 
     if cust_f:
-        wave0 = "/home/pi/customers_owned_music/" + f_nm + ".wav"
+        media0 = "/home/pi/customers_owned_music/" + f_nm
     else:
-        wave0 = "/home/pi/sndtrk/" + f_nm + ".wav"
-    
-    play_movie_file("BeautifulThings.mp4")
-    
-    #play_a_0(wave0,False)
+        media0 = "/home/pi/sndtrk/" + f_nm
+
+    if is_video:
+        play_movie_file(media0)
+    else:
+        play_a_0(media0, False)
+
     srt_t = time.perf_counter()
 
     ft1 = []
@@ -1045,11 +1052,11 @@ def an_light(f_nm):
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item("time elapsed: " + str(t_past) +
-                  " Timestamp: " + ft1[0])
+                           " Timestamp: " + ft1[0])
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                # loop.create_task(set_hdw_async("L0" + str(lgt) + ",S0" + str(pos),dur))           
+                # loop.create_task(set_hdw_async("L0" + str(lgt) + ",S0" + str(pos),dur))
             # else:
                 # loop.create_task(set_hdw_async(ft1[1],dur))
             flsh_i += 1
@@ -1058,9 +1065,7 @@ def an_light(f_nm):
             mix.stop()
             media_player.stop()
         if not mix.get_busy() and not media_player.is_playing():
-            media_player.stop()
-            led.fill((0, 0, 0))
-            led.show()
+            stop_all_media()
             an_running = False
             return
         upd_vol(.1)
@@ -1072,16 +1077,24 @@ def an_ts(f_nm):
     an_running = True
 
     cust_f = "customers_owned_music_" in f_nm
+    is_video = ".mp4" in f_nm
+    json_fn = f_nm.replace(".mp4", "")
+    json_fn = json_fn.replace(".wav", "")
+    json_fn = json_fn.replace("customers_owned_music_", "")
 
     t_s = []
 
     f_nm = f_nm.replace("customers_owned_music_", "")
 
     if cust_f:
-        wave0 = "/home/pi/customers_owned_music/" + f_nm + ".wav"
+        media0 = "/home/pi/customers_owned_music/" + f_nm
     else:
-        wave0 = "/home/pi/sndtrk/" + f_nm + ".wav"
-    play_a_0(wave0,False)
+        media0 = "/home/pi/sndtrk/" + f_nm
+
+    if is_video:
+        play_movie_file(media0)
+    else:
+        play_a_0(media0, False)
 
     startTime = time.perf_counter()
     upd_vol(.1)
@@ -1092,28 +1105,31 @@ def an_ts(f_nm):
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
-        if not mix.get_busy():
+        if not mix.get_busy() and not media_player.is_playing():
             led.fill((0, 0, 0))
             led.show()
             if cust_f:
                 files.write_json_file(
-                    "/home/pi/customers_owned_music/" + f_nm + ".json", t_s)
+                    "/home/pi/customers_owned_music/" + json_fn + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/home/pi/sndtrk/" + f_nm + ".json", t_s)
+                    "/home/pi/sndtrk/" + json_fn + ".json", t_s)
             break
 
     ts_mode = False
+    stop_all_media()
     play_a_0("/home/pi/mvc/timestamp_saved.wav")
     play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
     play_a_0("/home/pi/mvc/animations_are_now_active.wav")
+
 
 ###############
 # Animation helpers
 
 br = 0
 
-def set_hdw(cmd,dur):
+
+def set_hdw(cmd, dur):
     global sp, br
     # Split the input string into segments
     segs = cmd.split(",")
@@ -1122,9 +1138,9 @@ def set_hdw(cmd,dur):
     try:
         for seg in segs:
             f_nm = ""
-            if seg[0] == 'E': # end an
+            if seg[0] == 'E':  # end an
                 return "STOP"
-            if seg[0] == 'M': # play file
+            if seg[0] == 'M':  # play file
                 if seg[1] == "S":
                     stop_a_0()
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
@@ -1133,21 +1149,23 @@ def set_hdw(cmd,dur):
                         w0 = "/home/pi/sndtrk/" + seg[3:] + ".wav"
                         f_nm = seg[3:]
                     elif seg[2] == "M":
-                        w0 = "/home/pi/customers_owned_music/" + seg[3:] + ".wav"
+                        w0 = "/home/pi/customers_owned_music/" + \
+                            seg[3:] + ".wav"
                         f_nm = "customers_owned_music_" + seg[3:]
                     elif seg[2] == "P":
                         f_nm = "plylst_" + seg[3:]
                     if seg[1] == "W" or seg[1] == "P":
                         play_a_0(w0, False)
-                    if seg[1] == "A":    
+                    if seg[1] == "A":
                         res = an(f_nm)
-                        if res == "STOP": return "STOP"
+                        if res == "STOP":
+                            return "STOP"
                     if seg[1] == "W":
                         wait_snd()
             if seg[0] == 'L':  # lights
                 mod = (int(seg[1])*10+int(seg[2]))*2
                 mod_num = mod - 2
-                print (mod_num)
+                print(mod_num)
                 ind = int(seg[4])-1
                 if ind == 0:
                     ind = 1
@@ -1158,21 +1176,21 @@ def set_hdw(cmd,dur):
                 elif ind == 4:
                     ind = 3
                 v = int(seg[5:])
-                print (v)
+                print(v)
                 if seg[1] == "0" and seg[2] == "0":
                     led.fill((v, v, v))
                 else:
                     if seg[4] == "0":
-                        led[mod_num]=(v,v,v)
-                        led[mod_num+1]=(v,v,v)
+                        led[mod_num] = (v, v, v)
+                        led[mod_num+1] = (v, v, v)
                     elif ind < 3:
                         cur = list(led[mod_num])
                         cur[ind] = v
-                        led[mod_num]=(cur[0],cur[1],cur[2])
+                        led[mod_num] = (cur[0], cur[1], cur[2])
                     else:
                         cur = list(led[mod_num+1])
                         cur[ind-3] = v
-                        led[mod_num+1]=(cur[0],cur[1],cur[2])
+                        led[mod_num+1] = (cur[0], cur[1], cur[2])
                 led.show()
             if seg[0] == 'B':  # brightness
                 br = int(seg[1:])
@@ -1192,17 +1210,18 @@ def set_hdw(cmd,dur):
                     upd_vol(s)
             if seg[0] == 'R':
                 v = float(seg[1:])
-                rbow(v,dur)
+                rbow(v, dur)
             if seg[0] == 'C':
                 print("not implemented")
     except Exception as e:
         files.log_item(e)
 
-def rbow(spd,dur):
+
+def rbow(spd, dur):
     st = time.monotonic()
     te = time.monotonic()-st
     while te < dur:
-        for j in range(0,255,1):
+        for j in range(0, 255, 1):
             for i in range(num_px):
                 pixel_index = (i * 256 // num_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -1211,7 +1230,7 @@ def rbow(spd,dur):
             te = time.monotonic()-st
             if te > dur:
                 return
-        for j in reversed(range(0,255,1)):
+        for j in reversed(range(0, 255, 1)):
             for i in range(num_px):
                 pixel_index = (i * 256 // num_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -1223,6 +1242,7 @@ def rbow(spd,dur):
 
 ################################################################################
 # State Machine
+
 
 class StMch(object):
 
@@ -1248,6 +1268,8 @@ class StMch(object):
 # States
 
 # Abstract parent state class.
+
+
 class Ste(object):
 
     def __init__(self):
@@ -1579,63 +1601,31 @@ st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
+
 def run_state_machine():
     global run_movie_cont
     while True:
         st_mch.upd()
         time.sleep(0.1)  # Add a small delay to prevent excessive CPU usage
         upd_vol(.1)
-        # if not media_player.is_playing() and run_movie_cont and False:
-        #     print("play movies: " + str(run_movie_cont))
-        #     play_movies()
-        #     while not media_player.is_playing():
-        #         time.sleep(.5)
-        #     l_sw.update()
-        #     r_sw.update()
-        #     w_sw.update()
-        #     b_sw.update()
-        #     if l_sw.fell:
-        #         if media_player.is_playing():
-        #             pause_movie()
-        #         run_movie_cont = True
-        #         print("left fell")
-        #     if r_sw.fell:
-        #         print("right fell")
-        #         if media_player.is_playing():
-        #             run_movie_cont = False
-        #             pause_movie()
-        #         else:
-        #             play_movie()
-        #             rainbow(.005, 5)
-        #     if w_sw.fell:
-        #         print("white fell")
-        #         volume = volume - 10
-        #         if volume < 0:
-        #             volume = 0
-        #         media_player.audio_set_volume(volume)
-        #     if b_sw.fell:
-        #         print("blue fell")
-        #         volume = volume + 10
-        #         if volume > 100:
-        #             volume = 100
-        #         media_player.audio_set_volume(volume)
-        #     time.sleep(.1)
-        #     pass
-  
+
 
 # Start the state machine in a separate thread
 state_machine_thread = threading.Thread(target=run_state_machine)
-state_machine_thread.daemon = True  # Daemonize the thread to end with the main program
+
+# Daemonize the thread to end with the main program
+state_machine_thread.daemon = True
 state_machine_thread.start()
+
 while True:
-        try:
-            input("Press enter to exit...\n\n")
-        finally:
-            print("Unregistering mDNS service...")
-            zeroconf.unregister_service(info)
-            zeroconf.close()
-            httpd.shutdown()
-            quit()  
+    try:
+        input("Press enter to exit...\n\n")
+    finally:
+        print("Unregistering mDNS service...")
+        zeroconf.unregister_service(info)
+        zeroconf.close()
+        httpd.shutdown()
+        quit()
 
 
 # type: ignore
