@@ -101,10 +101,7 @@ movie.append("/home/pi/Videos/Addams Family Train Wreck Scenes.mp4")
 # movie.append("/home/pi/Videos/Toy Trains_Model Railroads.mp4")
 
 run_movie_cont = True
-volume = 20
 movie_index = 0
-media_player.audio_set_volume(volume)
-
 
 def play_movies():
     global movie_index
@@ -122,6 +119,13 @@ def pause_movie():
 
 def play_movie():
     media_player.play()
+
+def play_movie_file(movie_filename):
+    media = vlc.Media(movie_filename)
+    media_player.set_media(media)
+    media_player.play()
+    while not media_player.is_playing():
+        upd_vol(.1)
 
 
 def rainbow(speed, duration):
@@ -237,6 +241,20 @@ an_running = False
 
 ################################################################################
 # Setup wifi and web server
+
+def wait_for_network():
+    while True:
+        try:
+            # Attempt to connect to Google's public DNS server to check network availability
+            socket.create_connection(("8.8.8.8", 53))
+            print("Network is ready!")
+            return
+        except OSError:
+            print("Waiting for network...")
+            time.sleep(1)
+
+# Wait for the network to be ready before continuing
+wait_for_network()
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -779,6 +797,7 @@ def upd_vol(seconds):
     if volume < 0 or volume > 1:
         volume = .5
     mix.set_volume(volume)
+    media_player.audio_set_volume(int(volume*300))
     time.sleep(seconds)
 
 
@@ -963,6 +982,8 @@ def an_light(f_nm):
     global ts_mode, an_running
     an_running = True
 
+    upd_vol(.1)
+
     cust_f = "customers_owned_music_" in f_nm
 
     flsh_t = []
@@ -1003,7 +1024,9 @@ def an_light(f_nm):
     else:
         wave0 = "/home/pi/sndtrk/" + f_nm + ".wav"
     
-    play_a_0(wave0,False)
+    play_movie_file("BeautifulThings.mp4")
+    
+    #play_a_0(wave0,False)
     srt_t = time.perf_counter()
 
     ft1 = []
@@ -1033,7 +1056,9 @@ def an_light(f_nm):
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             mix.stop()
-        if not mix.get_busy():
+            media_player.stop()
+        if not mix.get_busy() and not media_player.is_playing():
+            media_player.stop()
             led.fill((0, 0, 0))
             led.show()
             an_running = False
