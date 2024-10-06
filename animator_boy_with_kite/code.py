@@ -322,6 +322,7 @@ async def rotate_kite_async():
         center_servo_pos = int(cfg["servo"])
         rand_pos_1 = random.randint(center_servo_pos - 70, center_servo_pos - 70)
         rand_pos_2 = random.randint(center_servo_pos + 70, center_servo_pos + 70)
+        print(center_servo_pos, rand_pos_1, rand_pos_2)
         sign = 1
         if lst_kite_rot_pos > rand_pos_1:
             sign = -1
@@ -433,7 +434,8 @@ def an():
 
 def home_motors():
     direction = "up"
-    cfg["servo"] = 90
+    kite_ang = int(cfg["servo"] )
+    servo_m(kite_ang)
     if lst_kite_deploy_pos > 0:
         direction = "down"
     total_steps = abs(0 - lst_kite_deploy_pos)
