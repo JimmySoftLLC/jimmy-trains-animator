@@ -1159,7 +1159,12 @@ def an_light(f_nm):
             mix.stop()
             media_player.stop()
             return "STOP"
-        if not mix.get_busy() and not media_player.is_playing():
+        if not mix.get_busy() and not media_player.is_playing() and not plylst_f:
+            rst_an()
+            upd_vol(.5)
+            an_running = False
+            return "DONE"
+        if flsh_i > len(flsh_t)-1:
             rst_an()
             upd_vol(.5)
             an_running = False
@@ -1242,11 +1247,11 @@ def set_hdw(cmd, dur):
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stop_media()
                     if seg[2] == "S":
-                        w0 = "/home/pi/sndtrk/" + seg[3:] + ".wav"
+                        w0 = "/home/pi/sndtrk/" + seg[3:]
                         f_nm = seg[3:]
                     elif seg[2] == "M":
                         w0 = "/home/pi/customers_owned_music/" + \
-                            seg[3:] + ".wav"
+                            seg[3:]
                         f_nm = "customers_owned_music_" + seg[3:]
                     elif seg[2] == "P":
                         f_nm = "plylst_" + seg[3:]
