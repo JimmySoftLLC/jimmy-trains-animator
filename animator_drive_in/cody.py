@@ -160,18 +160,18 @@ def upd_media():
     sndtrk_opt = files.return_directory("", "/home/pi/sndtrk", ".wav", False)
     video_opt = files.return_directory("", "/home/pi/sndtrk", ".mp4", False)
     sndtrk_opt.extend(video_opt)
-    print("Sound tracks: " + str(sndtrk_opt))
+    # print("Sound tracks: " + str(sndtrk_opt))
 
     plylst_opt = files.return_directory(
         "plylst_", "/home/pi/plylst", ".json", True)
-    print("Play lists: " + str(plylst_opt))
+    # print("Play lists: " + str(plylst_opt))
 
     mysndtrk_opt = files.return_directory(
         "customers_owned_music_", "/home/pi/customers_owned_music", ".wav", False)
     myvideo_opt = files.return_directory(
         "customers_owned_music_", "/home/pi/customers_owned_music", ".mp4", False)
     mysndtrk_opt.extend(myvideo_opt)
-    print("My sound tracks: " + str(mysndtrk_opt))
+    # print("My sound tracks: " + str(mysndtrk_opt))
 
     all_snd_opt = []
     all_snd_opt.extend(plylst_opt)
@@ -179,6 +179,8 @@ def upd_media():
     all_snd_opt.extend(mysndtrk_opt)
 
     menu_snd_opt = []
+    menu_snd_opt.extend(files.return_directory(
+        "", "/home/pi/plylst", ".json", False,".mp3"))
     menu_snd_opt.extend(files.return_directory(
         "", "/home/pi/sndtrk", ".wav", False))
     rnd_opt = ['rnd plylst.wav', 'random built in.wav', 'random my.wav', 'random all.wav']
@@ -425,8 +427,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd = rq_d["fo"].replace("plylst_", "")
         fo = "/home/pi/plylst/" + snd + ".json"
         fn = "/home/pi/plylst/" + rq_d["fn"] + ".json"
-        f_nm = rq_d["fn"]
-        text_to_mp3_file(f_nm, timeout_duration=5)
+        mp3_name = "/home/pi/o_snds/" + rq_d["fn"] + ".mp3"
+        text_to_mp3_file(mp3_name, timeout_duration=5)
         os.rename(fo, fn)
         upd_media()
         self.send_response(200)
@@ -953,7 +955,7 @@ def text_to_mp3_file(f_nm, timeout_duration):
         signal.alarm(timeout_duration)
 
         # Convert text to mp3 file
-        text = files.strip_path_and_extension()
+        text = files.strip_path_and_extension(f_nm)
         tts = gTTS(text=text, lang='en')
         tts.save(f_nm)
 
