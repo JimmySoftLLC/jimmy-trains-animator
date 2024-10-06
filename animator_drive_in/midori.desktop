@@ -1,4 +1,4 @@
 [Desktop Entry]
 Type=Application
 Name=midori.desktop
-Exec=midori -e Fullscreen http://animator-drive-in.local:8083/
+Exec=sh -c 'while ! ping -c 1 8.8.8.8; do sleep 5; done; midori -e Fullscreen http://animator-drive-in.local:8083/'

@@ -33,11 +33,16 @@ def print_directory(path, tabs=0):
         if isdir:
             print_directory(path + "/" + file, tabs + 1)
 
-def return_directory(prefix, path, fileType):
+def return_directory(prefix, path, fileType, remove_ext = True, replace_ext_with =''):
     file_list = []
     for file in os.listdir(path):  
         if "._" not in file and fileType in file:
-            file_name = prefix + file.replace(fileType, '')
+            if remove_ext:
+                file_name = prefix + file.replace(fileType, '')
+            elif replace_ext_with:
+                file_name = prefix + file.replace(fileType, replace_ext_with)
+            else:
+                file_name = prefix + file
             file_list.append(file_name)
     file_list.sort()
     return file_list
@@ -81,4 +86,9 @@ def read_json_file(file_name):
     json_string=read_file_line(file_name)
     python_dictionary=json_parse(json_string)
     return python_dictionary
+
+def strip_path_and_extension(file_path):
+    # Extract the file name from the path without the extension
+    file_name = os.path.splitext(os.path.basename(file_path))[0]
+    return file_name
 
