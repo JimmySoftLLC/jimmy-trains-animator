@@ -505,6 +505,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
         if "customers_owned_music_" in snd_f:
             snd_f = snd_f.replace("customers_owned_music_", "")
+            snd_f = snd_f.replace(".mp3", "")
+            snd_f = snd_f.replace(".mp4", "")
+            snd_f = snd_f.replace(".wav", "")
             if (f_exists("/home/pi/customers_owned_music/" + snd_f + ".json") == True):
                 f_n = "/home/pi/customers_owned_music/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
@@ -513,6 +516,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_serve_file_name(f_n)
                 return
         else:
+            snd_f = snd_f.replace(".mp3", "")
+            snd_f = snd_f.replace(".mp4", "")
+            snd_f = snd_f.replace(".wav", "")
             if (f_exists("/home/pi/sndtrk/" + snd_f + ".json") == True):
                 f_n = "/home/pi/sndtrk/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
@@ -805,7 +811,7 @@ def ch_vol(action):
 def play_a_0(file_name, wait_until_done=True, allow_exit=True):
     print("playing " + file_name)
     if mix.get_busy():
-        stop_a_0()
+        stop_media()
         while mix.get_busy():
             upd_vol(0.1)
     mix.load(file_name)
@@ -822,9 +828,10 @@ def wait_snd():
     print("done playing")
 
 
-def stop_a_0():
+def stop_media():
+    media_player.stop()
     mix.stop()
-    while mix.get_busy():
+    while mix.get_busy() or  media_player.is_playing():
         pass
 
 
@@ -832,12 +839,12 @@ def exit_early():
     l_sw.update()
     r_sw.update()
     if l_sw.fell:
-        stop_a_0()
+        stop_media()
     upd_vol(0.1)
 
 
 def rst_an():
-    stop_a_0()
+    stop_media()
     led.fill((0, 0, 0))
     led.show()
 
@@ -975,8 +982,8 @@ def text_to_mp3_file(f_nm, timeout_duration):
 ################################################################################
 # Animation methods
 
-def stop_all_media():
-    stop_a_0()
+def rst_an():
+    stop_media()
     media_player.stop()
     led.fill((0, 0, 0))
     led.show()
@@ -1007,6 +1014,16 @@ def an(f_nm):
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
+        elif f_nm == "rnd plylst":
+            h_i = len(plylst_opt) - 1
+            cur_opt = plylst_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(plylst_opt) > 1:
+                cur_opt = plylst_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            files.log_item("Random sound option: " + f_nm)
+            files.log_item("Sound file: " + cur_opt)  
         elif f_nm == "random all":
             h_i = len(all_snd_opt) - 1
             cur_opt = all_snd_opt[random.randint(
@@ -1038,6 +1055,7 @@ def an_light(f_nm):
     upd_vol(.1)
 
     cust_f = "customers_owned_music_" in f_nm
+    plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
     json_fn = json_fn.replace(".wav", "")
@@ -1070,6 +1088,9 @@ def an_light(f_nm):
                         an_running = False
                         play_a_0("/home/pi/mvc/timestamp_instructions.wav")
                         return
+    elif plylst_f:
+        f_nm = f_nm.replace("plylst_", "")
+        flsh_t = files.read_json_file("/home/pi/plylst/" + f_nm + ".json")
     else:
         if (f_exists("/home/pi/sndtrk/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
@@ -1077,23 +1098,28 @@ def an_light(f_nm):
 
     flsh_i = 0
 
-    if cust_f:
-        media0 = "/home/pi/customers_owned_music/" + f_nm
-    else:
-        media0 = "/home/pi/sndtrk/" + f_nm
-
-    if is_video:
-        play_movie_file(media0)
-    else:
-        play_a_0(media0, False)
-
-    srt_t = time.perf_counter()
-
     ft1 = []
     ft2 = []
 
+    ft1 = flsh_t[len(flsh_t)-1].split("|")
+    tm = float(ft1[0]) + 1
+    flsh_t.append(str(tm) + "|E")
+    flsh_t.append(str(tm + 1) + "|E")
+
+    if not plylst_f:
+        if cust_f:
+            media0 = "/home/pi/customers_owned_music/" + f_nm
+        else:
+            media0 = "/home/pi/sndtrk/" + f_nm
+        if is_video:
+            play_movie_file(media0)
+        else:
+            play_a_0(media0, False)
+
+    srt_t = time.monotonic() #perf_counter
+
     while True:
-        t_past = time.perf_counter()-srt_t
+        t_past = time.monotonic()-srt_t
 
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
@@ -1109,20 +1135,26 @@ def an_light(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                # loop.create_task(set_hdw_async("L0" + str(lgt) + ",S0" + str(pos),dur))
-            # else:
-                # loop.create_task(set_hdw_async(ft1[1],dur))
+                set_hdw("L000" + str(lgt) + ",S0" + str(pos),dur)
+            else:
+                resp = set_hdw(ft1[1], dur)
+                if resp == "STOP":
+                    rst_an()
+                    upd_vol(.5)
+                    an_running = False
+                    return
             flsh_i += 1
         l_sw.update()
         r_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             mix.stop()
             media_player.stop()
+            return "STOP"
         if not mix.get_busy() and not media_player.is_playing():
-            stop_all_media()
+            rst_an()
             upd_vol(.5)
             an_running = False
-            return
+            return "DONE"
         upd_vol(.1)
 
 
@@ -1172,7 +1204,7 @@ def an_ts(f_nm):
             break
 
     ts_mode = False
-    stop_all_media()
+    rst_an()
     play_a_0("/home/pi/mvc/timestamp_saved.wav")
     play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
     play_a_0("/home/pi/mvc/animations_are_now_active.wav")
@@ -1197,9 +1229,9 @@ def set_hdw(cmd, dur):
                 return "STOP"
             if seg[0] == 'M':  # play file
                 if seg[1] == "S":
-                    stop_a_0()
+                    stop_media()
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
-                    stop_a_0()
+                    stop_media()
                     if seg[2] == "S":
                         w0 = "/home/pi/sndtrk/" + seg[3:] + ".wav"
                         f_nm = seg[3:]
