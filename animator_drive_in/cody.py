@@ -451,15 +451,24 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 an = rq_d[3].split("_")
                 if "plylst" == an[0]:
                     snd_f = rq_d[3].replace("plylst_", "")
+                    snd_f = snd_f.replace(".mp3", "")
+                    snd_f = snd_f.replace(".mp4", "")
+                    snd_f = snd_f.replace(".wav", "")
                     f_n = "/home/pi/plylst/" + \
                         snd_f + ".json"
                 elif "customers" == an[0]:
                     snd_f = rq_d[3].replace("customers_owned_music_", "")
+                    snd_f = snd_f.replace(".mp3", "")
+                    snd_f = snd_f.replace(".mp4", "")
+                    snd_f = snd_f.replace(".wav", "")
                     f_n = "/home/pi/customers_owned_music/" + \
                         snd_f + ".json"
                 else:
+                    snd_f = rq_d[3].replace(".mp3", "")
+                    snd_f = snd_f.replace(".mp4", "")
+                    snd_f = snd_f.replace(".wav", "")
                     f_n = "/home/pi/sndtrk/" + \
-                        rq_d[3] + ".json"
+                        snd_f + ".json"
                 files.write_json_file(f_n, data)
                 upd_media()
                 data = []
