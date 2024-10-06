@@ -21,6 +21,9 @@ import files
 import utilities
 import psutil
 import random
+from gtts import gTTS
+import requests
+import signal
 
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -159,7 +162,8 @@ def upd_media():
     sndtrk_opt.extend(video_opt)
     print("Sound tracks: " + str(sndtrk_opt))
 
-    plylst_opt = files.return_directory("plylst_", "/home/pi/plylst", ".json", True)
+    plylst_opt = files.return_directory(
+        "plylst_", "/home/pi/plylst", ".json", True)
     print("Play lists: " + str(plylst_opt))
 
     mysndtrk_opt = files.return_directory(
@@ -175,11 +179,10 @@ def upd_media():
     all_snd_opt.extend(mysndtrk_opt)
 
     menu_snd_opt = []
-    menu_snd_opt.extend(plylst_opt)
-    rnd_opt = ['rnd plylst', 'rnd sndtrk', 'rnd mysndtrk', 'rnd all']
+    menu_snd_opt.extend(files.return_directory(
+        "", "/home/pi/sndtrk", ".wav", False))
+    rnd_opt = ['rnd plylst.wav', 'random built in.wav', 'random my.wav', 'random all.wav']
     menu_snd_opt.extend(rnd_opt)
-    menu_snd_opt.extend(sndtrk_opt)
-    menu_snd_opt.extend(mysndtrk_opt)
 
     print("Menu sound tracks: " + str(menu_snd_opt))
 
@@ -205,6 +208,7 @@ cont_run = False
 ts_mode = False
 lst_opt = ''
 an_running = False
+is_gtts_reachable = False
 
 
 ################################################################################
@@ -401,21 +405,19 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def test_animation_post(self, rq_d):
         set_hdw(rq_d["an"], 3)
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "Set hardware: " + rq_d["an"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
     def stop_post(self, rq_d):
         rst_an()
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "rst an"
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
     def rename_playlist_post(self, rq_d):
@@ -423,14 +425,15 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd = rq_d["fo"].replace("plylst_", "")
         fo = "/home/pi/plylst/" + snd + ".json"
         fn = "/home/pi/plylst/" + rq_d["fn"] + ".json"
+        f_nm = rq_d["fn"]
+        text_to_mp3_file(f_nm, timeout_duration=5)
         os.rename(fo, fn)
         upd_media()
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "your response message"
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
     data = []
@@ -461,20 +464,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         except:
             data = []
             self.send_response(500)
-            # Change the content type to text/plain
             self.send_header("Content-type", "text/plain")
             self.end_headers()
             response = "out of memory"
-            # Write the string directly
             self.wfile.write(response.encode('utf-8'))
             print("Response sent:", response)
             return
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "success"
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
     def delete_playlist_post(self, rq_d):
@@ -483,11 +483,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         os.remove(f_n)
         upd_media()
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["fn"] + " playlist file deleted"
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def get_animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
@@ -538,11 +537,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         upd_media()
         gc_col("created playlist")
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "created " + rq_d["fn"] + " playlist"
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def update_light_string_post(self, rq_d):
         global cfg
@@ -554,11 +552,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             # upd_l_str()
             play_a_0("/home/pi/mvc/all_changes_complete.wav")
             self.send_response(200)
-            # Change the content type to text/plain
             self.send_header("Content-type", "text/plain")
             self.end_headers()
             response = cfg["light_string"]
-            # Write the string directly
             self.wfile.write(response.encode('utf-8'))
             return
         if cfg["light_string"] == "":
@@ -572,11 +568,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         # upd_l_str()
         play_a_0("/home/pi/mvc//all_changes_complete.wav")
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["light_string"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def mode_post(self, rq_d):
         print(rq_d)
@@ -628,19 +623,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cmd_snt = "speaker_test"
             play_a_0("/home/pi/mvc/left_speaker_right_speaker.wav")
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["an"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def get_light_string_post(self, rq_d):
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["light_string"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def update_host_name_post(self, rq_d):
         global cfg
@@ -649,37 +642,33 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         spk_web()
         restart_pi_timer()
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["HOST_NAME"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def get_host_name_post(self, rq_d):
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["HOST_NAME"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def update_volume_post(self, rq_d):
         global cfg
         ch_vol(rq_d["action"])
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["volume"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def get_volume_post(self, rq_d):
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["volume"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
     def get_customers_sound_tracks_post(self, rq_d):
         upd_media()
@@ -703,33 +692,23 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def defaults_post(self, rq_d):
         global cfg
-        if rq_d["an"] == "reset_animation_timing_to_defaults":
-            for time_stamp_file in ts_jsons:
-                time_stamps = files.read_json_file(
-                    "/home/pi/t_s_def/" + time_stamp_file + ".json")
-                files.write_json_file(
-                    "/home/pi/sndtrk/"+time_stamp_file+".json", time_stamps)
-            play_a_0("/home/pi/mvc/all_changes_complete.wav")
-        elif rq_d["an"] == "reset_to_defaults":
-            cmd_snt = "reset_to_defaults"
+        if rq_d["an"] == "reset_to_defaults":
             rst_def()
             files.write_json_file("/home/pi/cfg.json", cfg)
             play_a_0("/home/pi/mvc/all_changes_complete.wav")
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = cfg["volume"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        response = "reset_to_defaults"
+        self.wfile.write(response.encode('utf-8'))
 
     def lights_post(self, rq_d):
         set_hdw(rq_d["an"], 1)
         self.send_response(200)
-        # Change the content type to text/plain
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["an"]
-        self.wfile.write(response.encode('utf-8'))  # Write the string directly
+        self.wfile.write(response.encode('utf-8'))
 
 
 # Get the local IP address
@@ -821,16 +800,17 @@ def ch_vol(action):
     spk_str(cfg["volume"], False)
 
 
-def play_a_0(file_name, wait_untill_done=True):
+def play_a_0(file_name, wait_until_done=True, allow_exit=True):
     print("playing " + file_name)
     if mix.get_busy():
-        mix.stop()
+        stop_a_0()
         while mix.get_busy():
             upd_vol(0.1)
     mix.load(file_name)
     mix.play(loops=0)
-    while mix.get_busy() and wait_untill_done:
-        exit_early()
+    while mix.get_busy() and wait_until_done:
+        if allow_exit:
+            exit_early()
     print("done playing")
 
 
@@ -847,10 +827,11 @@ def stop_a_0():
 
 
 def exit_early():
-    upd_vol(0.1)
     l_sw.update()
+    r_sw.update()
     if l_sw.fell:
-        mix.stop()
+        stop_a_0()
+    upd_vol(0.1)
 
 
 def rst_an():
@@ -918,12 +899,82 @@ def spk_web():
         spk_str(cfg["HOST_NAME"], True)
     play_a_0("/home/pi/mvc/in_your_browser.wav")
 
+
+###############################################################################
+# Text to speech
+
+
+def check_gtts_status():
+    try:
+        # gTTS API endpoint
+        url = "https://translate.google.com"
+
+        # Send a simple GET request
+        response = requests.get(url, timeout=5)
+
+        # Check the status code
+        if response.status_code == 200:
+            print("gTTS service is reachable.")
+            return True
+        else:
+            print(f"gTTS service returned an unexpected status code: {response.status_code}")
+            return False
+
+    except requests.ConnectionError:
+        print("Failed to connect to gTTS service.")
+        return False
+    except requests.Timeout:
+        print("The request to gTTS service timed out.")
+        return False
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False
+
+
+# Custom exception for timeout
+class TimeoutException(Exception):
+    pass
+
+# Timeout handler
+
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("The operation timed out!")
+
+
+# Set up a signal to call the handler after a timeout
+signal.signal(signal.SIGALRM, timeout_handler)
+
+
+def text_to_mp3_file(f_nm, timeout_duration):
+    global is_gtts_reachable
+    try:
+        # Set the timeout (in seconds)
+        signal.alarm(timeout_duration)
+
+        # Convert text to mp3 file
+        text = files.strip_path_and_extension()
+        tts = gTTS(text=text, lang='en')
+        tts.save(f_nm)
+
+        # Cancel the alarm if operation completes before timeout
+        signal.alarm(0)
+
+        play_a_0(f_nm)
+
+    except TimeoutException:
+        print("TTS operation timed out.")
+        is_gtts_reachable = False
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        is_gtts_reachable = False
+
+
 ################################################################################
 # Animation methods
 
-
 def stop_all_media():
-    mix.stop()
+    stop_a_0()
     media_player.stop()
     led.fill((0, 0, 0))
     led.show()
@@ -992,7 +1043,6 @@ def an_light(f_nm):
 
     flsh_t = []
 
-
     if cust_f:
         f_nm = f_nm.replace("customers_owned_music_", "")
         if (f_exists("/home/pi/customers_owned_music/" + json_fn + ".json") == True):
@@ -1004,7 +1054,8 @@ def an_light(f_nm):
                     "/home/pi/customers_owned_music/" + json_fn + ".json")
             except Exception as e:
                 files.log_item(e)
-                play_a_0("/home/pi/mvc/no_timestamp_file_found.wav")
+                play_a_0("/home/pi/mvc/no_timestamp_file_found.wav", True, False)
+                upd_vol(.1)
                 while True:
                     l_sw.update()
                     r_sw.update()
@@ -1061,11 +1112,13 @@ def an_light(f_nm):
                 # loop.create_task(set_hdw_async(ft1[1],dur))
             flsh_i += 1
         l_sw.update()
+        r_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
             mix.stop()
             media_player.stop()
         if not mix.get_busy() and not media_player.is_playing():
             stop_all_media()
+            upd_vol(.5)
             an_running = False
             return
         upd_vol(.1)
@@ -1391,7 +1444,7 @@ class Snds(Ste):
         r_sw.update()
         if l_sw.fell:
             try:
-                play_a_0("/home/pi/o_snds/" + menu_snd_opt[self.i] + ".wav")
+                play_a_0("/home/pi/o_snds/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -1596,6 +1649,7 @@ if (web):
         time.sleep(5)
         files.log_item("server did not start...")
 
+is_gtts_reachable = check_gtts_status()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -1603,10 +1657,8 @@ gc_col("animations started.")
 
 
 def run_state_machine():
-    global run_movie_cont
     while True:
         st_mch.upd()
-        time.sleep(0.1)  # Add a small delay to prevent excessive CPU usage
         upd_vol(.1)
 
 
@@ -1616,6 +1668,7 @@ state_machine_thread = threading.Thread(target=run_state_machine)
 # Daemonize the thread to end with the main program
 state_machine_thread.daemon = True
 state_machine_thread.start()
+
 
 while True:
     try:

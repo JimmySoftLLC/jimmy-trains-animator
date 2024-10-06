@@ -85,3 +85,8 @@ def read_json_file(file_name):
     python_dictionary=json_parse(json_string)
     return python_dictionary
 
+def strip_path_and_extension(file_path):
+    # Extract the file name from the path without the extension
+    file_name = os.path.splitext(os.path.basename(file_path))[0]
+    return file_name
+
