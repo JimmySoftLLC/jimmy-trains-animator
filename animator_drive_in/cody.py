@@ -24,6 +24,8 @@ import random
 from gtts import gTTS
 import requests
 import signal
+from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
+import sys
 
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -66,6 +68,7 @@ switch_io_1.direction = digitalio.Direction.INPUT
 switch_io_1.pull = digitalio.Pull.UP
 
 switch_io_2 = digitalio.DigitalInOut(board.D27)
+
 switch_io_2.direction = digitalio.Direction.INPUT
 switch_io_2.pull = digitalio.Pull.UP
 
@@ -149,6 +152,164 @@ num_px = 10
 led = neopixel_spi.NeoPixel_SPI(
     board.SPI(), num_px, brightness=1.0, auto_write=False)
 
+
+################################################################################
+# Setup lifx lights
+
+def test_lifx():
+    num_lights = 18
+    if len(sys.argv) != 2:
+        print("\nDiscovery will go much faster if you provide the number of lights on your LAN:")
+        print("  python {} <number of lights on LAN>\n".format(sys.argv[0]))
+    else:
+        num_lights = int(sys.argv[1])
+
+    # instantiate LifxLAN client, num_lights may be None (unknown).
+    # In fact, you don't need to provide LifxLAN with the number of bulbs at all.
+    # lifx = LifxLAN() works just as well. Knowing the number of bulbs in advance
+    # simply makes initial bulb discovery faster.
+    print("Discovering lights...")
+    lifx = LifxLAN(num_lights)
+
+    # get devices
+    devices = lifx.get_lights()
+    bulb = devices[0]
+    print("Selected {}".format(bulb.get_label()))
+
+    # get original state
+    print("Turning on all lights...")
+    original_power = bulb.get_power()
+    original_color = bulb.get_color()
+    bulb.set_power("on")
+
+    time.sleep(1)  # for looks
+
+    print("Flashy fast rainbow")
+    rainbow(bulb, 0.1)
+
+    print("Smooth slow rainbow")
+    rainbow(bulb, 1, smooth=True)
+
+    print("Restoring original power and color...")
+    # restore original power
+    bulb.set_power(original_power)
+    # restore original color
+    time.sleep(0.5)  # for looks
+    bulb.set_color(original_color)
+
+
+def rainbow(bulb, duration_secs=0.5, smooth=False):
+    colors = [RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, PURPLE, PINK]
+    transition_time_ms = duration_secs*1000 if smooth else 0
+    rapid = True if duration_secs < 1 else False
+    for color in colors:
+        bulb.set_color(color, transition_time_ms, rapid)
+        time.sleep(duration_secs)
+
+
+def discover_lights():
+    # Initialize the LifxLAN object
+    lifx = LifxLAN()
+
+    # Discover LIFX devices on the local network
+    devices = lifx.get_devices()
+
+    # Report the count of discovered devices
+    device_count = len(devices)
+    print(f"Discovered {device_count} device(s).")
+
+    # Iterate over each discovered device and control it
+    for device in devices:
+        print(f"Found device: {device.get_label()}")
+
+        # Set light to a specific color (red in this case)
+        # (Hue, Saturation, Brightness, Kelvin)
+        device.set_color([65535, 65535, 65535, 3500])
+        device.set_power("on")
+
+
+discover_lights()
+# test_lifx()
+import time
+
+def interpolate_color(start_color, end_color, steps):
+    """
+    Gradually interpolate between two RGB colors.
+
+    :param start_color: Tuple (R, G, B) for the start color
+    :param end_color: Tuple (R, G, B) for the end color
+    :param steps: Number of steps to reach the end color
+    :return: A list of RGB tuples representing the transition
+    """
+    r_step = (end_color[0] - start_color[0]) / steps
+    g_step = (end_color[1] - start_color[1]) / steps
+    b_step = (end_color[2] - start_color[2]) / steps
+
+    interpolated_colors = []
+
+    for step in range(steps + 1):
+        r = int(start_color[0] + r_step * step)
+        g = int(start_color[1] + g_step * step)
+        b = int(start_color[2] + b_step * step)
+        interpolated_colors.append((r, g, b))
+
+    return interpolated_colors
+
+def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
+    """
+    Cycles through a list of RGB tuples, transitioning between each in order.
+
+    :param rgb_values: List of RGB tuples
+    :param transition_time: Total time in seconds to transition between colors
+    :param steps: Number of steps for each color transition
+    """
+    while True:
+        for i in range(len(rgb_values) - 1):
+            start_color = rgb_values[i]
+            end_color = rgb_values[i + 1]
+            color_transition = interpolate_color(start_color, end_color, steps)
+
+            for color in color_transition:
+                set_light_color(color)
+                print(f"Setting color to {color}")
+                time.sleep(transition_time / steps)  # Adjust sleep time for each step
+
+def set_light_color(rgb):
+    """
+    Simulates setting the color in your animation or lighting system.
+    
+    :param rgb: A tuple with (r, g, b) values
+    """
+    # Placeholder: Replace this with actual logic to update the lights in your animation
+    pass
+
+# Example RGB values for different times of day
+daylight_rgb = (255, 255, 255)  # Bright Daylight
+afternoon_rgb = (255, 223, 186)  # Late Afternoon
+sunset_rgb = (255, 102, 51)  # Sunset
+dusk_rgb = (153, 102, 255)  # Dusk
+twilight_rgb = (51, 51, 153)  # Twilight
+early_night_rgb = (25, 25, 102)  # Early Night
+midnight_rgb = (15, 15, 30)  # Midnight
+deep_night_rgb = (10, 10, 20)  # Deep Night
+
+# List of all RGB values in sequence
+rgb_cycle = [
+    daylight_rgb,
+    afternoon_rgb,
+    sunset_rgb,
+    dusk_rgb,
+    twilight_rgb,
+    early_night_rgb,
+    midnight_rgb,
+    deep_night_rgb
+]
+
+# Start cycling between daylight and nighttime colors
+if __name__ == "__main__":
+    cycle_rgb_values(rgb_cycle, transition_time=5, steps=100)  # 5 seconds total for each color transition
+
+
 ################################################################################
 # Sd card config variables
 
@@ -180,10 +341,11 @@ def upd_media():
 
     menu_snd_opt = []
     menu_snd_opt.extend(files.return_directory(
-        "", "/home/pi/plylst", ".json", False,".mp3"))
+        "", "/home/pi/plylst", ".json", False, ".mp3"))
     menu_snd_opt.extend(files.return_directory(
         "", "/home/pi/sndtrk", ".wav", False))
-    rnd_opt = ['rnd plylst.wav', 'random built in.wav', 'random my.wav', 'random all.wav']
+    rnd_opt = ['rnd plylst.wav', 'random built in.wav',
+               'random my.wav', 'random all.wav']
     menu_snd_opt.extend(rnd_opt)
 
     print("Menu sound tracks: " + str(menu_snd_opt))
@@ -840,7 +1002,7 @@ def wait_snd():
 def stop_media():
     media_player.stop()
     mix.stop()
-    while mix.get_busy() or  media_player.is_playing():
+    while mix.get_busy() or media_player.is_playing():
         pass
 
 
@@ -935,7 +1097,8 @@ def check_gtts_status():
             print("gTTS service is reachable.")
             return True
         else:
-            print(f"gTTS service returned an unexpected status code: {response.status_code}")
+            print(f"gTTS service returned an unexpected status code: {
+                  response.status_code}")
             return False
 
     except requests.ConnectionError:
@@ -1032,7 +1195,7 @@ def an(f_nm):
                     0, h_i)]
             lst_opt = cur_opt
             files.log_item("Random sound option: " + f_nm)
-            files.log_item("Sound file: " + cur_opt)  
+            files.log_item("Sound file: " + cur_opt)
         elif f_nm == "random all":
             h_i = len(all_snd_opt) - 1
             cur_opt = all_snd_opt[random.randint(
@@ -1125,7 +1288,7 @@ def an_light(f_nm):
         else:
             play_a_0(media0, False)
 
-    srt_t = time.monotonic() #perf_counter
+    srt_t = time.monotonic()  # perf_counter
 
     while True:
         t_past = time.monotonic()-srt_t
@@ -1144,7 +1307,7 @@ def an_light(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                set_hdw("L000" + str(lgt) + ",S0" + str(pos),dur)
+                set_hdw("L000" + str(lgt) + ",S0" + str(pos), dur)
             else:
                 resp = set_hdw(ft1[1], dur)
                 if resp == "STOP":
