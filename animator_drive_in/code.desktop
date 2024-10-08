@@ -1,4 +1,5 @@
+# put this file in this location /home/drivein/.config/autostart/code.desktop
 [Desktop Entry]
 Type=Application
 Name=code.desktop
-Exec=xterm -hold -e '/usr/bin/python3 /home/pi/code.py'
+Exec=xterm -hold -e '/usr/bin/python3 $HOME/code/code.py'

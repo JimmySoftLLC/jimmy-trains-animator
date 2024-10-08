@@ -1,3 +1,57 @@
+# MIT License
+# 
+# Copyright (c) 2024 JimmySoftLLC
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+#######################################################
+# this code requires the following installs
+
+# blinka is a lib that allows you to use circuit python libraries for servos, light etc. search adafruit blinka for instructions
+
+# control lifx lights using lifxlan 1.2.7 and confirm its version
+# pip install lifxlan==1.2.7
+# pip show lifxlan
+
+# to use lifx lan you must use the bytestring 3.1.9 library and confirm its version
+# pip install bitstring==3.1.9
+# pip show bitstring
+
+# on screen keyboard, onboard
+# sudo apt install onboard
+
+# text to speech using gtts 2.5.3 and confirm its version
+# pip install gtts
+# pip show gtts
+
+# Units with a touchscreen use a html page and material UI for styling
+# Midori, a lightweight browser, is used so it can run on any pi
+# install midori and confirm its version
+# sudo apt install midori
+# midori --version
+
+#######################################################
+# prod files are located in the code folder on the user machine
+# debug the code.py, files.py and utilities.py in the home directory 
+# Delete code.py, files.py and utilities.py in the home directory after release
+
+
 import http.server
 import socket
 import socketserver
@@ -31,6 +85,13 @@ aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
+def get_home_path(subpath=""):
+    # Get the current user's home directory
+    home_dir = os.path.expanduser("~")
+    # Return the full path by appending the optional subpath
+    return os.path.join(home_dir, subpath)
+
+code_folder = get_home_path() + "code/"
 
 def f_exists(filename):
     try:
@@ -209,7 +270,7 @@ def rainbow(bulb, duration_secs=0.5, smooth=False):
 
 def discover_lights():
     # Initialize the LifxLAN object
-    lifx = LifxLAN()
+    lifx = LifxLAN(20)
 
     # Discover LIFX devices on the local network
     devices = lifx.get_devices()
@@ -224,35 +285,33 @@ def discover_lights():
 
         # Set light to a specific color (red in this case)
         # (Hue, Saturation, Brightness, Kelvin)
-        device.set_color([65535, 65535, 65535, 3500])
-        device.set_power("on")
+        # device.set_color([65535, 65535, 65535, 3500])
+        # device.set_power("on")
 
-
-discover_lights()
 # test_lifx()
 
 
 ################################################################################
 # Sd card config variables
 
-cfg = files.read_json_file("/home/pi/cfg.json")
+cfg = files.read_json_file(code_folder + "cfg.json")  #home_path = get_home_path() + "sndtrk"
 
 
 def upd_media():
     global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
-    sndtrk_opt = files.return_directory("", "/home/pi/sndtrk", ".wav", False)
-    video_opt = files.return_directory("", "/home/pi/sndtrk", ".mp4", False)
+    sndtrk_opt = files.return_directory("", code_folder + "sndtrk", ".wav", False)
+    video_opt = files.return_directory("", code_folder + "sndtrk", ".mp4", False)
     sndtrk_opt.extend(video_opt)
     # print("Sound tracks: " + str(sndtrk_opt))
 
     plylst_opt = files.return_directory(
-        "plylst_", "/home/pi/plylst", ".json", True)
+        "plylst_", code_folder + "plylst", ".json", True)
     # print("Play lists: " + str(plylst_opt))
 
     mysndtrk_opt = files.return_directory(
-        "customers_owned_music_", "/home/pi/customers_owned_music", ".wav", False)
+        "customers_owned_music_", code_folder + "customers_owned_music", ".wav", False)
     myvideo_opt = files.return_directory(
-        "customers_owned_music_", "/home/pi/customers_owned_music", ".mp4", False)
+        "customers_owned_music_", code_folder + "customers_owned_music", ".mp4", False)
     mysndtrk_opt.extend(myvideo_opt)
     # print("My sound tracks: " + str(mysndtrk_opt))
 
@@ -263,9 +322,9 @@ def upd_media():
 
     menu_snd_opt = []
     menu_snd_opt.extend(files.return_directory(
-        "", "/home/pi/plylst", ".json", False, ".mp3"))
+        "", code_folder + "plylst", ".json", False, ".mp3"))
     menu_snd_opt.extend(files.return_directory(
-        "", "/home/pi/sndtrk", ".wav", False))
+        "", code_folder + "sndtrk", ".wav", False))
     rnd_opt = ['rnd plylst.wav', 'random built in.wav',
                'random my.wav', 'random all.wav']
     menu_snd_opt.extend(rnd_opt)
@@ -277,17 +336,17 @@ upd_media()
 
 web = cfg["serve_webpage"]
 
-cfg_main = files.read_json_file("/home/pi/mvc/main_menu.json")
+cfg_main = files.read_json_file(code_folder + "mvc/main_menu.json")
 main_m = cfg_main["main_menu"]
 
-cfg_web = files.read_json_file("/home/pi/mvc/web_menu.json")
+cfg_web = files.read_json_file(code_folder + "mvc/web_menu.json")
 web_m = cfg_web["web_menu"]
 
-cfg_vol = files.read_json_file("/home/pi/mvc/volume_settings.json")
+cfg_vol = files.read_json_file(code_folder + "mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
 
 cfg_add_song = files.read_json_file(
-    "/home/pi/mvc/add_sounds_animate.json")
+    code_folder + "mvc/add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
 cont_run = False
@@ -312,10 +371,6 @@ def wait_for_network():
             time.sleep(1)
 
 
-# Wait for the network to be ready before continuing
-wait_for_network()
-
-
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -336,11 +391,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
-            self.handle_serve_file("/index.html")
+            print(self.path)
+            self.handle_serve_file("/code/index.html")
         elif self.path.endswith(".css"):
-            self.handle_serve_file(self.path, "text/css")
+            print(self.path)
+            self.handle_serve_file("/code" + self.path, "text/css")
         elif self.path.endswith(".js"):
-            self.handle_serve_file(self.path, "application/javascript")
+            print(self.path)
+            self.handle_serve_file("/code" + self.path, "application/javascript")
         else:
             self.handle_serve_file(self.path)
 
@@ -509,9 +567,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def rename_playlist_post(self, rq_d):
         global data
         snd = rq_d["fo"].replace("plylst_", "")
-        fo = "/home/pi/plylst/" + snd + ".json"
-        fn = "/home/pi/plylst/" + rq_d["fn"] + ".json"
-        mp3_name = "/home/pi/o_snds/" + rq_d["fn"] + ".mp3"
+        fo = code_folder + "plylst/" + snd + ".json"
+        fn = code_folder + "plylst/" + rq_d["fn"] + ".json"
+        mp3_name = code_folder + "o_snds/" + rq_d["fn"] + ".mp3"
         text_to_mp3_file(mp3_name, timeout_duration=5)
         os.rename(fo, fn)
         upd_media()
@@ -538,20 +596,20 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     snd_f = snd_f.replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = "/home/pi/plylst/" + \
+                    f_n = code_folder + "plylst/" + \
                         snd_f + ".json"
                 elif "customers" == an[0]:
                     snd_f = rq_d[3].replace("customers_owned_music_", "")
                     snd_f = snd_f.replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = "/home/pi/customers_owned_music/" + \
+                    f_n = code_folder + "customers_owned_music/" + \
                         snd_f + ".json"
                 else:
                     snd_f = rq_d[3].replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = "/home/pi/sndtrk/" + \
+                    f_n = code_folder + "sndtrk/" + \
                         snd_f + ".json"
                 files.write_json_file(f_n, data)
                 upd_media()
@@ -574,7 +632,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def delete_playlist_post(self, rq_d):
         snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = "/home/pi/plylst/" + snd_f + ".json"
+        f_n = code_folder + "plylst/" + snd_f + ".json"
         os.remove(f_n)
         upd_media()
         self.send_response(200)
@@ -588,12 +646,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd_f = rq_d["an"]
         if "plylst_" in snd_f:
             snd_f = snd_f.replace("plylst_", "")
-            if (f_exists("/home/pi/plylst/" + snd_f + ".json") == True):
-                f_n = "/home/pi/plylst/" + snd_f + ".json"
+            if (f_exists(code_folder + "plylst/" + snd_f + ".json") == True):
+                f_n = code_folder + "plylst/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
                 return
             else:
-                f_n = "/home/pi/t_s_def/timestamp mode.json"
+                f_n = code_folder + "t_s_def/timestamp mode.json"
                 self.handle_serve_file_name(f_n)
                 return
         if "customers_owned_music_" in snd_f:
@@ -601,23 +659,23 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             snd_f = snd_f.replace(".mp3", "")
             snd_f = snd_f.replace(".mp4", "")
             snd_f = snd_f.replace(".wav", "")
-            if (f_exists("/home/pi/customers_owned_music/" + snd_f + ".json") == True):
-                f_n = "/home/pi/customers_owned_music/" + snd_f + ".json"
+            if (f_exists(code_folder + "customers_owned_music/" + snd_f + ".json") == True):
+                f_n = code_folder + "customers_owned_music/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
             else:
-                f_n = "/home/pi/t_s_def/timestamp mode.json"
+                f_n = code_folder + "t_s_def/timestamp mode.json"
                 self.handle_serve_file_name(f_n)
                 return
         else:
             snd_f = snd_f.replace(".mp3", "")
             snd_f = snd_f.replace(".mp4", "")
             snd_f = snd_f.replace(".wav", "")
-            if (f_exists("/home/pi/sndtrk/" + snd_f + ".json") == True):
-                f_n = "/home/pi/sndtrk/" + snd_f + ".json"
+            if (f_exists(code_folder + "sndtrk/" + snd_f + ".json") == True):
+                f_n = code_folder + "sndtrk/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
                 return
             else:
-                f_n = "/home/pi/t_s_def/timestamp mode.json"
+                f_n = code_folder + "t_s_def/timestamp mode.json"
                 self.handle_serve_file_name(f_n)
                 return
 
@@ -633,7 +691,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def create_playlist_post(self, rq_d):
         global data
-        f_n = "/home/pi/plylst/" + rq_d["fn"] + ".json"
+        f_n = code_folder + "plylst/" + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
         gc_col("created playlist")
@@ -649,9 +707,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg["light_string"] = rq_d["text"]
             print("action: " +
                   rq_d["action"] + " data: " + cfg["light_string"])
-            files.write_json_file("/home/pi/cfg.json", cfg)
+            files.write_json_file(code_folder + "cfg.json", cfg)
             # upd_l_str()
-            play_a_0("/home/pi/mvc/all_changes_complete.wav")
+            play_a_0(code_folder + "mvc/all_changes_complete.wav")
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
@@ -665,9 +723,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "," + rq_d["text"]
         print("action: " + rq_d["action"] +
               " data: " + cfg["light_string"])
-        files.write_json_file("/home/pi/cfg.json", cfg)
+        files.write_json_file(code_folder + "cfg.json", cfg)
         # upd_l_str()
-        play_a_0("/home/pi/mvc//all_changes_complete.wav")
+        play_a_0(code_folder + "mvc//all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -678,17 +736,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print(rq_d)
         global cfg, cont_run, ts_mode
         if rq_d["an"] == "cont_mode_on":
-            play_a_0("/home/pi/mvc/continuous_mode_activated.wav")
+            play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
             cont_run = True
         elif rq_d["an"] == "cont_mode_off":
-            play_a_0("/home/pi/mvc/continuous_mode_deactivated.wav")
+            play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
             cont_run = False
         elif rq_d["an"] == "timestamp_mode_on":
-            play_a_0("/home/pi/mvc/timestamp_mode_on.wav")
-            play_a_0("/home/pi/mvc/timestamp_instructions.wav")
+            play_a_0(code_folder + "mvc/timestamp_mode_on.wav")
+            play_a_0(code_folder + "mvc/timestamp_instructions.wav")
             ts_mode = True
         elif rq_d["an"] == "timestamp_mode_off":
-            play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
+            play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
             ts_mode = False
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -701,7 +759,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         global cfg, cont_run, ts_mode
         cfg["option_selected"] = rq_d["an"]
         an(cfg["option_selected"])
-        files.write_json_file("/home/pi/cfg.json", cfg)
+        files.write_json_file(code_folder + "cfg.json", cfg)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -713,8 +771,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         global cfg
         if rq_d["an"] == "reset_to_defaults":
             rst_def()
-            files.write_json_file("/home/pi/cfg.json", cfg)
-            play_a_0("/home/pi/mvc/all_changes_complete.wav")
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_a_0(code_folder + "mvc/all_changes_complete.wav")
             st_mch.go_to('base_state')
         self.wfile.write("Utility: " + rq_d["an"])
 
@@ -722,7 +780,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         global cfg
         if rq_d["an"] == "speaker_test":
             cmd_snt = "speaker_test"
-            play_a_0("/home/pi/mvc/left_speaker_right_speaker.wav")
+            play_a_0(code_folder + "mvc/left_speaker_right_speaker.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -739,7 +797,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def update_host_name_post(self, rq_d):
         global cfg
         cfg["HOST_NAME"] = rq_d["text"]
-        files.write_json_file("/home/pi/cfg.json", cfg)
+        files.write_json_file(code_folder + "cfg.json", cfg)
         spk_web()
         restart_pi_timer()
         self.send_response(200)
@@ -795,8 +853,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         global cfg
         if rq_d["an"] == "reset_to_defaults":
             rst_def()
-            files.write_json_file("/home/pi/cfg.json", cfg)
-            play_a_0("/home/pi/mvc/all_changes_complete.wav")
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_a_0(code_folder + "mvc/all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -896,8 +954,8 @@ def ch_vol(action):
         v = 1
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
-    files.write_json_file("/home/pi/cfg.json", cfg)
-    play_a_0("/home/pi/mvc/volume.wav")
+    files.write_json_file(code_folder + "cfg.json", cfg)
+    play_a_0(code_folder + "mvc/volume.wav")
     spk_str(cfg["volume"], False)
 
 
@@ -951,55 +1009,55 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            play_a_0("/home/pi/mvc/" + character + ".wav")
+            play_a_0(code_folder + "mvc/" + character + ".wav")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        play_a_0("/home/pi/mvc/dot.wav")
-        play_a_0("/home/pi/mvc/local.wav")
+        play_a_0(code_folder + "mvc/dot.wav")
+        play_a_0(code_folder + "mvc/local.wav")
 
 
 def l_r_but():
-    play_a_0("/home/pi/mvc/press_left_button_right_button.wav")
+    play_a_0(code_folder + "mvc/press_left_button_right_button.wav")
 
 
 def sel_web():
-    play_a_0("/home/pi/mvc/web_menu.wav")
+    play_a_0(code_folder + "mvc/web_menu.wav")
     l_r_but()
 
 
 def opt_sel():
-    play_a_0("/home/pi/mvc/option_selected.wav")
+    play_a_0(code_folder + "mvc/option_selected.wav")
 
 
 def spk_sng_num(song_number):
-    play_a_0("/home/pi/mvc/song.wav")
+    play_a_0(code_folder + "mvc/song.wav")
     spk_str(song_number, False)
 
 
 def no_trk():
-    play_a_0("/home/pi/mvc/no_user_soundtrack_found.wav")
+    play_a_0(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
             break
         if r_sw.fell:
-            play_a_0("/home/pi/mvc/create_sound_track_files.wav")
+            play_a_0(code_folder + "mvc/create_sound_track_files.wav")
             break
 
 
 def spk_web():
-    play_a_0("/home/pi/mvc/animator_available_on_network.wav")
-    play_a_0("/home/pi/mvc/to_access_type.wav")
+    play_a_0(code_folder + "mvc/animator_available_on_network.wav")
+    play_a_0(code_folder + "mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-drive-in":
-        play_a_0("/home/pi/mvc/animator_dash_bandstand.wav")
-        play_a_0("/home/pi/mvc/dot.wav")
-        play_a_0("/home/pi/mvc/local.wav")
+        play_a_0(code_folder + "mvc/animator_dash_bandstand.wav")
+        play_a_0(code_folder + "mvc/dot.wav")
+        play_a_0(code_folder + "mvc/local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    play_a_0("/home/pi/mvc/in_your_browser.wav")
+    play_a_0(code_folder + "mvc/in_your_browser.wav")
 
 
 ###############################################################################
@@ -1019,8 +1077,7 @@ def check_gtts_status():
             print("gTTS service is reachable.")
             return True
         else:
-            print(f"gTTS service returned an unexpected status code: {
-                  response.status_code}")
+            print("gTTS service returned an unexpected status code: " + response.status_code)
             return False
 
     except requests.ConnectionError:
@@ -1038,9 +1095,8 @@ def check_gtts_status():
 class TimeoutException(Exception):
     pass
 
+
 # Timeout handler
-
-
 def timeout_handler(signum, frame):
     raise TimeoutException("The operation timed out!")
 
@@ -1159,16 +1215,16 @@ def an_light(f_nm):
 
     if cust_f:
         f_nm = f_nm.replace("customers_owned_music_", "")
-        if (f_exists("/home/pi/customers_owned_music/" + json_fn + ".json") == True):
+        if (f_exists(code_folder + "customers_owned_music/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
-                "/home/pi/customers_owned_music/" + json_fn + ".json")
+                code_folder + "customers_owned_music/" + json_fn + ".json")
         else:
             try:
                 flsh_t = files.read_json_file(
-                    "/home/pi/customers_owned_music/" + json_fn + ".json")
+                    code_folder + "customers_owned_music/" + json_fn + ".json")
             except Exception as e:
                 files.log_item(e)
-                play_a_0("/home/pi/mvc/no_timestamp_file_found.wav", True, False)
+                play_a_0(code_folder + "mvc/no_timestamp_file_found.wav", True, False)
                 upd_vol(.1)
                 while True:
                     l_sw.update()
@@ -1180,15 +1236,15 @@ def an_light(f_nm):
                     if r_sw.fell:
                         ts_mode = True
                         an_running = False
-                        play_a_0("/home/pi/mvc/timestamp_instructions.wav")
+                        play_a_0(code_folder + "mvc/timestamp_instructions.wav")
                         return
     elif plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        flsh_t = files.read_json_file("/home/pi/plylst/" + f_nm + ".json")
+        flsh_t = files.read_json_file(code_folder + "plylst/" + f_nm + ".json")
     else:
-        if (f_exists("/home/pi/sndtrk/" + json_fn + ".json") == True):
+        if (f_exists(code_folder + "sndtrk/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
-                "/home/pi/sndtrk/" + json_fn + ".json")
+                code_folder + "sndtrk/" + json_fn + ".json")
 
     flsh_i = 0
 
@@ -1202,9 +1258,9 @@ def an_light(f_nm):
 
     if not plylst_f:
         if cust_f:
-            media0 = "/home/pi/customers_owned_music/" + f_nm
+            media0 = code_folder + "customers_owned_music/" + f_nm
         else:
-            media0 = "/home/pi/sndtrk/" + f_nm
+            media0 = code_folder + "sndtrk/" + f_nm
         if is_video:
             play_movie_file(media0)
         else:
@@ -1273,9 +1329,9 @@ def an_ts(f_nm):
     f_nm = f_nm.replace("customers_owned_music_", "")
 
     if cust_f:
-        media0 = "/home/pi/customers_owned_music/" + f_nm
+        media0 = code_folder + "customers_owned_music/" + f_nm
     else:
-        media0 = "/home/pi/sndtrk/" + f_nm
+        media0 = code_folder + "sndtrk/" + f_nm
 
     if is_video:
         play_movie_file(media0)
@@ -1296,17 +1352,17 @@ def an_ts(f_nm):
             led.show()
             if cust_f:
                 files.write_json_file(
-                    "/home/pi/customers_owned_music/" + json_fn + ".json", t_s)
+                    code_folder + "customers_owned_music/" + json_fn + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/home/pi/sndtrk/" + json_fn + ".json", t_s)
+                    code_folder + "sndtrk/" + json_fn + ".json", t_s)
             break
 
     ts_mode = False
     rst_an()
-    play_a_0("/home/pi/mvc/timestamp_saved.wav")
-    play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
-    play_a_0("/home/pi/mvc/animations_are_now_active.wav")
+    play_a_0(code_folder + "mvc/timestamp_saved.wav")
+    play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
+    play_a_0(code_folder + "mvc/animations_are_now_active.wav")
 
 
 ###############
@@ -1332,10 +1388,10 @@ def set_hdw(cmd, dur):
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stop_media()
                     if seg[2] == "S":
-                        w0 = "/home/pi/sndtrk/" + seg[3:]
+                        w0 = code_folder + "sndtrk/" + seg[3:]
                         f_nm = seg[3:]
                     elif seg[2] == "M":
-                        w0 = "/home/pi/customers_owned_music/" + \
+                        w0 = code_folder + "customers_owned_music/" + \
                             seg[3:]
                         f_nm = "customers_owned_music_" + seg[3:]
                     elif seg[2] == "P":
@@ -1486,7 +1542,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        play_a_0("/home/pi/mvc/animations_are_now_active.wav")
+        play_a_0(code_folder + "mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -1500,10 +1556,10 @@ class BseSt(Ste):
         if switch_state == "left_held":
             if cont_run:
                 cont_run = False
-                play_a_0("/home/pi/mvc/continuous_mode_deactivated.wav")
+                play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
-                play_a_0("/home/pi/mvc/continuous_mode_activated.wav")
+                play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
         elif switch_state == "left" or cont_run and not an_running:
             an(cfg["option_selected"])
         elif switch_state == "right":
@@ -1522,7 +1578,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        play_a_0("/home/pi/mvc/main_menu.wav")
+        play_a_0(code_folder + "mvc/main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1533,7 +1589,7 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/home/pi/mvc/" + main_m[self.i] + ".wav")
+            play_a_0(code_folder + "mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -1549,7 +1605,7 @@ class Main(Ste):
             elif sel_mnu == "volume_settings":
                 mch.go_to('volume_settings')
             else:
-                play_a_0("/home/pi/mvc/all_changes_complete.wav")
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1565,7 +1621,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        play_a_0("/home/pi/mvc/sound_selection_menu.wav")
+        play_a_0(code_folder + "mvc/sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1577,7 +1633,7 @@ class Snds(Ste):
         r_sw.update()
         if l_sw.fell:
             try:
-                play_a_0("/home/pi/o_snds/" + menu_snd_opt[self.i])
+                play_a_0(code_folder + "o_snds/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -1587,8 +1643,8 @@ class Snds(Ste):
                 self.i = 0
         if r_sw.fell:
             cfg["option_selected"] = menu_snd_opt[self.sel_i]
-            files.write_json_file("/home/pi/cfg.json", cfg)
-            play_a_0("/home/pi/mvc/option_selected.wav", "rb")
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_a_0(code_folder + "mvc/option_selected.wav", "rb")
             mch.go_to('base_state')
 
 
@@ -1604,7 +1660,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        play_a_0("/home/pi/mvc/add_sounds_animate.wav")
+        play_a_0(code_folder + "mvc/add_sounds_animate.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1617,7 +1673,7 @@ class AddSnds(Ste):
         r_sw.update()
         if l_sw.fell:
             play_a_0(
-                "/home/pi/mvc/" + add_snd[self.i] + ".wav")
+                code_folder + "mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(add_snd)-1:
@@ -1625,17 +1681,17 @@ class AddSnds(Ste):
         if r_sw.fell:
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                play_a_0("/home/pi/mvc/create_sound_track_files.wav")
+                play_a_0(code_folder + "mvc/create_sound_track_files.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                play_a_0("/home/pi/mvc/timestamp_mode_on.wav")
-                play_a_0("/home/pi/mvc/timestamp_instructions.wav")
+                play_a_0(code_folder + "mvc/timestamp_mode_on.wav")
+                play_a_0(code_folder + "mvc/timestamp_instructions.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                play_a_0("/home/pi/mvc/timestamp_mode_off.wav")
+                play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
             else:
-                play_a_0("/home/pi/mvc/all_changes_complete.wav")
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1651,7 +1707,7 @@ class VolSet(Ste):
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        play_a_0("/home/pi/mvc/volume_settings_menu.wav")
+        play_a_0(code_folder + "mvc/volume_settings_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1662,7 +1718,7 @@ class VolSet(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/home/pi/mvc/" + vol_set[self.i] + ".wav")
+            play_a_0(code_folder + "mvc/" + vol_set[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(vol_set)-1:
@@ -1670,7 +1726,7 @@ class VolSet(Ste):
         if r_sw.fell:
             sel_mnu = vol_set[self.sel_i]
             if sel_mnu == "volume_level_adjustment":
-                play_a_0("/home/pi/mvc/volume_adjustment_menu.wav")
+                play_a_0(code_folder + "mvc/volume_adjustment_menu.wav")
                 done = False
                 while not done:
                     switch_state = utilities.switch_state(
@@ -1681,8 +1737,8 @@ class VolSet(Ste):
                         ch_vol("raise")
                     elif switch_state == "right_held":
                         files.write_json_file(
-                            "/home/pi/cfg.json", cfg)
-                        play_a_0("/home/pi/mvc/all_changes_complete.wav")
+                            code_folder + "cfg.json", cfg)
+                        play_a_0(code_folder + "mvc/all_changes_complete.wav")
                         done = True
                         mch.go_to('base_state')
                     upd_vol(0.1)
@@ -1691,13 +1747,13 @@ class VolSet(Ste):
                 cfg["volume_pot"] = False
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
-                files.write_json_file("/home/pi/cfg.json", cfg)
-                play_a_0("/home/pi/mvc/all_changes_complete.wav")
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "volume_pot_on":
                 cfg["volume_pot"] = True
-                files.write_json_file("/home/pi/cfg.json", cfg)
-                play_a_0("/home/pi/mvc/all_changes_complete.wav")
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1722,7 +1778,7 @@ class WebOpt(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0("/home/pi/mvc/" + web_m[self.i] + ".wav")
+            play_a_0(code_folder + "mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -1741,11 +1797,11 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif selected_menu_item == "hear_instr_web":
-                play_a_0("/home/pi/mvc/web_instruct.wav")
+                play_a_0(code_folder + "mvc/web_instruct.wav")
                 sel_web()
             else:
-                files.write_json_file("/home/pi/cfg.json", cfg)
-                play_a_0("/home/pi/mvc/all_changes_complete.wav")
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 ###############################################################################
@@ -1768,6 +1824,9 @@ time.sleep(1)
 if (web):
     files.log_item("starting server...")
     try:
+        # Wait for the network to be ready before continuing
+        wait_for_network()
+
         # Register mDNS service
         zeroconf = Zeroconf()
         print("Registering mDNS service...")
@@ -1781,6 +1840,8 @@ if (web):
     except OSError:
         time.sleep(5)
         files.log_item("server did not start...")
+
+discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
