@@ -43,8 +43,15 @@
 # Units with a touchscreen use a html page and material UI for styling
 # Midori, a lightweight browser, is used so it can run on any pi
 # install midori and confirm its version
-# sudo apt install midori
+# sudo apt install midori==7.0
 # midori --version
+
+# for touch screen products the display on vnc will default to the touch screen 
+# resolution which is very low.  During dev you might want to use these three commands 
+# to set it higher, note these will reset at reboot.  Do not make these permanent.
+# xrandr --newmode "1920x1080_60.00"  173.00  1920 2048 2248 2576  1080 1083 1088 1120 -hsync +vsync
+# xrandr --addmode HDMI-1 "1920x1080_60.00"
+# xrandr --output HDMI-1 --mode "1920x1080_60.00"
 
 #######################################################
 # prod files are located in the code folder on the user machine
@@ -120,6 +127,70 @@ def restart_pi_timer():
 
 
 gc_col("Imports gc, files")
+
+################################################################################
+# config variables
+
+cfg = files.read_json_file(code_folder + "cfg.json")  #home_path = get_home_path() + "sndtrk"
+
+
+def upd_media():
+    global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
+    sndtrk_opt = files.return_directory("", code_folder + "sndtrk", ".wav", False)
+    video_opt = files.return_directory("", code_folder + "sndtrk", ".mp4", False)
+    sndtrk_opt.extend(video_opt)
+    # print("Sound tracks: " + str(sndtrk_opt))
+
+    plylst_opt = files.return_directory(
+        "plylst_", code_folder + "plylst", ".json", True)
+    # print("Play lists: " + str(plylst_opt))
+
+    mysndtrk_opt = files.return_directory(
+        "customers_owned_music_", code_folder + "customers_owned_music", ".wav", False)
+    myvideo_opt = files.return_directory(
+        "customers_owned_music_", code_folder + "customers_owned_music", ".mp4", False)
+    mysndtrk_opt.extend(myvideo_opt)
+    # print("My sound tracks: " + str(mysndtrk_opt))
+
+    all_snd_opt = []
+    all_snd_opt.extend(plylst_opt)
+    all_snd_opt.extend(sndtrk_opt)
+    all_snd_opt.extend(mysndtrk_opt)
+
+    menu_snd_opt = []
+    menu_snd_opt.extend(files.return_directory(
+        "", code_folder + "plylst", ".json", False, ".mp3"))
+    menu_snd_opt.extend(files.return_directory(
+        "", code_folder + "sndtrk", ".wav", False))
+    rnd_opt = ['rnd plylst.wav', 'random built in.wav',
+               'random my.wav', 'random all.wav']
+    menu_snd_opt.extend(rnd_opt)
+
+    #print("Menu sound tracks: " + str(menu_snd_opt))
+
+
+upd_media()
+
+web = cfg["serve_webpage"]
+
+cfg_main = files.read_json_file(code_folder + "mvc/main_menu.json")
+main_m = cfg_main["main_menu"]
+
+cfg_web = files.read_json_file(code_folder + "mvc/web_menu.json")
+web_m = cfg_web["web_menu"]
+
+cfg_vol = files.read_json_file(code_folder + "mvc/volume_settings.json")
+vol_set = cfg_vol["volume_settings"]
+
+cfg_add_song = files.read_json_file(
+    code_folder + "mvc/add_sounds_animate.json")
+add_snd = cfg_add_song["add_sounds_animate"]
+
+cont_run = False
+ts_mode = False
+lst_opt = ''
+an_running = False
+is_gtts_reachable = False
 
 ################################################################################
 # Setup io hardware
@@ -209,9 +280,139 @@ m8_servo.angle = 90
 
 ################################################################################
 # Setup neo pixels
-num_px = 10
-led = neopixel_spi.NeoPixel_SPI(
-    board.SPI(), num_px, brightness=1.0, auto_write=False)
+
+trees = []
+canes = []
+ornmnts = []
+stars = []
+brnchs = []
+cane_s = []
+cane_e = []
+
+num_px = 0
+led = neopixel_spi.NeoPixel_SPI(board.SPI(), num_px, brightness=1.0, auto_write=False)
+
+
+def bld_tree(p):
+    i = []
+    for t in trees:
+        for ledi in t:
+            si = ledi
+            break
+        if p == "ornaments":
+            for ledi in range(0, 7):
+                i.append(ledi+si)
+        if p == "star":
+            for ledi in range(7, 14):
+                i.append(ledi+si)
+        if p == "branches":
+            for ledi in range(14, 21):
+                i.append(ledi+si)
+    return i
+
+
+def bld_cane(p):
+    i = []
+    for c in canes:
+        for led_i in c:
+            si = led_i
+            break
+        if p == "end":
+            for led_i in range(0, 2):
+                i.append(led_i+si)
+        if p == "start":
+            for led_i in range(2, 4):
+                i.append(led_i+si)
+    return i
+
+
+def show_l():
+    led.show()
+    time.sleep(.3)
+    led.fill((0, 0, 0))
+    led.show()
+
+
+def l_tst():
+    global ornmnts, stars, brnchs, cane_s, cane_e
+    ornmnts = bld_tree("ornaments")
+    stars = bld_tree("star")
+    brnchs = bld_tree("branches")
+    cane_s = bld_cane("start")
+    cane_e = bld_cane("end")
+
+    # cane test
+    cnt = 0
+    for i in cane_s:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 1:
+            show_l()
+            cnt = 0
+    for i in cane_e:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 1:
+            show_l()
+            cnt = 0
+
+    # tree test
+    cnt = 0
+    for i in ornmnts:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in stars:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in brnchs:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+
+
+def upd_l_str():
+    global trees, canes, n_px, led
+    trees = []
+    canes = []
+
+    n_px = 0
+
+    els = cfg["light_string"].split(',')
+
+    for el in els:
+        p = el.split('-')
+        if len(p) == 2:
+            typ, qty = p
+            qty = int(qty)
+
+            if typ == 'grandtree':
+                s = list(range(n_px, n_px + qty))
+                trees.append(s)
+                n_px += qty
+            elif typ == 'cane':
+                s = list(range(n_px, n_px + qty))
+                canes.append(s)
+                n_px += qty
+
+    print("Number of pixels total: ", n_px)
+    led = None
+    led = neopixel_spi.NeoPixel_SPI(board.SPI(), n_px, brightness=1.0, auto_write=False)
+    print("Lenght of LED object " + str(len(led)))
+    led.auto_write = False
+    led.brightness = 1.0
+    l_tst()
+
+upd_l_str()
+
+gc_col("Neopixels setup")
 
 
 ################################################################################
@@ -291,69 +492,7 @@ def discover_lights():
 # test_lifx()
 
 
-################################################################################
-# Sd card config variables
 
-cfg = files.read_json_file(code_folder + "cfg.json")  #home_path = get_home_path() + "sndtrk"
-
-
-def upd_media():
-    global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
-    sndtrk_opt = files.return_directory("", code_folder + "sndtrk", ".wav", False)
-    video_opt = files.return_directory("", code_folder + "sndtrk", ".mp4", False)
-    sndtrk_opt.extend(video_opt)
-    # print("Sound tracks: " + str(sndtrk_opt))
-
-    plylst_opt = files.return_directory(
-        "plylst_", code_folder + "plylst", ".json", True)
-    # print("Play lists: " + str(plylst_opt))
-
-    mysndtrk_opt = files.return_directory(
-        "customers_owned_music_", code_folder + "customers_owned_music", ".wav", False)
-    myvideo_opt = files.return_directory(
-        "customers_owned_music_", code_folder + "customers_owned_music", ".mp4", False)
-    mysndtrk_opt.extend(myvideo_opt)
-    # print("My sound tracks: " + str(mysndtrk_opt))
-
-    all_snd_opt = []
-    all_snd_opt.extend(plylst_opt)
-    all_snd_opt.extend(sndtrk_opt)
-    all_snd_opt.extend(mysndtrk_opt)
-
-    menu_snd_opt = []
-    menu_snd_opt.extend(files.return_directory(
-        "", code_folder + "plylst", ".json", False, ".mp3"))
-    menu_snd_opt.extend(files.return_directory(
-        "", code_folder + "sndtrk", ".wav", False))
-    rnd_opt = ['rnd plylst.wav', 'random built in.wav',
-               'random my.wav', 'random all.wav']
-    menu_snd_opt.extend(rnd_opt)
-
-    print("Menu sound tracks: " + str(menu_snd_opt))
-
-
-upd_media()
-
-web = cfg["serve_webpage"]
-
-cfg_main = files.read_json_file(code_folder + "mvc/main_menu.json")
-main_m = cfg_main["main_menu"]
-
-cfg_web = files.read_json_file(code_folder + "mvc/web_menu.json")
-web_m = cfg_web["web_menu"]
-
-cfg_vol = files.read_json_file(code_folder + "mvc/volume_settings.json")
-vol_set = cfg_vol["volume_settings"]
-
-cfg_add_song = files.read_json_file(
-    code_folder + "mvc/add_sounds_animate.json")
-add_snd = cfg_add_song["add_sounds_animate"]
-
-cont_run = False
-ts_mode = False
-lst_opt = ''
-an_running = False
-is_gtts_reachable = False
 
 
 ################################################################################
@@ -708,7 +847,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             print("action: " +
                   rq_d["action"] + " data: " + cfg["light_string"])
             files.write_json_file(code_folder + "cfg.json", cfg)
-            # upd_l_str()
+            upd_l_str()
             play_a_0(code_folder + "mvc/all_changes_complete.wav")
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
@@ -724,7 +863,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("action: " + rq_d["action"] +
               " data: " + cfg["light_string"])
         files.write_json_file(code_folder + "cfg.json", cfg)
-        # upd_l_str()
+        upd_l_str()
         play_a_0(code_folder + "mvc//all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1841,7 +1980,7 @@ if (web):
         time.sleep(5)
         files.log_item("server did not start...")
 
-discover_lights()
+# discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
