@@ -197,6 +197,7 @@ ts_mode = False
 lst_opt = ''
 an_running = False
 is_gtts_reachable = False
+stop_play_list = False
 
 ################################################################################
 # Setup io hardware
@@ -1024,8 +1025,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg, cont_run, ts_mode, stop_play_list
         cfg["option_selected"] = rq_d["an"]
+        stop_play_list = False
         an(cfg["option_selected"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         self.send_response(200)
@@ -1471,6 +1473,7 @@ def an(f_nm):
 def an_light(f_nm):
     global ts_mode, an_running
     an_running = True
+    if stop_play_list: return
 
     time.sleep(.1)
 
@@ -1765,7 +1768,7 @@ def random_effect(il, ih, d):
     if i == 1:
         rbow(.005, d)
     elif i == 2:
-        mlt_c(.01)
+        mlt_c(.001)
         time.sleep(d)
     elif i == 3:
         fire(d)
@@ -1965,7 +1968,7 @@ class Ste(object):
 
 
 class BseSt(Ste):
-    global an_running
+    
 
     def __init__(self):
         pass
@@ -1983,21 +1986,23 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0)
-        if switch_state == "left_held":
-            if cont_run:
-                cont_run = False
-                play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
-            else:
-                cont_run = True
-                play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
-        elif switch_state == "left" or cont_run and not an_running:
-            an(cfg["option_selected"])
-            rst_an()
-        elif switch_state == "right":
-            mch.go_to('main_menu')
+        global cont_run, an_running, stop_play_list
+        if  not an_running:
+            switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0)
+            if switch_state == "left_held":
+                if cont_run:
+                    cont_run = False
+                    play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
+                else:
+                    cont_run = True
+                    play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
+            elif switch_state == "left" or cont_run:
+                stop_play_list = False
+                an(cfg["option_selected"])
+                rst_an()
+            elif switch_state == "right":
+                mch.go_to('main_menu')
 
 
 class Main(Ste):
@@ -2299,13 +2304,14 @@ state_machine_thread.start()
 
 
 def run_stop_button_check():
-    global an_running
+    global an_running, stop_play_list
     while True:
         if an_running:
             l_sw.update()
             r_sw.update()
             if l_sw.fell and cfg["can_cancel"]:
                 an_running = False
+                stop_play_list = True
                 mix.stop()
                 media_player.stop()
                 rst_an()
