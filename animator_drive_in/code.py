@@ -1741,7 +1741,7 @@ def set_hdw(cmd, dur):
                 elif seg[0] == 'R':
                     v = float(seg[1:])
                     rbow(v, dur)
-                elif seg[0:] == 'RAND':
+                elif seg[0:] == 'ZRAND':
                     random_effect(1,3,dur)
                 elif seg[0] == 'C':
                     print("not implemented")
@@ -1753,12 +1753,13 @@ def set_hdw(cmd, dur):
 
 pi = 0
 def random_effect(il,ih,d):
+    global pi
     i = random.randint(il, ih)
     while i == pi:
         print("regenerating random selection")
         i = random.randint(il, ih)
     if i == 1:
-        rainbow(.005, d)
+        rbow(.005, d)
     elif i == 2:
         mlt_c(.01)
         upd_vol(d)
@@ -1775,8 +1776,8 @@ def rbow(spd, dur):
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            for i in range(num_px):
-                pixel_index = (i * 256 // num_px) + j
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
             upd_vol(spd)
@@ -1784,8 +1785,8 @@ def rbow(spd, dur):
             if te > dur:
                 return
         for j in reversed(range(0, 255, 1)):
-            for i in range(num_px):
-                pixel_index = (i * 256 // num_px) + j
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
             upd_vol(spd)

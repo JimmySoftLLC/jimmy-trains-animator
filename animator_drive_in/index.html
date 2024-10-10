@@ -721,7 +721,6 @@
         getPlaylists()
         getBuiltInSoundTracks()
         getCustomersSoundTracks()
-        // getModuleNumber()
         getLightString()
     });
 
@@ -816,25 +815,6 @@
             })
             .then(function (data) {
                 volume.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
-    }
-
-    function getModuleNumber() {
-        fetch('/get-mod-num', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                moduleNumber.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
@@ -1297,41 +1277,6 @@
                 websiteSubmitButton.removeAttribute('disabled')
             });
     });
-
-    // Add click event listener to module number submit button
-    var moduleNumberSubmitButton = document.getElementById('moduleNumberSubmitButton');
-    moduleNumberSubmitButton.addEventListener('click', function () {
-        var moduleNumber = document.getElementById('moduleNumber');
-        var moduleNumberText = moduleNumber.value;
-        var url = this.getAttribute('data-url');
-
-        var data = {
-            an: moduleNumberText,
-        };
-
-        moduleNumberSubmitButton.setAttribute('disabled', 'true')
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                moduleNumber.value = data; // Set the value of the input field with the received data
-                moduleNumberSubmitButton.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                moduleNumberSubmitButton.removeAttribute('disabled')
-                console.log(error);
-                showAlert(error);
-            });
-    });
-
 
     // Restrict input to letters, numbers, and hyphens only
     websiteUrl.addEventListener('input', function () {
