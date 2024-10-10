@@ -812,7 +812,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.test_animation_post(post_data_obj)
 
     def test_animation_post(self, rq_d):
+        global an_running
+        an_running = True
         set_hdw(rq_d["an"], 3)
+        an_running = True
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1633,155 +1636,132 @@ def an_ts(f_nm):
 br = 0
 
 
-def set_to(cmd):
-    if "set_to_red" in cmd:
-        led.fill((255, 0, 0))
-        led.show()
-    elif "set_to_green" in cmd:
-        led.fill((0, 255, 0))
-        led.show()
-    elif "set_to_blue" in cmd:
-        led.fill((0, 0, 255))
-        led.show()
-    elif "set_to_white" in cmd:
-        led.fill((255, 255, 255))
-        led.show()
-    elif "set_to_0" in cmd:
-        led.brightness = 0.0
-        led.show()
-    elif "set_to_20" in cmd:
-        led.brightness = 0.2
-        led.show()
-    elif "set_to_40" in cmd:
-        led.brightness = 0.4
-        led.show()
-    elif "set_to_60" in cmd:
-        led.brightness = 0.6
-        led.show()
-    elif "set_to_80" in cmd:
-        led.brightness = 0.8
-        led.show()
-    elif "set_to_100" in cmd:
-        led.brightness = 1.0
-        led.show()
+def is_neo(number, nested_array):
+    return any(number in sublist for sublist in nested_array)
+
+
+def set_all_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):  # in range(n_px)
+            if is_neo(i, neos):
+                led[i] = (g, r, b)
+            else:
+                led[i] = (r, g, b)
+    else:
+        if is_neo(light_n, neos):
+            led[light_n] = (g, r, b)
+        else:
+            led[light_n] = (r, g, b)
+    led.show()
 
 
 def set_hdw(cmd, dur):
     global sp, br
 
-    if "set_to" in cmd:
-        set_to(cmd)
-    else:
-        # Split the input string into segments
-        segs = cmd.split(",")
-        # Process each segment
-        try:
-            for seg in segs:
-                f_nm = ""
-                if seg[0] == 'E':  # end an
-                    return "STOP"
-                elif seg[0] == 'M':  # play file
-                    if seg[1] == "S":
-                        stop_media()
-                    elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
-                        stop_media()
-                        if seg[2] == "S":
-                            w0 = code_folder + "sndtrk/" + seg[3:]
-                            f_nm = seg[3:]
-                        elif seg[2] == "M":
-                            w0 = code_folder + "customers_owned_music/" + \
-                                seg[3:]
-                            f_nm = "customers_owned_music_" + seg[3:]
-                        elif seg[2] == "P":
-                            f_nm = "plylst_" + seg[3:]
-                        if seg[1] == "W" or seg[1] == "P":
-                            play_a_0(w0, False)
-                        if seg[1] == "A":
-                            res = an(f_nm)
-                            if res == "STOP":
-                                return "STOP"
-                        if seg[1] == "W":
-                            wait_snd()
-                elif seg[0] == 'L':  # lights
-                    segs_split = seg.split("-")
-                    light_n = int(segs_split[0][1:])-1
-                    r = int(segs_split[1])
-                    g = int(segs_split[2])
-                    b = int(segs_split[3])
-                    if light_n == -1:
-                        led.fill((r, g, b))
+    # Split the input string into segments
+    segs = cmd.split(",")
+    # Process each segment
+    try:
+        for seg in segs:
+            f_nm = ""
+            if seg[0] == 'E':  # end an
+                return "STOP"
+            elif seg[0] == 'M':  # play file
+                if seg[1] == "S":
+                    stop_media()
+                elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
+                    stop_media()
+                    if seg[2] == "S":
+                        w0 = code_folder + "sndtrk/" + seg[3:]
+                        f_nm = seg[3:]
+                    elif seg[2] == "M":
+                        w0 = code_folder + "customers_owned_music/" + \
+                            seg[3:]
+                        f_nm = "customers_owned_music_" + seg[3:]
+                    elif seg[2] == "P":
+                        f_nm = "plylst_" + seg[3:]
+                    if seg[1] == "W" or seg[1] == "P":
+                        play_a_0(w0, False)
+                    if seg[1] == "A":
+                        res = an(f_nm)
+                        if res == "STOP":
+                            return "STOP"
+                    if seg[1] == "W":
+                        wait_snd()
+            elif seg[0] == 'L':  # lights
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][1:])-1
+                r = int(segs_split[1])
+                g = int(segs_split[2])
+                b = int(segs_split[3])
+                set_all_to(light_n, r, g, b)
+
+            elif seg[0] == 'M':  # modules
+                mod = (int(seg[1])*10+int(seg[2]))*2
+                light_n = mod - 2
+                print(light_n)
+                index = int(seg[4])-1
+                if index == 0:
+                    index = 1
+                elif index == 1:
+                    index = 0
+                elif index == 3:
+                    index = 4
+                elif index == 4:
+                    index = 3
+                v = int(seg[5:])
+                print(v)
+                if seg[1] == "0" and seg[2] == "0":
+                    led.fill((v, v, v))
+                else:
+                    if seg[4] == "0":
+                        led[light_n] = (v, v, v)
+                        led[light_n+1] = (v, v, v)
+                    elif index < 3:
+                        cur = list(led[light_n])
+                        cur[index] = v
+                        led[light_n] = (cur[0], cur[1], cur[2])
                     else:
-                        led[light_n] = (r, g, b)
-                    led.show()
-                elif seg[0] == 'M':  # modules
-                    mod = (int(seg[1])*10+int(seg[2]))*2
-                    light_n = mod - 2
-                    print(light_n)
-                    index = int(seg[4])-1
-                    if index == 0:
-                        index = 1
-                    elif index == 1:
-                        index = 0
-                    elif index == 3:
-                        index = 4
-                    elif index == 4:
-                        index = 3
-                    v = int(seg[5:])
-                    print(v)
-                    if seg[1] == "0" and seg[2] == "0":
-                        led.fill((v, v, v))
+                        cur = list(led[light_n+1])
+                        cur[index-3] = v
+                        led[light_n+1] = (cur[0], cur[1], cur[2])
+                led.show()
+            elif seg[0] == 'B':  # brightness
+                br = int(seg[1:])
+                led.brightness = float(br/100)
+                led.show()
+            elif seg[0] == 'F':  # fade in or out
+                segs_split = seg.split("_")
+                v = int(segs_split[0][1:])
+                s = float(segs_split[1])
+                while not br == v:
+                    if br < v:
+                        br += 1
+                        led.brightness = float(br/100)
                     else:
-                        if seg[4] == "0":
-                            led[light_n] = (v, v, v)
-                            led[light_n+1] = (v, v, v)
-                        elif index < 3:
-                            cur = list(led[light_n])
-                            cur[index] = v
-                            led[light_n] = (cur[0], cur[1], cur[2])
-                        else:
-                            cur = list(led[light_n+1])
-                            cur[index-3] = v
-                            led[light_n+1] = (cur[0], cur[1], cur[2])
-                    led.show()   
-                elif seg[0] == 'B':  # brightness
-                    br = int(seg[1:])
-                    led.brightness = float(br/100)
+                        br -= 1
+                        led.brightness = float(br/100)
                     led.show()
-                elif seg[0] == 'F':  # fade in or out
-                    v = int(seg[1])*100+int(seg[2])*10+int(seg[3])
-                    s = float(seg[4:])
-                    while not br == v:
-                        if br < v:
-                            br += 1
-                            led.brightness = float(br/100)
-                        else:
-                            br -= 1
-                            led.brightness = float(br/100)
-                        led.show()
-                        time.sleep(s)
-                elif seg[0] == 'R':
-                    v = float(seg[1:])
-                    rbow(v, dur)
-                elif seg[0:] == 'ZRAND':
-                    random_effect(1, 3, dur)
-                elif seg[0] == 'C':
-                    print("not implemented")
-        except Exception as e:
-            files.log_item(e)
+                    time.sleep(s)
+            elif seg[0:] == 'ZRAND':
+                random_effect(1, 3, dur)
+            elif seg[:2] == 'ZR':
+                v = float(seg[2:])
+                rbow(v, dur)
+            elif seg[0:] == 'ZFIRE':
+                random_effect(3, 3, dur)
+            elif seg[0:] == 'ZCOLCH':
+                random_effect(2, 2, dur)
+            elif seg[0] == 'C':
+                print("not implemented")
+    except Exception as e:
+        files.log_item(e)
 
 ##############################
 # Led color effects
 
-
-pi = 0
-
-
 def random_effect(il, ih, d):
-    global pi
     i = random.randint(il, ih)
-    while i == pi:
-        print("regenerating random selection")
-        i = random.randint(il, ih)
     if i == 1:
         rbow(.005, d)
     elif i == 2:
@@ -1793,15 +1773,14 @@ def random_effect(il, ih, d):
         c_fire(d)
     elif i == 5:
         mlt_c(d)
-    pi = i
-
 
 def rbow(spd, dur):
     st = time.monotonic()
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            if not an_running: return
+            if not an_running:
+                return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -1823,7 +1802,6 @@ def rbow(spd, dur):
 
 def fire(dur):
     st = time.monotonic()
-    led.brightness = 1.0
 
     firei = []
 
@@ -1852,7 +1830,8 @@ def fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in firei:
-            if not an_running: return
+            if not an_running:
+                return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
@@ -1867,12 +1846,12 @@ def fire(dur):
 
 def c_fire(dur):
     st = time.monotonic()
-    led.brightness = 1.0
 
     # Flicker, based on our initial RGB values
     while True:
         for i in range(0, n_px):
-            if not an_running: return
+            if not an_running:
+                return
             r = random.randint(0, 255)
             g = random.randint(0, 255)
             b = random.randint(0, 255)
@@ -1899,12 +1878,12 @@ def c_fire(dur):
 
 def mlt_c(dur):
     st = time.monotonic()
-    led.brightness = 1.0
 
     # Flicker, based on our initial RGB values
     while True:
         for i in range(0, n_px):
-            if not an_running: return
+            if not an_running:
+                return
             r = random.randint(128, 255)
             g = random.randint(128, 255)
             b = random.randint(128, 255)
@@ -2329,7 +2308,7 @@ def run_stop_button_check():
                 an_running = False
                 mix.stop()
                 media_player.stop()
-                rst_an()           
+                rst_an()
         time.sleep(.1)
 
 

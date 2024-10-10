@@ -114,7 +114,7 @@
             <h2>Setup light string:</h2>
             <div class="mui-textfield">
                 <p>
-                    Enter your light string in the order which each component is connected together by pressing cane-4,
+                    Enter your light string in the order which each component is connected together by pressing neo-6,
                     cane-4...
                     When finished press "Save".
                 </p>
@@ -180,45 +180,45 @@
             </div>
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_red" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_255_0_0" data-url="/lights"
                     type="button">
                     Red
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_green" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_0_255_0" data-url="/lights"
                     type="button">
                     Green
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_blue" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_0_0_255" data-url="/lights"
                     type="button">
                     Blue
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_white" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_255_255_255" data-url="/lights"
                     type="button">
                     White
                 </button>
             </div>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B0" data-url="/lights"
                     type="button">
                     Off
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_20" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B20" data-url="/lights"
                     type="button">
                     20
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_40" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B40" data-url="/lights"
                     type="button">
                     40
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_60" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B60" data-url="/lights"
                     type="button">
                     60
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_80" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B80" data-url="/lights"
                     type="button">
                     80
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="set_to_100" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B100" data-url="/lights"
                     type="button">
                     100
                 </button>
@@ -350,17 +350,17 @@
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <div>LNNN-R-G-B = All lights NNN (0 All, 1 to 999) RGB 0 to 255</div>
-                <div>MNNN-I-XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+                <div>LNNN_R_G_B = All lights NNN (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>MNNN_I_XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
                 <div>BXXX = Brightness XXX 000 to 100</div>
-                <div>FXXX-TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds</div>
+                <div>FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds</div>
                 <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (S
                     sound tracks, M my sound tracks, P playlist) XXX (file name)</div>
-                <div>ZRND = Random rainbow, fire, or color change</div>
+                <div>ZRAND = Random rainbow, fire, or color change</div>
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-                <div>ZFRE = Fire</div>
-                <div>ZCOL = Color change</div>
-                <div>C/NN/.../TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between
+                <div>ZFIRE = Fire</div>
+                <div>ZCOLCH = Color change</div>
+                <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between
                     commands</div>
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
