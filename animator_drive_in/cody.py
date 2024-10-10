@@ -289,8 +289,17 @@ brnchs = []
 cane_s = []
 cane_e = []
 
-num_px = 0
-led = neopixel_spi.NeoPixel_SPI(board.SPI(), num_px, brightness=1.0, auto_write=False)
+bars = []
+bolts = []
+noods = []
+neos = []
+
+bar_arr = []
+bolt_arr = []
+neo_arr = []
+
+n_px = 0
+led = neopixel_spi.NeoPixel_SPI(board.SPI(), n_px, brightness=1.0, auto_write=False)
 
 
 def bld_tree(p):
@@ -325,6 +334,41 @@ def bld_cane(p):
                 i.append(led_i+si)
     return i
 
+def bld_bar():
+    i = []
+    for b in bars:
+        for l in b:
+            si = l
+            break
+        for l in range(0, 10):
+            i.append(l+si)
+    return i
+
+
+def bld_bolt():
+    i = []
+    for b in bolts:
+        for l in b:
+            si = l
+            break
+        if len(b) == 4:
+            for l in range(0, 4):
+                i.append(l+si)
+        if len(b) == 1:
+            for l in range(0, 1):
+                i.append(l+si)
+    return i
+
+def bld_neo():
+    i = []
+    for n in neos:
+        for l in n:
+            si = l
+            break
+        for l in range(0, 6):
+            i.append(l+si)
+    return i
+
 
 def show_l():
     led.show()
@@ -334,12 +378,21 @@ def show_l():
 
 
 def l_tst():
-    global ornmnts, stars, brnchs, cane_s, cane_e
+    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
+
+    # Christmas items
     ornmnts = bld_tree("ornaments")
     stars = bld_tree("star")
     brnchs = bld_tree("branches")
     cane_s = bld_cane("start")
     cane_e = bld_cane("end")
+
+    # Lightning items
+    bar_arr = bld_bar()
+    bolt_arr = bld_bolt()
+
+    # Neo items
+    neo_arr = bld_neo()
 
     # cane test
     cnt = 0
@@ -377,11 +430,57 @@ def l_tst():
             show_l()
             cnt = 0
 
+    # bar test
+    for b in bars:
+        for l in b:
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # bolt test
+    for b in bolts:
+        for l in b:
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # nood test
+    for n in noods:
+        led[n[0]] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # neo test
+    for n in neos:
+        for i in n:
+            led[i] = (0, 50, 0)
+            time.sleep(.3)
+            led.show()
+            led[i] = (50, 0, 0)
+            time.sleep(.3)
+            led.show()
+            led[i] = (0, 0, 50)
+            time.sleep(.3)
+            led.show()
+            time.sleep(.3)
+            led.fill((0, 0, 0))
+            led.show()
+
 
 def upd_l_str():
-    global trees, canes, n_px, led
+    global trees, canes, bars, bolts, noods,neos, n_px, led
     trees = []
     canes = []
+    bars = []
+    bolts = []
+    noods = []
+    neos = []
 
     n_px = 0
 
@@ -392,7 +491,6 @@ def upd_l_str():
         if len(p) == 2:
             typ, qty = p
             qty = int(qty)
-
             if typ == 'grandtree':
                 s = list(range(n_px, n_px + qty))
                 trees.append(s)
@@ -401,11 +499,28 @@ def upd_l_str():
                 s = list(range(n_px, n_px + qty))
                 canes.append(s)
                 n_px += qty
+            if typ == 'bar':
+                s = list(range(n_px, n_px + qty))
+                bars.append(s)
+                n_px += qty
+            elif typ == 'bolt' and qty < 4:
+                s = [n_px, qty]
+                noods.append(s)
+                n_px += 1
+            elif typ == 'bolt' and qty == 4:
+                s = list(range(n_px, n_px + qty))
+                bolts.append(s)
+                n_px += qty
+            if typ == 'neo':
+                if qty == 6: neoqty = 2
+                if qty == 12: neoqty = 4
+                s = list(range(n_px, n_px + neoqty))
+                neos.append(s)
+                n_px += neoqty
 
     print("Number of pixels total: ", n_px)
     led = None
     led = neopixel_spi.NeoPixel_SPI(board.SPI(), n_px, brightness=1.0, auto_write=False)
-    print("Lenght of LED object " + str(len(led)))
     led.auto_write = False
     led.brightness = 1.0
     l_tst()
