@@ -1558,18 +1558,18 @@ def an_light(f_nm):
                 resp = set_hdw(ft1[1], dur)
                 if resp == "STOP":
                     rst_an()
-                    time.sleep(.5)
+                    time.sleep(.2)
                     an_running = False
                     return
             flsh_i += 1
         if not mix.get_busy() and not media_player.is_playing() and not plylst_f and not an_running:
             rst_an()
-            time.sleep(.5)
+            time.sleep(.2)
             an_running = False
             return "DONE"
         if flsh_i > len(flsh_t)-1:
             rst_an()
-            time.sleep(.5)
+            time.sleep(.2)
             an_running = False
             return "DONE"
         time.sleep(.1)
@@ -1703,35 +1703,46 @@ def set_hdw(cmd, dur):
                         if seg[1] == "W":
                             wait_snd()
                 elif seg[0] == 'L':  # lights
+                    segs_split = seg.split("-")
+                    light_n = int(segs_split[0][1:])-1
+                    r = int(segs_split[1])
+                    g = int(segs_split[2])
+                    b = int(segs_split[3])
+                    if light_n == -1:
+                        led.fill((r, g, b))
+                    else:
+                        led[light_n] = (r, g, b)
+                    led.show()
+                elif seg[0] == 'M':  # modules
                     mod = (int(seg[1])*10+int(seg[2]))*2
-                    mod_num = mod - 2
-                    print(mod_num)
-                    ind = int(seg[4])-1
-                    if ind == 0:
-                        ind = 1
-                    elif ind == 1:
-                        ind = 0
-                    elif ind == 3:
-                        ind = 4
-                    elif ind == 4:
-                        ind = 3
+                    light_n = mod - 2
+                    print(light_n)
+                    index = int(seg[4])-1
+                    if index == 0:
+                        index = 1
+                    elif index == 1:
+                        index = 0
+                    elif index == 3:
+                        index = 4
+                    elif index == 4:
+                        index = 3
                     v = int(seg[5:])
                     print(v)
                     if seg[1] == "0" and seg[2] == "0":
                         led.fill((v, v, v))
                     else:
                         if seg[4] == "0":
-                            led[mod_num] = (v, v, v)
-                            led[mod_num+1] = (v, v, v)
-                        elif ind < 3:
-                            cur = list(led[mod_num])
-                            cur[ind] = v
-                            led[mod_num] = (cur[0], cur[1], cur[2])
+                            led[light_n] = (v, v, v)
+                            led[light_n+1] = (v, v, v)
+                        elif index < 3:
+                            cur = list(led[light_n])
+                            cur[index] = v
+                            led[light_n] = (cur[0], cur[1], cur[2])
                         else:
-                            cur = list(led[mod_num+1])
-                            cur[ind-3] = v
-                            led[mod_num+1] = (cur[0], cur[1], cur[2])
-                    led.show()
+                            cur = list(led[light_n+1])
+                            cur[index-3] = v
+                            led[light_n+1] = (cur[0], cur[1], cur[2])
+                    led.show()   
                 elif seg[0] == 'B':  # brightness
                     br = int(seg[1:])
                     led.brightness = float(br/100)
@@ -1790,8 +1801,7 @@ def rbow(spd, dur):
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            if not an_running:
-                return
+            if not an_running: return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -1842,8 +1852,7 @@ def fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in firei:
-            if not an_running:
-                return
+            if not an_running: return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
@@ -1863,8 +1872,7 @@ def c_fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in range(0, n_px):
-            if not an_running:
-                return
+            if not an_running: return
             r = random.randint(0, 255)
             g = random.randint(0, 255)
             b = random.randint(0, 255)
@@ -1896,8 +1904,7 @@ def mlt_c(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in range(0, n_px):
-            if not an_running:
-                return
+            if not an_running: return
             r = random.randint(128, 255)
             g = random.randint(128, 255)
             b = random.randint(128, 255)
@@ -2319,9 +2326,10 @@ def run_stop_button_check():
             l_sw.update()
             r_sw.update()
             if l_sw.fell and cfg["can_cancel"]:
+                an_running = False
                 mix.stop()
                 media_player.stop()
-                an_running = False
+                rst_an()           
         time.sleep(.1)
 
 

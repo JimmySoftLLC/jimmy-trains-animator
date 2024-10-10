@@ -376,14 +376,17 @@
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <div>LNN-IXXX = Lights NN (00 All, 01 to 58) I index (0 All, 1 to 6) XXX 0 to 255</div>
-                <div>BXXX-TTT = Brightness XXX 000 to 100, TTT time between transitions in seconds</div>
-                <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
+                <div>LNNN-R-G-B = All lights NNN (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>MNNN-I-XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+                <div>BXXX = Brightness XXX 000 to 100</div>
+                <div>FXXX-TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds</div>
                 <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (S
                     sound tracks, M my sound tracks, P playlist) XXX (file name)</div>
-                <div>RXXX = Rainbow, XXX cycle speed in seconds</div>
-                <div>ZRAND = Random rainbow, fire, color change</div>
-                <div>C-NN-...-XXX = Cycle, NN one or many commands seperated by dashes, XXX interval in seconds between
+                <div>ZRND = Random rainbow, fire, or color change</div>
+                <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+                <div>ZFRE = Fire</div>
+                <div>ZCOL = Color change</div>
+                <div>C/NN/.../TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between
                     commands</div>
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
