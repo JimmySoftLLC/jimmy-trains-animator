@@ -1,17 +1,17 @@
 # MIT License
-# 
+#
 # Copyright (c) 2024 JimmySoftLLC
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -46,8 +46,8 @@
 # sudo apt install midori==7.0
 # midori --version
 
-# for touch screen products the display on vnc will default to the touch screen 
-# resolution which is very low.  During dev you might want to use these three commands 
+# for touch screen products the display on vnc will default to the touch screen
+# resolution which is very low.  During dev you might want to use these three commands
 # to set it higher, note these will reset at reboot.  Do not make these permanent.
 # xrandr --newmode "1920x1080_60.00"  173.00  1920 2048 2248 2576  1080 1083 1088 1120 -hsync +vsync
 # xrandr --addmode HDMI-1 "1920x1080_60.00"
@@ -55,7 +55,7 @@
 
 #######################################################
 # prod files are located in the code folder on the user machine
-# debug the code.py, files.py and utilities.py in the home directory 
+# debug the code.py, files.py and utilities.py in the home directory
 # Delete code.py, files.py and utilities.py in the home directory after release
 
 
@@ -92,13 +92,16 @@ aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
+
 def get_home_path(subpath=""):
     # Get the current user's home directory
     home_dir = os.path.expanduser("~")
     # Return the full path by appending the optional subpath
     return os.path.join(home_dir, subpath)
 
+
 code_folder = get_home_path() + "code/"
+
 
 def f_exists(filename):
     try:
@@ -131,13 +134,16 @@ gc_col("Imports gc, files")
 ################################################################################
 # config variables
 
-cfg = files.read_json_file(code_folder + "cfg.json")  #home_path = get_home_path() + "sndtrk"
+# home_path = get_home_path() + "sndtrk"
+cfg = files.read_json_file(code_folder + "cfg.json")
 
 
 def upd_media():
     global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
-    sndtrk_opt = files.return_directory("", code_folder + "sndtrk", ".wav", False)
-    video_opt = files.return_directory("", code_folder + "sndtrk", ".mp4", False)
+    sndtrk_opt = files.return_directory(
+        "", code_folder + "sndtrk", ".wav", False)
+    video_opt = files.return_directory(
+        "", code_folder + "sndtrk", ".mp4", False)
     sndtrk_opt.extend(video_opt)
     # print("Sound tracks: " + str(sndtrk_opt))
 
@@ -166,7 +172,7 @@ def upd_media():
                'random my.wav', 'random all.wav']
     menu_snd_opt.extend(rnd_opt)
 
-    #print("Menu sound tracks: " + str(menu_snd_opt))
+    # print("Menu sound tracks: " + str(menu_snd_opt))
 
 
 upd_media()
@@ -246,7 +252,7 @@ def play_movie_file(movie_filename):
     media_player.set_media(media)
     media_player.play()
     while not media_player.is_playing():
-        upd_vol(.1)
+        time.sleep(.1)
 
 
 ################################################################################
@@ -299,7 +305,8 @@ bolt_arr = []
 neo_arr = []
 
 n_px = 0
-led = neopixel_spi.NeoPixel_SPI(board.SPI(), n_px, brightness=1.0, auto_write=False)
+led = neopixel_spi.NeoPixel_SPI(
+    board.SPI(), n_px, brightness=1.0, auto_write=False)
 
 
 def bld_tree(p):
@@ -334,6 +341,7 @@ def bld_cane(p):
                 i.append(led_i+si)
     return i
 
+
 def bld_bar():
     i = []
     for b in bars:
@@ -358,6 +366,7 @@ def bld_bolt():
             for l in range(0, 1):
                 i.append(l+si)
     return i
+
 
 def bld_neo():
     i = []
@@ -474,7 +483,7 @@ def l_tst():
 
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods,neos, n_px, led
+    global trees, canes, bars, bolts, noods, neos, n_px, led
     trees = []
     canes = []
     bars = []
@@ -512,18 +521,22 @@ def upd_l_str():
                 bolts.append(s)
                 n_px += qty
             if typ == 'neo':
-                if qty == 6: neoqty = 2
-                if qty == 12: neoqty = 4
+                if qty == 6:
+                    neoqty = 2
+                if qty == 12:
+                    neoqty = 4
                 s = list(range(n_px, n_px + neoqty))
                 neos.append(s)
                 n_px += neoqty
 
     print("Number of pixels total: ", n_px)
     led = None
-    led = neopixel_spi.NeoPixel_SPI(board.SPI(), n_px, brightness=1.0, auto_write=False)
+    led = neopixel_spi.NeoPixel_SPI(
+        board.SPI(), n_px, brightness=1.0, auto_write=False)
     led.auto_write = False
     led.brightness = 1.0
     l_tst()
+
 
 upd_l_str()
 
@@ -607,9 +620,6 @@ def discover_lights():
 # test_lifx()
 
 
-
-
-
 ################################################################################
 # Setup wifi and web server
 
@@ -652,7 +662,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_serve_file("/code" + self.path, "text/css")
         elif self.path.endswith(".js"):
             print(self.path)
-            self.handle_serve_file("/code" + self.path, "application/javascript")
+            self.handle_serve_file("/code" + self.path,
+                                   "application/javascript")
         else:
             self.handle_serve_file(self.path)
 
@@ -1208,6 +1219,7 @@ def ch_vol(action):
         v = 1
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
+    upd_vol(.01)
     files.write_json_file(code_folder + "cfg.json", cfg)
     play_a_0(code_folder + "mvc/volume.wav")
     spk_str(cfg["volume"], False)
@@ -1218,7 +1230,7 @@ def play_a_0(file_name, wait_until_done=True, allow_exit=True):
     if mix.get_busy():
         stop_media()
         while mix.get_busy():
-            upd_vol(0.1)
+            time.sleep(0.1)
     mix.load(file_name)
     mix.play(loops=0)
     while mix.get_busy() and wait_until_done:
@@ -1245,7 +1257,7 @@ def exit_early():
     r_sw.update()
     if l_sw.fell:
         stop_media()
-    upd_vol(0.1)
+    time.sleep(0.1)
 
 
 def rst_an():
@@ -1331,7 +1343,8 @@ def check_gtts_status():
             print("gTTS service is reachable.")
             return True
         else:
-            print("gTTS service returned an unexpected status code: " + response.status_code)
+            print("gTTS service returned an unexpected status code: " +
+                  response.status_code)
             return False
 
     except requests.ConnectionError:
@@ -1456,7 +1469,7 @@ def an_light(f_nm):
     global ts_mode, an_running
     an_running = True
 
-    upd_vol(.1)
+    time.sleep(.1)
 
     cust_f = "customers_owned_music_" in f_nm
     plylst_f = "plylst_" in f_nm
@@ -1478,8 +1491,9 @@ def an_light(f_nm):
                     code_folder + "customers_owned_music/" + json_fn + ".json")
             except Exception as e:
                 files.log_item(e)
-                play_a_0(code_folder + "mvc/no_timestamp_file_found.wav", True, False)
-                upd_vol(.1)
+                play_a_0(code_folder +
+                         "mvc/no_timestamp_file_found.wav", True, False)
+                time.sleep(.1)
                 while True:
                     l_sw.update()
                     r_sw.update()
@@ -1544,27 +1558,21 @@ def an_light(f_nm):
                 resp = set_hdw(ft1[1], dur)
                 if resp == "STOP":
                     rst_an()
-                    upd_vol(.5)
+                    time.sleep(.5)
                     an_running = False
                     return
             flsh_i += 1
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell and cfg["can_cancel"]:
-            mix.stop()
-            media_player.stop()
-            return "STOP"
-        if not mix.get_busy() and not media_player.is_playing() and not plylst_f:
+        if not mix.get_busy() and not media_player.is_playing() and not plylst_f and not an_running:
             rst_an()
-            upd_vol(.5)
+            time.sleep(.5)
             an_running = False
             return "DONE"
         if flsh_i > len(flsh_t)-1:
             rst_an()
-            upd_vol(.5)
+            time.sleep(.5)
             an_running = False
             return "DONE"
-        upd_vol(.1)
+        time.sleep(.1)
 
 
 def an_ts(f_nm):
@@ -1593,7 +1601,7 @@ def an_ts(f_nm):
         play_a_0(media0, False)
 
     startTime = time.perf_counter()
-    upd_vol(.1)
+    time.sleep(.1)
 
     while True:
         t_elsp = round(time.perf_counter()-startTime, 1)
@@ -1623,6 +1631,7 @@ def an_ts(f_nm):
 # Animation helpers
 
 br = 0
+
 
 def set_to(cmd):
     if "set_to_red" in cmd:
@@ -1655,6 +1664,7 @@ def set_to(cmd):
     elif "set_to_100" in cmd:
         led.brightness = 1.0
         led.show()
+
 
 def set_hdw(cmd, dur):
     global sp, br
@@ -1737,12 +1747,12 @@ def set_hdw(cmd, dur):
                             br -= 1
                             led.brightness = float(br/100)
                         led.show()
-                        upd_vol(s)
+                        time.sleep(s)
                 elif seg[0] == 'R':
                     v = float(seg[1:])
                     rbow(v, dur)
                 elif seg[0:] == 'ZRAND':
-                    random_effect(1,3,dur)
+                    random_effect(1, 3, dur)
                 elif seg[0] == 'C':
                     print("not implemented")
         except Exception as e:
@@ -1751,8 +1761,11 @@ def set_hdw(cmd, dur):
 ##############################
 # Led color effects
 
+
 pi = 0
-def random_effect(il,ih,d):
+
+
+def random_effect(il, ih, d):
     global pi
     i = random.randint(il, ih)
     while i == pi:
@@ -1762,7 +1775,7 @@ def random_effect(il,ih,d):
         rbow(.005, d)
     elif i == 2:
         mlt_c(.01)
-        upd_vol(d)
+        time.sleep(d)
     elif i == 3:
         fire(d)
     elif i == 4:
@@ -1771,16 +1784,19 @@ def random_effect(il,ih,d):
         mlt_c(d)
     pi = i
 
+
 def rbow(spd, dur):
     st = time.monotonic()
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
+            if not an_running:
+                return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
-            upd_vol(spd)
+            time.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
                 return
@@ -1789,7 +1805,7 @@ def rbow(spd, dur):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
-            upd_vol(spd)
+            time.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
                 return
@@ -1825,15 +1841,16 @@ def fire(dur):
 
     # Flicker, based on our initial RGB values
     while True:
-        # for i in range (0, num_pixels):
         for i in firei:
+            if not an_running:
+                return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
             led.show()
-        upd_vol(random.uniform(0.05, 0.1))
+        time.sleep(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
             return
@@ -1846,6 +1863,8 @@ def c_fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in range(0, n_px):
+            if not an_running:
+                return
             r = random.randint(0, 255)
             g = random.randint(0, 255)
             b = random.randint(0, 255)
@@ -1864,10 +1883,11 @@ def c_fire(dur):
                 b1 = b
             led[i] = (r1, g1, b1)
             led.show()
-        upd_vol(random.uniform(.2, 0.3))
+        time.sleep(random.uniform(.2, 0.3))
         te = time.monotonic()-st
         if te > dur:
             return
+
 
 def mlt_c(dur):
     st = time.monotonic()
@@ -1876,6 +1896,8 @@ def mlt_c(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in range(0, n_px):
+            if not an_running:
+                return
             r = random.randint(128, 255)
             g = random.randint(128, 255)
             b = random.randint(128, 255)
@@ -1894,11 +1916,12 @@ def mlt_c(dur):
                 b1 = b
             led[i] = (r1, g1, b1)
             led.show()
-        upd_vol(random.uniform(.2, 0.3))
+        time.sleep(random.uniform(.2, 0.3))
         te = time.monotonic()-st
         if te > dur:
             return
-        
+
+
 def bnd(c, l, u):
     if (c < l):
         c = l
@@ -1976,7 +1999,7 @@ class BseSt(Ste):
     def upd(self, mch):
         global cont_run
         switch_state = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 3.0)
+            l_sw, r_sw, time.sleep, 3.0)
         if switch_state == "left_held":
             if cont_run:
                 cont_run = False
@@ -1986,6 +2009,7 @@ class BseSt(Ste):
                 play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
         elif switch_state == "left" or cont_run and not an_running:
             an(cfg["option_selected"])
+            rst_an()
         elif switch_state == "right":
             mch.go_to('main_menu')
 
@@ -2154,7 +2178,7 @@ class VolSet(Ste):
                 done = False
                 while not done:
                     switch_state = utilities.switch_state(
-                        l_sw, r_sw, upd_vol, 3.0)
+                        l_sw, r_sw, time.sleep, 3.0)
                     if switch_state == "left":
                         ch_vol("lower")
                     elif switch_state == "right":
@@ -2165,7 +2189,7 @@ class VolSet(Ste):
                         play_a_0(code_folder + "mvc/all_changes_complete.wav")
                         done = True
                         mch.go_to('base_state')
-                    upd_vol(0.1)
+                    time.sleep(0.1)
                     pass
             elif sel_mnu == "volume_pot_off":
                 cfg["volume_pot"] = False
@@ -2241,9 +2265,9 @@ st_mch.add(VolSet())
 st_mch.add(WebOpt())
 
 
-upd_vol(0)
+time.sleep(0)
 aud_en.value = True
-time.sleep(1)
+upd_vol(1)
 
 if (web):
     files.log_item("starting server...")
@@ -2277,7 +2301,7 @@ gc_col("animations started.")
 def run_state_machine():
     while True:
         st_mch.upd()
-        upd_vol(.1)
+        time.sleep(.1)
 
 
 # Start the state machine in a separate thread
@@ -2288,6 +2312,27 @@ state_machine_thread.daemon = True
 state_machine_thread.start()
 
 
+def run_stop_button_check():
+    global an_running
+    while True:
+        if an_running:
+            l_sw.update()
+            r_sw.update()
+            if l_sw.fell and cfg["can_cancel"]:
+                mix.stop()
+                media_player.stop()
+                an_running = False
+        time.sleep(.1)
+
+
+# Start the state machine in a separate thread
+check_stop_button_thread = threading.Thread(target=run_stop_button_check)
+
+# Daemonize the thread to end with the main program
+check_stop_button_thread.daemon = True
+check_stop_button_thread.start()
+
+
 while True:
     try:
         input("Press enter to exit...\n\n")
@@ -2296,6 +2341,7 @@ while True:
         zeroconf.unregister_service(info)
         zeroconf.close()
         httpd.shutdown()
+        rst_an()
         quit()
 
 
