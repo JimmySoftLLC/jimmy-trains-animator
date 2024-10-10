@@ -1624,95 +1624,129 @@ def an_ts(f_nm):
 
 br = 0
 
+def set_to(cmd):
+    if "set_to_red" in cmd:
+        led.fill((255, 0, 0))
+        led.show()
+    elif "set_to_green" in cmd:
+        led.fill((0, 255, 0))
+        led.show()
+    elif "set_to_blue" in cmd:
+        led.fill((0, 0, 255))
+        led.show()
+    elif "set_to_white" in cmd:
+        led.fill((255, 255, 255))
+        led.show()
+    elif "set_to_0" in cmd:
+        led.brightness = 0.0
+        led.show()
+    elif "set_to_20" in cmd:
+        led.brightness = 0.2
+        led.show()
+    elif "set_to_40" in cmd:
+        led.brightness = 0.4
+        led.show()
+    elif "set_to_60" in cmd:
+        led.brightness = 0.6
+        led.show()
+    elif "set_to_80" in cmd:
+        led.brightness = 0.8
+        led.show()
+    elif "set_to_100" in cmd:
+        led.brightness = 1.0
+        led.show()
 
 def set_hdw(cmd, dur):
     global sp, br
-    # Split the input string into segments
-    segs = cmd.split(",")
 
-    # Process each segment
-    try:
-        for seg in segs:
-            f_nm = ""
-            if seg[0] == 'E':  # end an
-                return "STOP"
-            elif seg[0] == 'M':  # play file
-                if seg[1] == "S":
-                    stop_media()
-                elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
-                    stop_media()
-                    if seg[2] == "S":
-                        w0 = code_folder + "sndtrk/" + seg[3:]
-                        f_nm = seg[3:]
-                    elif seg[2] == "M":
-                        w0 = code_folder + "customers_owned_music/" + \
-                            seg[3:]
-                        f_nm = "customers_owned_music_" + seg[3:]
-                    elif seg[2] == "P":
-                        f_nm = "plylst_" + seg[3:]
-                    if seg[1] == "W" or seg[1] == "P":
-                        play_a_0(w0, False)
-                    if seg[1] == "A":
-                        res = an(f_nm)
-                        if res == "STOP":
-                            return "STOP"
-                    if seg[1] == "W":
-                        wait_snd()
-            elif seg[0] == 'L':  # lights
-                mod = (int(seg[1])*10+int(seg[2]))*2
-                mod_num = mod - 2
-                print(mod_num)
-                ind = int(seg[4])-1
-                if ind == 0:
-                    ind = 1
-                elif ind == 1:
-                    ind = 0
-                elif ind == 3:
-                    ind = 4
-                elif ind == 4:
-                    ind = 3
-                v = int(seg[5:])
-                print(v)
-                if seg[1] == "0" and seg[2] == "0":
-                    led.fill((v, v, v))
-                else:
-                    if seg[4] == "0":
-                        led[mod_num] = (v, v, v)
-                        led[mod_num+1] = (v, v, v)
-                    elif ind < 3:
-                        cur = list(led[mod_num])
-                        cur[ind] = v
-                        led[mod_num] = (cur[0], cur[1], cur[2])
+    if "set_to" in cmd:
+        set_to(cmd)
+    else:
+        # Split the input string into segments
+        segs = cmd.split(",")
+        # Process each segment
+        try:
+            for seg in segs:
+                f_nm = ""
+                if seg[0] == 'E':  # end an
+                    return "STOP"
+                elif seg[0] == 'M':  # play file
+                    if seg[1] == "S":
+                        stop_media()
+                    elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
+                        stop_media()
+                        if seg[2] == "S":
+                            w0 = code_folder + "sndtrk/" + seg[3:]
+                            f_nm = seg[3:]
+                        elif seg[2] == "M":
+                            w0 = code_folder + "customers_owned_music/" + \
+                                seg[3:]
+                            f_nm = "customers_owned_music_" + seg[3:]
+                        elif seg[2] == "P":
+                            f_nm = "plylst_" + seg[3:]
+                        if seg[1] == "W" or seg[1] == "P":
+                            play_a_0(w0, False)
+                        if seg[1] == "A":
+                            res = an(f_nm)
+                            if res == "STOP":
+                                return "STOP"
+                        if seg[1] == "W":
+                            wait_snd()
+                elif seg[0] == 'L':  # lights
+                    mod = (int(seg[1])*10+int(seg[2]))*2
+                    mod_num = mod - 2
+                    print(mod_num)
+                    ind = int(seg[4])-1
+                    if ind == 0:
+                        ind = 1
+                    elif ind == 1:
+                        ind = 0
+                    elif ind == 3:
+                        ind = 4
+                    elif ind == 4:
+                        ind = 3
+                    v = int(seg[5:])
+                    print(v)
+                    if seg[1] == "0" and seg[2] == "0":
+                        led.fill((v, v, v))
                     else:
-                        cur = list(led[mod_num+1])
-                        cur[ind-3] = v
-                        led[mod_num+1] = (cur[0], cur[1], cur[2])
-                led.show()
-            elif seg[0] == 'B':  # brightness
-                br = int(seg[1:])
-                led.brightness = float(br/100)
-                led.show()
-            elif seg[0] == 'F':  # fade in or out
-                v = int(seg[1])*100+int(seg[2])*10+int(seg[3])
-                s = float(seg[4:])
-                while not br == v:
-                    if br < v:
-                        br += 1
-                        led.brightness = float(br/100)
-                    else:
-                        br -= 1
-                        led.brightness = float(br/100)
+                        if seg[4] == "0":
+                            led[mod_num] = (v, v, v)
+                            led[mod_num+1] = (v, v, v)
+                        elif ind < 3:
+                            cur = list(led[mod_num])
+                            cur[ind] = v
+                            led[mod_num] = (cur[0], cur[1], cur[2])
+                        else:
+                            cur = list(led[mod_num+1])
+                            cur[ind-3] = v
+                            led[mod_num+1] = (cur[0], cur[1], cur[2])
                     led.show()
-                    upd_vol(s)
-            elif seg[0] == 'R':
-                v = float(seg[1:])
-                rbow(v, dur)
-            elif seg[0:] == 'RAND':
-                random_effect(1,3,dur)
-            elif seg[0] == 'C':
-                print("not implemented")
-    except Exception as e:
-        files.log_item(e)
+                elif seg[0] == 'B':  # brightness
+                    br = int(seg[1:])
+                    led.brightness = float(br/100)
+                    led.show()
+                elif seg[0] == 'F':  # fade in or out
+                    v = int(seg[1])*100+int(seg[2])*10+int(seg[3])
+                    s = float(seg[4:])
+                    while not br == v:
+                        if br < v:
+                            br += 1
+                            led.brightness = float(br/100)
+                        else:
+                            br -= 1
+                            led.brightness = float(br/100)
+                        led.show()
+                        upd_vol(s)
+                elif seg[0] == 'R':
+                    v = float(seg[1:])
+                    rbow(v, dur)
+                elif seg[0:] == 'RAND':
+                    random_effect(1,3,dur)
+                elif seg[0] == 'C':
+                    print("not implemented")
+        except Exception as e:
+            files.log_item(e)
 
 ##############################
 # Led color effects
