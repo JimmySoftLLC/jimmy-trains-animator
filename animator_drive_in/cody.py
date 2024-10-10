@@ -1636,7 +1636,7 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            if seg[0] == 'M':  # play file
+            elif seg[0] == 'M':  # play file
                 if seg[1] == "S":
                     stop_media()
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
@@ -1658,7 +1658,7 @@ def set_hdw(cmd, dur):
                             return "STOP"
                     if seg[1] == "W":
                         wait_snd()
-            if seg[0] == 'L':  # lights
+            elif seg[0] == 'L':  # lights
                 mod = (int(seg[1])*10+int(seg[2]))*2
                 mod_num = mod - 2
                 print(mod_num)
@@ -1688,11 +1688,11 @@ def set_hdw(cmd, dur):
                         cur[ind-3] = v
                         led[mod_num+1] = (cur[0], cur[1], cur[2])
                 led.show()
-            if seg[0] == 'B':  # brightness
+            elif seg[0] == 'B':  # brightness
                 br = int(seg[1:])
                 led.brightness = float(br/100)
                 led.show()
-            if seg[0] == 'F':  # fade in or out
+            elif seg[0] == 'F':  # fade in or out
                 v = int(seg[1])*100+int(seg[2])*10+int(seg[3])
                 s = float(seg[4:])
                 while not br == v:
@@ -1704,14 +1704,37 @@ def set_hdw(cmd, dur):
                         led.brightness = float(br/100)
                     led.show()
                     upd_vol(s)
-            if seg[0] == 'R':
+            elif seg[0] == 'R':
                 v = float(seg[1:])
                 rbow(v, dur)
-            if seg[0] == 'C':
+            elif seg[0:] == 'RAND':
+                random_effect(1,3,dur)
+            elif seg[0] == 'C':
                 print("not implemented")
     except Exception as e:
         files.log_item(e)
 
+##############################
+# Led color effects
+
+pi = 0
+def random_effect(il,ih,d):
+    i = random.randint(il, ih)
+    while i == pi:
+        print("regenerating random selection")
+        i = random.randint(il, ih)
+    if i == 1:
+        rainbow(.005, d)
+    elif i == 2:
+        mlt_c(.01)
+        upd_vol(d)
+    elif i == 3:
+        fire(d)
+    elif i == 4:
+        c_fire(d)
+    elif i == 5:
+        mlt_c(d)
+    pi = i
 
 def rbow(spd, dur):
     st = time.monotonic()
@@ -1735,6 +1758,118 @@ def rbow(spd, dur):
             te = time.monotonic()-st
             if te > dur:
                 return
+
+
+def fire(dur):
+    st = time.monotonic()
+    led.brightness = 1.0
+
+    firei = []
+
+    firei.extend(ornmnts)
+    firei.extend(cane_s)
+    firei.extend(cane_e)
+
+    stari = []
+    stari.extend(stars)
+
+    for i in stari:
+        led[i] = (255, 255, 255)
+
+    brnchsi = []
+    brnchsi.extend((brnchs))
+
+    for i in brnchsi:
+        led[i] = (50, 50, 50)
+
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+
+    print(len(firei))
+
+    # Flicker, based on our initial RGB values
+    while True:
+        # for i in range (0, num_pixels):
+        for i in firei:
+            f = random.randint(0, 110)
+            r1 = bnd(r-f, 0, 255)
+            g1 = bnd(g-f, 0, 255)
+            b1 = bnd(b-f, 0, 255)
+            led[i] = (r1, g1, b1)
+            led.show()
+        upd_vol(random.uniform(0.05, 0.1))
+        te = time.monotonic()-st
+        if te > dur:
+            return
+
+
+def c_fire(dur):
+    st = time.monotonic()
+    led.brightness = 1.0
+
+    # Flicker, based on our initial RGB values
+    while True:
+        for i in range(0, n_px):
+            r = random.randint(0, 255)
+            g = random.randint(0, 255)
+            b = random.randint(0, 255)
+            whichColor = random.randint(0, 1)
+            if whichColor == 0:
+                r1 = r
+                g1 = 0
+                b1 = 0
+            elif whichColor == 1:
+                r1 = 0
+                g1 = g
+                b1 = 0
+            elif whichColor == 2:
+                r1 = 0
+                g1 = 0
+                b1 = b
+            led[i] = (r1, g1, b1)
+            led.show()
+        upd_vol(random.uniform(.2, 0.3))
+        te = time.monotonic()-st
+        if te > dur:
+            return
+
+def mlt_c(dur):
+    st = time.monotonic()
+    led.brightness = 1.0
+
+    # Flicker, based on our initial RGB values
+    while True:
+        for i in range(0, n_px):
+            r = random.randint(128, 255)
+            g = random.randint(128, 255)
+            b = random.randint(128, 255)
+            c = random.randint(0, 2)
+            if c == 0:
+                r1 = r
+                g1 = 0
+                b1 = 0
+            elif c == 1:
+                r1 = 0
+                g1 = g
+                b1 = 0
+            elif c == 2:
+                r1 = 0
+                g1 = 0
+                b1 = b
+            led[i] = (r1, g1, b1)
+            led.show()
+        upd_vol(random.uniform(.2, 0.3))
+        te = time.monotonic()-st
+        if te > dur:
+            return
+        
+def bnd(c, l, u):
+    if (c < l):
+        c = l
+    if (c > u):
+        c = u
+    return c
 
 ################################################################################
 # State Machine
