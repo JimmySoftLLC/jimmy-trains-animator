@@ -1591,11 +1591,15 @@ def an_light(f_nm):
                 return
             flsh_i += 1
         if not mix.get_busy() and not media_player.is_playing() and not plylst_f and not an_running:
+            mix.stop()
+            media_player.stop()
             rst_an()
             time.sleep(.2)
             an_running = False
             return "DONE"
         if flsh_i > len(flsh_t)-1:
+            mix.stop()
+            media_player.stop()
             rst_an()
             time.sleep(.2)
             an_running = False
@@ -1664,6 +1668,7 @@ br = 0
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
 
+
 def set_all_to(light_n, r, g, b):
     if light_n == -1:
         for i in range(n_px):  # in range(n_px)
@@ -1678,22 +1683,45 @@ def set_all_to(light_n, r, g, b):
             led[light_n] = (r, g, b)
     led.show()
 
-def neo_ids():
+
+def get_neo_ids():
     matches = []
     for num in range(n_px + 1):
         if any(num == sublist[0] for sublist in neos):
             matches.append(num)
     return matches
 
-def set_neo_module(mod_n,index,v):
-    neo_ids2 = neo_ids()
-    print(mod_n,index,v, neo_ids2)
-    if index == -1:
-        for i in neo_ids2:
+
+def set_neo_module(mod_n, ind, v):
+    cur = []
+    neo_ids = get_neo_ids()
+    print(mod_n, ind, v, neo_ids)
+    if mod_n == 0:
+        for i in neo_ids:
             led[i] = (v, v, v)
             led[i+1] = (v, v, v)
+    elif ind == 0:
+        led[neo_ids[mod_n-1]] = (v, v, v)
+        led[neo_ids[mod_n-1]+1] = (v, v, v)
+    elif ind < 4:
+        ind -= 1
+        if ind == 0:
+            ind = 1
+        elif ind == 1:
+            ind = 0
+        cur = list(led[neo_ids[mod_n-1]])
+        cur[ind] = v
+        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+        print(led[neo_ids[mod_n-1]])
     else:
-        print("none set")
+        ind -= 1
+        if ind == 3:
+            ind = 4
+        elif ind == 4:
+            ind = 3
+        cur = list(led[neo_ids[mod_n-1]+1])
+        cur[ind-3] = v
+        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
     led.show()
 
 
@@ -1742,17 +1770,17 @@ def set_hdw(cmd, dur):
             # modules MNNN_I_XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])-1
-                index = int(segs_split[1])-1
+                mod_n = int(segs_split[0][1:])
+                index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module(mod_n, index, v)
             # brightness BXXX = Brightness XXX 000 to 100
-            elif seg[0] == 'B':  
+            elif seg[0] == 'B':
                 br = int(seg[1:])
                 led.brightness = float(br/100)
                 led.show()
             # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
-            elif seg[0] == 'F':  
+            elif seg[0] == 'F':
                 segs_split = seg.split("_")
                 v = int(segs_split[0][1:])
                 s = float(segs_split[1])
