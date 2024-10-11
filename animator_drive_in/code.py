@@ -1349,9 +1349,10 @@ def spk_web():
     play_a_0(code_folder + "mvc/animator_available_on_network.wav")
     play_a_0(code_folder + "mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-drive-in":
-        play_a_0(code_folder + "mvc/animator_dash_bandstand.wav")
+        play_a_0(code_folder + "mvc/animator_dash_drive_dash_in.wav")
         play_a_0(code_folder + "mvc/dot.wav")
         play_a_0(code_folder + "mvc/local.wav")
+        play_a_0(code_folder + "mvc/colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
     play_a_0(code_folder + "mvc/in_your_browser.wav")
@@ -1821,15 +1822,10 @@ def random_effect(il, ih, d):
     if i == 1:
         rbow(.005, d)
     elif i == 2:
-        mlt_c(.001)
+        multi_color()
         time.sleep(d)
     elif i == 3:
         fire(d)
-    elif i == 4:
-        c_fire(d)
-    elif i == 5:
-        mlt_c(d)
-
 
 def rbow(spd, dur):
     st = time.monotonic()
@@ -1900,70 +1896,45 @@ def fire(dur):
         if te > dur:
             return
 
-
-def c_fire(dur):
-    st = time.monotonic()
-
-    # Flicker, based on our initial RGB values
-    while True:
-        for i in range(0, n_px):
-            if not an_running:
-                return
-            r = random.randint(0, 255)
-            g = random.randint(0, 255)
-            b = random.randint(0, 255)
-            whichColor = random.randint(0, 1)
-            if whichColor == 0:
-                r1 = r
-                g1 = 0
-                b1 = 0
-            elif whichColor == 1:
-                r1 = 0
-                g1 = g
-                b1 = 0
-            elif whichColor == 2:
-                r1 = 0
-                g1 = 0
-                b1 = b
-            led[i] = (r1, g1, b1)
-            led.show()
-        time.sleep(random.uniform(.2, 0.3))
-        te = time.monotonic()-st
-        if te > dur:
+def multi_color():
+    for i in range(0, n_px):
+        if not an_running:
             return
+        r = random.randint(128, 255)
+        g = random.randint(128, 255)
+        b = random.randint(128, 255)
+        c = random.randint(0, 2)
+        if c == 0:
+            r1 = r
+            g1 = 0
+            b1 = 0
+        elif c == 1:
+            r1 = 0
+            g1 = g
+            b1 = 0
+        elif c == 2:
+            r1 = 0
+            g1 = 0
+            b1 = b
+        led[i] = (r1, g1, b1)
 
+    stari = []
+    stari.extend(stars)
 
-def mlt_c(dur):
-    st = time.monotonic()
+    for i in stari:
+        led[i] = (255, 255, 255)
 
-    # Flicker, based on our initial RGB values
-    while True:
-        for i in range(0, n_px):
-            if not an_running:
-                return
-            r = random.randint(128, 255)
-            g = random.randint(128, 255)
-            b = random.randint(128, 255)
-            c = random.randint(0, 2)
-            if c == 0:
-                r1 = r
-                g1 = 0
-                b1 = 0
-            elif c == 1:
-                r1 = 0
-                g1 = g
-                b1 = 0
-            elif c == 2:
-                r1 = 0
-                g1 = 0
-                b1 = b
-            led[i] = (r1, g1, b1)
-            led.show()
-        time.sleep(random.uniform(.2, 0.3))
-        te = time.monotonic()-st
-        if te > dur:
-            return
+    brnchsi = []
+    brnchsi.extend((brnchs))
 
+    for i in brnchsi:
+        led[i] = (7, 163, 30)
+
+    canei = []
+    canei.extend(cane_e)
+    for i in canei:
+        led[i] = (255, 255, 255)
+    led.show()
 
 def bnd(c, l, u):
     if (c < l):
