@@ -46,6 +46,14 @@
 # sudo apt install midori==7.0
 # midori --version
 
+# Scripts can be modified via a webpage that the drivein will serve to your location network.
+# It might be easier to use a spreadsheet program.  So install libra office on the pi so
+# customers can use it to modify scripts too.
+# Install with
+# sudo apt update
+# sudo apt install libreoffice
+
+
 # for touch screen products the display on vnc will default to the touch screen
 # resolution which is very low.  During dev you might want to use these three commands
 # to set it higher, note these will reset at reboot.  Do not make these permanent.
@@ -236,8 +244,33 @@ mix = pygame.mixer.music
 # Setup video hardware
 
 # create vlc media player object for playing video, music etc
-media_player = vlc.MediaPlayer()
-media_player.toggle_fullscreen()
+instance = vlc.Instance()
+media_player = vlc.MediaPlayer(instance)
+
+
+def play_movie_file(movie_filename):
+    global media_player
+
+    # Release the media player to reset state before the next video
+    media_player.release()
+
+    # Create a fresh VLC instance and media player for each video
+    instance = vlc.Instance()
+    media_player = vlc.MediaPlayer(instance)
+    media_player.toggle_fullscreen()
+
+    # Load media
+    media = instance.media_new(movie_filename)
+    media_player.set_media(media)
+
+    # Set the volume explicitly for each media file
+    upd_vol(0.05)
+
+    # Play the video
+    media_player.play()
+
+    while not media_player.is_playing():
+        time.sleep(.05)
 
 
 def pause_movie():
@@ -246,14 +279,6 @@ def pause_movie():
 
 def play_movie():
     media_player.play()
-
-
-def play_movie_file(movie_filename):
-    media = vlc.Media(movie_filename)
-    media_player.set_media(media)
-    media_player.play()
-    while not media_player.is_playing():
-        time.sleep(.1)
 
 
 ################################################################################
@@ -1188,12 +1213,12 @@ def rst_def():
 
 def upd_vol(seconds):
     try:
-        volume = int(cfg["volume"]) / 100
+        volume = int(cfg["volume"]) / 300
     except Exception as e:
         files.log_item(e)
-        volume = .5
+        volume = .2
     if volume < 0 or volume > 1:
-        volume = .5
+        volume = .2
     mix.set_volume(volume)
     media_player.audio_set_volume(int(volume*300))
     time.sleep(seconds)
@@ -1237,6 +1262,7 @@ def play_a_0(file_name, wait_until_done=True, allow_exit=True):
         while mix.get_busy():
             time.sleep(0.1)
     mix.load(file_name)
+    upd_vol(.001)
     mix.play(loops=0)
     while mix.get_busy() and wait_until_done:
         if allow_exit:
@@ -1473,7 +1499,8 @@ def an(f_nm):
 def an_light(f_nm):
     global ts_mode, an_running
     an_running = True
-    if stop_play_list: return
+    if stop_play_list:
+        return
 
     time.sleep(.1)
 
@@ -1556,17 +1583,12 @@ def an_light(f_nm):
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item("time elapsed: " + str(t_past) +
                            " Timestamp: " + ft1[0])
-            if (len(ft1) == 1 or ft1[1] == ""):
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
-                set_hdw("L000" + str(lgt) + ",S0" + str(pos), dur)
-            else:
-                resp = set_hdw(ft1[1], dur)
-                if resp == "STOP":
-                    rst_an()
-                    time.sleep(.2)
-                    an_running = False
-                    return
+            resp = set_hdw(ft1[1], dur)
+            if resp == "STOP":
+                rst_an()
+                time.sleep(.2)
+                an_running = False
+                return
             flsh_i += 1
         if not mix.get_busy() and not media_player.is_playing() and not plylst_f and not an_running:
             rst_an()
@@ -1642,7 +1664,6 @@ br = 0
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
 
-
 def set_all_to(light_n, r, g, b):
     if light_n == -1:
         for i in range(n_px):  # in range(n_px)
@@ -1657,6 +1678,24 @@ def set_all_to(light_n, r, g, b):
             led[light_n] = (r, g, b)
     led.show()
 
+def neo_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neos):
+            matches.append(num)
+    return matches
+
+def set_neo_module(mod_n,index,v):
+    neo_ids2 = neo_ids()
+    print(mod_n,index,v, neo_ids2)
+    if index == -1:
+        for i in neo_ids2:
+            led[i] = (v, v, v)
+            led[i+1] = (v, v, v)
+    else:
+        print("none set")
+    led.show()
+
 
 def set_hdw(cmd, dur):
     global sp, br
@@ -1669,7 +1708,8 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            elif seg[0] == 'M':  # play file
+            # play file MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (S sound tracks, M my sound tracks, P playlist) XXX (file name)
+            elif seg[0] == 'M':
                 if seg[1] == "S":
                     stop_media()
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
@@ -1691,49 +1731,28 @@ def set_hdw(cmd, dur):
                             return "STOP"
                     if seg[1] == "W":
                         wait_snd()
-            elif seg[0] == 'L':  # lights
+            # lights LNNN_R_G_B = All lights NNN (0 All, 1 to 999) RGB 0 to 255
+            elif seg[0] == 'L':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][1:])-1
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_all_to(light_n, r, g, b)
-
-            elif seg[0] == 'M':  # modules
-                mod = (int(seg[1])*10+int(seg[2]))*2
-                light_n = mod - 2
-                print(light_n)
-                index = int(seg[4])-1
-                if index == 0:
-                    index = 1
-                elif index == 1:
-                    index = 0
-                elif index == 3:
-                    index = 4
-                elif index == 4:
-                    index = 3
-                v = int(seg[5:])
-                print(v)
-                if seg[1] == "0" and seg[2] == "0":
-                    led.fill((v, v, v))
-                else:
-                    if seg[4] == "0":
-                        led[light_n] = (v, v, v)
-                        led[light_n+1] = (v, v, v)
-                    elif index < 3:
-                        cur = list(led[light_n])
-                        cur[index] = v
-                        led[light_n] = (cur[0], cur[1], cur[2])
-                    else:
-                        cur = list(led[light_n+1])
-                        cur[index-3] = v
-                        led[light_n+1] = (cur[0], cur[1], cur[2])
-                led.show()
-            elif seg[0] == 'B':  # brightness
+            # modules MNNN_I_XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
+            elif seg[0] == 'N':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0][1:])-1
+                index = int(segs_split[1])-1
+                v = int(segs_split[2])
+                set_neo_module(mod_n, index, v)
+            # brightness BXXX = Brightness XXX 000 to 100
+            elif seg[0] == 'B':  
                 br = int(seg[1:])
                 led.brightness = float(br/100)
                 led.show()
-            elif seg[0] == 'F':  # fade in or out
+            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+            elif seg[0] == 'F':  
                 segs_split = seg.split("_")
                 v = int(segs_split[0][1:])
                 s = float(segs_split[1])
@@ -1746,15 +1765,20 @@ def set_hdw(cmd, dur):
                         led.brightness = float(br/100)
                     led.show()
                     time.sleep(s)
+            # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 random_effect(1, 3, dur)
+            # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
             elif seg[:2] == 'ZR':
                 v = float(seg[2:])
                 rbow(v, dur)
+            # ZFIRE = Fire
             elif seg[0:] == 'ZFIRE':
                 random_effect(3, 3, dur)
+            # ZCOLCH = Color change
             elif seg[0:] == 'ZCOLCH':
                 random_effect(2, 2, dur)
+            # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
     except Exception as e:
@@ -1762,6 +1786,7 @@ def set_hdw(cmd, dur):
 
 ##############################
 # Led color effects
+
 
 def random_effect(il, ih, d):
     i = random.randint(il, ih)
@@ -1776,6 +1801,7 @@ def random_effect(il, ih, d):
         c_fire(d)
     elif i == 5:
         mlt_c(d)
+
 
 def rbow(spd, dur):
     st = time.monotonic()
@@ -1968,7 +1994,6 @@ class Ste(object):
 
 
 class BseSt(Ste):
-    
 
     def __init__(self):
         pass
@@ -1987,7 +2012,7 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global cont_run, an_running, stop_play_list
-        if  not an_running:
+        if not an_running:
             switch_state = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0)
             if switch_state == "left_held":
