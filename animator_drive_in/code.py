@@ -116,7 +116,7 @@ def get_home_path(subpath=""):
 
 
 code_folder = get_home_path() + "code/"
-
+media_folder = get_home_path() + "media/"
 
 def f_exists(filename):
     try:
@@ -149,27 +149,49 @@ gc_col("Imports gc, files")
 ################################################################################
 # config variables
 
-# home_path = get_home_path() + "sndtrk"
 cfg = files.read_json_file(code_folder + "cfg.json")
+
+def get_media_files(main_folder, extensions):
+    media_dict = {}
+    
+    # Normalize extensions (e.g., ensure they all start with a dot)
+    extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in extensions]
+    
+    # Loop through each folder (topic) in the main media directory
+    for topic in os.listdir(main_folder):
+        topic_path = os.path.join(main_folder, topic)
+        
+        # Ensure it's a directory before proceeding
+        if os.path.isdir(topic_path):
+            # Get all files that match the specified extensions
+            files = [f for f in os.listdir(topic_path)
+                     if os.path.isfile(os.path.join(topic_path, f)) and f.lower().endswith(tuple(extensions))]
+            media_dict[topic] = files
+    
+    return media_dict
 
 
 def upd_media():
+    extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
+    media_files = get_media_files(media_folder, extensions)
+    print(media_files)
+
     global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
     sndtrk_opt = files.return_directory(
-        "", code_folder + "sndtrk", ".wav", False)
+        "", media_folder + "sndtrk", ".wav", False)
     video_opt = files.return_directory(
-        "", code_folder + "sndtrk", ".mp4", False)
+        "", media_folder + "sndtrk", ".mp4", False)
     sndtrk_opt.extend(video_opt)
     # print("Sound tracks: " + str(sndtrk_opt))
 
     plylst_opt = files.return_directory(
-        "plylst_", code_folder + "plylst", ".json", True)
+        "plylst_", media_folder + "plylst", ".json", True)
     # print("Play lists: " + str(plylst_opt))
 
     mysndtrk_opt = files.return_directory(
-        "customers_owned_music_", code_folder + "customers_owned_music", ".wav", False)
+        "customers_owned_music_", media_folder + "customers_owned_music", ".wav", False)
     myvideo_opt = files.return_directory(
-        "customers_owned_music_", code_folder + "customers_owned_music", ".mp4", False)
+        "customers_owned_music_", media_folder + "customers_owned_music", ".mp4", False)
     mysndtrk_opt.extend(myvideo_opt)
     # print("My sound tracks: " + str(mysndtrk_opt))
 
@@ -180,9 +202,9 @@ def upd_media():
 
     menu_snd_opt = []
     menu_snd_opt.extend(files.return_directory(
-        "", code_folder + "plylst", ".json", False, ".mp3"))
+        "", media_folder + "plylst", ".json", False, ".mp3"))
     menu_snd_opt.extend(files.return_directory(
-        "", code_folder + "sndtrk", ".wav", False))
+        "", media_folder + "sndtrk", ".wav", False))
     rnd_opt = ['rnd plylst.wav', 'random built in.wav',
                'random my.wav', 'random all.wav']
     menu_snd_opt.extend(rnd_opt)
@@ -867,9 +889,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def rename_playlist_post(self, rq_d):
         global data
         snd = rq_d["fo"].replace("plylst_", "")
-        fo = code_folder + "plylst/" + snd + ".json"
-        fn = code_folder + "plylst/" + rq_d["fn"] + ".json"
-        mp3_name = code_folder + "o_snds/" + rq_d["fn"] + ".mp3"
+        fo = media_folder + "plylst/" + snd + ".json"
+        fn = media_folder + "plylst/" + rq_d["fn"] + ".json"
+        mp3_name = media_folder + "o_snds/" + rq_d["fn"] + ".mp3"
         text_to_mp3_file(mp3_name, timeout_duration=5)
         os.rename(fo, fn)
         upd_media()
@@ -896,20 +918,20 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     snd_f = snd_f.replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = code_folder + "plylst/" + \
+                    f_n = media_folder + "plylst/" + \
                         snd_f + ".json"
                 elif "customers" == an[0]:
                     snd_f = rq_d[3].replace("customers_owned_music_", "")
                     snd_f = snd_f.replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = code_folder + "customers_owned_music/" + \
+                    f_n = media_folder + "customers_owned_music/" + \
                         snd_f + ".json"
                 else:
                     snd_f = rq_d[3].replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = code_folder + "sndtrk/" + \
+                    f_n = media_folder + "sndtrk/" + \
                         snd_f + ".json"
                 files.write_json_file(f_n, data)
                 upd_media()
@@ -932,7 +954,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def delete_playlist_post(self, rq_d):
         snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = code_folder + "plylst/" + snd_f + ".json"
+        f_n = media_folder + "plylst/" + snd_f + ".json"
         os.remove(f_n)
         upd_media()
         self.send_response(200)
@@ -946,12 +968,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd_f = rq_d["an"]
         if "plylst_" in snd_f:
             snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(code_folder + "plylst/" + snd_f + ".json") == True):
-                f_n = code_folder + "plylst/" + snd_f + ".json"
+            if (f_exists(media_folder + "plylst/" + snd_f + ".json") == True):
+                f_n = media_folder + "plylst/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
                 return
             else:
-                f_n = code_folder + "t_s_def/timestamp mode.json"
+                f_n = media_folder + "t_s_def/timestamp mode.json"
                 self.handle_serve_file_name(f_n)
                 return
         if "customers_owned_music_" in snd_f:
@@ -959,23 +981,23 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             snd_f = snd_f.replace(".mp3", "")
             snd_f = snd_f.replace(".mp4", "")
             snd_f = snd_f.replace(".wav", "")
-            if (f_exists(code_folder + "customers_owned_music/" + snd_f + ".json") == True):
-                f_n = code_folder + "customers_owned_music/" + snd_f + ".json"
+            if (f_exists(media_folder + "customers_owned_music/" + snd_f + ".json") == True):
+                f_n = media_folder + "customers_owned_music/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
             else:
-                f_n = code_folder + "t_s_def/timestamp mode.json"
+                f_n = media_folder + "t_s_def/timestamp mode.json"
                 self.handle_serve_file_name(f_n)
                 return
         else:
             snd_f = snd_f.replace(".mp3", "")
             snd_f = snd_f.replace(".mp4", "")
             snd_f = snd_f.replace(".wav", "")
-            if (f_exists(code_folder + "sndtrk/" + snd_f + ".json") == True):
-                f_n = code_folder + "sndtrk/" + snd_f + ".json"
+            if (f_exists(media_folder + "sndtrk/" + snd_f + ".json") == True):
+                f_n = media_folder + "sndtrk/" + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
                 return
             else:
-                f_n = code_folder + "t_s_def/timestamp mode.json"
+                f_n = media_folder + "t_s_def/timestamp mode.json"
                 self.handle_serve_file_name(f_n)
                 return
 
@@ -991,7 +1013,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def create_playlist_post(self, rq_d):
         global data
-        f_n = code_folder + "plylst/" + rq_d["fn"] + ".json"
+        f_n = media_folder + "plylst/" + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
         gc_col("created playlist")
@@ -1025,7 +1047,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
               " data: " + cfg["light_string"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         upd_l_str()
-        play_a_0(code_folder + "mvc//all_changes_complete.wav")
+        play_a_0(code_folder + "mvc/all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1516,13 +1538,13 @@ def an_light(f_nm):
 
     if cust_f:
         f_nm = f_nm.replace("customers_owned_music_", "")
-        if (f_exists(code_folder + "customers_owned_music/" + json_fn + ".json") == True):
+        if (f_exists(media_folder + "customers_owned_music/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
-                code_folder + "customers_owned_music/" + json_fn + ".json")
+                media_folder + "customers_owned_music/" + json_fn + ".json")
         else:
             try:
                 flsh_t = files.read_json_file(
-                    code_folder + "customers_owned_music/" + json_fn + ".json")
+                    media_folder + "customers_owned_music/" + json_fn + ".json")
             except Exception as e:
                 files.log_item(e)
                 play_a_0(code_folder +
@@ -1542,11 +1564,11 @@ def an_light(f_nm):
                         return
     elif plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        flsh_t = files.read_json_file(code_folder + "plylst/" + f_nm + ".json")
+        flsh_t = files.read_json_file(media_folder + "plylst/" + f_nm + ".json")
     else:
-        if (f_exists(code_folder + "sndtrk/" + json_fn + ".json") == True):
+        if (f_exists(media_folder + "sndtrk/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
-                code_folder + "sndtrk/" + json_fn + ".json")
+                media_folder + "sndtrk/" + json_fn + ".json")
 
     flsh_i = 0
 
@@ -1560,9 +1582,9 @@ def an_light(f_nm):
 
     if not plylst_f:
         if cust_f:
-            media0 = code_folder + "customers_owned_music/" + f_nm
+            media0 = media_folder + "customers_owned_music/" + f_nm
         else:
-            media0 = code_folder + "sndtrk/" + f_nm
+            media0 = media_folder + "sndtrk/" + f_nm
         if is_video:
             play_movie_file(media0)
         else:
@@ -1625,9 +1647,9 @@ def an_ts(f_nm):
     f_nm = f_nm.replace("customers_owned_music_", "")
 
     if cust_f:
-        media0 = code_folder + "customers_owned_music/" + f_nm
+        media0 = media_folder + "customers_owned_music/" + f_nm
     else:
-        media0 = code_folder + "sndtrk/" + f_nm
+        media0 = media_folder + "sndtrk/" + f_nm
 
     if is_video:
         play_movie_file(media0)
@@ -1648,10 +1670,10 @@ def an_ts(f_nm):
             led.show()
             if cust_f:
                 files.write_json_file(
-                    code_folder + "customers_owned_music/" + json_fn + ".json", t_s)
+                    media_folder + "customers_owned_music/" + json_fn + ".json", t_s)
             else:
                 files.write_json_file(
-                    code_folder + "sndtrk/" + json_fn + ".json", t_s)
+                    media_folder + "sndtrk/" + json_fn + ".json", t_s)
             break
 
     ts_mode = False
@@ -1749,10 +1771,10 @@ def set_hdw(cmd, dur):
                 elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
                     stop_media()
                     if seg[2] == "S":
-                        w0 = code_folder + "sndtrk/" + seg[3:]
+                        w0 = media_folder + "sndtrk/" + seg[3:]
                         f_nm = seg[3:]
                     elif seg[2] == "M":
-                        w0 = code_folder + "customers_owned_music/" + \
+                        w0 = media_folder + "customers_owned_music/" + \
                             seg[3:]
                         f_nm = "customers_owned_music_" + seg[3:]
                     elif seg[2] == "P":
@@ -2104,7 +2126,7 @@ class Snds(Ste):
         r_sw.update()
         if l_sw.fell:
             try:
-                play_a_0(code_folder + "o_snds/" + menu_snd_opt[self.i])
+                play_a_0(media_folder + "o_snds/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
