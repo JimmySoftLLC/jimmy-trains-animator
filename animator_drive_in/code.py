@@ -61,6 +61,13 @@
 # xrandr --addmode HDMI-1 "1920x1080_60.00"
 # xrandr --output HDMI-1 --mode "1920x1080_60.00"
 
+# i2s audio is setup on pi itself using an overlay, there is no hardware that needs to be set up in python
+# the i2s amps are on the JimmyTrains ANPISBC HAT which provides the audio.  The amps have an audio enable
+# feature that is contorlled via pin 26.  It is enabled by this program just before it annouces the animations are active
+# The volume is also controlled by this program.  So the volume control on the pi has no effect.
+# The amp circuits are set to the highest possible gain so audio tracks and movies should be normalized to -8.0dB to avoid
+# clipping.
+
 #######################################################
 # prod files are located in the code folder on the user machine
 # debug the code.py, files.py and utilities.py in the home directory
@@ -234,7 +241,6 @@ b_sw = Debouncer(switch_io_4)
 
 ################################################################################
 # Setup sound
-# i2s audio is setup on pi with an overlay
 
 # Setup the mixer to play wav files
 pygame.mixer.init()
@@ -1212,15 +1218,9 @@ def rst_def():
 
 
 def upd_vol(seconds):
-    try:
-        volume = int(cfg["volume"]) / 300
-    except Exception as e:
-        files.log_item(e)
-        volume = .2
-    if volume < 0 or volume > 1:
-        volume = .2
-    mix.set_volume(volume)
-    media_player.audio_set_volume(int(volume*300))
+    volume = int(cfg["volume"])
+    mix.set_volume(volume/100)
+    media_player.audio_set_volume(volume)
     time.sleep(seconds)
 
 
@@ -1582,7 +1582,8 @@ def an_light(f_nm):
         if dur < 0:
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item("time elapsed: " + str(t_past) +
+            t_elaspsed = "{:.1f}".format(t_past)
+            files.log_item("Time elapsed: " + str(t_elaspsed) +
                            " Timestamp: " + ft1[0])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
@@ -1729,8 +1730,12 @@ def set_neo_module(mod_n, ind, v):
 def set_hdw(cmd, dur):
     global sp, br
 
+    if cmd == "":
+        return "NOCMDS"
+
     # Split the input string into segments
     segs = cmd.split(",")
+
     # Process each segment
     try:
         for seg in segs:
@@ -1827,6 +1832,7 @@ def random_effect(il, ih, d):
     elif i == 3:
         fire(d)
 
+
 def rbow(spd, dur):
     st = time.monotonic()
     te = time.monotonic()-st
@@ -1896,6 +1902,7 @@ def fire(dur):
         if te > dur:
             return
 
+
 def multi_color():
     for i in range(0, n_px):
         if not an_running:
@@ -1935,6 +1942,7 @@ def multi_color():
     for i in canei:
         led[i] = (255, 255, 255)
     led.show()
+
 
 def bnd(c, l, u):
     if (c < l):
