@@ -179,38 +179,18 @@ def upd_media():
     media_files = get_media_files(media_folder, extensions)
     # print("All media: " + str(media_files))
 
-    # sndtrk_opt = files.return_directory(
-    #     "", media_folder + "sndtrk", ".wav", False)
-    # video_opt = files.return_directory(
-    #     "", media_folder + "sndtrk", ".mp4", False)
-    sndtrk_opt = []
-    # sndtrk_opt.extend(media_files["sndtrk"])
-    # print("Sound tracks: " + str(sndtrk_opt))
-
     plylst_opt = files.return_directory("plylst_", plylst_folder, ".json", True)
     # print("Play lists: " + str(plylst_opt))
 
-    mysndtrk_opt = files.return_directory(
-        "customers_owned_music_", media_folder + "customers_owned_music", ".wav", False)
-    myvideo_opt = files.return_directory(
-        "customers_owned_music_", media_folder + "customers_owned_music", ".mp4", False)
-    mysndtrk_opt.extend(myvideo_opt)
-    # print("My sound tracks: " + str(mysndtrk_opt))
-
     all_snd_opt = []
     all_snd_opt.extend(plylst_opt)
-    all_snd_opt.extend(sndtrk_opt)
-    all_snd_opt.extend(mysndtrk_opt)
 
     menu_snd_opt = []
     # menu_snd_opt.extend(files.return_directory(
-    #     "", media_folder + "plylst", ".json", False, ".mp3"))
-    menu_snd_opt.extend(files.return_directory(
-        "", media_folder + "sndtrk", ".wav", False))
+    #     "", media_folder + "sndtrk", ".wav", False))
     rnd_opt = ['rnd plylst.wav', 'random built in.wav',
                'random my.wav', 'random all.wav']
     menu_snd_opt.extend(rnd_opt)
-
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
 
@@ -826,12 +806,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.mode_post(post_data_obj)
         elif self.path == "/defaults":
             self.defaults_post(post_data_obj)
-        elif self.path == "/get-built-in-sound-tracks":
-            self.get_built_in_sound_tracks_post(post_data_obj)
-        elif self.path == "/get-all-sound-tracks":
-            self.get_all_sound_tracks_post(post_data_obj)
-        elif self.path == "/get-customers-sound-tracks":
-            self.get_customers_sound_tracks_post(post_data_obj)
+        elif self.path == "/get-all-media":
+            self.get_all_media_post(post_data_obj)
         elif self.path == "/speaker":
             self.speaker_post(post_data_obj)
         elif self.path == "/get-light-string":
@@ -1156,27 +1132,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
 
-    def get_customers_sound_tracks_post(self, rq_d):
-        upd_media()
-        response = []
-        response.extend(mysndtrk_opt)
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def get_built_in_sound_tracks_post(self, rq_d):
-        upd_media()
-        response = []
-        response.extend(sndtrk_opt)
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def get_all_sound_tracks_post(self, rq_d):
+    def get_all_media_post(self, rq_d):
         upd_media()
         response = media_files
         self.send_response(200)
@@ -1346,8 +1302,7 @@ def spk_str(str_to_speak, addLocal):
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        play_a_0(code_folder + "mvc/dot.wav")
-        play_a_0(code_folder + "mvc/local.wav")
+        play_a_0(code_folder + "mvc/dot_local_colon_8083.wav")
 
 
 def l_r_but():
@@ -1385,9 +1340,7 @@ def spk_web():
     play_a_0(code_folder + "mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-drive-in":
         play_a_0(code_folder + "mvc/animator_dash_drive_dash_in.wav")
-        play_a_0(code_folder + "mvc/dot.wav")
-        play_a_0(code_folder + "mvc/local.wav")
-        play_a_0(code_folder + "mvc/colon_8083.wav")
+        play_a_0(code_folder + "mvc/dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
     play_a_0(code_folder + "mvc/in_your_browser.wav")

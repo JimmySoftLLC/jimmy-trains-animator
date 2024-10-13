@@ -703,7 +703,7 @@
     };
 
     function getMedia() {
-        fetch('/get-all-sound-tracks', {
+        fetch('/get-all-media', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -897,7 +897,7 @@
                 const button = document.createElement("button");
                 button.textContent = file.replace("customers_owned_music_", "");
                 button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                button.setAttribute("data-value", file);
+                button.setAttribute("data-value", topic + "/" + file);
                 button.setAttribute("data-url", "/animation");
                 button.setAttribute("type", "button");
                 button.addEventListener('click', function () {
@@ -961,7 +961,7 @@
                 const button = document.createElement("button");
                 button.textContent = file.replace("customers_owned_music_", "");
                 button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                button.setAttribute("data-value", file);
+                button.setAttribute("data-value", topic + "/" + file);
                 button.setAttribute("data-url", "/get-animation");
                 button.setAttribute("type", "button");
                 button.addEventListener('click', function () {
