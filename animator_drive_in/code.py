@@ -172,16 +172,18 @@ def get_media_files(main_folder, extensions):
 
 
 def upd_media():
+    global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt, media_files
+    
     extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
-    print(media_files)
+    print("All media: " + str(media_files))
 
-    global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt
-    sndtrk_opt = files.return_directory(
-        "", media_folder + "sndtrk", ".wav", False)
-    video_opt = files.return_directory(
-        "", media_folder + "sndtrk", ".mp4", False)
-    sndtrk_opt.extend(video_opt)
+    # sndtrk_opt = files.return_directory(
+    #     "", media_folder + "sndtrk", ".wav", False)
+    # video_opt = files.return_directory(
+    #     "", media_folder + "sndtrk", ".mp4", False)
+    sndtrk_opt = []
+    # sndtrk_opt.extend(media_files["sndtrk"])
     # print("Sound tracks: " + str(sndtrk_opt))
 
     plylst_opt = files.return_directory(
@@ -826,6 +828,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.defaults_post(post_data_obj)
         elif self.path == "/get-built-in-sound-tracks":
             self.get_built_in_sound_tracks_post(post_data_obj)
+        elif self.path == "/get-all-sound-tracks":
+            self.get_all_sound_tracks_post(post_data_obj)
         elif self.path == "/get-customers-sound-tracks":
             self.get_customers_sound_tracks_post(post_data_obj)
         elif self.path == "/speaker":
@@ -1166,6 +1170,15 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         upd_media()
         response = []
         response.extend(sndtrk_opt)
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_all_sound_tracks_post(self, rq_d):
+        upd_media()
+        response = media_files
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()

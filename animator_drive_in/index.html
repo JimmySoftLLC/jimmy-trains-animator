@@ -67,7 +67,7 @@
             </button>
             <h2>Playlists:</h2>
             <div id="playlistContainer"></div>
-            <h2>Sound tracks:</h2>
+            <h2>Media:</h2>
             <div id="builtInTracksContainer"></div>
             <h2>Animation settings:</h2>
             <div>
@@ -353,14 +353,16 @@
                 <div>LNNN_R_G_B = All lights NNN (0 All, 1 to 999) RGB 0 to 255</div>
                 <div>NMMM_I_XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
                 <div>BXXX = Brightness XXX 000 to 100</div>
-                <div>FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds</div>
+                <div>FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+                </div>
                 <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (S
                     sound tracks, M my sound tracks, P playlist) XXX (file name)</div>
                 <div>ZRAND = Random rainbow, fire, or color change</div>
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
                 <div>ZCOLCH = Color change</div>
-                <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between
+                <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
+                    between
                     commands</div>
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
@@ -699,6 +701,7 @@
         getBuiltInSoundTracks()
         getCustomersSoundTracks()
         getLightString()
+        getAllSoundTracks()
     });
 
     function getLightString() {
@@ -733,6 +736,26 @@
                 my_data = JSON.parse(data)
                 setCustomersSoundTrackButtons(my_data)
                 setCustomersSoundTrackScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getAllSoundTracks() {
+        fetch('/get-all-sound-tracks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setAllSoundTrackButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -1104,6 +1127,71 @@
             myTracksScriptContainer.appendChild(button);
         });
     }
+
+    function setAllSoundTrackButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const builtInTracksContainer = document.getElementById("builtInTracksContainer");
+        builtInTracksContainer.innerHTML = '';
+
+        // Loop through each folder (topic) in my_data
+        Object.keys(my_data).forEach((topic) => {
+            // Create and add a title for the folder (topic)
+            const title = document.createElement("h3");
+            title.textContent = topic + " :";
+            builtInTracksContainer.appendChild(title);
+
+            // Get the array of files for this topic
+            const files = my_data[topic];
+
+            // Loop through each file in the topic and create a button for it
+            files.forEach((file) => {
+                const button = document.createElement("button");
+                button.textContent = file.replace("customers_owned_music_", "");
+                button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+                button.setAttribute("data-value", file);
+                button.setAttribute("data-url", "/animation");
+                button.setAttribute("type", "button");
+                button.addEventListener('click', function () {
+                    var url = button.getAttribute('data-url');
+                    var animation = button.getAttribute('data-value');
+                    var redirectUrl = button.getAttribute('data-redirect');
+
+                    // Create an object with the data to be sent in the request
+                    var data = {
+                        an: animation,
+                    };
+
+                    button.setAttribute('disabled', 'true');
+
+                    // Make a POST request using fetch
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    })
+                        .then(function (response) {
+                            // Handle the response from the server
+                            if (redirectUrl) {
+                                window.location.href = redirectUrl;
+                            } else {
+                                button.removeAttribute('disabled');
+                            }
+                        })
+                        .catch(function (error) {
+                            button.removeAttribute('disabled');
+                            console.log(error);
+                            showAlert(error);
+                        });
+                });
+                // Append the button under the current folder title
+                builtInTracksContainer.appendChild(button);
+            });
+        });
+    }
+
+
 
     // Get all buttons with the 'animator-action' class
     // Add click event listener to each button
