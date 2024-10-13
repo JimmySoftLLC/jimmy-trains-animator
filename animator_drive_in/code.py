@@ -117,6 +117,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
+plylst_folder = get_home_path() + "plylst/"
 
 def f_exists(filename):
     try:
@@ -176,7 +177,7 @@ def upd_media():
     
     extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
-    print("All media: " + str(media_files))
+    # print("All media: " + str(media_files))
 
     # sndtrk_opt = files.return_directory(
     #     "", media_folder + "sndtrk", ".wav", False)
@@ -186,8 +187,7 @@ def upd_media():
     # sndtrk_opt.extend(media_files["sndtrk"])
     # print("Sound tracks: " + str(sndtrk_opt))
 
-    plylst_opt = files.return_directory(
-        "plylst_", media_folder + "plylst", ".json", True)
+    plylst_opt = files.return_directory("plylst_", plylst_folder, ".json", True)
     # print("Play lists: " + str(plylst_opt))
 
     mysndtrk_opt = files.return_directory(
@@ -203,8 +203,8 @@ def upd_media():
     all_snd_opt.extend(mysndtrk_opt)
 
     menu_snd_opt = []
-    menu_snd_opt.extend(files.return_directory(
-        "", media_folder + "plylst", ".json", False, ".mp3"))
+    # menu_snd_opt.extend(files.return_directory(
+    #     "", media_folder + "plylst", ".json", False, ".mp3"))
     menu_snd_opt.extend(files.return_directory(
         "", media_folder + "sndtrk", ".wav", False))
     rnd_opt = ['rnd plylst.wav', 'random built in.wav',
