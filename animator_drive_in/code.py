@@ -73,6 +73,10 @@
 # debug the code.py, files.py and utilities.py in the home directory
 # Delete code.py, files.py and utilities.py in the home directory after release
 
+############################################################
+# Units will automatically startup up after reboot.   This can happen in a terminal window or in the backgournd.
+# To kill the backgournd process enter pkill -f code.py in the terminal
+
 
 import http.server
 import socket
@@ -900,19 +904,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     snd_f = snd_f.replace(".wav", "")
                     f_n = plylst_folder + \
                         snd_f + ".json"
-                elif "customers" == an[0]:
-                    snd_f = rq_d[3].replace("customers_owned_music_", "")
-                    snd_f = snd_f.replace(".mp3", "")
-                    snd_f = snd_f.replace(".mp4", "")
-                    snd_f = snd_f.replace(".wav", "")
-                    f_n = media_folder + "customers_owned_music/" + \
-                        snd_f + ".json"
                 else:
                     snd_f = rq_d[3].replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = media_folder + "sndtrk/" + \
-                        snd_f + ".json"
+                    f_n = media_folder + snd_f + ".json"
                 files.write_json_file(f_n, data)
                 upd_media()
                 data = []
@@ -946,40 +942,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def get_animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
         snd_f = rq_d["an"]
-        if "plylst_" in snd_f:
-            snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(plylst_folder + snd_f + ".json") == True):
-                f_n = plylst_folder + snd_f + ".json"
-                self.handle_serve_file_name(f_n)
-                return
-            else:
-                f_n = media_folder + "t_s_def/timestamp mode.json"
-                self.handle_serve_file_name(f_n)
-                return
-        if "customers_owned_music_" in snd_f:
-            snd_f = snd_f.replace("customers_owned_music_", "")
-            snd_f = snd_f.replace(".mp3", "")
-            snd_f = snd_f.replace(".mp4", "")
-            snd_f = snd_f.replace(".wav", "")
-            if (f_exists(media_folder + "customers_owned_music/" + snd_f + ".json") == True):
-                f_n = media_folder + "customers_owned_music/" + snd_f + ".json"
-                self.handle_serve_file_name(f_n)
-            else:
-                f_n = media_folder + "t_s_def/timestamp mode.json"
-                self.handle_serve_file_name(f_n)
-                return
+        snd_f = snd_f.replace(".mp3", "")
+        snd_f = snd_f.replace(".mp4", "")
+        snd_f = snd_f.replace(".wav", "")
+        if (f_exists(media_folder + snd_f + ".json") == True):
+            f_n = media_folder + snd_f + ".json"
+            self.handle_serve_file_name(f_n)
+            return
         else:
-            snd_f = snd_f.replace(".mp3", "")
-            snd_f = snd_f.replace(".mp4", "")
-            snd_f = snd_f.replace(".wav", "")
-            if (f_exists(media_folder + "sndtrk/" + snd_f + ".json") == True):
-                f_n = media_folder + "sndtrk/" + snd_f + ".json"
-                self.handle_serve_file_name(f_n)
-                return
-            else:
-                f_n = media_folder + "t_s_def/timestamp mode.json"
-                self.handle_serve_file_name(f_n)
-                return
+            f_n = code_folder + "t_s_def/timestamp mode.json"
+            self.handle_serve_file_name(f_n)
+            return
 
     def get_scripts_post(self, rq_d):
         sounds = []
@@ -1493,7 +1466,7 @@ def an_light(f_nm):
 
     time.sleep(.1)
 
-    cust_f = "customers_owned_music_" in f_nm
+
     plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
@@ -1502,39 +1475,14 @@ def an_light(f_nm):
 
     flsh_t = []
 
-    if cust_f:
-        f_nm = f_nm.replace("customers_owned_music_", "")
-        if (f_exists(media_folder + "customers_owned_music/" + json_fn + ".json") == True):
-            flsh_t = files.read_json_file(
-                media_folder + "customers_owned_music/" + json_fn + ".json")
-        else:
-            try:
-                flsh_t = files.read_json_file(
-                    media_folder + "customers_owned_music/" + json_fn + ".json")
-            except Exception as e:
-                files.log_item(e)
-                play_a_0(code_folder +
-                         "mvc/no_timestamp_file_found.wav", True, False)
-                time.sleep(.1)
-                while True:
-                    l_sw.update()
-                    r_sw.update()
-                    if l_sw.fell:
-                        ts_mode = False
-                        an_running = False
-                        return
-                    if r_sw.fell:
-                        ts_mode = True
-                        an_running = False
-                        play_a_0(code_folder + "mvc/timestamp_instructions.wav")
-                        return
-    elif plylst_f:
+
+    if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
         flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
     else:
-        if (f_exists(media_folder + "sndtrk/" + json_fn + ".json") == True):
+        if (f_exists(media_folder +  json_fn + ".json") == True):
             flsh_t = files.read_json_file(
-                media_folder + "sndtrk/" + json_fn + ".json")
+                media_folder + json_fn + ".json")
 
     flsh_i = 0
 
@@ -1547,10 +1495,7 @@ def an_light(f_nm):
     flsh_t.append(str(tm + 1) + "|E")
 
     if not plylst_f:
-        if cust_f:
-            media0 = media_folder + "customers_owned_music/" + f_nm
-        else:
-            media0 = media_folder + "sndtrk/" + f_nm
+        media0 = media_folder + f_nm
         if is_video:
             play_movie_file(media0)
         else:
