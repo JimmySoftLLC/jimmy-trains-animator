@@ -107,6 +107,9 @@ import signal
 from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
 import sys
 
+os.environ["SDL_AUDIODRIVER"] = "pulse"
+
+
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
@@ -122,6 +125,7 @@ def get_home_path(subpath=""):
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 plylst_folder = get_home_path() + "plylst/"
+
 
 def f_exists(filename):
     try:
@@ -156,34 +160,37 @@ gc_col("Imports gc, files")
 
 cfg = files.read_json_file(code_folder + "cfg.json")
 
+
 def get_media_files(main_folder, extensions):
     media_dict = {}
-    
+
     # Normalize extensions (e.g., ensure they all start with a dot)
-    extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in extensions]
-    
+    extensions = [ext if ext.startswith(
+        '.') else f'.{ext}' for ext in extensions]
+
     # Loop through each folder (topic) in the main media directory
     for topic in os.listdir(main_folder):
         topic_path = os.path.join(main_folder, topic)
-        
+
         # Ensure it's a directory before proceeding
         if os.path.isdir(topic_path):
             # Get all files that match the specified extensions
             files = [f for f in os.listdir(topic_path)
                      if os.path.isfile(os.path.join(topic_path, f)) and f.lower().endswith(tuple(extensions))]
             media_dict[topic] = files
-    
+
     return media_dict
 
 
 def upd_media():
     global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt, media_files
-    
+
     extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
     # print("All media: " + str(media_files))
 
-    plylst_opt = files.return_directory("plylst_", plylst_folder, ".json", True)
+    plylst_opt = files.return_directory(
+        "plylst_", plylst_folder, ".json", True)
     # print("Play lists: " + str(plylst_opt))
 
     all_snd_opt = []
@@ -1466,7 +1473,6 @@ def an_light(f_nm):
 
     time.sleep(.1)
 
-
     plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
@@ -1475,12 +1481,11 @@ def an_light(f_nm):
 
     flsh_t = []
 
-
     if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
         flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
     else:
-        if (f_exists(media_folder +  json_fn + ".json") == True):
+        if (f_exists(media_folder + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
                 media_folder + json_fn + ".json")
 
