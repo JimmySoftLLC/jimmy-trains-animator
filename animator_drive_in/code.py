@@ -53,6 +53,9 @@
 # sudo apt update
 # sudo apt install libreoffice
 
+# The user will want to modify audio files locally so install audocity using
+# sudo apt install audacity. Recommend to limit wav music to -10db and wav menu files to -12, mp4 -10
+
 
 # for touch screen products the display on vnc will default to the touch screen
 # resolution which is very low.  During dev you might want to use these three commands
@@ -65,7 +68,7 @@
 # the i2s amps are on the JimmyTrains ANPISBC HAT which provides the audio.  The amps have an audio enable
 # feature that is contorlled via pin 26.  It is enabled by this program just before it annouces the animations are active
 # The volume is also controlled by this program.  So the volume control on the pi has no effect.
-# The amp circuits are set to the highest possible gain so audio tracks and movies should be normalized to -8.0dB to avoid
+# The amp circuits are set to the highest possible gain so audio tracks and movies should be normalized to -10.0dB to avoid
 # clipping.
 
 #######################################################
@@ -76,6 +79,10 @@
 ############################################################
 # Units will automatically startup up after reboot.   This can happen in a terminal window or in the backgournd.
 # To kill the backgournd process enter pkill -f code.py in the terminal
+
+###########################################################
+# sudo apt-get install pulseaudio
+
 
 
 import http.server
@@ -107,6 +114,7 @@ import signal
 from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
 import sys
 
+#set the audio driver to pulse audio
 os.environ["SDL_AUDIODRIVER"] = "pulse"
 
 
@@ -276,7 +284,7 @@ def play_movie_file(movie_filename):
     media_player.release()
 
     # Create a fresh VLC instance and media player for each video
-    instance = vlc.Instance()
+    instance = vlc.Instance('--aout=pulse')
     media_player = vlc.MediaPlayer(instance)
     media_player.toggle_fullscreen()
 
@@ -952,7 +960,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd_f = snd_f.replace(".mp3", "")
         snd_f = snd_f.replace(".mp4", "")
         snd_f = snd_f.replace(".wav", "")
-        if (f_exists(media_folder + snd_f + ".json") == True):
+        if "plylst_" in snd_f:
+            snd_f = snd_f.replace("plylst_", "")
+            if (f_exists(plylst_folder + snd_f + ".json") == True):
+                f_n = plylst_folder + snd_f + ".json"
+                self.handle_serve_file_name(f_n)
+                return
+            else:
+                f_n = code_folder + "t_s_def/timestamp mode.json"
+                self.handle_serve_file_name(f_n)
+                return
+        elif (f_exists(media_folder + snd_f + ".json") == True):
             f_n = media_folder + snd_f + ".json"
             self.handle_serve_file_name(f_n)
             return
