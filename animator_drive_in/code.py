@@ -893,8 +893,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def rename_playlist_post(self, rq_d):
         global data
         snd = rq_d["fo"].replace("plylst_", "")
-        fo = media_folder + "plylst/" + snd + ".json"
-        fn = media_folder + "plylst/" + rq_d["fn"] + ".json"
+        fo = plylst_folder + snd + ".json"
+        fn = plylst_folder + rq_d["fn"] + ".json"
         mp3_name = media_folder + "o_snds/" + rq_d["fn"] + ".mp3"
         text_to_mp3_file(mp3_name, timeout_duration=5)
         os.rename(fo, fn)
@@ -922,7 +922,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     snd_f = snd_f.replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = media_folder + "plylst/" + \
+                    f_n = plylst_folder + \
                         snd_f + ".json"
                 elif "customers" == an[0]:
                     snd_f = rq_d[3].replace("customers_owned_music_", "")
@@ -958,7 +958,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def delete_playlist_post(self, rq_d):
         snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = media_folder + "plylst/" + snd_f + ".json"
+        f_n = plylst_folder + snd_f + ".json"
         os.remove(f_n)
         upd_media()
         self.send_response(200)
@@ -972,8 +972,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd_f = rq_d["an"]
         if "plylst_" in snd_f:
             snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(media_folder + "plylst/" + snd_f + ".json") == True):
-                f_n = media_folder + "plylst/" + snd_f + ".json"
+            if (f_exists(plylst_folder + snd_f + ".json") == True):
+                f_n = plylst_folder + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
                 return
             else:
@@ -1017,7 +1017,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def create_playlist_post(self, rq_d):
         global data
-        f_n = media_folder + "plylst/" + rq_d["fn"] + ".json"
+        f_n = plylst_folder + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
         gc_col("created playlist")
@@ -1577,7 +1577,7 @@ def an_light(f_nm):
                         return
     elif plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        flsh_t = files.read_json_file(media_folder + "plylst/" + f_nm + ".json")
+        flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
     else:
         if (f_exists(media_folder + "sndtrk/" + json_fn + ".json") == True):
             flsh_t = files.read_json_file(
