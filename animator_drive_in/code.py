@@ -113,6 +113,7 @@ import requests
 import signal
 from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
 import sys
+import subprocess
 
 #set the audio driver to pulse audio
 os.environ["SDL_AUDIODRIVER"] = "pulse"
@@ -236,6 +237,31 @@ lst_opt = ''
 an_running = False
 is_gtts_reachable = False
 stop_play_list = False
+
+################################################################################
+# Loading image as wallpaper on pi
+
+def change_wallpaper(image_path):
+    # Update the wallpaper in the desktop-items-0.conf file
+    config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
+    
+    # Read the config file
+    with open(config_path, 'r') as file:
+        config = file.readlines()
+    
+    # Modify the wallpaper path
+    with open(config_path, 'w') as file:
+        for line in config:
+            if line.startswith('wallpaper='):
+                file.write(f'wallpaper={image_path}\n')
+            else:
+                file.write(line)
+    
+    # Refresh the desktop using subprocess
+    subprocess.run(['pcmanfm', '--reconfigure'])
+
+change_wallpaper(media_folder + 'pictures/welcome-show-starting.jpg')
+
 
 ################################################################################
 # Setup io hardware
