@@ -132,7 +132,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
-plylst_folder = get_home_path() + "plylst/"
+plylst_folder = get_home_path() + "media/plylst/"
 
 
 def f_exists(filename):
@@ -1578,12 +1578,7 @@ def an_ts(f_nm):
 
     t_s = []
 
-    f_nm = f_nm.replace("customers_owned_music_", "")
-
-    if cust_f:
-        media0 = media_folder + "customers_owned_music/" + f_nm
-    else:
-        media0 = media_folder + "sndtrk/" + f_nm
+    media0 = media_folder  + f_nm
 
     if is_video:
         play_movie_file(media0)
@@ -1698,29 +1693,21 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # play file MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (S sound tracks, M my sound tracks, P playlist) XXX (file name)
+            # MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)
             elif seg[0] == 'M':
-                if seg[1] == "S":
-                    stop_media()
-                elif seg[1] == "W" or seg[1] == "A" or seg[1] == "P":
-                    stop_media()
-                    if seg[2] == "S":
-                        w0 = media_folder + "sndtrk/" + seg[3:]
-                        f_nm = seg[3:]
-                    elif seg[2] == "M":
-                        w0 = media_folder + "customers_owned_music/" + \
-                            seg[3:]
-                        f_nm = "customers_owned_music_" + seg[3:]
-                    elif seg[2] == "P":
-                        f_nm = "plylst_" + seg[3:]
-                    if seg[1] == "W" or seg[1] == "P":
-                        play_a_0(w0, False)
-                    if seg[1] == "A":
-                        res = an(f_nm)
-                        if res == "STOP":
-                            return "STOP"
-                    if seg[1] == "W":
-                        wait_snd()
+                stop_media()
+                if seg[1] == "P":
+                    f_nm = pylst_folder + "plylst_" + seg[2:]
+                else:
+                    f_nm = media_folder + seg[2:]
+                if seg[1] == "W" or seg[1] == "M":
+                    play_a_0(f_nm, False)
+                if seg[1] == "A":
+                    res = an(f_nm)
+                    if res == "STOP":
+                        return "STOP"
+                if seg[1] == "W":
+                    wait_snd()
             # lights LNNN_R_G_B = All lights NNN (0 All, 1 to 999) RGB 0 to 255
             elif seg[0] == 'L':
                 segs_split = seg.split("_")
