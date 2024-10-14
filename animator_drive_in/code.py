@@ -155,7 +155,7 @@ def change_wallpaper(image_path):
     # Refresh the desktop using subprocess
     subprocess.run(['pcmanfm', '--reconfigure'])
 
-change_wallpaper(media_folder + 'pictures/blue.jpg')
+change_wallpaper(media_folder + 'pictures/logo.jpg')
 
 
 def f_exists(filename):
