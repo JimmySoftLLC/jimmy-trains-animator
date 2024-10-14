@@ -115,10 +115,8 @@ from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLO
 import sys
 import subprocess
 
-#set the audio driver to pulse audio
-os.environ["SDL_AUDIODRIVER"] = "pulse"
 
-
+# Turn off audio while setting things up
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
@@ -134,6 +132,30 @@ def get_home_path(subpath=""):
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 plylst_folder = get_home_path() + "media/plylst/"
+
+################################################################################
+# Loading image as wallpaper on pi
+
+def change_wallpaper(image_path):
+    # Update the wallpaper in the desktop-items-0.conf file
+    config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
+    
+    # Read the config file
+    with open(config_path, 'r') as file:
+        config = file.readlines()
+    
+    # Modify the wallpaper path
+    with open(config_path, 'w') as file:
+        for line in config:
+            if line.startswith('wallpaper='):
+                file.write(f'wallpaper={image_path}\n')
+            else:
+                file.write(line)
+    
+    # Refresh the desktop using subprocess
+    subprocess.run(['pcmanfm', '--reconfigure'])
+
+change_wallpaper(media_folder + 'pictures/blue.jpg')
 
 
 def f_exists(filename):
@@ -238,29 +260,7 @@ an_running = False
 is_gtts_reachable = False
 stop_play_list = False
 
-################################################################################
-# Loading image as wallpaper on pi
 
-def change_wallpaper(image_path):
-    # Update the wallpaper in the desktop-items-0.conf file
-    config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
-    
-    # Read the config file
-    with open(config_path, 'r') as file:
-        config = file.readlines()
-    
-    # Modify the wallpaper path
-    with open(config_path, 'w') as file:
-        for line in config:
-            if line.startswith('wallpaper='):
-                file.write(f'wallpaper={image_path}\n')
-            else:
-                file.write(line)
-    
-    # Refresh the desktop using subprocess
-    subprocess.run(['pcmanfm', '--reconfigure'])
-
-change_wallpaper(media_folder + 'pictures/welcome-show-starting.jpg')
 
 
 ################################################################################
@@ -290,6 +290,9 @@ b_sw = Debouncer(switch_io_4)
 
 ################################################################################
 # Setup sound
+
+#set the audio driver to pulse audio
+os.environ["SDL_AUDIODRIVER"] = "pulse"
 
 # Setup the mixer to play wav files
 pygame.mixer.init()
@@ -326,6 +329,9 @@ def play_movie_file(movie_filename):
 
     while not media_player.is_playing():
         time.sleep(.05)
+
+    # Release the media player to reset state before the next video
+    media_player.release()
 
 
 def pause_movie():
@@ -1574,7 +1580,7 @@ def an_light(f_nm):
                 an_running = False
                 return
             flsh_i += 1
-        if not mix.get_busy() and not media_player.is_playing() and not plylst_f and not an_running:
+        if not mix.get_busy() and not media_player.is_playing():  # and not plylst_f and not an_running
             mix.stop()
             media_player.stop()
             rst_an()
@@ -1781,6 +1787,10 @@ def set_hdw(cmd, dur):
             # ZCOLCH = Color change
             elif seg[0:] == 'ZCOLCH':
                 random_effect(2, 2, dur)
+            # image IXXX/XXX XXX/XXXX(folder/filename)
+            elif seg[0] == 'I':
+                f_nm = media_folder + seg[1:]
+                change_wallpaper(f_nm)
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
