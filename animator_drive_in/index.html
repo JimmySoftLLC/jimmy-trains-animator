@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 
@@ -921,7 +922,7 @@
 
         // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('plylst') || topic.includes('pictures')|| topic.includes('random_config')) {
+            if (topic.includes('pictures')|| topic.includes('random_config')) {
                 return; // Skip this topic
             }
             // Create and add a button for the folder (topic)
@@ -969,7 +970,7 @@
             // Append the topic button to the topic button container
             topicButtonContainer.appendChild(topicButton);
 
-            if (topic.includes('random_config')||topic.includes('all')||topic.includes('play list')) {
+            if (topic.includes('random_config')||topic.includes('all')||topic.includes('play lists')) {
                 return; // Skip adding files
             }
 
@@ -1039,7 +1040,7 @@
 
         // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('plylst') || topic.includes('pictures')|| topic.includes('random')|| topic.includes('play list')|| topic.includes('all')) {
+            if (topic.includes('pictures')|| topic.includes('random')|| topic.includes('play lists')|| topic.includes('all')) {
                 return; // Skip this topic
             }
             // Create and add a title for the folder (topic)

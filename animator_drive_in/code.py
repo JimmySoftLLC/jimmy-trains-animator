@@ -131,7 +131,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
-plylst_folder = get_home_path() + "media/play list/"
+plylst_folder = get_home_path() + "media/play lists/"
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -1462,7 +1462,7 @@ def an(f_nm):
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
-        if f_nm == "random_play list":
+        if f_nm == "random_play lists":
             h_i = len(play_list_options) - 1
             cur_opt = play_list_options[random.randint(
                 0, h_i)]
