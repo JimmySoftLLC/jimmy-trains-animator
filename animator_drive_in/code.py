@@ -330,9 +330,6 @@ def play_movie_file(movie_filename):
     while not media_player.is_playing():
         time.sleep(.05)
 
-    # Release the media player to reset state before the next video
-    media_player.release()
-
 
 def pause_movie():
     media_player.pause()
@@ -344,32 +341,36 @@ def play_movie():
 
 ################################################################################
 # Setup servo hardware
-m1_pwm = pwmio.PWMOut(board.D6, duty_cycle=2 ** 15, frequency=50)  # D23
-m2_pwm = pwmio.PWMOut(board.D13, duty_cycle=2 ** 15, frequency=50)  # D24
-m3_pwm = pwmio.PWMOut(board.D23, duty_cycle=2 ** 15, frequency=50)  # D25
-m4_pwm = pwmio.PWMOut(board.D24, duty_cycle=2 ** 15, frequency=50)  # D6
-m5_pwm = pwmio.PWMOut(board.D25, duty_cycle=2 ** 15, frequency=50)  # D13
-m6_pwm = pwmio.PWMOut(board.D12, duty_cycle=2 ** 15, frequency=50)  # D12
-m7_pwm = pwmio.PWMOut(board.D16, duty_cycle=2 ** 15, frequency=50)  # D16
-m8_pwm = pwmio.PWMOut(board.D20, duty_cycle=2 ** 15, frequency=50)  # D20
+s_1_pwm = pwmio.PWMOut(board.D23, duty_cycle=2 ** 15, frequency=50)  # D23
+s_2_pwm = pwmio.PWMOut(board.D24, duty_cycle=2 ** 15, frequency=50)  # D24
+s_3_pwm = pwmio.PWMOut(board.D25, duty_cycle=2 ** 15, frequency=50)  # D25
+s_4_pwm = pwmio.PWMOut(board.D6, duty_cycle=2 ** 15, frequency=50)  # D6
+s_5_pwm = pwmio.PWMOut(board.D13, duty_cycle=2 ** 15, frequency=50)  # D13
+s_6_pwm = pwmio.PWMOut(board.D12, duty_cycle=2 ** 15, frequency=50)  # D12
+s_7_pwm = pwmio.PWMOut(board.D16, duty_cycle=2 ** 15, frequency=50)  # D16
+s_8_pwm = pwmio.PWMOut(board.D20, duty_cycle=2 ** 15, frequency=50)  # D20
 
-m1_servo = servo.Servo(m1_pwm)
-m2_servo = servo.Servo(m2_pwm)
-m3_servo = servo.Servo(m3_pwm)
-m4_servo = servo.Servo(m4_pwm)
-m5_servo = servo.Servo(m5_pwm)
-m6_servo = servo.Servo(m6_pwm)
-m7_servo = servo.Servo(m7_pwm)
-m8_servo = servo.Servo(m8_pwm)
+s_1 = servo.Servo(s_1_pwm)
+s_2 = servo.Servo(s_2_pwm)
+s_3 = servo.Servo(s_3_pwm)
+s_4 = servo.Servo(s_4_pwm)
+s_5 = servo.Servo(s_5_pwm)
+s_6 = servo.Servo(s_6_pwm)
+s_7 = servo.Servo(s_7_pwm)
+s_8 = servo.Servo(s_8_pwm)
 
-m1_servo.angle = 90
-m2_servo.angle = 90
-m3_servo.angle = 90
-m4_servo.angle = 90
-m5_servo.angle = 90
-m6_servo.angle = 90
-m7_servo.angle = 90
-m8_servo.angle = 90
+p_arr = [90, 90, 90, 90, 90, 90]
+
+s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
+
+def m_servo(n, p):
+    global p_arr
+    if p < 0:
+        p = 0
+    if p > 180:
+        p = 180
+    s_arr[n].angle = p
+    p_arr[n][n] = p
 
 ################################################################################
 # Setup neo pixels
@@ -1791,6 +1792,15 @@ def set_hdw(cmd, dur):
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
                 change_wallpaper(f_nm)
+            # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
+            if seg[0] == 'S':  # servos S
+                num = int(seg[1])
+                v = int(seg[2:])
+                if num == 0:
+                    for i in range(6):
+                        s_arr[i].angle = v
+                else:
+                    s_arr[num-1].angle = int(v)
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")

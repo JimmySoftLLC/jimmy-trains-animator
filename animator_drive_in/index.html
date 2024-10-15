@@ -79,7 +79,8 @@
             </div>
             <h2>Instructions on how to add your own media:</h2>
             <p>
-                Media goes in folders you create in the media folder in your home directory.  Name these folders with logical names related to what is in them.  For 
+                Media goes in folders you create in the media folder in your home directory. Name these folders with
+                logical names related to what is in them. For
                 example Christmas music could go in a folder named Holiday.
             </p>
             <h2>Animation timing:</h2>
@@ -87,7 +88,7 @@
                 Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
                 left button to start your animation. Once the media starts press the right button for each point
                 that you want an animation timestamp. Time your button presses to key moments in the media. Continue
-                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your 
+                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
                 animation script will be ready to add animations to.
             </p>
             <div>
@@ -113,6 +114,47 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
+            <h2>Platform positions:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
+                    type="button">
+                    All 0
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S090" data-url="/lights"
+                    type="button">
+                    All 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S0180" data-url="/lights"
+                    type="button">
+                    All 180
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
+                    type="button">
+                    Servo 1 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
+                    type="button">
+                    Servo 2 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
+                    type="button">
+                    Servo 3 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S490" data-url="/lights"
+                    type="button">
+                    Servo 4 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S590" data-url="/lights"
+                    type="button">
+                    Servo 5 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S690" data-url="/lights"
+                    type="button">
+                    Servo 6 90
+                </button>
+            </div>
             <h2>Setup light string:</h2>
             <div class="mui-textfield">
                 <p>
@@ -336,12 +378,14 @@
                 <div>BXXX = Brightness XXX 000 to 100</div>
                 <div>FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
                 </div>
-                <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)</div>
+                <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
+                    XXX/XXX (folder/filename)</div>
                 <div>ZRAND = Random rainbow, fire, or color change</div>
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
                 <div>ZCOLCH = Color change</div>
                 <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
+                <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
                 <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
                     between
                     commands</div>
