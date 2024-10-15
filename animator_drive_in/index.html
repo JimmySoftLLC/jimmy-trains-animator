@@ -40,7 +40,7 @@
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
-                <a data-mui-toggle="tab" data-mui-controls="lighting">light string</a>
+                <a data-mui-toggle="tab" data-mui-controls="lighting">servos / lights</a>
             </li>
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
@@ -50,18 +50,8 @@
             </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
-            <button class="mui-btn mui-btn--primary animator-action" data-value="random built in" data-url="/animation"
-                type="button">
-                Random only built in media
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="random my" data-url="/animation"
-                type="button">
-                Random only my media
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
-                type="button">
-                Random all media
-            </button>
+            <h2>Random play:</h2>
+            <div id="topicButtonContainer"></div>
             <h2>Playlists:</h2>
             <div id="playlistContainer"></div>
             <h2>Media:</h2>
@@ -922,38 +912,94 @@
 
     function setMediaButtons(my_data) {
         // Clear the existing buttons (if needed)
+        const topicButtonContainer = document.getElementById("topicButtonContainer");
+        topicButtonContainer.innerHTML = '';
+
+        // Clear the existing buttons (if needed)
         const mediaContainer = document.getElementById("mediaContainer");
         mediaContainer.innerHTML = '';
 
         // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
+            if (topic.includes('plylst') || topic.includes('pictures')|| topic.includes('random_config')) {
+                return; // Skip this topic
+            }
+            // Create and add a button for the folder (topic)
+            const topicButton = document.createElement("button");
+            topicButton.textContent = topic;
+            topicButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            topicButton.setAttribute("data-value", "random_" + topic);
+            topicButton.setAttribute("data-url", "/animation");
+            topicButton.setAttribute("type", "button");
+            topicButton.addEventListener('click', function () {
+                var url = topicButton.getAttribute('data-url');
+                var animation = topicButton.getAttribute('data-value');
+                var redirectUrl = topicButton.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                topicButton.setAttribute('disabled', 'true');
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            topicButton.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        topicButton.removeAttribute('disabled');
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+
+            // Append the topic button to the topic button container
+            topicButtonContainer.appendChild(topicButton);
+
+            if (topic.includes('random_config')||topic.includes('all')||topic.includes('play list')) {
+                return; // Skip adding files
+            }
+
             // Create and add a title for the folder (topic)
             const title = document.createElement("h2");
-            title.textContent = topic + " :";
-            mediaContainer.appendChild(title);
+                title.textContent = topic + " :";
+                mediaContainer.appendChild(title);
 
             // Get the array of files for this topic
             const files = my_data[topic];
 
             // Loop through each file in the topic and create a button for it
             files.forEach((file) => {
-                const button = document.createElement("button");
-                button.textContent = file.replace("customers_owned_music_", "");
-                button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                button.setAttribute("data-value", topic + "/" + file);
-                button.setAttribute("data-url", "/animation");
-                button.setAttribute("type", "button");
-                button.addEventListener('click', function () {
-                    var url = button.getAttribute('data-url');
-                    var animation = button.getAttribute('data-value');
-                    var redirectUrl = button.getAttribute('data-redirect');
+                const fileButton = document.createElement("button");
+                fileButton.textContent = file.replace("customers_owned_music_", "");
+                fileButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+                fileButton.setAttribute("data-value", topic + "/" + file);
+                fileButton.setAttribute("data-url", "/animation");
+                fileButton.setAttribute("type", "button");
+                fileButton.addEventListener('click', function () {
+                    var url = fileButton.getAttribute('data-url');
+                    var animation = fileButton.getAttribute('data-value');
+                    var redirectUrl = fileButton.getAttribute('data-redirect');
 
                     // Create an object with the data to be sent in the request
                     var data = {
                         an: animation,
                     };
 
-                    button.setAttribute('disabled', 'true');
+                    fileButton.setAttribute('disabled', 'true');
 
                     // Make a POST request using fetch
                     fetch(url, {
@@ -968,20 +1014,22 @@
                             if (redirectUrl) {
                                 window.location.href = redirectUrl;
                             } else {
-                                button.removeAttribute('disabled');
+                                fileButton.removeAttribute('disabled');
                             }
                         })
                         .catch(function (error) {
-                            button.removeAttribute('disabled');
+                            fileButton.removeAttribute('disabled');
                             console.log(error);
                             showAlert(error);
                         });
                 });
-                // Append the button under the current folder title
-                mediaContainer.appendChild(button);
+
+                // Append the file button to the file button container
+                mediaContainer.appendChild(fileButton);
             });
         });
     }
+
 
 
     function setMediaScriptButtons(my_data) {
@@ -991,6 +1039,9 @@
 
         // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
+            if (topic.includes('plylst') || topic.includes('pictures')|| topic.includes('random')|| topic.includes('play list')|| topic.includes('all')) {
+                return; // Skip this topic
+            }
             // Create and add a title for the folder (topic)
             const title = document.createElement("h2");
             title.textContent = topic + " :";

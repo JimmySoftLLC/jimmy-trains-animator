@@ -131,7 +131,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
-plylst_folder = get_home_path() + "media/plylst/"
+plylst_folder = get_home_path() + "media/play list/"
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -214,25 +214,25 @@ def get_media_files(main_folder, extensions):
 
 
 def upd_media():
-    global sndtrk_opt, plylst_opt, mysndtrk_opt, all_snd_opt, menu_snd_opt, media_files
+    global play_list_options, media_list_flattened, media_files, menu_snd_opt
 
     extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
+    rand_files = get_media_files(media_folder + "random_config/", extensions)
+    media_files.update(rand_files)
     # print("All media: " + str(media_files))
 
-    plylst_opt = files.return_directory(
+    play_list_options = files.return_directory(
         "plylst_", plylst_folder, ".json", True)
     # print("Play lists: " + str(plylst_opt))
 
-    all_snd_opt = []
-    all_snd_opt.extend(plylst_opt)
+    media_list_flattened = []
+    for topic, my_files in media_files.items():
+        media_list_flattened.extend([f"{topic}/{my_file}" for my_file in my_files])
 
-    menu_snd_opt = []
-    # menu_snd_opt.extend(files.return_directory(
-    #     "", media_folder + "sndtrk", ".wav", False))
-    rnd_opt = ['rnd plylst.wav', 'random built in.wav',
-               'random my.wav', 'random all.wav']
-    menu_snd_opt.extend(rnd_opt)
+
+    menu_snd_opt = ['random_all.wav', 'random_movies.wav', 'random_music videos.wav',
+               'random_christmas.wav', 'random_music.wav', 'random_play lists.wav']
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
 
@@ -1014,7 +1014,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_scripts_post(self, rq_d):
         sounds = []
-        sounds.extend(plylst_opt)
+        sounds.extend(play_list_options)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1462,42 +1462,36 @@ def an(f_nm):
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
-        if f_nm == "random built in":
-            h_i = len(sndtrk_opt) - 1
-            cur_opt = sndtrk_opt[random.randint(
+        if f_nm == "random_play list":
+            h_i = len(play_list_options) - 1
+            cur_opt = play_list_options[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(sndtrk_opt) > 1:
-                cur_opt = sndtrk_opt[random.randint(
+            while lst_opt == cur_opt and len(play_list_options) > 1:
+                cur_opt = play_list_options[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
-        elif f_nm == "random my":
-            h_i = len(mysndtrk_opt) - 1
-            cur_opt = mysndtrk_opt[random.randint(
+        elif f_nm == "random_all":
+            h_i = len(media_list_flattened) - 1
+            cur_opt = media_list_flattened[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(mysndtrk_opt) > 1:
-                cur_opt = mysndtrk_opt[random.randint(
+            while lst_opt == cur_opt and len(media_list_flattened) > 1:
+                cur_opt = media_list_flattened[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
-        elif f_nm == "rnd plylst":
-            h_i = len(plylst_opt) - 1
-            cur_opt = plylst_opt[random.randint(
+        elif "random_" in f_nm:
+            # Specify the folder name
+            folder_name = f_nm.split("_")
+            # Filter the media list to only include items from the specified folder
+            filtered_list = [item for item in media_list_flattened if item.startswith(f"{folder_name[1]}/")]
+            h_i = len(filtered_list) - 1
+            cur_opt = filtered_list[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(plylst_opt) > 1:
-                cur_opt = plylst_opt[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            files.log_item("Random sound option: " + f_nm)
-            files.log_item("Sound file: " + cur_opt)
-        elif f_nm == "random all":
-            h_i = len(all_snd_opt) - 1
-            cur_opt = all_snd_opt[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(all_snd_opt) > 1:
-                cur_opt = all_snd_opt[random.randint(
+            while lst_opt == cur_opt and len(filtered_list) > 1:
+                cur_opt = filtered_list[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
@@ -1511,7 +1505,7 @@ def an(f_nm):
     except Exception as e:
         files.log_item(e)
         no_trk()
-        cfg["option_selected"] = "random built in"
+        cfg["option_selected"] = "random all media"
         return
     gc_col("Animation complete.")
 
@@ -2093,7 +2087,7 @@ class Snds(Ste):
         r_sw.update()
         if l_sw.fell:
             try:
-                play_a_0(media_folder + "o_snds/" + menu_snd_opt[self.i])
+                play_a_0(code_folder + "o_snds/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
