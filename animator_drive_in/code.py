@@ -2318,27 +2318,35 @@ state_machine_thread.daemon = True
 state_machine_thread.start()
 
 
-def run_stop_button_check():
+def button_check():
     global an_running, stop_play_list
     while True:
         if an_running:
             l_sw.update()
             r_sw.update()
+            w_sw.update()
+            b_sw.update()
             if l_sw.fell and cfg["can_cancel"]:
                 an_running = False
                 stop_play_list = True
                 mix.stop()
                 media_player.stop()
                 rst_an()
+            if w_sw.fell:
+                print ("sw 3 fell")
+                ch_vol("lower")
+            if b_sw.fell:
+                print ("sw 4 fell")
+                ch_vol("raise")
         time.sleep(.1)
 
 
 # Start the state machine in a separate thread
-check_stop_button_thread = threading.Thread(target=run_stop_button_check)
+button_check_thread = threading.Thread(target=button_check)
 
 # Daemonize the thread to end with the main program
-check_stop_button_thread.daemon = True
-check_stop_button_thread.start()
+button_check_thread.daemon = True
+button_check_thread.start()
 
 
 while True:
