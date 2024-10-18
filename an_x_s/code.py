@@ -26,8 +26,8 @@ def reset_pico():
 servo_1 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
 servo_2 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 
-servo_1 = servo.Servo(servo_1)
-servo_2 = servo.Servo(servo_2)
+servo_1 = servo.Servo(servo_1, min_pulse=500, max_pulse=2500)
+servo_2 = servo.Servo(servo_2, min_pulse=500, max_pulse=2500)
 
 # Initialize all servos to 90 degree position upon startup
 servo_1.angle = 90
@@ -51,15 +51,18 @@ sw_2 = Debouncer(sw_2)
 # get the calibration settings from the picos flash memory
 config = files.read_json_file("/cfg.json")
 
-################################################################################
-# Shared methods
+s1_last_pos = 90
+time.sleep(5)
 
-# Note this is the passed in method for the utilities module if used
-def time_sleep(dur):
-    time.sleep(dur)
 
 ################################################################################
 # Servo methods
+
+def random_wait(low, hi):
+    # Generate a random delay between low and hi seconds
+    delay = random.randint(low, hi)
+    print(f"Waiting for {delay:.2f} seconds...")
+    time.sleep(delay)
 
 def move_s1_at_speed (new_position, speed):
     global s1_last_pos
@@ -71,30 +74,32 @@ def move_s1_at_speed (new_position, speed):
     move_s_1 (new_position)
     
 def move_s_1 (servo_pos):
+    global s1_last_pos
     if servo_pos < 0: servo_pos = 0
     if servo_pos > 180: servo_pos = 180
     servo_1.angle = servo_pos
-    global s1_last_pos
     s1_last_pos = servo_pos
 
 ################################################################################
 # animations
-
-def s_1_wiggle_movement(dur):
-    rotation = 7
-    cycle_time = 0.2
-    st = time.monotonic
-    while time.monotonic - st < dur:
-        switch_state = utilities.switch_state(sw_1, sw_2, time_sleep, 0.5)
-        if switch_state == "left_held":
-            return
-        servo_1.angle = rotation + config["wiggle_pos"]
-        time_sleep(cycle_time)
-        servo_1.angle = config["wiggle_pos"]
-        time_sleep(cycle_time)
+def s_1_wiggle_movement(center_pt, cyc, spd):
+    for _ in range(cyc):
+        move_s1_at_speed(center_pt-7,spd)
+        move_s1_at_speed(center_pt+7,spd)
 
 def animate():
-    print("dude")
+    cyc = random.randint(1, 3)
+    s_1_wiggle_movement(90,cyc,.05)
+    time.sleep(.1)
+    move_s1_at_speed(180,.002)
+    random_wait(5, 15)
+    move_s1_at_speed(90,.03)
 
+    
 while True:
-    time_sleep(.1)
+    animate()
+    pass
+    
+
+
+
