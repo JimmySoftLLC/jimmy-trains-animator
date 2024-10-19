@@ -8,7 +8,6 @@ import busio
 import pwmio
 import digitalio
 import random
-import utilities
 
 from analogio import AnalogIn
 from adafruit_motor import servo
@@ -25,15 +24,15 @@ def reset_pico():
 
 # Setup the servo this animation can have up to two servos
 # also get the programmed values for position which is stored on the pico itself
-servo_1 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
-servo_2 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+s_1 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+s_2 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 
-servo_1 = servo.Servo(servo_1, min_pulse=500, max_pulse=2500)
-servo_2 = servo.Servo(servo_2, min_pulse=500, max_pulse=2500)
+s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
 
-s1_last_pos = 180
-s2_last_pos = 180
+p_arr = [180, 180]
 
+s_arr = [s_1, s_2]
 
 # Setup the switches, not all units have these
 sw_1 = board.GP6  # revaluate this when the AN1S is in final design
@@ -64,49 +63,50 @@ def random_wait(low, hi):
     time.sleep(delay)
 
 
-def move_s1_at_speed(new_position, speed):
-    global s1_last_pos
+def move_at_speed(n, new_position, speed):
+    global p_arr
     sign = 1
-    if s1_last_pos > new_position:
+    if p_arr[n] > new_position:
         sign = - 1
-    for s_1 in range(s1_last_pos, new_position, sign):
-        move_s_1(s_1)
+    for servo_pos in range(p_arr[n], new_position, sign):
+        m_servo(n, servo_pos)
         time.sleep(speed)
-    move_s_1(new_position)
+    m_servo(n, new_position)
 
 
-def move_s_1(servo_pos):
-    global s1_last_pos
-    if servo_pos < 0:
-        servo_pos = 0
-    if servo_pos > 180:
-        servo_pos = 180
-    servo_1.angle = servo_pos
-    s1_last_pos = servo_pos
+def m_servo(n, p):
+    global p_arr
+    if p < 0:
+        p = 0
+    if p > 180:
+        p = 180
+    s_arr[n].angle = p
+    p_arr[n] = p
 
 
 ################################################################################
 # animations
-def s_1_wiggle_movement(center_pt, cyc, spd):
+def s_1_wiggle_movement(n, center_pt, cyc, spd):
     for _ in range(cyc):
-        move_s1_at_speed(center_pt-7, spd)
-        move_s1_at_speed(center_pt+7, spd)
+        move_at_speed(n, center_pt-7, spd)
+        move_at_speed(n, center_pt+7, spd)
 
 
 def animate():
     cyc = random.randint(1, 3)
-    s_1_wiggle_movement(90, cyc, .05)
+    s_1_wiggle_movement(0, 90, cyc, .05)
     time.sleep(.1)
-    move_s1_at_speed(180, .002)
+    move_at_speed(0, 180, .002)
     random_wait(5, 20)
-    move_s1_at_speed(90, .03)
+    move_at_speed(0, 90, .03)
 
 
 # Initialize all servos to 90 degree position upon startup
-move_s1_at_speed(90, .05)
+move_at_speed(0, 90, .05)
 
 time.sleep(5)
 
 while True:
     animate()
     pass
+
