@@ -213,47 +213,92 @@
                     bar-10
                 </button>
             </div>
-            <h2>Test lights:</h2>
+            <h2>Test neopixel lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_255_0_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
                     type="button">
                     Red
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_0_255_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
                     type="button">
                     Green
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_0_0_255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
                     type="button">
                     Blue
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L0_255_255_255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
                     type="button">
                     White
                 </button>
             </div>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="B0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN0" data-url="/lights"
                     type="button">
                     Off
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="B20" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN20" data-url="/lights"
                     type="button">
                     20
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="B40" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN40" data-url="/lights"
                     type="button">
                     40
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="B60" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN60" data-url="/lights"
                     type="button">
                     60
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="B80" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN80" data-url="/lights"
                     type="button">
                     80
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="B100" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN100" data-url="/lights"
+                    type="button">
+                    100
+                </button>
+            </div>
+            <h2>Test lifx lights:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
+                    type="button">
+                    Red
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
+                    type="button">
+                    Green
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
+                    type="button">
+                    Blue
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255" data-url="/lights"
+                    type="button">
+                    White
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
+                    type="button">
+                    Off
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BX20" data-url="/lights"
+                    type="button">
+                    20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BX40" data-url="/lights"
+                    type="button">
+                    40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BX60" data-url="/lights"
+                    type="button">
+                    60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BX80" data-url="/lights"
+                    type="button">
+                    80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BX100" data-url="/lights"
                     type="button">
                     100
                 </button>
@@ -364,10 +409,11 @@
             <div>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <div>LNNN_R_G_B = All lights NNN (0 All, 1 to 999) RGB 0 to 255</div>
-                <div>NMMM_I_XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-                <div>BXXX = Brightness XXX 000 to 100</div>
-                <div>FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+                <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+                <div>BXXX = Brightness (Neopixel lights/Neo 6 modules) XXX 000 to 100</div>
+                <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time between transitions in decimal seconds
                 </div>
                 <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
                     XXX/XXX (folder/filename)</div>

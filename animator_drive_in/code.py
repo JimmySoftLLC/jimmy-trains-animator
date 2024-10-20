@@ -84,7 +84,7 @@
 # sudo apt-get install pulseaudio
 
 
-
+from typing import List, Tuple
 import http.server
 import socket
 import socketserver
@@ -94,7 +94,6 @@ import json
 import os
 import gc
 import vlc
-import time
 import board
 import digitalio
 from adafruit_debouncer import Debouncer
@@ -112,8 +111,9 @@ from gtts import gTTS
 import requests
 import signal
 from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
-import sys
 import subprocess
+import time
+import netifaces
 
 
 # Turn off audio while setting things up
@@ -136,14 +136,15 @@ plylst_folder = get_home_path() + "media/play lists/"
 ################################################################################
 # Loading image as wallpaper on pi
 
+
 def change_wallpaper(image_path):
     # Update the wallpaper in the desktop-items-0.conf file
     config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
-    
+
     # Read the config file
     with open(config_path, 'r') as file:
         config = file.readlines()
-    
+
     # Modify the wallpaper path
     with open(config_path, 'w') as file:
         for line in config:
@@ -151,9 +152,10 @@ def change_wallpaper(image_path):
                 file.write(f'wallpaper={image_path}\n')
             else:
                 file.write(line)
-    
+
     # Refresh the desktop using subprocess
     subprocess.run(['pcmanfm', '--reconfigure'])
+
 
 change_wallpaper(media_folder + 'pictures/logo.jpg')
 
@@ -228,11 +230,11 @@ def upd_media():
 
     media_list_flattened = []
     for topic, my_files in media_files.items():
-        media_list_flattened.extend([f"{topic}/{my_file}" for my_file in my_files])
-
+        media_list_flattened.extend(
+            [f"{topic}/{my_file}" for my_file in my_files])
 
     menu_snd_opt = ['random_all.wav', 'random_movies.wav', 'random_music videos.wav',
-               'random_christmas.wav', 'random_music.wav', 'random_play lists.wav']
+                    'random_christmas.wav', 'random_music.wav', 'random_play lists.wav']
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
 
@@ -259,8 +261,6 @@ lst_opt = ''
 an_running = False
 is_gtts_reachable = False
 stop_play_list = False
-
-
 
 
 ################################################################################
@@ -291,7 +291,7 @@ b_sw = Debouncer(switch_io_4)
 ################################################################################
 # Setup sound
 
-#set the audio driver to pulse audio
+# set the audio driver to pulse audio
 os.environ["SDL_AUDIODRIVER"] = "pulse"
 
 # Setup the mixer to play wav files
@@ -363,6 +363,7 @@ p_arr = [90, 90, 90, 90, 90, 90]
 
 s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
 
+
 def m_servo(n, p):
     global p_arr
     if p < 0:
@@ -373,7 +374,8 @@ def m_servo(n, p):
     p_arr[n][n] = p
 
 ################################################################################
-# Setup neo pixels
+# Setup Neo pixels and neo 6 modules
+
 
 trees = []
 canes = []
@@ -628,66 +630,83 @@ def upd_l_str():
 
 upd_l_str()
 
+# Neo pixel / neo 6 module methods
+
+br = 0
+
+
+def is_neo(number, nested_array):
+    return any(number in sublist for sublist in nested_array)
+
+
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):  # in range(n_px)
+            if is_neo(i, neos):
+                led[i] = (g, r, b)
+            else:
+                led[i] = (r, g, b)
+    else:
+        if is_neo(light_n, neos):
+            led[light_n] = (g, r, b)
+        else:
+            led[light_n] = (r, g, b)
+    led.show()
+
+
+def get_neo_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neos):
+            matches.append(num)
+    return matches
+
+
+def set_neo_module_to(mod_n, ind, v):
+    cur = []
+    neo_ids = get_neo_ids()
+    print(mod_n, ind, v, neo_ids)
+    if mod_n == 0:
+        for i in neo_ids:
+            led[i] = (v, v, v)
+            led[i+1] = (v, v, v)
+    elif ind == 0:
+        led[neo_ids[mod_n-1]] = (v, v, v)
+        led[neo_ids[mod_n-1]+1] = (v, v, v)
+    elif ind < 4:
+        ind -= 1
+        if ind == 0:
+            ind = 1
+        elif ind == 1:
+            ind = 0
+        cur = list(led[neo_ids[mod_n-1]])
+        cur[ind] = v
+        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+        print(led[neo_ids[mod_n-1]])
+    else:
+        ind -= 1
+        if ind == 3:
+            ind = 4
+        elif ind == 4:
+            ind = 3
+        cur = list(led[neo_ids[mod_n-1]+1])
+        cur[ind-3] = v
+        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
+    led.show()
+
+
 gc_col("Neopixels setup")
 
 
 ################################################################################
 # Setup lifx lights
-
-def test_lifx():
-    num_lights = 18
-    if len(sys.argv) != 2:
-        print("\nDiscovery will go much faster if you provide the number of lights on your LAN:")
-        print("  python {} <number of lights on LAN>\n".format(sys.argv[0]))
-    else:
-        num_lights = int(sys.argv[1])
-
-    # instantiate LifxLAN client, num_lights may be None (unknown).
-    # In fact, you don't need to provide LifxLAN with the number of bulbs at all.
-    # lifx = LifxLAN() works just as well. Knowing the number of bulbs in advance
-    # simply makes initial bulb discovery faster.
-    print("Discovering lights...")
-    lifx = LifxLAN(num_lights)
-
-    # get devices
-    devices = lifx.get_lights()
-    bulb = devices[0]
-    print("Selected {}".format(bulb.get_label()))
-
-    # get original state
-    print("Turning on all lights...")
-    original_power = bulb.get_power()
-    original_color = bulb.get_color()
-    bulb.set_power("on")
-
-    time.sleep(1)  # for looks
-
-    print("Flashy fast rainbow")
-    rainbow(bulb, 0.1)
-
-    print("Smooth slow rainbow")
-    rainbow(bulb, 1, smooth=True)
-
-    print("Restoring original power and color...")
-    # restore original power
-    bulb.set_power(original_power)
-    # restore original color
-    time.sleep(0.5)  # for looks
-    bulb.set_color(original_color)
-
-
-def rainbow(bulb, duration_secs=0.5, smooth=False):
-    colors = [RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, PURPLE, PINK]
-    transition_time_ms = duration_secs*1000 if smooth else 0
-    rapid = True if duration_secs < 1 else False
-    for color in colors:
-        bulb.set_color(color, transition_time_ms, rapid)
-        time.sleep(duration_secs)
+devices = []
 
 
 def discover_lights():
+    play_a_0(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
     # Initialize the LifxLAN object
-    lifx = LifxLAN(20)
+    lifx = LifxLAN(2)
 
     # Discover LIFX devices on the local network
     devices = lifx.get_devices()
@@ -699,28 +718,180 @@ def discover_lights():
     # Iterate over each discovered device and control it
     for device in devices:
         print(f"Found device: {device.get_label()}")
+        device.set_color(rgb_to_hsbk(50, 50, 50))
+        device.set_power("on")
 
-        # Set light to a specific color (red in this case)
-        # (Hue, Saturation, Brightness, Kelvin)
-        # device.set_color([65535, 65535, 65535, 3500])
-        # device.set_power("on")
 
-# test_lifx()
+def rgb_to_hsbk(r, g, b):
+    import colorsys
+
+    # Normalize RGB values to the range 0-1
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+
+    # Convert RGB to HSB (Hue, Saturation, Brightness)
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+    # Convert HSB to LIFX HSBK
+    hue = int(h * 65535)          # Hue in range 0-65535
+    saturation = int(s * 65535)    # Saturation in range 0-65535
+    brightness = int(v * 65535)    # Brightness in range 0-65535
+    # Kelvin (fixed, but can be adjusted for whites)
+    kelvin = 3500
+
+    return [hue, saturation, brightness, kelvin]
+
+
+def interpolate_color(start_color, end_color, steps):
+    """
+    Gradually interpolate between two RGB colors.
+
+    :param start_color: Tuple (R, G, B) for the start color
+    :param end_color: Tuple (R, G, B) for the end color
+    :param steps: Number of steps to reach the end color
+    :return: A list of RGB tuples representing the transition
+    """
+    r_step = (end_color[0] - start_color[0]) / steps
+    g_step = (end_color[1] - start_color[1]) / steps
+    b_step = (end_color[2] - start_color[2]) / steps
+
+    interpolated_colors = []
+
+    for step in range(steps + 1):
+        r = int(start_color[0] + r_step * step)
+        g = int(start_color[1] + g_step * step)
+        b = int(start_color[2] + b_step * step)
+        interpolated_colors.append((r, g, b))
+
+    return interpolated_colors
+
+
+def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
+    """
+    Cycles through a list of RGB tuples, transitioning between each in order.
+
+    :param rgb_values: List of RGB tuples
+    :param transition_time: Total time in seconds to transition between colors
+    :param steps: Number of steps for each color transition
+    """
+    while True:
+        for i in range(len(rgb_values) - 1):
+            start_color = rgb_values[i]
+            end_color = rgb_values[i + 1]
+            color_transition = interpolate_color(start_color, end_color, steps)
+
+            for color in color_transition:
+                set_light_color(color)
+                print(f"Setting color to {color}")
+                # Adjust sleep time for each step
+                time.sleep(transition_time / steps)
+
+
+def set_light_color(n, rgb):
+    devices[n].set_color(rgb_to_hsbk(50, 50, 50))
+    devices[n].set_power("on")
+    pass
+
+
+# Example RGB values for different times of day as a dictionary
+rgb_cycle = {
+    'daylight_rgb': (255, 255, 255),      # Bright Daylight
+    'afternoon_rgb': (255, 223, 186),     # Late Afternoon
+    'sunset_rgb': (255, 102, 51),         # Sunset
+    'dusk_rgb': (153, 102, 255),          # Dusk
+    'twilight_rgb': (51, 51, 153),        # Twilight
+    'early_night_rgb': (25, 25, 102),     # Early Night
+    'midnight_rgb': (15, 15, 30),         # Midnight
+    'deep_night_rgb': (10, 10, 20)        # Deep Night
+}
+
+# Ordered list of keys for interpolation
+ordered_keys = [
+    'daylight_rgb',
+    'afternoon_rgb',
+    'sunset_rgb',
+    'dusk_rgb',
+    'twilight_rgb',
+    'early_night_rgb',
+    'midnight_rgb',
+    'deep_night_rgb'
+]
+
+
+def interpolate_rgb(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
+    # Find the indices of start and end keys in the ordered list
+    try:
+        start_index = ordered_keys.index(start_key)
+        end_index = ordered_keys.index(end_key)
+    except ValueError:
+        raise ValueError("Invalid key provided.")
+
+    # Check if reverse interpolation is required
+    if start_index > end_index:
+        # Reverse the ordered_keys slice for reverse interpolation
+        interpolated_values = [
+            rgb_cycle[key] for key in ordered_keys[start_index:end_index - 1:-1]
+        ]
+    else:
+        # Forward interpolation
+        interpolated_values = [
+            rgb_cycle[key] for key in ordered_keys[start_index:end_index + 1]
+        ]
+
+    return interpolated_values
+
+
+# Example usage:
+forward_result = interpolate_rgb('daylight_rgb', 'sunset_rgb')
+reverse_result = interpolate_rgb('sunset_rgb', 'daylight_rgb')
+
+# Output: [(255, 255, 255), (255, 223, 186), (255, 102, 51)]
+print("Forward:", forward_result)
+# Output: [(255, 102, 51), (255, 223, 186), (255, 255, 255)]
+print("Reverse:", reverse_result)
+
+
+def daylight_afternoon():
+    # 5 seconds total for each color transition
+    cycle_rgb_values(rgb_cycle, transition_time=5, steps=100)
 
 
 ################################################################################
 # Setup wifi and web server
 
+
+number_tries = 0
+
+
+def get_default_gateway():
+    gateways = netifaces.gateways()
+    default_gateway = gateways.get('default', {}).get(netifaces.AF_INET)
+    if default_gateway:
+        return default_gateway[0]
+    return None
+
+
 def wait_for_network():
+    global number_tries
+    if number_tries > 10:
+        print("Network not available after multiple tries.")
+        return
     while True:
         try:
-            # Attempt to connect to Google's public DNS server to check network availability
-            socket.create_connection(("8.8.8.8", 53))
-            print("Network is ready!")
-            return
+            gateway_ip = get_default_gateway()
+            if gateway_ip is None:
+                raise OSError("No default gateway found")
+
+            # Ping the default gateway
+            response = os.system(f"ping -c 1 {gateway_ip}")
+            if response == 0:
+                print("Wi-Fi is connected to the LAN!")
+                return
+            else:
+                raise OSError("No response from gateway")
         except OSError:
-            print("Waiting for network...")
+            print("Waiting for Wi-Fi connection to LAN...")
             time.sleep(1)
+            number_tries += 1
 
 
 def get_local_ip():
@@ -1486,7 +1657,8 @@ def an(f_nm):
             # Specify the folder name
             folder_name = f_nm.split("_")
             # Filter the media list to only include items from the specified folder
-            filtered_list = [item for item in media_list_flattened if item.startswith(f"{folder_name[1]}/")]
+            filtered_list = [item for item in media_list_flattened if item.startswith(f"{
+                                                                                      folder_name[1]}/")]
             h_i = len(filtered_list) - 1
             cur_opt = filtered_list[random.randint(
                 0, h_i)]
@@ -1605,7 +1777,7 @@ def an_ts(f_nm):
 
     t_s = []
 
-    media0 = media_folder  + f_nm
+    media0 = media_folder + f_nm
 
     if is_video:
         play_movie_file(media0)
@@ -1642,69 +1814,6 @@ def an_ts(f_nm):
 ###############
 # Animation helpers
 
-br = 0
-
-
-def is_neo(number, nested_array):
-    return any(number in sublist for sublist in nested_array)
-
-
-def set_all_to(light_n, r, g, b):
-    if light_n == -1:
-        for i in range(n_px):  # in range(n_px)
-            if is_neo(i, neos):
-                led[i] = (g, r, b)
-            else:
-                led[i] = (r, g, b)
-    else:
-        if is_neo(light_n, neos):
-            led[light_n] = (g, r, b)
-        else:
-            led[light_n] = (r, g, b)
-    led.show()
-
-
-def get_neo_ids():
-    matches = []
-    for num in range(n_px + 1):
-        if any(num == sublist[0] for sublist in neos):
-            matches.append(num)
-    return matches
-
-
-def set_neo_module(mod_n, ind, v):
-    cur = []
-    neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
-    if mod_n == 0:
-        for i in neo_ids:
-            led[i] = (v, v, v)
-            led[i+1] = (v, v, v)
-    elif ind == 0:
-        led[neo_ids[mod_n-1]] = (v, v, v)
-        led[neo_ids[mod_n-1]+1] = (v, v, v)
-    elif ind < 4:
-        ind -= 1
-        if ind == 0:
-            ind = 1
-        elif ind == 1:
-            ind = 0
-        cur = list(led[neo_ids[mod_n-1]])
-        cur[ind] = v
-        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n-1]])
-    else:
-        ind -= 1
-        if ind == 3:
-            ind = 4
-        elif ind == 4:
-            ind = 3
-        cur = list(led[neo_ids[mod_n-1]+1])
-        cur[ind-3] = v
-        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
-    led.show()
-
-
 def set_hdw(cmd, dur):
     global sp, br
 
@@ -1735,21 +1844,29 @@ def set_hdw(cmd, dur):
                         return "STOP"
                 if seg[1] == "W":
                     wait_snd()
-            # lights LNNN_R_G_B = All lights NNN (0 All, 1 to 999) RGB 0 to 255
-            elif seg[0] == 'L':
+            # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
+            elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][1:])-1
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
-                set_all_to(light_n, r, g, b)
-            # modules MNNN_I_XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
+                set_neo_to(light_n, r, g, b)
+            # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+            elif seg[:2] == 'LX':
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][1:])-1
+                r = int(segs_split[1])
+                g = int(segs_split[2])
+                b = int(segs_split[3])
+                set_neo_to(light_n, r, g, b)
+            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0][1:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
-                set_neo_module(mod_n, index, v)
+                set_neo_module_to(mod_n, index, v)
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0] == 'B':
                 br = int(seg[1:])
@@ -2295,7 +2412,7 @@ if (web):
         time.sleep(5)
         files.log_item("server did not start...")
 
-# discover_lights()
+discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
@@ -2333,10 +2450,10 @@ def button_check():
                 media_player.stop()
                 rst_an()
             if w_sw.fell:
-                print ("sw 3 fell")
+                print("sw 3 fell")
                 ch_vol("lower")
             if b_sw.fell:
-                print ("sw 4 fell")
+                print("sw 4 fell")
                 ch_vol("raise")
         time.sleep(.1)
 
