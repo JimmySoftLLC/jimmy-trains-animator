@@ -1039,6 +1039,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.defaults_post(post_data_obj)
         elif self.path == "/lights":
             self.lights_post(post_data_obj)
+        elif self.path == "/lights_scene":
+            self.lights_scene_post(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
@@ -1361,6 +1363,15 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def lights_post(self, rq_d):
         set_hdw(rq_d["an"], 1)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))
+
+    def lights_scene_post(self, rq_d):
+        rgb_value = scene_changes[rq_d["an"]]
+        set_hdw("LX0_" + str(rgb_value[0]) + "_"+ str(rgb_value[1]) +"_" + str(rgb_value[2]), 0)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1903,7 +1914,7 @@ def set_hdw(cmd, dur):
             # ZCOLCH = Color change
             elif seg[0:] == 'ZCOLCH':
                 random_effect(2, 2, dur)
-            # ZS_S_E_T_I = Scene change S start E end using (daylight,afternoon,sunset,dusk,twilight,early_night,midnight,deep_night), time, increments
+            # ZS_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments
             elif seg[:2] == 'ZS':
                 segs_split = seg[3:].split("_")
                 scene_change(segs_split[0], segs_split[1],
