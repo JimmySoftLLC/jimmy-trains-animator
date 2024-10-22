@@ -114,6 +114,7 @@ from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLO
 import subprocess
 import time
 import netifaces
+from collections import OrderedDict
 
 
 # Turn off audio while setting things up
@@ -774,17 +775,16 @@ def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
     :param transition_time: Total time in seconds to transition between colors
     :param steps: Number of steps for each color transition
     """
-    while True:
-        for i in range(len(rgb_values) - 1):
-            start_color = rgb_values[i]
-            end_color = rgb_values[i + 1]
-            color_transition = interpolate_color(start_color, end_color, steps)
+    for i in range(len(rgb_values) - 1):
+        start_color = rgb_values[i]
+        end_color = rgb_values[i + 1]
+        color_transition = interpolate_color(start_color, end_color, steps)
 
-            for color in color_transition:
-                set_light_color(color)
-                print(f"Setting color to {color}")
-                # Adjust sleep time for each step
-                time.sleep(transition_time / steps)
+        for color in color_transition:
+            set_light_color(-1, color[0], color[1], color[2])
+            print(f"Setting color to {color}")
+            # Adjust sleep time for each step
+            time.sleep(transition_time / steps)
 
 
 def set_light_color(light_n, r, g, b):
@@ -796,43 +796,18 @@ def set_light_color(light_n, r, g, b):
 
 
 
-# Example RGB values for different times of day as a dictionary
-rgb_cycle = {
-    'noon': (255, 255, 255),
-    'afternoon': (255, 223, 186),
-    'sunset': (255, 102, 51),
-    'dusk': (153, 102, 255),
-    'twilight': (51, 51, 153),
-    'early_night': (25, 25, 102),
-    'midnight': (15, 15, 30),
-    'deep_night': (10, 10, 20),
-    'pre_dawn': (15, 15, 30),
-    'early_dawn': (25, 25, 102),
-    'dawn': (102, 102, 255),
-    'early_morning': (255, 153, 102),
-    'morning':  (255, 204, 153),
-    'before_noon': (255, 223, 186)
-}
 
+# Example RGB values for different times of day
+scene_changes = cfg["scene_changes"]
 
-# Ordered list of keys for interpolation
-ordered_keys = [
-    'noon',
-    'afternoon',
-    'sunset',
-    'dusk',
-    'twilight',
-    'early_night',
-    'midnight',
-    'deep_night',
-    'pre_dawn',
-    'early_dawn',
-    'twilight',
-    'dawn',
-    'early_morning',
-    'morning_rgb',
-    'before_noon'
-]
+# Create an ordered dictionary to preserve the order of insertion
+ordered_scene_changes = OrderedDict(scene_changes)
+
+# Get the ordered list of keys
+ordered_keys = list(ordered_scene_changes.keys())
+
+print(ordered_keys)
+
 
 
 def interpolate(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
@@ -847,25 +822,15 @@ def interpolate(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
     if start_index > end_index:
         # Reverse the ordered_keys slice for reverse interpolation
         interpolated_values = [
-            rgb_cycle[key] for key in ordered_keys[start_index:end_index - 1:-1]
+            scene_changes[key] for key in ordered_keys[start_index:end_index - 1:-1]
         ]
     else:
         # Forward interpolation
         interpolated_values = [
-            rgb_cycle[key] for key in ordered_keys[start_index:end_index + 1]
+            scene_changes[key] for key in ordered_keys[start_index:end_index + 1]
         ]
 
     return interpolated_values
-
-
-# Example usage:
-forward_result = interpolate('noon', 'sunset')
-reverse_result = interpolate('sunset', 'noon')
-
-# Output: [(255, 255, 255), (255, 223, 186), (255, 102, 51)]
-print("Forward:", forward_result)
-# Output: [(255, 102, 51), (255, 223, 186), (255, 255, 255)]
-print("Reverse:", reverse_result)
 
 
 def scene_change(start, end, time=5, increments=100):
@@ -1674,7 +1639,8 @@ def an(f_nm):
             # Specify the folder name
             folder_name = f_nm.split("_")
             # Filter the media list to only include items from the specified folder
-            filtered_list = [item for item in media_list_flattened if item.startswith(folder_name[1])]
+            filtered_list = [
+                item for item in media_list_flattened if item.startswith(folder_name[1])]
             h_i = len(filtered_list) - 1
             cur_opt = filtered_list[random.randint(
                 0, h_i)]
@@ -1833,7 +1799,6 @@ def an_ts(f_nm):
 def set_hdw(cmd, dur):
     global sp, br
 
-
     if cmd == "":
         return "NOCMDS"
 
@@ -1918,9 +1883,9 @@ def set_hdw(cmd, dur):
                 random_effect(2, 2, dur)
             # ZS_S_E_T_I = Scene change S start E end using (daylight,afternoon,sunset,dusk,twilight,early_night,midnight,deep_night), time, increments
             elif seg[:2] == 'ZS':
-                segs_split = seg[3].split("_")
+                segs_split = seg[3:].split("_")
                 scene_change(segs_split[0], segs_split[1],
-                             segs_split[2], segs_split[3])
+                             int(segs_split[2]), int(segs_split[3]))
             # image IXXX/XXX XXX/XXXX(folder/filename)
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
