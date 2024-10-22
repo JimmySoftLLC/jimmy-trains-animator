@@ -84,6 +84,8 @@
 # sudo apt-get install pulseaudio
 
 
+from lifxlan import LifxLAN
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple
 import http.server
 import socket
@@ -701,14 +703,15 @@ gc_col("Neopixels setup")
 
 ################################################################################
 # Setup lifx lights
-devices = []
 
+
+devices = []
+lifx = {}
 
 def discover_lights():
-    global devices
+    global devices, lifx
     play_a_0(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
-    # Initialize the LifxLAN object
-    lifx = LifxLAN(2)
+    lifx = LifxLAN(18)  # Assuming 2 is the number of lights
 
     # Discover LIFX devices on the local network
     devices = lifx.get_devices()
@@ -722,8 +725,8 @@ def discover_lights():
 
     # Iterate over each discovered device and control it
     for device in devices:
-        print(f"Found device: {device.get_label()}")
-        device.set_color(rgb_to_hsbk(50, 50, 50))
+        # print(f"Found device: {device.get_label()}")
+        device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
         device.set_power("on")
 
 
@@ -740,21 +743,44 @@ def rgb_to_hsbk(r, g, b):
     hue = int(h * 65535)          # Hue in range 0-65535
     saturation = int(s * 65535)    # Saturation in range 0-65535
     brightness = int(v * 65535)    # Brightness in range 0-65535
-    # Kelvin (fixed, but can be adjusted for whites)
+    # Fixed Kelvin value (can adjust for white balance)
     kelvin = 3500
 
     return [hue, saturation, brightness, kelvin]
 
 
-def interpolate_color(start_color, end_color, steps):
-    """
-    Gradually interpolate between two RGB colors.
+def set_light_color_threaded(device, r, g, b):
+    """Function to set the light color, executed in a thread."""
+    try:
+        # Set color instantly
+        device.set_color(rgb_to_hsbk(r, g, b), duration=0)
+        print(f"Setting color for {device.get_label()} to RGB({r}, {g}, {b})")
+    except Exception as e:
+        print(f"Error setting color for {device.get_label()}: {e}")
 
-    :param start_color: Tuple (R, G, B) for the start color
-    :param end_color: Tuple (R, G, B) for the end color
-    :param steps: Number of steps to reach the end color
-    :return: A list of RGB tuples representing the transition
-    """
+
+def set_all_lights_parallel(r, g, b):
+    """Set color for all lights in parallel using threads."""
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(
+            set_light_color_threaded, device, r, g, b) for device in devices]
+        for future in futures:
+            future.result()  # Wait for all threads to complete
+
+
+def set_light_color(light_n, r, g, b):
+    """Set color for a specific light or all lights."""
+    if light_n == -1:
+        # Set color for all lights in parallel
+        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b)) 
+        # set_all_lights_parallel(r, g, b)
+    else:
+        # Set color for a specific light
+        devices[light_n].set_color(rgb_to_hsbk(r, g, b))
+
+
+def interpolate_color(start_color, end_color, steps):
+    """Gradually interpolate between two RGB colors."""
     r_step = (end_color[0] - start_color[0]) / steps
     g_step = (end_color[1] - start_color[1]) / steps
     b_step = (end_color[2] - start_color[2]) / steps
@@ -771,31 +797,18 @@ def interpolate_color(start_color, end_color, steps):
 
 
 def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
-    """
-    Cycles through a list of RGB tuples, transitioning between each in order.
-
-    :param rgb_values: List of RGB tuples
-    :param transition_time: Total time in seconds to transition between colors
-    :param steps: Number of steps for each color transition
-    """
+    """Cycles through a list of RGB tuples, transitioning between each in order."""
     for i in range(len(rgb_values) - 1):
         start_color = rgb_values[i]
         end_color = rgb_values[i + 1]
         color_transition = interpolate_color(start_color, end_color, steps)
 
         for color in color_transition:
+            # Use threading to set color for all lights at once
             set_light_color(-1, color[0], color[1], color[2])
             print(f"Setting color to {color}")
-            # Adjust sleep time for each step
+            # Adjust sleep time for smooth transitions
             time.sleep(transition_time / steps)
-
-
-def set_light_color(light_n, r, g, b):
-    if light_n == -1:
-        for i in range(len(devices)):
-            devices[i].set_color(rgb_to_hsbk(r, g, b))
-    else:
-        devices[light_n].set_color(rgb_to_hsbk(r, g, b))
 
 
 # Example RGB values for different times of day
@@ -807,35 +820,34 @@ ordered_scene_changes = OrderedDict(scene_changes)
 # Get the ordered list of keys
 ordered_keys = list(ordered_scene_changes.keys())
 
-print(ordered_keys)
+# print(ordered_keys)
 
 
-def interpolate(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
-    # Find the indices of start and end keys in the ordered list
+def interpolate(start_key: str, end_key: str):
+    """Interpolate between the start and end keys in the scene_changes dictionary."""
     try:
         start_index = ordered_keys.index(start_key)
         end_index = ordered_keys.index(end_key)
     except ValueError:
         raise ValueError("Invalid key provided.")
 
-    # Check if reverse interpolation is required
     if start_index > end_index:
-        # Reverse the ordered_keys slice for reverse interpolation
-        interpolated_values = [
-            scene_changes[key] for key in ordered_keys[start_index:end_index - 1:-1]
-        ]
+        # Reverse interpolation
+        interpolated_values = [scene_changes[key]
+                               for key in ordered_keys[start_index:end_index - 1:-1]]
     else:
         # Forward interpolation
-        interpolated_values = [
-            scene_changes[key] for key in ordered_keys[start_index:end_index + 1]
-        ]
+        interpolated_values = [scene_changes[key]
+                               for key in ordered_keys[start_index:end_index + 1]]
 
     return interpolated_values
 
 
 def scene_change(start, end, time=5, increments=100):
+    """Handle a scene change by interpolating between two times and cycling RGB values."""
     rgb_cycle = interpolate(start, end)
     cycle_rgb_values(rgb_cycle, time, increments)
+
 
 ################################################################################
 # Setup wifi and web server
@@ -1017,6 +1029,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.speaker_post(post_data_obj)
         elif self.path == "/get-light-string":
             self.get_light_string_post(post_data_obj)
+        elif self.path == "/get-scene-changes":
+            self.get_scene_changes_post(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/update-light-string":
@@ -1280,6 +1294,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = cfg["light_string"]
         self.wfile.write(response.encode('utf-8'))
+
+    def get_scene_changes_post(self, rq_d):
+        response = cfg["scene_changes"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def update_host_name_post(self, rq_d):
         global cfg

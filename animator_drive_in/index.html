@@ -276,64 +276,7 @@
                     White
                 </button>
             </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255" data-url="/lights"
-                    type="button">
-                    Noon
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_223_186" data-url="/lights"
-                    type="button">
-                    Afternoon
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_102_51" data-url="/lights"
-                    type="button">
-                    Sunset
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_153_102_255" data-url="/lights"
-                    type="button">
-                    Dusk
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_51_51_30" data-url="/lights"
-                    type="button">
-                    Twilight
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_25_25_102" data-url="/lights"
-                    type="button">
-                    Early night
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_15_15_30" data-url="/lights"
-                    type="button">
-                    Midnight
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_10_10_20" data-url="/lights"
-                    type="button">
-                    Deep night
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_15_15_30" data-url="/lights"
-                    type="button">
-                    Pre dawn
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_25_25_102" data-url="/lights"
-                    type="button">
-                    early dawn
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_102_102_255" data-url="/lights"
-                    type="button">
-                    dawn
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_153_102" data-url="/lights"
-                    type="button">
-                    early morning
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_204_153" data-url="/lights"
-                    type="button">
-                    morning
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_223_186" data-url="/lights"
-                    type="button">
-                    before noon
-                </button>
-            </div>
+            <div id="sceneButtonContainer"></div>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
                     type="button">
@@ -479,9 +422,7 @@
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
                 <div>ZCOLCH = Color change</div>
-                <div>ZS_S_E_T_I = Scene change S start E end using
-                    (noon,afternoon,sunset,dusk,twilight,early_night,midnight,deep_night,
-                    pre_dawn,early_dawn,twilight,dawn,early_morning,morning,before_noon), time, increments</div>
+                <div id="sceneInstructionsContainer"></div>
                 <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
                 <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
                 <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
@@ -823,6 +764,7 @@
         getPlaylists()
         getLightString()
         getMedia()
+        getSceneChanges()
     });
 
     function getLightString() {
@@ -857,6 +799,26 @@
                 my_data = JSON.parse(data)
                 setMediaButtons(my_data)
                 setMediaScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getSceneChanges() {
+        fetch('/get-scene-changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setSceneChangeButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -1206,6 +1168,74 @@
             });
         });
     }
+
+    function setSceneChangeButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const sceneButtonContainer = document.getElementById("sceneButtonContainer");
+        sceneButtonContainer.innerHTML = '';
+
+        // Clear the existing buttons (if needed)
+        const sceneInstructionsContainer = document.getElementById("sceneInstructionsContainer");
+        sceneInstructionsContainer.innerHTML = '';
+
+        instructions = ""
+
+        // Loop through scene in my_data
+        Object.keys(my_data).forEach((scene) => {
+            // Create and add a button for the scene and add to the instructions string
+            instructions += scene + ", "
+            const sceneButton = document.createElement("button");
+            sceneButton.textContent = scene;
+            sceneButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            sceneButton.setAttribute("data-value", scene);
+            sceneButton.setAttribute("data-url", "/animation");
+            sceneButton.setAttribute("type", "button");
+            sceneButton.addEventListener('click', function () {
+                var url = sceneButton.getAttribute('data-url');
+                var animation = sceneButton.getAttribute('data-value');
+                var redirectUrl = sceneButton.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                sceneButton.setAttribute('disabled', 'true');
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            sceneButton.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        sceneButton.removeAttribute('disabled');
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+
+            // Append the topic button to the topic button container
+            sceneButtonContainer.appendChild(sceneButton);
+        });
+
+        instructions = instructions.slice(0, -2);
+
+        sceneInstructionsContainer.innerHTML = 'ZS_S_E_T_I = Scene change S start E end using(' + instructions + '), time, increments';
+    }
+
+
+
 
     // Get all buttons with the 'animator-action' class
     // Add click event listener to each button
