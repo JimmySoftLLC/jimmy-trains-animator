@@ -715,6 +715,9 @@ def discover_lights():
 
     # Report the count of discovered devices
     device_count = len(devices)
+    spk_str(str(device_count), False)
+    play_a_0(code_folder + "mvc/" + "lifx_lights_found" + ".wav")
+
     print(f"Discovered {device_count} device(s).")
 
     # Iterate over each discovered device and control it
@@ -795,8 +798,6 @@ def set_light_color(light_n, r, g, b):
         devices[light_n].set_color(rgb_to_hsbk(r, g, b))
 
 
-
-
 # Example RGB values for different times of day
 scene_changes = cfg["scene_changes"]
 
@@ -807,7 +808,6 @@ ordered_scene_changes = OrderedDict(scene_changes)
 ordered_keys = list(ordered_scene_changes.keys())
 
 print(ordered_keys)
-
 
 
 def interpolate(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
@@ -1885,7 +1885,7 @@ def set_hdw(cmd, dur):
             elif seg[:2] == 'ZS':
                 segs_split = seg[3:].split("_")
                 scene_change(segs_split[0], segs_split[1],
-                             int(segs_split[2]), int(segs_split[3]))
+                             float(segs_split[2]), int(segs_split[3]))
             # image IXXX/XXX XXX/XXXX(folder/filename)
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
