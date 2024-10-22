@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 
@@ -278,6 +277,64 @@
                 </button>
             </div>
             <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255" data-url="/lights"
+                    type="button">
+                    Noon
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_223_186" data-url="/lights"
+                    type="button">
+                    Afternoon
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_102_51" data-url="/lights"
+                    type="button">
+                    Sunset
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_153_102_255" data-url="/lights"
+                    type="button">
+                    Dusk
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_51_51_30" data-url="/lights"
+                    type="button">
+                    Twilight
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_25_25_102" data-url="/lights"
+                    type="button">
+                    Early night
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_15_15_30" data-url="/lights"
+                    type="button">
+                    Midnight
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_10_10_20" data-url="/lights"
+                    type="button">
+                    Deep night
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_15_15_30" data-url="/lights"
+                    type="button">
+                    Pre dawn
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_25_25_102" data-url="/lights"
+                    type="button">
+                    early dawn
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_102_102_255" data-url="/lights"
+                    type="button">
+                    dawn
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_153_102" data-url="/lights"
+                    type="button">
+                    early morning
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_204_153" data-url="/lights"
+                    type="button">
+                    morning
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_223_186" data-url="/lights"
+                    type="button">
+                    before noon
+                </button>
+            </div>
+            <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
                     type="button">
                     Off
@@ -413,7 +470,8 @@
                 <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
                 <div>BXXX = Brightness (Neopixel lights/Neo 6 modules) XXX 000 to 100</div>
-                <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+                <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time between
+                    transitions in decimal seconds
                 </div>
                 <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
                     XXX/XXX (folder/filename)</div>
@@ -421,6 +479,9 @@
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
                 <div>ZCOLCH = Color change</div>
+                <div>ZS_S_E_T_I = Scene change S start E end using
+                    (noon,afternoon,sunset,dusk,twilight,early_night,midnight,deep_night,
+                    pre_dawn,early_dawn,twilight,dawn,early_morning,morning,before_noon), time, increments</div>
                 <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
                 <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
                 <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
@@ -968,7 +1029,7 @@
 
         // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('pictures')|| topic.includes('random_config')) {
+            if (topic.includes('pictures') || topic.includes('random_config')) {
                 return; // Skip this topic
             }
             // Create and add a button for the folder (topic)
@@ -1016,14 +1077,14 @@
             // Append the topic button to the topic button container
             topicButtonContainer.appendChild(topicButton);
 
-            if (topic.includes('random_config')||topic.includes('all')||topic.includes('play lists')) {
+            if (topic.includes('random_config') || topic.includes('all') || topic.includes('play lists')) {
                 return; // Skip adding files
             }
 
             // Create and add a title for the folder (topic)
             const title = document.createElement("h2");
-                title.textContent = topic + " :";
-                mediaContainer.appendChild(title);
+            title.textContent = topic + " :";
+            mediaContainer.appendChild(title);
 
             // Get the array of files for this topic
             const files = my_data[topic];
@@ -1086,7 +1147,7 @@
 
         // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('pictures')|| topic.includes('random')|| topic.includes('play lists')|| topic.includes('all')) {
+            if (topic.includes('pictures') || topic.includes('random') || topic.includes('play lists') || topic.includes('all')) {
                 return; // Skip this topic
             }
             // Create and add a title for the folder (topic)

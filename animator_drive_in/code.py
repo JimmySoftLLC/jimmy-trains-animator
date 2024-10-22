@@ -704,6 +704,7 @@ devices = []
 
 
 def discover_lights():
+    global devices
     play_a_0(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
     # Initialize the LifxLAN object
     lifx = LifxLAN(2)
@@ -786,38 +787,55 @@ def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
                 time.sleep(transition_time / steps)
 
 
-def set_light_color(n, rgb):
-    devices[n].set_color(rgb_to_hsbk(50, 50, 50))
-    devices[n].set_power("on")
-    pass
+def set_light_color(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(len(devices)):
+            devices[i].set_color(rgb_to_hsbk(r, g, b))
+    else:
+        devices[light_n].set_color(rgb_to_hsbk(r, g, b))
+
 
 
 # Example RGB values for different times of day as a dictionary
 rgb_cycle = {
-    'daylight_rgb': (255, 255, 255),      # Bright Daylight
-    'afternoon_rgb': (255, 223, 186),     # Late Afternoon
-    'sunset_rgb': (255, 102, 51),         # Sunset
-    'dusk_rgb': (153, 102, 255),          # Dusk
-    'twilight_rgb': (51, 51, 153),        # Twilight
-    'early_night_rgb': (25, 25, 102),     # Early Night
-    'midnight_rgb': (15, 15, 30),         # Midnight
-    'deep_night_rgb': (10, 10, 20)        # Deep Night
+    'noon': (255, 255, 255),
+    'afternoon': (255, 223, 186),
+    'sunset': (255, 102, 51),
+    'dusk': (153, 102, 255),
+    'twilight': (51, 51, 153),
+    'early_night': (25, 25, 102),
+    'midnight': (15, 15, 30),
+    'deep_night': (10, 10, 20),
+    'pre_dawn': (15, 15, 30),
+    'early_dawn': (25, 25, 102),
+    'dawn': (102, 102, 255),
+    'early_morning': (255, 153, 102),
+    'morning':  (255, 204, 153),
+    'before_noon': (255, 223, 186)
 }
+
 
 # Ordered list of keys for interpolation
 ordered_keys = [
-    'daylight_rgb',
-    'afternoon_rgb',
-    'sunset_rgb',
-    'dusk_rgb',
-    'twilight_rgb',
-    'early_night_rgb',
-    'midnight_rgb',
-    'deep_night_rgb'
+    'noon',
+    'afternoon',
+    'sunset',
+    'dusk',
+    'twilight',
+    'early_night',
+    'midnight',
+    'deep_night',
+    'pre_dawn',
+    'early_dawn',
+    'twilight',
+    'dawn',
+    'early_morning',
+    'morning_rgb',
+    'before_noon'
 ]
 
 
-def interpolate_rgb(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
+def interpolate(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
     # Find the indices of start and end keys in the ordered list
     try:
         start_index = ordered_keys.index(start_key)
@@ -841,8 +859,8 @@ def interpolate_rgb(start_key: str, end_key: str) -> List[Tuple[int, int, int]]:
 
 
 # Example usage:
-forward_result = interpolate_rgb('daylight_rgb', 'sunset_rgb')
-reverse_result = interpolate_rgb('sunset_rgb', 'daylight_rgb')
+forward_result = interpolate('noon', 'sunset')
+reverse_result = interpolate('sunset', 'noon')
 
 # Output: [(255, 255, 255), (255, 223, 186), (255, 102, 51)]
 print("Forward:", forward_result)
@@ -850,10 +868,9 @@ print("Forward:", forward_result)
 print("Reverse:", reverse_result)
 
 
-def daylight_afternoon():
-    # 5 seconds total for each color transition
-    cycle_rgb_values(rgb_cycle, transition_time=5, steps=100)
-
+def scene_change(start, end, time=5, increments=100):
+    rgb_cycle = interpolate(start, end)
+    cycle_rgb_values(rgb_cycle, time, increments)
 
 ################################################################################
 # Setup wifi and web server
@@ -1657,8 +1674,7 @@ def an(f_nm):
             # Specify the folder name
             folder_name = f_nm.split("_")
             # Filter the media list to only include items from the specified folder
-            filtered_list = [item for item in media_list_flattened if item.startswith(f"{
-                                                                                      folder_name[1]}/")]
+            filtered_list = [item for item in media_list_flattened if item.startswith(folder_name[1])]
             h_i = len(filtered_list) - 1
             cur_opt = filtered_list[random.randint(
                 0, h_i)]
@@ -1817,6 +1833,7 @@ def an_ts(f_nm):
 def set_hdw(cmd, dur):
     global sp, br
 
+
     if cmd == "":
         return "NOCMDS"
 
@@ -1847,7 +1864,7 @@ def set_hdw(cmd, dur):
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
-                light_n = int(segs_split[0][1:])-1
+                light_n = int(segs_split[0][2:])-1
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
@@ -1855,11 +1872,11 @@ def set_hdw(cmd, dur):
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")
-                light_n = int(segs_split[0][1:])-1
+                light_n = int(segs_split[0][2:])-1
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
-                set_neo_to(light_n, r, g, b)
+                set_light_color(light_n, r, g, b)
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
@@ -1899,6 +1916,11 @@ def set_hdw(cmd, dur):
             # ZCOLCH = Color change
             elif seg[0:] == 'ZCOLCH':
                 random_effect(2, 2, dur)
+            # ZS_S_E_T_I = Scene change S start E end using (daylight,afternoon,sunset,dusk,twilight,early_night,midnight,deep_night), time, increments
+            elif seg[:2] == 'ZS':
+                segs_split = seg[3].split("_")
+                scene_change(segs_split[0], segs_split[1],
+                             segs_split[2], segs_split[3])
             # image IXXX/XXX XXX/XXXX(folder/filename)
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
