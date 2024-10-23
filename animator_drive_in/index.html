@@ -277,6 +277,11 @@
                 </button>
             </div>
             <div id="sceneButtonContainer"></div>
+            <h2>Customize colors:</h2>
+            <div class="mui-textfield">
+                <label for="colorPickerLifx">Bolt color:</label>
+                <input type="color" id="colorPickerLifx" name="colorPickerLifx">
+            </div>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
                     type="button">
@@ -448,6 +453,7 @@
 </body>
 
 <script>
+    let isRequestInProgress = false;
 
     function createPlaylistDialog() {
         var modalEl = document.getElementById("modalEl")
@@ -1188,7 +1194,7 @@
             sceneButton.textContent = scene;
             sceneButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             sceneButton.setAttribute("data-value", scene);
-            sceneButton.setAttribute("data-url", "/lights_scene");
+            sceneButton.setAttribute("data-url", "/lights-scene");
             sceneButton.setAttribute("type", "button");
             sceneButton.addEventListener('click', function () {
                 var url = sceneButton.getAttribute('data-url');
@@ -1210,18 +1216,14 @@
                     },
                     body: JSON.stringify(data),
                 })
-                    .then(function (response) {
-                        // Handle the response from the server
-                        if (redirectUrl) {
-                            window.location.href = redirectUrl;
-                        } else {
-                            sceneButton.removeAttribute('disabled');
-                        }
-                    })
-                    .catch(function (error) {
+                    .then(response => response.json())
+                    .then(data => {
+                        colorPickerLifx.value = rgbToHex(data[0], data[1], data[2]);
                         sceneButton.removeAttribute('disabled');
-                        console.log(error);
-                        showAlert(error);
+                    })
+                    .catch(error => {
+                        sceneButton.removeAttribute('disabled');
+                        console.error('Error fetching default color:', error);
                     });
             });
 
@@ -1233,9 +1235,6 @@
 
         sceneInstructionsContainer.innerHTML = 'ZS_S_E_T_I = Scene change S start E end using(' + instructions + '), time, increments';
     }
-
-
-
 
     // Get all buttons with the 'animator-action' class
     // Add click event listener to each button
@@ -1798,6 +1797,17 @@
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
     }
 
+    const colorPickerLifx = document.getElementById('colorPickerLifx');
+    colorPickerLifx.addEventListener('input', function () {
+        const color = colorPickerLifx.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("lifx", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
     // Add click event listener to file input button
     document.getElementById('fileInput').addEventListener('change', function () {
         if (this.files.length > 0) {
@@ -1841,6 +1851,49 @@
             xhr.send(formData);
         }
     })
+
+    function hexToRgb(hex) {
+        hex = hex.replace(/^#/, '');
+        const bigint = parseInt(hex, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b };
+    }
+
+    function rgbToHex(r, g, b) {
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase()}`;
+    }
+
+    function sendRGBValues(item,r, g, b) {
+        console.log(r)
+        console.log(g)
+        console.log(b)
+        const endpoint = "/set-item-lights";
+        const data = {
+            item: item,
+            r: r,
+            g: g,
+            b: b
+        };
+
+        fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data)
+                isRequestInProgress = false; // Reset the flag after the request is completed
+            })
+            .catch(error => {
+                console.error('Error:', error)
+                isRequestInProgress = false; // Reset the flag in case of an error
+            });
+    }
 </script>
 
 </html>

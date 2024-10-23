@@ -1039,8 +1039,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.defaults_post(post_data_obj)
         elif self.path == "/lights":
             self.lights_post(post_data_obj)
-        elif self.path == "/lights_scene":
+        elif self.path == "/lights-scene":
             self.lights_scene_post(post_data_obj)
+        elif self.path == "/set-item-lights":
+            self.set_item_lights(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
@@ -1065,6 +1067,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
             self.test_animation_post(post_data_obj)
+            
 
     def test_animation_post(self, rq_d):
         global an_running
@@ -1372,11 +1375,21 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def lights_scene_post(self, rq_d):
         rgb_value = scene_changes[rq_d["an"]]
         set_hdw("LX0_" + str(rgb_value[0]) + "_"+ str(rgb_value[1]) +"_" + str(rgb_value[2]), 0)
+        response = rgb_value
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        self.send_header("Content-type", "application/json")
         self.end_headers()
-        response = rq_d["an"]
-        self.wfile.write(response.encode('utf-8'))
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def set_item_lights(self, rq_d):
+        set_hdw("LX0_" + str(rq_d["r"]) + "_"+ str(rq_d["g"]) +"_" + str(rq_d["b"]), 0)
+        response = rq_d
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
 
 # Get the local IP address
