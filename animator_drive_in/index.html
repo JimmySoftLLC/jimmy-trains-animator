@@ -265,6 +265,9 @@
                     100
                 </button>
             </div>
+            <h2>Neo pixel colors:</h2>
+            <div id="neoButtonContainer"></div>
+            <input class="color-label" type="color" id="colorPickerNeo" name="colorPickerNeo">
             <h2>Test lifx lights:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
@@ -435,6 +438,7 @@
                 <div id="sceneInstructionsContainer"></div>
                 <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
                 <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
+                <div id="neoInstructionsContainer"></div>
                 <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
                     between
                     commands</div>
@@ -776,6 +780,7 @@
         getLightString()
         getMedia()
         getSceneChanges()
+        getNeoChanges()
     });
 
     function getLightString() {
@@ -830,6 +835,26 @@
             .then(function (data) {
                 my_data = JSON.parse(data)
                 setSceneChangeButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getNeoChanges() {
+        fetch('/get-neo-changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setNeoChangeButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -1179,6 +1204,69 @@
             });
         });
     }
+
+
+    function setNeoChangeButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const neoButtonContainer = document.getElementById("neoButtonContainer");
+        neoButtonContainer.innerHTML = '';
+
+        // Clear the existing buttons (if needed)
+        const neoInstructionsContainer = document.getElementById("neoInstructionsContainer");
+        neoInstructionsContainer.innerHTML = '';
+
+        instructions = ""
+
+        // Loop through neo in my_data
+        Object.keys(my_data).forEach((neo) => {
+            // Create and add a button for the neo and add to the instructions string
+            instructions += neo + ", "
+            const neoButton = document.createElement("button");
+            neoButton.textContent = neo;
+            neoButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            neoButton.setAttribute("data-value", neo);
+            neoButton.setAttribute("data-url", "/lights-neo");
+            neoButton.setAttribute("type", "button");
+            neoButton.addEventListener('click', function () {
+                var url = neoButton.getAttribute('data-url');
+                var animation = neoButton.getAttribute('data-value');
+                var redirectUrl = neoButton.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                neoButton.setAttribute('disabled', 'true');
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        colorPickerNeo.value = rgbToHex(data[0], data[1], data[2]);
+                        neoButton.removeAttribute('disabled');
+                    })
+                    .catch(error => {
+                        neoButton.removeAttribute('disabled');
+                        console.error('Error fetching default color:', error);
+                    });
+            });
+
+            // Append the topic button to the topic button container
+            neoButtonContainer.appendChild(neoButton);
+        });
+
+        instructions = instructions.slice(0, -2);
+
+        neoInstructionsContainer.innerHTML = 'ZN_S_E_T_I = neo change S start E end using(' + instructions + '), time, increments';
+    }
+
 
     function setSceneChangeButtons(my_data) {
         // Clear the existing buttons (if needed)
@@ -1810,6 +1898,17 @@
         if (!isRequestInProgress) {
             isRequestInProgress = true;
             sendRGBValues("lifx", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
+    const colorPickerNeo = document.getElementById('colorPickerNeo');
+    colorPickerNeo.addEventListener('input', function () {
+        const color = colorPickerNeo.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("neo", rgb.r, rgb.g, rgb.b);
         }
     });
 

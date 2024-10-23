@@ -117,11 +117,16 @@ import time
 import netifaces
 from collections import OrderedDict
 import signal
+import copy
+
+# original_list = [1, 2, [3, 4]]
+# deep_copy = copy.deepcopy(original_list)
 
 # Turn off audio while setting things up
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
+
 
 def get_home_path(subpath=""):
     # Get the current user's home directory
@@ -375,8 +380,74 @@ def m_servo(n, p):
     p_arr[n][n] = p
 
 ################################################################################
-# Setup Neo pixels and neo 6 modules
+# Color helpers
 
+
+def interpolate_color(start_color, end_color, steps):
+    """Gradually interpolate between two RGB colors."""
+    r_step = (end_color[0] - start_color[0]) / steps
+    g_step = (end_color[1] - start_color[1]) / steps
+    b_step = (end_color[2] - start_color[2]) / steps
+
+    interpolated_colors = []
+
+    for step in range(steps + 1):
+        r = int(start_color[0] + r_step * step)
+        g = int(start_color[1] + g_step * step)
+        b = int(start_color[2] + b_step * step)
+        interpolated_colors.append((r, g, b))
+
+    return interpolated_colors
+
+
+def interpolate(start_key: str, end_key: str):
+    """Interpolate between the start and end keys in the scene_changes dictionary."""
+    try:
+        start_index = ordered_scene_keys.index(start_key)
+        end_index = ordered_scene_keys.index(end_key)
+    except ValueError:
+        raise ValueError("Invalid key provided.")
+
+    if start_index > end_index:
+        # Reverse interpolation
+        interpolated_values = [scene_changes[key]
+                               for key in ordered_scene_keys[start_index:end_index - 1:-1]]
+    else:
+        # Forward interpolation
+        interpolated_values = [scene_changes[key]
+                               for key in ordered_scene_keys[start_index:end_index + 1]]
+
+    return interpolated_values
+
+
+def rgb_to_hsbk(r, g, b):
+    import colorsys
+
+    # Normalize RGB values to the range 0-1
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+
+    # Convert RGB to HSB (Hue, Saturation, Brightness)
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+    # Convert HSB to LIFX HSBK
+    hue = int(h * 65535)          # Hue in range 0-65535
+    saturation = int(s * 65535)    # Saturation in range 0-65535
+    brightness = int(v * 65535)    # Brightness in range 0-65535
+    # Fixed Kelvin value (can adjust for white balance)
+    kelvin = 3500
+
+    return [hue, saturation, brightness, kelvin]
+
+
+################################################################################
+# Setup Neo pixels and neo 6 modules
+neo_changes = cfg["neo_changes"]
+
+# Create an ordered dictionary to preserve the order of insertion
+ordered_neo_changes = OrderedDict(neo_changes)
+
+# Get the ordered list of keys
+ordered_neo_keys = list(ordered_neo_changes.keys())
 
 trees = []
 canes = []
@@ -706,6 +777,7 @@ gc_col("Neopixels setup")
 devices = []
 lifx = {}
 
+
 def discover_lights():
     global devices, lifx
     play_a_0(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
@@ -726,25 +798,6 @@ def discover_lights():
         # print(f"Found device: {device.get_label()}")
         device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
         device.set_power("on")
-
-
-def rgb_to_hsbk(r, g, b):
-    import colorsys
-
-    # Normalize RGB values to the range 0-1
-    r, g, b = r / 255.0, g / 255.0, b / 255.0
-
-    # Convert RGB to HSB (Hue, Saturation, Brightness)
-    h, s, v = colorsys.rgb_to_hsv(r, g, b)
-
-    # Convert HSB to LIFX HSBK
-    hue = int(h * 65535)          # Hue in range 0-65535
-    saturation = int(s * 65535)    # Saturation in range 0-65535
-    brightness = int(v * 65535)    # Brightness in range 0-65535
-    # Fixed Kelvin value (can adjust for white balance)
-    kelvin = 3500
-
-    return [hue, saturation, brightness, kelvin]
 
 
 def set_light_color_threaded(device, r, g, b):
@@ -770,28 +823,11 @@ def set_light_color(light_n, r, g, b):
     """Set color for a specific light or all lights."""
     if light_n == -1:
         # Set color for all lights in parallel
-        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b)) 
+        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b))
         # set_all_lights_parallel(r, g, b)
     else:
         # Set color for a specific light
         devices[light_n].set_color(rgb_to_hsbk(r, g, b))
-
-
-def interpolate_color(start_color, end_color, steps):
-    """Gradually interpolate between two RGB colors."""
-    r_step = (end_color[0] - start_color[0]) / steps
-    g_step = (end_color[1] - start_color[1]) / steps
-    b_step = (end_color[2] - start_color[2]) / steps
-
-    interpolated_colors = []
-
-    for step in range(steps + 1):
-        r = int(start_color[0] + r_step * step)
-        g = int(start_color[1] + g_step * step)
-        b = int(start_color[2] + b_step * step)
-        interpolated_colors.append((r, g, b))
-
-    return interpolated_colors
 
 
 def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
@@ -816,29 +852,9 @@ scene_changes = cfg["scene_changes"]
 ordered_scene_changes = OrderedDict(scene_changes)
 
 # Get the ordered list of keys
-ordered_keys = list(ordered_scene_changes.keys())
+ordered_scene_keys = list(ordered_scene_changes.keys())
 
 # print(ordered_keys)
-
-
-def interpolate(start_key: str, end_key: str):
-    """Interpolate between the start and end keys in the scene_changes dictionary."""
-    try:
-        start_index = ordered_keys.index(start_key)
-        end_index = ordered_keys.index(end_key)
-    except ValueError:
-        raise ValueError("Invalid key provided.")
-
-    if start_index > end_index:
-        # Reverse interpolation
-        interpolated_values = [scene_changes[key]
-                               for key in ordered_keys[start_index:end_index - 1:-1]]
-    else:
-        # Forward interpolation
-        interpolated_values = [scene_changes[key]
-                               for key in ordered_keys[start_index:end_index + 1]]
-
-    return interpolated_values
 
 
 def scene_change(start, end, time=5, increments=100):
@@ -898,12 +914,14 @@ def get_local_ip():
         s.close()
     return ip
 
+
 def close_midori():
     try:
         subprocess.run(['pkill', 'midori'], check=True)
         print("Midori closed successfully.")
     except subprocess.CalledProcessError:
         print("Midori was not running.")
+
 
 def open_midori():
     try:
@@ -1044,6 +1062,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_light_string_post(post_data_obj)
         elif self.path == "/get-scene-changes":
             self.get_scene_changes_post(post_data_obj)
+        elif self.path == "/get-neo-changes":
+            self.get_neo_changes_post(post_data_obj)   
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/update-light-string":
@@ -1054,6 +1074,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.lights_post(post_data_obj)
         elif self.path == "/lights-scene":
             self.lights_scene_post(post_data_obj)
+        elif self.path == "/lights-neo":
+            self.lights_neo_post(post_data_obj)
         elif self.path == "/set-item-lights":
             self.set_item_lights(post_data_obj)
         elif self.path == "/update-host-name":
@@ -1080,7 +1102,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
             self.test_animation_post(post_data_obj)
-            
 
     def test_animation_post(self, rq_d):
         global an_running
@@ -1321,6 +1342,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
+    def get_neo_changes_post(self, rq_d):
+        response = cfg["neo_changes"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
     def update_host_name_post(self, rq_d):
         global cfg
         cfg["HOST_NAME"] = rq_d["text"]
@@ -1385,9 +1414,29 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = rq_d["an"]
         self.wfile.write(response.encode('utf-8'))
 
+    current_neo = ""
+
+    def lights_neo_post(self, rq_d):
+        global current_neo
+        current_neo = rq_d["an"]
+        rgb_value = neo_changes[rq_d["an"]]
+        set_hdw("LN0_" + str(rgb_value[0]) + "_" +
+                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        response = rgb_value
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    current_scene = ""
+
     def lights_scene_post(self, rq_d):
+        global current_scene
+        current_scene = rq_d["an"]
         rgb_value = scene_changes[rq_d["an"]]
-        set_hdw("LX0_" + str(rgb_value[0]) + "_"+ str(rgb_value[1]) +"_" + str(rgb_value[2]), 0)
+        set_hdw("LX0_" + str(rgb_value[0]) + "_" +
+                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1396,7 +1445,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def set_item_lights(self, rq_d):
-        set_hdw("LX0_" + str(rq_d["r"]) + "_"+ str(rq_d["g"]) +"_" + str(rq_d["b"]), 0)
+        if rq_d["item"] == "lifx":
+            set_hdw("LX0_" + str(rq_d["r"]) + "_" +
+                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            if current_scene != "":
+                scene_changes[current_scene] = [rq_d["r"], rq_d["g"], rq_d["b"]]
+        elif rq_d["item"] == "neo":
+            set_hdw("LN0_" + str(rq_d["r"]) + "_" +
+                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            if current_neo != "":
+                neo_changes[current_neo] = [rq_d["r"], rq_d["g"], rq_d["b"]]
+        files.write_json_file(code_folder + "cfg.json", cfg)
         response = rq_d
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1910,7 +1969,7 @@ def set_hdw(cmd, dur):
                 set_neo_module_to(mod_n, index, v)
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0] == 'B':
-                br = int(seg[1:])
+                br = int(seg[2:])
                 led.brightness = float(br/100)
                 led.show()
             # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
