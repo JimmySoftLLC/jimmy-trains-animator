@@ -24,6 +24,14 @@
             line-height: 30px;
             color: white;
         }
+
+        .color-label {
+            width: 100%;
+            height: 100px;
+            background-color: #ffffff;
+            border: 3px solid #000;
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -276,12 +284,6 @@
                     White
                 </button>
             </div>
-            <div id="sceneButtonContainer"></div>
-            <h2>Customize colors:</h2>
-            <div class="mui-textfield">
-                <label for="colorPickerLifx">Bolt color:</label>
-                <input type="color" id="colorPickerLifx" name="colorPickerLifx">
-            </div>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
                     type="button">
@@ -308,6 +310,9 @@
                     100
                 </button>
             </div>
+            <h2>Scene colors:</h2>
+            <div id="sceneButtonContainer"></div>
+            <input class="color-label" type="color" id="colorPickerLifx" name="colorPickerLifx">
         </div>
         <div class="mui-tabs__pane" id="settings">
             <div class="mui-textfield">
@@ -1865,7 +1870,7 @@
         return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase()}`;
     }
 
-    function sendRGBValues(item,r, g, b) {
+    function sendRGBValues(item, r, g, b) {
         console.log(r)
         console.log(g)
         console.log(b)

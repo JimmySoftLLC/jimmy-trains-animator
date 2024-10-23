@@ -111,19 +111,17 @@ import psutil
 import random
 from gtts import gTTS
 import requests
-import signal
 from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
 import subprocess
 import time
 import netifaces
 from collections import OrderedDict
-
+import signal
 
 # Turn off audio while setting things up
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
-
 
 def get_home_path(subpath=""):
     # Get the current user's home directory
@@ -899,6 +897,21 @@ def get_local_ip():
     finally:
         s.close()
     return ip
+
+def close_midori():
+    try:
+        subprocess.run(['pkill', 'midori'], check=True)
+        print("Midori closed successfully.")
+    except subprocess.CalledProcessError:
+        print("Midori was not running.")
+
+def open_midori():
+    try:
+        command = "midori -e Fullscreen http://animator-drive-in.local:8083/"
+        subprocess.Popen(command, shell=True)
+        print("Midori launched.")
+    except Exception as e:
+        print(f"Failed to start Midori: {e}")
 
 ################################################################################
 # Setup routes
@@ -2498,6 +2511,8 @@ button_check_thread = threading.Thread(target=button_check)
 button_check_thread.daemon = True
 button_check_thread.start()
 
+close_midori()
+open_midori()
 
 while True:
     try:
