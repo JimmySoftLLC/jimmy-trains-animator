@@ -377,68 +377,8 @@ def m_servo(n, p):
     s_arr[n].angle = p
     p_arr[n][n] = p
 
-################################################################################
-# Color helpers
-
-
-def interpolate_color(start_color, end_color, steps):
-    """Gradually interpolate between two RGB colors."""
-    r_step = (end_color[0] - start_color[0]) / steps
-    g_step = (end_color[1] - start_color[1]) / steps
-    b_step = (end_color[2] - start_color[2]) / steps
-
-    interpolated_colors = []
-
-    for step in range(steps + 1):
-        r = int(start_color[0] + r_step * step)
-        g = int(start_color[1] + g_step * step)
-        b = int(start_color[2] + b_step * step)
-        interpolated_colors.append((r, g, b))
-
-    return interpolated_colors
-
-
-def interpolate(start_key: str, end_key: str):
-    """Interpolate between the start and end keys in the scene_changes dictionary."""
-    try:
-        start_index = ordered_scene_keys.index(start_key)
-        end_index = ordered_scene_keys.index(end_key)
-    except ValueError:
-        raise ValueError("Invalid key provided.")
-
-    if start_index > end_index:
-        # Reverse interpolation
-        interpolated_values = [cfg["scene_changes"][key]
-                               for key in ordered_scene_keys[start_index:end_index - 1:-1]]
-    else:
-        # Forward interpolation
-        interpolated_values = [cfg["scene_changes"][key]
-                               for key in ordered_scene_keys[start_index:end_index + 1]]
-
-    return interpolated_values
-
-
-def rgb_to_hsbk(r, g, b):
-    import colorsys
-
-    # Normalize RGB values to the range 0-1
-    r, g, b = r / 255.0, g / 255.0, b / 255.0
-
-    # Convert RGB to HSB (Hue, Saturation, Brightness)
-    h, s, v = colorsys.rgb_to_hsv(r, g, b)
-
-    # Convert HSB to LIFX HSBK
-    hue = int(h * 65535)          # Hue in range 0-65535
-    saturation = int(s * 65535)    # Saturation in range 0-65535
-    brightness = int(v * 65535)    # Brightness in range 0-65535
-    # Fixed Kelvin value (can adjust for white balance)
-    kelvin = 3500
-
-    return [hue, saturation, brightness, kelvin]
-
 
 ################################################################################
-
 # Create an ordered dictionary to preserve the order of insertion
 ordered_neo_changes = OrderedDict(cfg["neo_changes"])
 
@@ -769,6 +709,11 @@ gc_col("Neopixels setup")
 ################################################################################
 # Setup lifx lights
 
+# Create an ordered dictionary to preserve the order of insertion
+ordered_scene_changes = OrderedDict(cfg["scene_changes"])
+
+# Get the ordered list of keys
+ordered_scene_keys = list(ordered_scene_changes.keys())
 
 devices = []
 lifx = {}
@@ -826,7 +771,89 @@ def set_light_color(light_n, r, g, b):
         devices[light_n].set_color(rgb_to_hsbk(r, g, b))
 
 
-def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
+################################################################################
+# Color helpers
+
+
+def scene_change(type, start, end, time=5, increments=100):
+    """Handle a scene change by interpolating between two times and cycling RGB values."""
+    rgb_cycle = interpolate(type, start, end)
+    cycle_rgb_values(type, rgb_cycle, time, increments)
+
+
+def interpolate_color(start_color, end_color, steps):
+    """Gradually interpolate between two RGB colors."""
+    r_step = (end_color[0] - start_color[0]) / steps
+    g_step = (end_color[1] - start_color[1]) / steps
+    b_step = (end_color[2] - start_color[2]) / steps
+
+    interpolated_colors = []
+
+    for step in range(steps + 1):
+        r = int(start_color[0] + r_step * step)
+        g = int(start_color[1] + g_step * step)
+        b = int(start_color[2] + b_step * step)
+        interpolated_colors.append((r, g, b))
+
+    return interpolated_colors
+
+
+def interpolate(type, start_key: str, end_key: str):
+    """Interpolate between the start and end keys in the scene_changes dictionary."""
+    try:
+        if type == "lifx":
+            start_index = ordered_scene_keys.index(start_key)
+            end_index = ordered_scene_keys.index(end_key)
+        elif type == "neo":
+            start_index = ordered_neo_keys.index(start_key)
+            end_index = ordered_neo_keys.index(end_key)
+
+    except ValueError:
+        raise ValueError("Invalid key provided.")
+    
+    if start_index > end_index:
+        # Reverse interpolation
+        if type == "lifx":
+            interpolated_values = [cfg["scene_changes"][key]
+                                for key in ordered_scene_keys[start_index:end_index:-1]]  # end_index is exclusive
+            interpolated_values.append(cfg["scene_changes"][ordered_scene_keys[end_index]])  # Ensure inclusion of end_index
+        elif type == "neo":
+            interpolated_values = [cfg["neo_changes"][key]
+                                for key in ordered_neo_keys[start_index:end_index:-1]]  # end_index is exclusive
+            interpolated_values.append(cfg["neo_changes"][ordered_neo_keys[end_index]])  # Ensure inclusion of end_index
+    else:
+        # Forward interpolation
+        if type == "lifx":
+            interpolated_values = [cfg["scene_changes"][key]
+                                for key in ordered_scene_keys[start_index:end_index + 1]]  # end_index is inclusive
+        elif type == "neo":
+            interpolated_values = [cfg["neo_changes"][key]
+                                for key in ordered_neo_keys[start_index:end_index + 1]]  # end_index is inclusive
+
+    
+    return interpolated_values
+
+
+def rgb_to_hsbk(r, g, b):
+    import colorsys
+
+    # Normalize RGB values to the range 0-1
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+
+    # Convert RGB to HSB (Hue, Saturation, Brightness)
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+    # Convert HSB to LIFX HSBK
+    hue = int(h * 65535)          # Hue in range 0-65535
+    saturation = int(s * 65535)    # Saturation in range 0-65535
+    brightness = int(v * 65535)    # Brightness in range 0-65535
+    # Fixed Kelvin value (can adjust for white balance)
+    kelvin = 3500
+
+    return [hue, saturation, brightness, kelvin]
+
+
+def cycle_rgb_values(type, rgb_values, transition_time=2, steps=100):
     """Cycles through a list of RGB tuples, transitioning between each in order."""
     for i in range(len(rgb_values) - 1):
         start_color = rgb_values[i]
@@ -835,31 +862,17 @@ def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
 
         for color in color_transition:
             # Use threading to set color for all lights at once
-            set_light_color(-1, color[0], color[1], color[2])
+            if type == "lifx":
+                set_light_color(-1, color[0], color[1], color[2])
+            elif type == "neo":
+                set_neo_to(-1, color[0], color[1], color[2])
             print(f"Setting color to {color}")
             # Adjust sleep time for smooth transitions
             time.sleep(transition_time / steps)
 
 
-# Create an ordered dictionary to preserve the order of insertion
-ordered_scene_changes = OrderedDict(cfg["scene_changes"])
-
-# Get the ordered list of keys
-ordered_scene_keys = list(ordered_scene_changes.keys())
-
-# print(ordered_keys)
-
-
-def scene_change(start, end, time=5, increments=100):
-    """Handle a scene change by interpolating between two times and cycling RGB values."""
-    rgb_cycle = interpolate(start, end)
-    cycle_rgb_values(rgb_cycle, time, increments)
-
-
 ################################################################################
 # Setup wifi and web server
-
-
 number_tries = 0
 
 
@@ -1448,7 +1461,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             set_hdw("LN0_" + str(rq_d["r"]) + "_" +
                     str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
             if current_neo != "":
-                cfg["neo_changes"][current_neo] = [rq_d["r"], rq_d["g"], rq_d["b"]]
+                cfg["neo_changes"][current_neo] = [
+                    rq_d["r"], rq_d["g"], rq_d["b"]]
         files.write_json_file(code_folder + "cfg.json", cfg)
         response = rq_d
         self.send_response(200)
@@ -1993,10 +2007,15 @@ def set_hdw(cmd, dur):
             # ZCOLCH = Color change
             elif seg[0:] == 'ZCOLCH':
                 random_effect(2, 2, dur)
-            # ZS_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments
-            elif seg[:2] == 'ZS':
+            # ZL_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments
+            elif seg[:2] == 'ZL':
                 segs_split = seg[3:].split("_")
-                scene_change(segs_split[0], segs_split[1],
+                scene_change("lifx", segs_split[0], segs_split[1],
+                             float(segs_split[2]), int(segs_split[3]))
+            # ZN_S_E_T_I = Scene change S start E end using (red,green,....), time, increments
+            elif seg[:2] == 'ZN':
+                segs_split = seg[3:].split("_")
+                scene_change("neo", segs_split[0], segs_split[1],
                              float(segs_split[2]), int(segs_split[3]))
             # image IXXX/XXX XXX/XXXX(folder/filename)
             elif seg[0] == 'I':
