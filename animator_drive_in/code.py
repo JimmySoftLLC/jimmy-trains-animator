@@ -119,9 +119,6 @@ from collections import OrderedDict
 import signal
 import copy
 
-# original_list = [1, 2, [3, 4]]
-# deep_copy = copy.deepcopy(original_list)
-
 # Turn off audio while setting things up
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -198,6 +195,7 @@ gc_col("Imports gc, files")
 # config variables
 
 cfg = files.read_json_file(code_folder + "cfg.json")
+default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
 
 def get_media_files(main_folder, extensions):
@@ -410,11 +408,11 @@ def interpolate(start_key: str, end_key: str):
 
     if start_index > end_index:
         # Reverse interpolation
-        interpolated_values = [scene_changes[key]
+        interpolated_values = [cfg["scene_changes"][key]
                                for key in ordered_scene_keys[start_index:end_index - 1:-1]]
     else:
         # Forward interpolation
-        interpolated_values = [scene_changes[key]
+        interpolated_values = [cfg["scene_changes"][key]
                                for key in ordered_scene_keys[start_index:end_index + 1]]
 
     return interpolated_values
@@ -440,11 +438,9 @@ def rgb_to_hsbk(r, g, b):
 
 
 ################################################################################
-# Setup Neo pixels and neo 6 modules
-neo_changes = cfg["neo_changes"]
 
 # Create an ordered dictionary to preserve the order of insertion
-ordered_neo_changes = OrderedDict(neo_changes)
+ordered_neo_changes = OrderedDict(cfg["neo_changes"])
 
 # Get the ordered list of keys
 ordered_neo_keys = list(ordered_neo_changes.keys())
@@ -845,11 +841,8 @@ def cycle_rgb_values(rgb_values, transition_time=2, steps=100):
             time.sleep(transition_time / steps)
 
 
-# Example RGB values for different times of day
-scene_changes = cfg["scene_changes"]
-
 # Create an ordered dictionary to preserve the order of insertion
-ordered_scene_changes = OrderedDict(scene_changes)
+ordered_scene_changes = OrderedDict(cfg["scene_changes"])
 
 # Get the ordered list of keys
 ordered_scene_keys = list(ordered_scene_changes.keys())
@@ -1063,13 +1056,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/get-scene-changes":
             self.get_scene_changes_post(post_data_obj)
         elif self.path == "/get-neo-changes":
-            self.get_neo_changes_post(post_data_obj)   
+            self.get_neo_changes_post(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/update-light-string":
             self.update_light_string_post(post_data_obj)
-        elif self.path == "/defaults":
-            self.defaults_post(post_data_obj)
         elif self.path == "/lights":
             self.lights_post(post_data_obj)
         elif self.path == "/lights-scene":
@@ -1314,7 +1305,21 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_a_0(code_folder + "mvc/all_changes_complete.wav")
             st_mch.go_to('base_state')
-        self.wfile.write("Utility: " + rq_d["an"])
+        elif rq_d["an"] == "reset_scene_to_defaults":
+            cfg["scene_changes"] = copy.deepcopy(default_cfg["scene_changes"])
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_a_0(code_folder + "mvc/all_changes_complete.wav")
+            st_mch.go_to('base_state')
+        elif rq_d["an"] == "reset_neo_to_defaults":
+            cfg["neo_changes"] = copy.deepcopy(default_cfg["neo_changes"])
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_a_0(code_folder + "mvc/all_changes_complete.wav")
+            st_mch.go_to('base_state')
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))
 
     def speaker_post(self, rq_d):
         global cfg
@@ -1394,18 +1399,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def defaults_post(self, rq_d):
-        global cfg
-        if rq_d["an"] == "reset_to_defaults":
-            rst_def()
-            files.write_json_file(code_folder + "cfg.json", cfg)
-            play_a_0(code_folder + "mvc/all_changes_complete.wav")
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "reset_to_defaults"
-        self.wfile.write(response.encode('utf-8'))
-
     def lights_post(self, rq_d):
         set_hdw(rq_d["an"], 1)
         self.send_response(200)
@@ -1419,7 +1412,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def lights_neo_post(self, rq_d):
         global current_neo
         current_neo = rq_d["an"]
-        rgb_value = neo_changes[rq_d["an"]]
+        rgb_value = cfg["neo_changes"][current_neo]
         set_hdw("LN0_" + str(rgb_value[0]) + "_" +
                 str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
         response = rgb_value
@@ -1434,7 +1427,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def lights_scene_post(self, rq_d):
         global current_scene
         current_scene = rq_d["an"]
-        rgb_value = scene_changes[rq_d["an"]]
+        rgb_value = cfg["scene_changes"][current_scene]
         set_hdw("LX0_" + str(rgb_value[0]) + "_" +
                 str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
         response = rgb_value
@@ -1449,12 +1442,13 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             set_hdw("LX0_" + str(rq_d["r"]) + "_" +
                     str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
             if current_scene != "":
-                scene_changes[current_scene] = [rq_d["r"], rq_d["g"], rq_d["b"]]
+                cfg["scene_changes"][current_scene] = [
+                    rq_d["r"], rq_d["g"], rq_d["b"]]
         elif rq_d["item"] == "neo":
             set_hdw("LN0_" + str(rq_d["r"]) + "_" +
                     str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
             if current_neo != "":
-                neo_changes[current_neo] = [rq_d["r"], rq_d["g"], rq_d["b"]]
+                cfg["neo_changes"][current_neo] = [rq_d["r"], rq_d["g"], rq_d["b"]]
         files.write_json_file(code_folder + "cfg.json", cfg)
         response = rq_d
         self.send_response(200)
