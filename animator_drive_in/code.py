@@ -119,6 +119,7 @@ from collections import OrderedDict
 import signal
 import copy
 
+
 # Turn off audio while setting things up
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -198,16 +199,16 @@ cfg = files.read_json_file(code_folder + "cfg.json")
 default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
 
-def get_media_files(main_folder, extensions):
+def get_media_files(folder_to_search, extensions):
     media_dict = {}
 
     # Normalize extensions (e.g., ensure they all start with a dot)
     extensions = [ext if ext.startswith(
         '.') else f'.{ext}' for ext in extensions]
 
-    # Loop through each folder (topic) in the main media directory
-    for topic in os.listdir(main_folder):
-        topic_path = os.path.join(main_folder, topic)
+    # Loop through each folder (topic) in the folder_to_search directory
+    for topic in os.listdir(folder_to_search):
+        topic_path = os.path.join(folder_to_search, topic)
 
         # Ensure it's a directory before proceeding
         if os.path.isdir(topic_path):
@@ -224,8 +225,9 @@ def upd_media():
 
     extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
+    # gets folders in the random_config directory, currently only all and play lists, the folders are empty
     rand_files = get_media_files(media_folder + "random_config/", extensions)
-    media_files.update(rand_files)
+    media_files.update(rand_files)  # add rand_files to media_files dictionary
     # print("All media: " + str(media_files))
 
     play_list_options = files.return_directory(
@@ -237,8 +239,14 @@ def upd_media():
         media_list_flattened.extend(
             [f"{topic}/{my_file}" for my_file in my_files])
 
-    menu_snd_opt = ['random_all.wav', 'random_movies.wav', 'random_music videos.wav',
-                    'random_christmas.wav', 'random_music.wav', 'random_play lists.wav']
+    # print(str(rand_files.keys))
+
+    menu_snd_opt = []
+
+    for myKey in media_files:
+        if myKey != "random_config" and myKey != "pictures":
+            menu_snd_opt.append("random_" + myKey + ".mp3")
+
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
 
@@ -380,10 +388,10 @@ def m_servo(n, p):
 
 ################################################################################
 # Create an ordered dictionary to preserve the order of insertion
-ordered_neo_changes = OrderedDict(cfg["neo_changes"])
+neo_changes = OrderedDict(cfg["neo_changes"])
 
 # Get the ordered list of keys
-ordered_neo_keys = list(ordered_neo_changes.keys())
+ordered_neo_changes_keys = list(neo_changes.keys())
 
 trees = []
 canes = []
@@ -710,10 +718,10 @@ gc_col("Neopixels setup")
 # Setup lifx lights
 
 # Create an ordered dictionary to preserve the order of insertion
-ordered_scene_changes = OrderedDict(cfg["scene_changes"])
+scene_changes = OrderedDict(cfg["scene_changes"])
 
 # Get the ordered list of keys
-ordered_scene_keys = list(ordered_scene_changes.keys())
+ordered_scene_changes_keys = list(scene_changes.keys())
 
 devices = []
 lifx = {}
@@ -736,9 +744,12 @@ def discover_lights():
 
     # Iterate over each discovered device and control it
     for device in devices:
-        # print(f"Found device: {device.get_label()}")
-        device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
-        device.set_power("on")
+        try:
+            # print(f"Found device: {device.get_label()}")
+            device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
+            device.set_power("on")
+        except Exception as e:
+            print(f"Error setting color for {device.get_label()}: {e}")
 
 
 def set_light_color_threaded(device, r, g, b):
@@ -802,35 +813,42 @@ def interpolate(type, start_key: str, end_key: str):
     """Interpolate between the start and end keys in the scene_changes dictionary."""
     try:
         if type == "lifx":
-            start_index = ordered_scene_keys.index(start_key)
-            end_index = ordered_scene_keys.index(end_key)
+            start_index = ordered_scene_changes_keys.index(start_key)
+            end_index = ordered_scene_changes_keys.index(end_key)
         elif type == "neo":
-            start_index = ordered_neo_keys.index(start_key)
-            end_index = ordered_neo_keys.index(end_key)
+            start_index = ordered_neo_changes_keys.index(start_key)
+            end_index = ordered_neo_changes_keys.index(end_key)
 
     except ValueError:
         raise ValueError("Invalid key provided.")
-    
+
     if start_index > end_index:
         # Reverse interpolation
         if type == "lifx":
             interpolated_values = [cfg["scene_changes"][key]
-                                for key in ordered_scene_keys[start_index:end_index:-1]]  # end_index is exclusive
-            interpolated_values.append(cfg["scene_changes"][ordered_scene_keys[end_index]])  # Ensure inclusion of end_index
+                                   # end_index is exclusive
+                                   for key in ordered_scene_changes_keys[start_index:end_index:-1]]
+            # Ensure inclusion of end_index
+            interpolated_values.append(
+                cfg["scene_changes"][ordered_scene_changes_keys[end_index]])
         elif type == "neo":
             interpolated_values = [cfg["neo_changes"][key]
-                                for key in ordered_neo_keys[start_index:end_index:-1]]  # end_index is exclusive
-            interpolated_values.append(cfg["neo_changes"][ordered_neo_keys[end_index]])  # Ensure inclusion of end_index
+                                   # end_index is exclusive
+                                   for key in ordered_neo_changes_keys[start_index:end_index:-1]]
+            # Ensure inclusion of end_index
+            interpolated_values.append(
+                cfg["neo_changes"][ordered_neo_changes_keys[end_index]])
     else:
         # Forward interpolation
         if type == "lifx":
             interpolated_values = [cfg["scene_changes"][key]
-                                for key in ordered_scene_keys[start_index:end_index + 1]]  # end_index is inclusive
+                                   # end_index is inclusive
+                                   for key in ordered_scene_changes_keys[start_index:end_index + 1]]
         elif type == "neo":
             interpolated_values = [cfg["neo_changes"][key]
-                                for key in ordered_neo_keys[start_index:end_index + 1]]  # end_index is inclusive
+                                   # end_index is inclusive
+                                   for key in ordered_neo_changes_keys[start_index:end_index + 1]]
 
-    
     return interpolated_values
 
 
@@ -1726,6 +1744,59 @@ def text_to_mp3_file(f_nm, timeout_duration):
         is_gtts_reachable = False
 
 
+# Folder containing the .json and .mp3 files
+folder_path = '/path/to/your/folder/'
+
+# List of file patterns you want to exclude from being spoken
+# Add file names you want to exclude
+exclude_files = ['ignore_this.json', 'skip_this.json']
+exclude_extensions = ['.config', '.log']  # Add extensions to exclude
+
+
+def generate_mp3_from_json(file_name):
+    json_file = os.path.join(folder_path, file_name)
+    mp3_file = os.path.join(
+        folder_path, f"{os.path.splitext(file_name)[0]}.mp3")
+
+    # If mp3 already exists, skip
+    if os.path.exists(mp3_file):
+        print(f"MP3 for {file_name} already exists. Skipping...")
+        return
+
+    # Read content from the JSON file
+    with open(json_file, 'r') as f:
+        content = json.load(f)  # Assuming the JSON has plain text data
+
+    # Convert content to text if it is not already
+    if isinstance(content, dict):
+        content = " ".join([str(v) for v in content.values()])
+
+    # Generate speech from text
+    tts = gTTS(text=content, lang='en')
+    tts.save(mp3_file)
+    print(f"Generated MP3 for {file_name}")
+
+
+def manage_audio_files():
+    # Get all files in the folder
+    files = os.listdir(folder_path)
+
+    # Separate .json and .mp3 files, excluding certain patterns and extensions
+    json_files = {f for f in files if f.endswith('.json') and f not in exclude_files and not any(
+        f.endswith(ext) for ext in exclude_extensions)}
+    mp3_files = {f for f in files if f.endswith('.mp3')}
+
+    # Generate mp3s for valid json files
+    for json_file in json_files:
+        generate_mp3_from_json(json_file)
+
+    # Delete orphaned mp3 files (those without a corresponding json file)
+    for mp3_file in mp3_files:
+        if f"{os.path.splitext(mp3_file)[0]}.json" not in json_files:
+            os.remove(os.path.join(folder_path, mp3_file))
+            print(f"Deleted orphaned MP3: {mp3_file}")
+
+
 ################################################################################
 # Animation methods
 
@@ -2322,7 +2393,7 @@ class Snds(Ste):
         r_sw.update()
         if l_sw.fell:
             try:
-                play_a_0(code_folder + "o_snds/" + menu_snd_opt[self.i])
+                play_a_0(code_folder + "snd_opt/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -2331,7 +2402,7 @@ class Snds(Ste):
             if self.i > len(menu_snd_opt)-1:
                 self.i = 0
         if r_sw.fell:
-            cfg["option_selected"] = menu_snd_opt[self.sel_i]
+            cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_a_0(code_folder + "mvc/option_selected.wav", "rb")
             mch.go_to('base_state')
