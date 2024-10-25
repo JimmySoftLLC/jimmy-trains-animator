@@ -83,6 +83,13 @@
 ###########################################################
 # sudo apt-get install pulseaudio
 
+############################################################
+# This code will automatically up mp3 files for folder names to make this work you need gtts and pydub install these as follows
+# pip install gtts
+# sudo apt install ffmpeg
+# pip install pydub
+
+
 
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
@@ -118,6 +125,7 @@ import netifaces
 from collections import OrderedDict
 import signal
 import copy
+from pydub import AudioSegment
 
 
 # Turn off audio while setting things up
@@ -136,6 +144,7 @@ def get_home_path(subpath=""):
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 plylst_folder = get_home_path() + "media/play lists/"
+snd_opt_folder = code_folder + "snd_opt/"
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -1744,56 +1753,47 @@ def text_to_mp3_file(f_nm, timeout_duration):
         is_gtts_reachable = False
 
 
-# Folder containing the .json and .mp3 files
-folder_path = '/path/to/your/folder/'
+def generate_mp3_from_filename(file_name):
+    text_to_speak = file_name.replace("_", " ")
+    text_to_speak = text_to_speak.replace(".mp3", "")
 
-# List of file patterns you want to exclude from being spoken
-# Add file names you want to exclude
-exclude_files = ['ignore_this.json', 'skip_this.json']
-exclude_extensions = ['.config', '.log']  # Add extensions to exclude
-
-
-def generate_mp3_from_json(file_name):
-    json_file = os.path.join(folder_path, file_name)
-    mp3_file = os.path.join(
-        folder_path, f"{os.path.splitext(file_name)[0]}.mp3")
+    mp3_file = os.path.join(snd_opt_folder, f"{os.path.splitext(file_name)[0]}.mp3")
 
     # If mp3 already exists, skip
     if os.path.exists(mp3_file):
         print(f"MP3 for {file_name} already exists. Skipping...")
         return
 
-    # Read content from the JSON file
-    with open(json_file, 'r') as f:
-        content = json.load(f)  # Assuming the JSON has plain text data
-
-    # Convert content to text if it is not already
-    if isinstance(content, dict):
-        content = " ".join([str(v) for v in content.values()])
-
     # Generate speech from text
-    tts = gTTS(text=content, lang='en')
+    tts = gTTS(text=text_to_speak, lang='en')
     tts.save(mp3_file)
-    print(f"Generated MP3 for {file_name}")
+
+    # Load the audio file with pydub
+    audio = AudioSegment.from_file(mp3_file)
+
+    # Adjust the volume
+    volume_change = -5  # Decrease volume by 5db
+    adjusted_audio = audio + volume_change
+
+    # Save the adjusted audio
+    adjusted_audio.export(mp3_file, format="mp3")
+    print(f"MP3 for {file_name} generated and volume adjusted.")
 
 
 def manage_audio_files():
     # Get all files in the folder
-    files = os.listdir(folder_path)
+    files = os.listdir(snd_opt_folder)
 
-    # Separate .json and .mp3 files, excluding certain patterns and extensions
-    json_files = {f for f in files if f.endswith('.json') and f not in exclude_files and not any(
-        f.endswith(ext) for ext in exclude_extensions)}
     mp3_files = {f for f in files if f.endswith('.mp3')}
 
-    # Generate mp3s for valid json files
-    for json_file in json_files:
-        generate_mp3_from_json(json_file)
+    # Generate mp3s for valid files
+    for my_file in menu_snd_opt:
+        generate_mp3_from_filename(my_file)
 
-    # Delete orphaned mp3 files (those without a corresponding json file)
+    # Delete orphaned mp3 files (those without a corresponding key in menu_snd_opt)
     for mp3_file in mp3_files:
-        if f"{os.path.splitext(mp3_file)[0]}.json" not in json_files:
-            os.remove(os.path.join(folder_path, mp3_file))
+        if f"{os.path.splitext(mp3_file)[0]}.mp3" not in mp3_files:
+            os.remove(os.path.join(snd_opt_folder, mp3_file))
             print(f"Deleted orphaned MP3: {mp3_file}")
 
 
@@ -2604,6 +2604,9 @@ if (web):
 discover_lights()
 
 is_gtts_reachable = check_gtts_status()
+
+if is_gtts_reachable:
+    manage_audio_files()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
