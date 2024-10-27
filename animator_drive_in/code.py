@@ -1683,6 +1683,19 @@ def spk_web():
     play_a_0(code_folder + "mvc/in_your_browser.wav")
 
 
+def get_random_joke():
+    url = "https://official-joke-api.appspot.com/jokes/random"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        joke = response.json()
+        print(f"{joke['setup']} - {joke['punchline']}")
+    else:
+        print("Failed to retrieve a joke.")
+
+    text_to_mp3_file(joke['setup'],"myjoke.mp3", 2)
+    text_to_mp3_file(joke['punchline'],"myjoke.mp3", 2)
+
 ###############################################################################
 # Text to speech
 
@@ -1729,14 +1742,14 @@ def timeout_handler(signum, frame):
 signal.signal(signal.SIGALRM, timeout_handler)
 
 
-def text_to_mp3_file(f_nm, timeout_duration):
+def text_to_mp3_file(text, f_nm, timeout_duration):
     global is_gtts_reachable
     try:
         # Set the timeout (in seconds)
         signal.alarm(timeout_duration)
 
         # Convert text to mp3 file
-        text = files.strip_path_and_extension(f_nm)
+        # text = files.strip_path_and_extension(f_nm)
         tts = gTTS(text=text, lang='en')
         tts.save(f_nm)
 
@@ -2659,6 +2672,10 @@ button_check_thread.start()
 
 close_midori()
 open_midori()
+
+
+
+get_random_joke()
 
 while True:
     try:
