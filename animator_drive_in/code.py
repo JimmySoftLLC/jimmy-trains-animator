@@ -737,6 +737,7 @@ lifx = {}
 
 
 def discover_lights():
+    if cfg["lifx_enabled"] == "false": return
     global devices, lifx
     play_a_0(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
     lifx = LifxLAN(18)  # Assuming 2 is the number of lights
@@ -781,6 +782,7 @@ def set_all_lights_parallel(r, g, b):
 
 
 def set_light_color(light_n, r, g, b):
+    if cfg["lifx_enabled"] == "false": return
     """Set color for a specific light or all lights."""
     if light_n == -1:
         # Set color for all lights in parallel
@@ -1115,8 +1117,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_host_name_post(post_data_obj)
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
+        elif self.path == "/update-volume":
+            self.update_volume_post(post_data_obj)
+        elif self.path == "/set-lifx-enabled":
+            self.set_lifx_enabled(post_data_obj) 
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
+        elif self.path == "/get-lifx-enabled":
+            self.get_lifx_enabled(post_data_obj)   
         elif self.path == "/get-scripts":
             self.get_scripts_post(post_data_obj)
         elif self.path == "/create-playlist":
@@ -1423,12 +1431,32 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
 
+    def set_lifx_enabled(self, rq_d):
+        global cfg
+        cfg["lifx_enabled"] = rq_d["action"]
+        if cfg["lifx_enabled"] == "true":
+            discover_lights()
+        files.write_json_file(code_folder + "cfg.json", cfg)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = cfg["lifx_enabled"]
+        self.wfile.write(response.encode('utf-8'))
+
     def get_volume_post(self, rq_d):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
+    
+    def get_lifx_enabled(self, rq_d):
+        response = cfg["lifx_enabled"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def get_all_media_post(self, rq_d):
         upd_media()

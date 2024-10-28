@@ -490,314 +490,6 @@
 <script>
     let isRequestInProgress = false;
 
-    function createPlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Create playlist';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', createPlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function createPlaylist() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            console.log('Filename:', filenameInput);
-            var data = {
-                fn: filenameInput,
-            };
-
-            fetch("/create-playlist", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    updatePlaylists()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function duplicatePlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Duplicate playlist';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', duplicatePlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function duplicatePlaylist() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            saveData("plylst_" + filenameInput, true);
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function renamePlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Rename playlist';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', renamePlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function renamePlaylist() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            console.log('Filename:', filenameInput);
-            var data = {
-                fo: animationName.value,
-                fn: filenameInput,
-            };
-
-            fetch("/rename-playlist", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    updatePlaylists()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function deletePlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Delete playlist';
-        form.appendChild(legend);
-
-        var message = document.createElement('div');
-        message.className = "mui-textfield"
-        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
-        form.appendChild(message);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Delete';
-        saveBtn.addEventListener('click', deletePlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function updatePlaylists() {
-        const myPlaylistDiv = document.getElementById("playlistContainer");
-        removeChildNodes(myPlaylistDiv)
-        const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
-        removeChildNodes(myPlaylistScriptDiv)
-        getPlaylists()
-    }
-
-    function removeChildNodes(myDiv) {
-        // Remove all child nodes
-        while (myDiv.firstChild) {
-            myDiv.removeChild(myDiv.firstChild);
-        }
-        // Remove all event listeners attached to the div
-        const clonedDiv = myDiv.cloneNode(true);
-        myDiv.parentNode.replaceChild(clonedDiv, myDiv);
-    }
-
-    function showAlert(message) {
-        var alertModal = document.createElement('div');
-        alertModal.className = 'mui-container';
-        alertModal.innerHTML = `
-        <div class="mui-panel">
-            <span>${message}</span>
-            <button class="mui-btn mui-btn--primary" onclick="closeAlert()">OK</button>
-        </div>`
-        mui.overlay('on', alertModal);
-    }
-
-    function closeAlert() {
-        mui.overlay('off');
-    }
-
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
         getWebSiteUrl()
@@ -807,9 +499,7 @@
         getMedia()
         getSceneChanges()
         getNeoChanges()
-        lifx_enabled = False
-        document.getElementById("lifxCheckbox").checked = lifx_enabled;
-        toggleTargetDiv(); // Set initial state of targetDiv based on lifx_enabled
+        getLifxEnabled()
     });
 
     function getLightString() {
@@ -922,6 +612,27 @@
             })
             .then(function (data) {
                 volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getLifxEnabled() {
+        fetch('/get-lifx-enabled', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lifx_enabled = data; // Set the value of the input field with the received data
+                document.getElementById("lifxCheckbox").checked = lifx_enabled;
+                toggleLifxDiv(); // Set initial state of targetDiv based on lifx_enabled
             })
             .catch(function (error) {
                 console.log(error);
@@ -1514,6 +1225,315 @@
         this.value = validatedValue;
     });
 
+
+    function createPlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Create playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', createPlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function createPlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fn: filenameInput,
+            };
+
+            fetch("/create-playlist", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function duplicatePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Duplicate playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', duplicatePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function duplicatePlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            saveData("plylst_" + filenameInput, true);
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function renamePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Rename playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', renamePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function renamePlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fo: animationName.value,
+                fn: filenameInput,
+            };
+
+            fetch("/rename-playlist", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function deletePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Delete playlist';
+        form.appendChild(legend);
+
+        var message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        form.appendChild(message);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Delete';
+        saveBtn.addEventListener('click', deletePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function updatePlaylists() {
+        const myPlaylistDiv = document.getElementById("playlistContainer");
+        removeChildNodes(myPlaylistDiv)
+        const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
+        removeChildNodes(myPlaylistScriptDiv)
+        getPlaylists()
+    }
+
+    function removeChildNodes(myDiv) {
+        // Remove all child nodes
+        while (myDiv.firstChild) {
+            myDiv.removeChild(myDiv.firstChild);
+        }
+        // Remove all event listeners attached to the div
+        const clonedDiv = myDiv.cloneNode(true);
+        myDiv.parentNode.replaceChild(clonedDiv, myDiv);
+    }
+
+    function showAlert(message) {
+        var alertModal = document.createElement('div');
+        alertModal.className = 'mui-container';
+        alertModal.innerHTML = `
+        <div class="mui-panel">
+            <span>${message}</span>
+            <button class="mui-btn mui-btn--primary" onclick="closeAlert()">OK</button>
+        </div>`
+        mui.overlay('on', alertModal);
+    }
+
+    function closeAlert() {
+        mui.overlay('off');
+    }
+
     // Table component
     var saveDataButton = document.getElementById("saveDataButton");
     var stopButton = document.getElementById("stopButton");
@@ -2031,19 +2051,24 @@
     // Function to enable or disable elements in lifxDiv
     function toggleLifxDiv() {
         const isChecked = document.getElementById("lifxCheckbox").checked;
-        const lifxDiv = document.getElementById("targetDiv");
-
-        // Disable or enable all inputs and buttons inside lifxDiv
-        lifxDiv.querySelectorAll("input, button").forEach((element) => {
-            element.disabled = !isChecked;
-        });
+        const lifxDiv = document.getElementById("lifxDiv");
+        lifxDiv.style.display = isChecked ? "block" : "none";
     }
 
     // Attach event listener to checkbox
     document.getElementById("lifxCheckbox").addEventListener("change", toggleLifxDiv);
 
-    // Run the function on page load to set the initial state
-    toggleLifxDiv();
+    // Function to change checkbox programmatically without triggering the event
+    function setCheckboxState(newState) {
+        // Temporarily remove the event listener
+        lifxCheckbox.removeEventListener("change", toggleLifxDiv);
+
+        // Set the new state of the checkbox
+        lifxCheckbox.checked = newState;
+
+        // Re-add the event listener
+        lifxCheckbox.addEventListener("change", toggleLifxDiv);
+    }
 </script>
 
 </html>
