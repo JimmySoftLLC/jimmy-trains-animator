@@ -737,7 +737,7 @@ lifx = {}
 
 
 def discover_lights():
-    if cfg["lifx_enabled"] == "false": return
+    if cfg["lifx_enabled"] == False: return
     global devices, lifx
     play_a_0(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
     lifx = LifxLAN(18)  # Assuming 2 is the number of lights
@@ -1433,15 +1433,16 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def set_lifx_enabled(self, rq_d):
         global cfg
-        cfg["lifx_enabled"] = rq_d["action"]
+        cfg["lifx_enabled"] = rq_d["enabled"]
         if cfg["lifx_enabled"] == "true":
             discover_lights()
         files.write_json_file(code_folder + "cfg.json", cfg)
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
         response = cfg["lifx_enabled"]
-        self.wfile.write(response.encode('utf-8'))
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def get_volume_post(self, rq_d):
         self.send_response(200)

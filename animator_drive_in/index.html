@@ -280,7 +280,7 @@
             <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
             <div class="mui-checkbox">
                 <label>
-                    <input type="checkbox" id="lifxCheckbox">
+                    <input type="checkbox" id="lifxCheckbox" data-url="/set-lifx-enabled">
                     Enable Lifx lights
                 </label>
             </div>
@@ -630,9 +630,8 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                lifx_enabled = data; // Set the value of the input field with the received data
-                document.getElementById("lifxCheckbox").checked = lifx_enabled;
-                toggleLifxDiv(); // Set initial state of targetDiv based on lifx_enabled
+                lifx_enabled = (data === 'true'); // Convert to Boolean
+                setLifxCheckboxState(lifx_enabled)
             })
             .catch(function (error) {
                 console.log(error);
@@ -2055,20 +2054,54 @@
         lifxDiv.style.display = isChecked ? "block" : "none";
     }
 
-    // Attach event listener to checkbox
-    document.getElementById("lifxCheckbox").addEventListener("change", toggleLifxDiv);
+    var lifxCheckbox = document.getElementById("lifxCheckbox");
 
-    // Function to change checkbox programmatically without triggering the event
-    function setCheckboxState(newState) {
-        // Temporarily remove the event listener
-        lifxCheckbox.removeEventListener("change", toggleLifxDiv);
+    // Flag to indicate programmatic changes
+    let programmaticChange = false;
 
-        // Set the new state of the checkbox
+    // Function to change checkbox state programmatically
+    function setLifxCheckboxState(newState) {
+        programmaticChange = true;
         lifxCheckbox.checked = newState;
-
-        // Re-add the event listener
-        lifxCheckbox.addEventListener("change", toggleLifxDiv);
+        toggleLifxDiv()
+        programmaticChange = false;
     }
+
+
+    // Combined event listener for checkbox change
+    lifxCheckbox.addEventListener('change', function () {
+        // Skip fetch request if this is a programmatic change
+        if (programmaticChange) return;
+
+        const url = this.getAttribute('data-url');
+        const isChecked = this.checked;
+
+        toggleLifxDiv()
+
+        const data = {
+            enabled: isChecked
+        };
+
+        lifxCheckbox.setAttribute('disabled', 'true');
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Response:', data);
+                lifxCheckbox.removeAttribute('disabled');
+            })
+            .catch(error => {
+                console.log(error);
+                lifxCheckbox.removeAttribute('disabled');
+            });
+    });
+
+
 </script>
 
 </html>
