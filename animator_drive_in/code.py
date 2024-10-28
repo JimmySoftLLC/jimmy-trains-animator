@@ -1805,7 +1805,7 @@ def manage_audio_files():
 
     # Delete orphaned mp3 files (those without a corresponding key in menu_snd_opt)
     for mp3_file in mp3_files:
-        if f"{os.path.splitext(mp3_file)[0]}.mp3" not in mp3_files:
+        if f"{os.path.splitext(mp3_file)[0]}.mp3" not in menu_snd_opt:
             os.remove(os.path.join(snd_opt_folder, mp3_file))
             print(f"Deleted orphaned MP3: {mp3_file}")
 

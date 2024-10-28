@@ -278,60 +278,68 @@
                 </button>
             </div>
             <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
-            <h2>Test lifx lights:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
-                    type="button">
-                    Red
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
-                    type="button">
-                    Green
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
-                    type="button">
-                    Blue
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255" data-url="/lights"
-                    type="button">
-                    White
-                </button>
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="lifxCheckbox">
+                    Enable Lifx lights
+                </label>
             </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
-                    type="button">
-                    Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BX20" data-url="/lights"
-                    type="button">
-                    20
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BX40" data-url="/lights"
-                    type="button">
-                    40
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BX60" data-url="/lights"
-                    type="button">
-                    60
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BX80" data-url="/lights"
-                    type="button">
-                    80
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BX100" data-url="/lights"
-                    type="button">
-                    100
-                </button>
+            <div id="lifxDiv">
+                <h2>Test lifx lights:</h2>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
+                        type="button">
+                        Red
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
+                        type="button">
+                        Green
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
+                        type="button">
+                        Blue
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255"
+                        data-url="/lights" type="button">
+                        White
+                    </button>
+                </div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
+                        type="button">
+                        Off
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX20" data-url="/lights"
+                        type="button">
+                        20
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX40" data-url="/lights"
+                        type="button">
+                        40
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX60" data-url="/lights"
+                        type="button">
+                        60
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX80" data-url="/lights"
+                        type="button">
+                        80
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX100" data-url="/lights"
+                        type="button">
+                        100
+                    </button>
+                </div>
+                <h2>Scene colors:</h2>
+                <div id="sceneButtonContainer"></div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="reset_scene_to_defaults"
+                        data-url="/defaults" type="button">
+                        Reset scene colors to defaults
+                    </button>
+                </div>
+                <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
             </div>
-            <h2>Scene colors:</h2>
-            <div id="sceneButtonContainer"></div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_scene_to_defaults"
-                    data-url="/defaults" type="button">
-                    Reset scene colors to defaults
-                </button>
-            </div>
-            <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
             <div class="bottom-gap"></div>
         </div>
         <div class="mui-tabs__pane" id="settings">
@@ -799,6 +807,9 @@
         getMedia()
         getSceneChanges()
         getNeoChanges()
+        lifx_enabled = False
+        document.getElementById("lifxCheckbox").checked = lifx_enabled;
+        toggleTargetDiv(); // Set initial state of targetDiv based on lifx_enabled
     });
 
     function getLightString() {
@@ -2016,6 +2027,23 @@
                 isRequestInProgress = false; // Reset the flag in case of an error
             });
     }
+
+    // Function to enable or disable elements in lifxDiv
+    function toggleLifxDiv() {
+        const isChecked = document.getElementById("lifxCheckbox").checked;
+        const lifxDiv = document.getElementById("targetDiv");
+
+        // Disable or enable all inputs and buttons inside lifxDiv
+        lifxDiv.querySelectorAll("input, button").forEach((element) => {
+            element.disabled = !isChecked;
+        });
+    }
+
+    // Attach event listener to checkbox
+    document.getElementById("lifxCheckbox").addEventListener("change", toggleLifxDiv);
+
+    // Run the function on page load to set the initial state
+    toggleLifxDiv();
 </script>
 
 </html>
