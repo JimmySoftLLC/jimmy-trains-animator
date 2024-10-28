@@ -2101,6 +2101,9 @@ def set_hdw(cmd, dur):
                 segs_split = seg[3:].split("_")
                 scene_change("neo", segs_split[0], segs_split[1],
                              float(segs_split[2]), int(segs_split[3]))
+            # ZJ = Joke
+            elif seg[:2] == 'ZJ':
+                get_random_joke()
             # image IXXX/XXX XXX/XXXX(folder/filename)
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
@@ -2673,9 +2676,6 @@ button_check_thread.start()
 close_midori()
 open_midori()
 
-
-
-get_random_joke()
 
 while True:
     try:
