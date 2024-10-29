@@ -752,14 +752,16 @@ def discover_lights():
 
     print(f"Discovered {device_count} device(s).")
 
+    lifx.set_power_all_lights("on")
+
     # Iterate over each discovered device and control it
-    for device in devices:
-        try:
-            # print(f"Found device: {device.get_label()}")
-            device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
-            device.set_power("on")
-        except Exception as e:
-            print(f"Error setting color for {device.get_label()}: {e}")
+    # for device in devices:
+    #     try:
+    #         # print(f"Found device: {device.get_label()}")
+    #         device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
+    #         device.set_power("on")
+    #     except Exception as e:
+    #         print(f"Error setting color for {device.get_label()}: {e}")
 
 
 def set_light_color_threaded(device, r, g, b):
@@ -1434,7 +1436,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def set_lifx_enabled(self, rq_d):
         global cfg
         cfg["lifx_enabled"] = rq_d["enabled"]
-        if cfg["lifx_enabled"] == "true":
+        if cfg["lifx_enabled"] == True:
             discover_lights()
         files.write_json_file(code_folder + "cfg.json", cfg)
         response = cfg["lifx_enabled"]
