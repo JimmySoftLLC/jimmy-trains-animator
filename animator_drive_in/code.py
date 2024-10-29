@@ -324,11 +324,11 @@ media_player = vlc.MediaPlayer(instance)
 
 
 def play_movie_file(movie_filename):
-    media_player.toggle_fullscreen()
-    
     # Load media
     media = instance.media_new(movie_filename)
     media_player.set_media(media)
+
+    media_player.set_fullscreen(True)
 
     # Set the volume explicitly for each media file
     upd_vol(0.05)
