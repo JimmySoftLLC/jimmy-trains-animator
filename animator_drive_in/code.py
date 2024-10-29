@@ -90,7 +90,6 @@
 # pip install pydub
 
 
-
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple
@@ -312,9 +311,6 @@ b_sw = Debouncer(switch_io_4)
 ################################################################################
 # Setup sound
 
-# set the audio driver to pulse audio
-os.environ["SDL_AUDIODRIVER"] = "pulse"
-
 # Setup the mixer to play wav files
 pygame.mixer.init()
 mix = pygame.mixer.music
@@ -323,21 +319,13 @@ mix = pygame.mixer.music
 # Setup video hardware
 
 # create vlc media player object for playing video, music etc
-instance = vlc.Instance()
+instance = vlc.Instance('--aout=alsa')
 media_player = vlc.MediaPlayer(instance)
 
 
 def play_movie_file(movie_filename):
-    global media_player
-
-    # Release the media player to reset state before the next video
-    media_player.release()
-
-    # Create a fresh VLC instance and media player for each video
-    instance = vlc.Instance('--aout=pulse')
-    media_player = vlc.MediaPlayer(instance)
     media_player.toggle_fullscreen()
-
+    
     # Load media
     media = instance.media_new(movie_filename)
     media_player.set_media(media)
@@ -737,7 +725,8 @@ lifx = {}
 
 
 def discover_lights():
-    if cfg["lifx_enabled"] == False: return
+    if cfg["lifx_enabled"] == False:
+        return
     global devices, lifx
     play_a_0(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
     lifx = LifxLAN(18)  # Assuming 2 is the number of lights
@@ -784,7 +773,8 @@ def set_all_lights_parallel(r, g, b):
 
 
 def set_light_color(light_n, r, g, b):
-    if cfg["lifx_enabled"] == "false": return
+    if cfg["lifx_enabled"] == "false":
+        return
     """Set color for a specific light or all lights."""
     if light_n == -1:
         # Set color for all lights in parallel
@@ -1122,11 +1112,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
         elif self.path == "/set-lifx-enabled":
-            self.set_lifx_enabled(post_data_obj) 
+            self.set_lifx_enabled(post_data_obj)
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
-            self.get_lifx_enabled(post_data_obj)   
+            self.get_lifx_enabled(post_data_obj)
         elif self.path == "/get-scripts":
             self.get_scripts_post(post_data_obj)
         elif self.path == "/create-playlist":
@@ -1452,7 +1442,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
-    
+
     def get_lifx_enabled(self, rq_d):
         response = cfg["lifx_enabled"]
         self.send_response(200)
@@ -1724,8 +1714,8 @@ def get_random_joke():
     else:
         print("Failed to retrieve a joke.")
 
-    text_to_mp3_file(joke['setup'],"myjoke.mp3", 2)
-    text_to_mp3_file(joke['punchline'],"myjoke.mp3", 2)
+    text_to_mp3_file(joke['setup'], "myjoke.mp3", 2)
+    text_to_mp3_file(joke['punchline'], "myjoke.mp3", 2)
 
 ###############################################################################
 # Text to speech
@@ -1801,7 +1791,8 @@ def generate_mp3_from_filename(file_name):
     text_to_speak = file_name.replace("_", " ")
     text_to_speak = text_to_speak.replace(".mp3", "")
 
-    mp3_file = os.path.join(snd_opt_folder, f"{os.path.splitext(file_name)[0]}.mp3")
+    mp3_file = os.path.join(
+        snd_opt_folder, f"{os.path.splitext(file_name)[0]}.mp3")
 
     # If mp3 already exists, skip
     if os.path.exists(mp3_file):
