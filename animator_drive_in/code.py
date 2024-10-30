@@ -1316,6 +1316,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif rq_d["an"] == "timestamp_mode_off":
             play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
             ts_mode = False
+        elif "intermission_" in rq_d["an"]:
+            rq_d_split = rq_d["an"].split("_")
+            cfg["intermission"] = rq_d_split[1]
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_a_0(code_folder + "mvc/all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1850,59 +1855,67 @@ def rst_an():
     led.fill((0, 0, 0))
     led.show()
 
-
 def an(f_nm):
     global cfg, lst_opt, an_running
     print("Filename: " + f_nm)
-    cur_opt = f_nm
     try:
-        if f_nm == "random_play lists":
-            h_i = len(play_list_options) - 1
-            cur_opt = play_list_options[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(play_list_options) > 1:
-                cur_opt = play_list_options[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
-        elif f_nm == "random_all":
-            h_i = len(media_list_flattened) - 1
-            cur_opt = media_list_flattened[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(media_list_flattened) > 1:
-                cur_opt = media_list_flattened[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
-        elif "random_" in f_nm:
-            # Specify the folder name
-            folder_name = f_nm.split("_")
-            # Filter the media list to only include items from the specified folder
-            filtered_list = [
-                item for item in media_list_flattened if item.startswith(folder_name[1])]
-            h_i = len(filtered_list) - 1
-            cur_opt = filtered_list[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(filtered_list) > 1:
-                cur_opt = filtered_list[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
+        cur_opt = return_file_to_use(f_nm)
         if ts_mode:
             an_ts(cur_opt)
             gc_col("animation cleanup")
         else:
             an_light(cur_opt)
             gc_col("animation cleanup")
+            if rnd_prob (float(cfg["intermission"])):
+                cur_opt = return_file_to_use("random_intermission")
+                an_light(cur_opt)
+                gc_col("animation cleanup")
     except Exception as e:
         files.log_item(e)
         no_trk()
-        cfg["option_selected"] = "random all media"
+        cfg["option_selected"] = "random_all"
         return
     gc_col("Animation complete.")
+
+def return_file_to_use (f_nm):
+    global cfg, lst_opt, an_running
+    cur_opt = f_nm
+    if f_nm == "random_play lists":
+        h_i = len(play_list_options) - 1
+        cur_opt = play_list_options[random.randint(
+            0, h_i)]
+        while lst_opt == cur_opt and len(play_list_options) > 1:
+            cur_opt = play_list_options[random.randint(
+                0, h_i)]
+        lst_opt = cur_opt
+        print("Random sound option: " + f_nm)
+        print("Sound file: " + cur_opt)
+    elif f_nm == "random_all":
+        h_i = len(media_list_flattened) - 1
+        cur_opt = media_list_flattened[random.randint(
+            0, h_i)]
+        while lst_opt == cur_opt and len(media_list_flattened) > 1:
+            cur_opt = media_list_flattened[random.randint(
+                0, h_i)]
+        lst_opt = cur_opt
+        print("Random sound option: " + f_nm)
+        print("Sound file: " + cur_opt)
+    elif "random_" in f_nm:
+        # Specify the folder name
+        folder_name = f_nm.split("_")
+        # Filter the media list to only include items from the specified folder
+        filtered_list = [
+            item for item in media_list_flattened if item.startswith(folder_name[1])]
+        h_i = len(filtered_list) - 1
+        cur_opt = filtered_list[random.randint(
+            0, h_i)]
+        while lst_opt == cur_opt and len(filtered_list) > 1:
+            cur_opt = filtered_list[random.randint(
+                0, h_i)]
+        lst_opt = cur_opt
+        print("Random sound option: " + f_nm)
+        print("Sound file: " + cur_opt)
+    return cur_opt
 
 
 def an_light(f_nm):
@@ -2036,6 +2049,17 @@ def an_ts(f_nm):
 
 ###############
 # Animation helpers
+
+def rnd_prob(random_value):
+    print("Using random value: " + str(random_value))
+    if random_value == 0:
+        return False
+    elif random_value == 1:
+        return True
+    else:
+        y = random.random()
+        if y < random_value: return True
+    return False
 
 def set_hdw(cmd, dur):
     global sp, br

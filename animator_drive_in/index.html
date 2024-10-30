@@ -68,6 +68,25 @@
             <div id="playlistContainer"></div>
             <h2>Media:</h2>
             <div id="mediaContainer"></div>
+            <h2>Intermission between movies:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0" data-url="/mode"
+                    type="button">
+                    Off
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.33" data-url="/mode"
+                    type="button">
+                    Low
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.66" data-url="/mode"
+                    type="button">
+                    Medium
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_1" data-url="/mode"
+                    type="button">
+                    Always
+                </button>
+            </div>
             <h2>Animation settings:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
@@ -1527,7 +1546,7 @@
         alertModal.style.backgroundColor = '#fff';
         alertModal.style.borderRadius = '5px';
         alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-        
+
         alertModal.innerHTML = `
             <div class="mui-form" style="padding: 20px;">
                 <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
