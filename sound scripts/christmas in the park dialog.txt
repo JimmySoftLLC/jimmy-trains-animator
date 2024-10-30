@@ -43,3 +43,5 @@ No user sound tracks found or they are not encoded correctly.  Press the right b
 Each light has an i d on the back.  For example grandtree, dash, 21.  The lights plug into each other in series.  
 The default setup is cane, dash, 4, repeated five more times, then grandtree, dash, 21,   This can be changed.  To change it you select menu options clear light string, and, or, add lights to light string.  These settings
 can also be changed on the animator dash christmas dash park dot local web page.  To setup this web page on your local network follow the instructions in the wep page options menu.
+
+

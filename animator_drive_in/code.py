@@ -2488,7 +2488,7 @@ class AddSnds(Ste):
         if r_sw.fell:
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                play_a_0(code_folder + "mvc/create_sound_track_files.wav")
+                play_a_0(code_folder + "mvc/drive_in_media_instructions.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
                 play_a_0(code_folder + "mvc/timestamp_mode_on.wav")
