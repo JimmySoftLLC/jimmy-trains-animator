@@ -1160,8 +1160,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd = rq_d["fo"].replace("plylst_", "")
         fo = plylst_folder + snd + ".json"
         fn = plylst_folder + rq_d["fn"] + ".json"
-        mp3_name = media_folder + "o_snds/" + rq_d["fn"] + ".mp3"
-        text_to_mp3_file(mp3_name, timeout_duration=5)
         os.rename(fo, fn)
         upd_media()
         self.send_response(200)
@@ -1763,7 +1761,7 @@ def timeout_handler(signum, frame):
 signal.signal(signal.SIGALRM, timeout_handler)
 
 
-def text_to_mp3_file(text, f_nm, timeout_duration):
+def text_to_mp3_file(text, file_name, timeout_duration):
     global is_gtts_reachable
     try:
         # Set the timeout (in seconds)
@@ -1772,12 +1770,23 @@ def text_to_mp3_file(text, f_nm, timeout_duration):
         # Convert text to mp3 file
         # text = files.strip_path_and_extension(f_nm)
         tts = gTTS(text=text, lang='en')
-        tts.save(f_nm)
+        tts.save(file_name)
 
         # Cancel the alarm if operation completes before timeout
         signal.alarm(0)
 
-        play_a_0(f_nm)
+        # Load the audio file with pydub
+        audio = AudioSegment.from_file(file_name)
+
+        # Adjust the volume
+        volume_change = -5  # Decrease volume by 5db
+        adjusted_audio = audio + volume_change
+
+        # Save the adjusted audio
+        adjusted_audio.export(file_name, format="mp3")
+        print(f"MP3 for {file_name} generated and volume adjusted.")
+
+        play_a_0(file_name)
 
     except TimeoutException:
         print("TTS operation timed out.")
