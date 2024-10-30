@@ -2409,8 +2409,8 @@ class Main(Ste):
                 mch.go_to('add_sounds_animate')
             elif sel_mnu == "web_options":
                 mch.go_to('web_options')
-            elif sel_mnu == "volume_settings":
-                mch.go_to('volume_settings')
+            elif sel_mnu == "volume_level_adjustment":
+                mch.go_to('volume_level_adjustment')
             else:
                 play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
@@ -2502,7 +2502,7 @@ class AddSnds(Ste):
                 mch.go_to('base_state')
 
 
-class VolSet(Ste):
+class VolumeLevelAdjustment(Ste):
 
     def __init__(self):
         self.i = 0
@@ -2510,58 +2510,33 @@ class VolSet(Ste):
 
     @property
     def name(self):
-        return 'volume_settings'
+        return 'volume_level_adjustment'
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        play_a_0(code_folder + "mvc/volume_settings_menu.wav")
-        l_r_but()
+        play_a_0(code_folder + "mvc/volume_adjustment_menu.wav")
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            play_a_0(code_folder + "mvc/" + vol_set[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(vol_set)-1:
-                self.i = 0
-        if r_sw.fell:
-            sel_mnu = vol_set[self.sel_i]
-            if sel_mnu == "volume_level_adjustment":
-                play_a_0(code_folder + "mvc/volume_adjustment_menu.wav")
-                done = False
-                while not done:
-                    switch_state = utilities.switch_state(
-                        l_sw, r_sw, time.sleep, 3.0)
-                    if switch_state == "left":
-                        ch_vol("lower")
-                    elif switch_state == "right":
-                        ch_vol("raise")
-                    elif switch_state == "right_held":
-                        files.write_json_file(
-                            code_folder + "cfg.json", cfg)
-                        play_a_0(code_folder + "mvc/all_changes_complete.wav")
-                        done = True
-                        mch.go_to('base_state')
-                    time.sleep(0.1)
-                    pass
-            elif sel_mnu == "volume_pot_off":
-                cfg["volume_pot"] = False
-                if cfg["volume"] == 0:
-                    cfg["volume"] = 10
-                files.write_json_file(code_folder + "cfg.json", cfg)
+        done = False
+        while not done:
+            switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0)
+            if switch_state == "left":
+                ch_vol("lower")
+            elif switch_state == "right":
+                ch_vol("raise")
+            elif switch_state == "right_held":
+                files.write_json_file(
+                    code_folder + "cfg.json", cfg)
                 play_a_0(code_folder + "mvc/all_changes_complete.wav")
+                done = True
                 mch.go_to('base_state')
-            elif sel_mnu == "volume_pot_on":
-                cfg["volume_pot"] = True
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_a_0(code_folder + "mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
+            time.sleep(0.1)
+            pass
 
 
 class WebOpt(Ste):
@@ -2604,7 +2579,7 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif selected_menu_item == "hear_instr_web":
-                play_a_0(code_folder + "mvc/web_instruct.wav")
+                play_a_0(code_folder + "mvc/hear_instr_web_drive_in.wav")
                 sel_web()
             else:
                 files.write_json_file(code_folder + "cfg.json", cfg)
@@ -2620,7 +2595,7 @@ st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
 st_mch.add(AddSnds())
-st_mch.add(VolSet())
+st_mch.add(VolumeLevelAdjustment())
 st_mch.add(WebOpt())
 
 
@@ -2704,18 +2679,19 @@ button_check_thread = threading.Thread(target=button_check)
 button_check_thread.daemon = True
 button_check_thread.start()
 
-close_midori()
-open_midori()
-
+if (web):
+    close_midori()
+    open_midori()
 
 while True:
     try:
         input("Press enter to exit...\n\n")
     finally:
-        print("Unregistering mDNS service...")
-        zeroconf.unregister_service(info)
-        zeroconf.close()
-        httpd.shutdown()
+        if (web):
+            print("Unregistering mDNS service...")
+            zeroconf.unregister_service(info)
+            zeroconf.close()
+            httpd.shutdown()
         rst_an()
         quit()
 

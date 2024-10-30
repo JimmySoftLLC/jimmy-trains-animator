@@ -5,4 +5,29 @@ Webpage off.
 Hear web url.
 Hear web ip address.
 Hear instructions on how to enable web access.
-To enable web access to your animator you will need to make changes to your microSD card that is inserted in your animator...  Don't remove it yet until you here all these instructions...  First make a copy of env_example file... Then rename the copy to env...  Next edit the env file with your SSID and password...  Power off the animator before you remove the card...  After you made your changes reinsert and power on your animator...  Then come back to this menu and select webpage on.  These instructions are also available at jimmytrains.com.
+To enable web access to your animator you will need to make changes to your microSD card that is inserted in your animator...  
+Don't remove it yet until you here all these instructions...  First make a copy of env_example file... Then rename the copy to env...  
+Next edit the env file with your SSID and password...  Power off the animator before you remove the card...  
+After you made your changes reinsert and power on your animator...  Then come back to this menu and select webpage on.  
+These instructions are also available at jimmytrains.com.
+
+
+
+The animator drive in, is a raspberry pi computer. To make the most use of this product you will want to set it up on your network. 
+This will allow you to log onto it remotely, add your media files and access a webpage for remote control.
+
+Using the keyboard provided click on the internet icon and you should see your network. 
+The drive in can operate on either a 5 G or 2.4 G network. Choose the one that is appropriate for you.  Once selected it will prompt you to enter the password for that network.
+
+Now that it is on your network. Restart the drive in by going to the raspberry pi menu on the left and scroll 
+to the bottom where you will find logout.  Click on that and then choose reboot.
+
+The drive in will reboot and this time it will announce that it is now on your network and you can access it by typing, 
+animator dash drive dash in dot local colon 8083,  in your browser.
+
+If does not make this announcement you will need to come back to this menu and select webpage on.  After selecting webpage on, the drive in will automatically 
+reboot and you should hear the announcement that it is on your network.
+
+If you don't want a webpage served you can turn it off by selecting webpage off.  The drive in will automatically reboot and the webpage will not be available.  
+
+These instructions are also available at jimmytrains.com.
