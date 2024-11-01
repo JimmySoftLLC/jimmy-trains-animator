@@ -193,7 +193,8 @@ def restart_pi():
 
 
 def restart_pi_timer():
-    delay = 5
+    play_a_0(code_folder + "mvc/restarting_animator_drive_in.wav")
+    delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
 
@@ -270,6 +271,9 @@ web_m = cfg_web["web_menu"]
 
 cfg_vol = files.read_json_file(code_folder + "mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
+
+cfg_intermission_settings = files.read_json_file(code_folder + "mvc/intermission_settings.json")
+intermission_settings = cfg_intermission_settings["intermission_settings"]
 
 cfg_add_song = files.read_json_file(
     code_folder + "mvc/add_sounds_animate.json")
@@ -959,46 +963,6 @@ def open_midori():
         print(f"Failed to start Midori: {e}")
 
 
-################################################################################
-# Command queue
-
-import queue
-import threading
-import time
-
-# Create a FIFO queue
-command_queue = queue.Queue()
-stop_flag = False
-
-def add_command(command):
-    """Add a command to the queue."""
-    command_queue.put(command)
-    print(f"Command added: {command}")
-
-def process_commands():
-    """Continuously process commands from the queue."""
-    global stop_flag, cfg
-    while not stop_flag:
-        if not command_queue.empty():
-            command = command_queue.get()
-            print(f"Processing command: {command}")
-            an(command)
-            command_queue.task_done()
-        else:
-            time.sleep(1)  # Sleep for a while if the queue is empty
-
-def clear_queue():
-    """Clear the queue."""
-    with command_queue.mutex:
-        command_queue.queue.clear()
-    print("Command queue cleared.")
-
-def stop_all_queue_commands():
-    """Stop processing and clear the queue."""
-    global stop_flag
-    stop_flag = True  # Set the stop flag to True
-    clear_queue()     # Clear the queue
-    print("Processing stopped and command queue cleared.")
 
 ################################################################################
 # Setup routes
@@ -1595,6 +1559,48 @@ if (web):
 
 gc_col("web server")
 
+
+################################################################################
+# Command queue
+
+import queue
+import threading
+import time
+
+# Create a FIFO queue
+command_queue = queue.Queue()
+stop_flag = False
+
+def add_command(command):
+    """Add a command to the queue."""
+    command_queue.put(command)
+    print(f"Command added: {command}")
+
+def process_commands():
+    """Continuously process commands from the queue."""
+    global stop_flag, cfg
+    while not stop_flag:
+        if not command_queue.empty():
+            command = command_queue.get()
+            print(f"Processing command: {command}")
+            an(command)
+            command_queue.task_done()
+        else:
+            time.sleep(1)  # Sleep for a while if the queue is empty
+
+def clear_queue():
+    """Clear the queue."""
+    with command_queue.mutex:
+        command_queue.queue.clear()
+    print("Command queue cleared.")
+
+def stop_all_queue_commands():
+    """Stop processing and clear the queue."""
+    global stop_flag
+    stop_flag = True  # Set the stop flag to True
+    clear_queue()     # Clear the queue
+    print("Processing stopped and command queue cleared.")
+
 ################################################################################
 # Global Methods
 
@@ -1765,6 +1771,7 @@ def get_random_joke():
 
 
 def check_gtts_status():
+    if web == False: return False
     try:
         # gTTS API endpoint
         url = "https://translate.google.com"
@@ -1808,6 +1815,7 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 def text_to_mp3_file(text, file_name, timeout_duration):
     global is_gtts_reachable
+    if is_gtts_reachable == False: return
     try:
         # Set the timeout (in seconds)
         signal.alarm(timeout_duration)
@@ -1842,6 +1850,7 @@ def text_to_mp3_file(text, file_name, timeout_duration):
 
 
 def generate_mp3_from_filename(file_name):
+    if is_gtts_reachable == False: return
     text_to_speak = file_name.replace("_", " ")
     text_to_speak = text_to_speak.replace(".mp3", "")
 
@@ -1870,6 +1879,8 @@ def generate_mp3_from_filename(file_name):
 
 
 def manage_audio_files():
+    if is_gtts_reachable == False: return
+
     # Get all files in the folder
     files = os.listdir(snd_opt_folder)
 
@@ -2475,6 +2486,8 @@ class Main(Ste):
                 mch.go_to('web_options')
             elif sel_mnu == "volume_level_adjustment":
                 mch.go_to('volume_level_adjustment')
+            elif sel_mnu == "intermission_settings":
+                mch.go_to('intermission_settings')
             else:
                 play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
@@ -2518,6 +2531,59 @@ class Snds(Ste):
             play_a_0(code_folder + "mvc/option_selected.wav", "rb")
             mch.go_to('base_state')
 
+
+class IntermissionSettings(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'intermission_settings'
+
+    def enter(self, mch):
+        files.log_item('Intermission settings')
+        play_a_0(code_folder + "mvc/intermission_settings_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global cfg
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            play_a_0(
+                code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(intermission_settings)-1:
+                self.i = 0
+        if r_sw.fell:
+            sel_mnu = intermission_settings[self.sel_i]
+            if sel_mnu == "intermission_off":
+                cfg["intermission"] = "0"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "intermission_infreq":
+                cfg["intermission"] = "0.33"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "intermission_freq":
+                cfg["intermission"] = "0.66"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "intermission_always":
+                cfg["intermission"] = "1"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_a_0(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 class AddSnds(Ste):
 
@@ -2621,6 +2687,7 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global cfg
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -2634,11 +2701,13 @@ class WebOpt(Ste):
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
                 opt_sel()
-                sel_web()
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                restart_pi_timer()
             elif selected_menu_item == "web_off":
                 cfg["serve_webpage"] = False
                 opt_sel()
-                sel_web()
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                restart_pi_timer()
             elif selected_menu_item == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
@@ -2646,8 +2715,6 @@ class WebOpt(Ste):
                 play_a_0(code_folder + "mvc/hear_instr_web_drive_in.wav")
                 sel_web()
             else:
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 ###############################################################################
@@ -2661,6 +2728,7 @@ st_mch.add(Snds())
 st_mch.add(AddSnds())
 st_mch.add(VolumeLevelAdjustment())
 st_mch.add(WebOpt())
+st_mch.add(IntermissionSettings())
 
 
 time.sleep(0)
@@ -2691,8 +2759,7 @@ discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
-if is_gtts_reachable:
-    manage_audio_files()
+manage_audio_files()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")

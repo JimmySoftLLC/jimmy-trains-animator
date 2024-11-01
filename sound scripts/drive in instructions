@@ -1,3 +1,9 @@
 You can create your own media files by putting mp3s, mp4s or wav files in various topic folders in the media folder on your drive in.  The files must be named with only lower case letters, numbers and spaces. For example "my movie".  All the files should have their volume normalized to negative 10 db so that clipping does not occur.  The wav files must be encoded with a sample rate of 22050Hz and a sample format of 16 bits. You can create files of this type using Audacity, a free application.  mp4 movie files can be created with Davinci Resolve, a free application.
 Once you have your files on the animator restart it.  The animator will scan for new files and populate the web page and choose sounds menu with your new media topic folders.  
 Next you animate them by selecting one of your media files and follow the spoken instructions.  The selections are best done using the web page found at animator, dash, drive, dash, in, dot, local, colon, 8, 0, 8, 3 in your browser.  Have fun animating.
+
+Intermission settings.
+Intermission between movies off.
+Intermission between movies infrequent.
+Intermission between movies frequent.
+Intermission between movies always.
