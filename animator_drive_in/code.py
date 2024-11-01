@@ -958,9 +958,50 @@ def open_midori():
     except Exception as e:
         print(f"Failed to start Midori: {e}")
 
+
+################################################################################
+# Command queue
+
+import queue
+import threading
+import time
+
+# Create a FIFO queue
+command_queue = queue.Queue()
+stop_flag = False
+
+def add_command(command):
+    """Add a command to the queue."""
+    command_queue.put(command)
+    print(f"Command added: {command}")
+
+def process_commands():
+    """Continuously process commands from the queue."""
+    global stop_flag, cfg
+    while not stop_flag:
+        if not command_queue.empty():
+            command = command_queue.get()
+            print(f"Processing command: {command}")
+            an(command)
+            command_queue.task_done()
+        else:
+            time.sleep(1)  # Sleep for a while if the queue is empty
+
+def clear_queue():
+    """Clear the queue."""
+    with command_queue.mutex:
+        command_queue.queue.clear()
+    print("Command queue cleared.")
+
+def stop_all_queue_commands():
+    """Stop processing and clear the queue."""
+    global stop_flag
+    stop_flag = True  # Set the stop flag to True
+    clear_queue()     # Clear the queue
+    print("Processing stopped and command queue cleared.")
+
 ################################################################################
 # Setup routes
-
 
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
@@ -1331,13 +1372,13 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def animation_post(self, rq_d):
         global cfg, cont_run, ts_mode, stop_play_list
         cfg["option_selected"] = rq_d["an"]
-        stop_play_list = False
-        an(cfg["option_selected"])
         files.write_json_file(code_folder + "cfg.json", cfg)
+        stop_play_list = False
+        add_command(cfg["option_selected"])
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        response = {"Ran animation": cfg["option_selected"]}
+        response = {"Animation added to queue: ": cfg["option_selected"]}
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
@@ -1522,36 +1563,35 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
+if (web):
+    # Get the local IP address
+    local_ip = get_local_ip()
+    print(f"Local IP address: {local_ip}")
 
-# Get the local IP address
-local_ip = get_local_ip()
-print(f"Local IP address: {local_ip}")
-
-# Set up the HTTP server
-PORT = 8083  # Use port 80 for default HTTP access
-handler = MyHttpRequestHandler
-httpd = socketserver.TCPServer((local_ip, PORT), handler)
-httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-
-def start_server():
-    print(f"Serving on {local_ip}:{PORT}")
-    httpd.serve_forever()
+    # Set up the HTTP server
+    PORT = 8083  # Use port 80 for default HTTP access
+    handler = MyHttpRequestHandler
+    httpd = socketserver.TCPServer((local_ip, PORT), handler)
+    httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 
-# Set up mDNS service info
-name_str = cfg["HOST_NAME"] + "._http._tcp.local."
-server_str = cfg["HOST_NAME"] + ".local."
-desc = {'path': '/'}
-info = ServiceInfo(
-    "_http._tcp.local.",
-    name_str,
-    addresses=[socket.inet_aton(local_ip)],
-    port=PORT,
-    properties=desc,
-    server=server_str
-)
+    def start_server():
+        print(f"Serving on {local_ip}:{PORT}")
+        httpd.serve_forever()
 
+
+    # Set up mDNS service info
+    name_str = cfg["HOST_NAME"] + "._http._tcp.local."
+    server_str = cfg["HOST_NAME"] + ".local."
+    desc = {'path': '/'}
+    info = ServiceInfo(
+        "_http._tcp.local.",
+        name_str,
+        addresses=[socket.inet_aton(local_ip)],
+        port=PORT,
+        properties=desc,
+        server=server_str
+    )
 
 gc_col("web server")
 
@@ -2696,12 +2736,19 @@ def button_check():
         time.sleep(.1)
 
 
-# Start the state machine in a separate thread
+# Start the button check thread in a separate thread
 button_check_thread = threading.Thread(target=button_check)
 
 # Daemonize the thread to end with the main program
 button_check_thread.daemon = True
 button_check_thread.start()
+
+# Start the queue processing thread
+command_queue_processing_thread = threading.Thread(target=process_commands)
+
+# Daemonize the thread to end with the main program
+command_queue_processing_thread.daemon = True
+command_queue_processing_thread.start()
 
 if (web):
     close_midori()
@@ -2711,6 +2758,8 @@ while True:
     try:
         input("Press enter to exit...\n\n")
     finally:
+        stop_all_queue_commands()
+        command_queue_processing_thread.join() # Wait for the command queue processing thread to finish
         if (web):
             print("Unregistering mDNS service...")
             zeroconf.unregister_service(info)
