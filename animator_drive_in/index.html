@@ -52,7 +52,7 @@
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
-                <a data-mui-toggle="tab" data-mui-controls="lighting">servos / lights</a>
+                <a data-mui-toggle="tab" data-mui-controls="lighting">lights</a>
             </li>
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
@@ -135,7 +135,7 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
-            <h2>Platform positions:</h2>
+            <!-- <h2>Platform positions:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
                     type="button">
@@ -175,7 +175,7 @@
                     type="button">
                     Servo 6 90
                 </button>
-            </div>
+            </div> -->
             <h2>Setup light string:</h2>
             <div class="mui-textfield">
                 <p>
@@ -474,19 +474,20 @@
                     transitions in decimal seconds
                 </div>
                 <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
-                    XXX/XXX (folder/filename)</div>
+                    XXX/XXX ("folder/filename" or use "random_folder")</div>
                 <div>ZRAND = Random rainbow, fire, or color change</div>
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
                 <div>ZCOLCH = Color change</div>
                 <div>ZJ = Joke</div>
+                <div id="neoInstructionsContainer"></div>
                 <div id="sceneInstructionsContainer"></div>
                 <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
-                <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
-                <div id="neoInstructionsContainer"></div>
-                <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
+                <!-- <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div> -->
+                <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+                <!-- <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
                     between
-                    commands</div>
+                    commands</div> -->
                 <div>E = End script<div>
                         <table id="dataTable" class="mui-table">
                             <thead>

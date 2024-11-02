@@ -322,12 +322,18 @@ def button_check():
                 switch_state = utilities.switch_state_four_switches(
                     l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
                 if switch_state == "left" and cfg["can_cancel"]:
-                    stop_play_list = True
                     mix.stop()
                     media_player.stop()
                     rst_an()
                     time.sleep(.5)
                     an_running = False
+                if switch_state == "right" and cfg["can_cancel"]:
+                    stop_play_list = True
+                    mix.stop()
+                    media_player.stop()
+                    rst_an()
+                    time.sleep(.5)
+                    an_running = False  
                 if switch_state == "three":
                     print("sw three fell")
                     ch_vol("lower")
@@ -1690,7 +1696,7 @@ def play_a_0(file_name, wait_until_done=True, allow_exit=True):
 
 
 def wait_snd():
-    while mix.get_busy():
+    while mix.get_busy() or media_player.is_playing():
         exit_early()
     print("done playing")
 
@@ -2134,7 +2140,7 @@ def rnd_prob(random_value):
     return False
 
 def set_hdw(cmd, dur):
-    global sp, br
+    global sp, br, stop_play_list
 
     if cmd == "":
         return "NOCMDS"
@@ -2158,6 +2164,8 @@ def set_hdw(cmd, dur):
                 if seg[1] == "W" or seg[1] == "M":
                     play_a_0(f_nm, False)
                 if seg[1] == "A":
+                    f_nm = seg[2:]
+                    stop_play_list = False
                     res = an(f_nm)
                     if res == "STOP":
                         return "STOP"
@@ -2244,6 +2252,11 @@ def set_hdw(cmd, dur):
                         s_arr[i].angle = v
                 else:
                     s_arr[num-1].angle = int(v)
+                        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
+            if seg[0] == 'Q':  # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
+                file_nm = seg[1:]
+                stop_play_list = False
+                add_command(file_nm)
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
