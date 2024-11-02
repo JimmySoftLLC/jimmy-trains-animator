@@ -312,36 +312,6 @@ r_sw = Debouncer(switch_io_2)
 three_sw = Debouncer(switch_io_3)
 four_sw = Debouncer(switch_io_4)
 
-lock = threading.Lock()
-
-def button_check():
-    global an_running, stop_play_list, lock
-    while True:
-        if an_running:
-            with lock:  # Ensure that this function is thread-safe
-                switch_state = utilities.switch_state_four_switches(
-                    l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
-                if switch_state == "left" and cfg["can_cancel"]:
-                    mix.stop()
-                    media_player.stop()
-                    rst_an()
-                    time.sleep(.5)
-                    an_running = False
-                if switch_state == "right" and cfg["can_cancel"]:
-                    stop_play_list = True
-                    mix.stop()
-                    media_player.stop()
-                    rst_an()
-                    time.sleep(.5)
-                    an_running = False  
-                if switch_state == "three":
-                    print("sw three fell")
-                    ch_vol("lower")
-                if switch_state == "four":
-                    print("sw four fell")
-                    ch_vol("raise")
-        time.sleep(.1)
-
 ################################################################################
 # Setup sound
 
@@ -2511,25 +2481,46 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, an_running, stop_play_list,lock
-        if not an_running:
-            with lock:  # Ensure that this function is thread-safe
-                switch_state = utilities.switch_state(
-                    l_sw, r_sw, time.sleep, 3.0)
-                if switch_state == "left_held":
-                    if cont_run:
-                        cont_run = False
-                        play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
-                    else:
-                        cont_run = True
-                        play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
-                elif switch_state == "left" or cont_run:
-                    stop_play_list = False
-                    add_command(cfg["option_selected"])
-                    time.sleep(.5)
-                elif switch_state == "right":
-                    mch.go_to('main_menu')
-
+        global cont_run, an_running, stop_play_list
+        if an_running:
+            switch_state = utilities.switch_state_four_switches(
+                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+            if switch_state == "left" and cfg["can_cancel"]:
+                an_running = False
+                mix.stop()
+                media_player.stop()
+                rst_an()
+                time.sleep(.5)
+            if switch_state == "right" and cfg["can_cancel"]:
+                an_running = False  
+                stop_play_list = True
+                mix.stop()
+                media_player.stop()
+                rst_an()
+                time.sleep(.5)
+            if switch_state == "three":
+                print("sw three fell")
+                ch_vol("lower")
+            if switch_state == "four":
+                print("sw four fell")
+                ch_vol("raise")
+        else:
+            switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0)
+            if switch_state == "left_held":
+                if cont_run:
+                    cont_run = False
+                    play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
+                else:
+                    cont_run = True
+                    play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
+            elif switch_state == "left" or cont_run:
+                stop_play_list = False
+                add_command(cfg["option_selected"])
+                time.sleep(.5)
+            elif switch_state == "right":
+                mch.go_to('main_menu')
+        time.sleep(.1)
 
 class Main(Ste):
 
@@ -2861,13 +2852,6 @@ state_machine_thread = threading.Thread(target=run_state_machine)
 # Daemonize the thread to end with the main program
 state_machine_thread.daemon = True
 state_machine_thread.start()
-
-# Start the button check thread in a separate thread
-button_check_thread = threading.Thread(target=button_check)
-
-# Daemonize the thread to end with the main program
-button_check_thread.daemon = True
-button_check_thread.start()
 
 # Start the queue processing thread
 command_queue_processing_thread = threading.Thread(target=process_commands)
