@@ -466,6 +466,7 @@
             <div>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+                <button id="pasteItemsButton" class="mui-btn mui-btn--primary" type="button">Paste Items</button>
                 <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
@@ -485,7 +486,8 @@
                 <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
                 <!-- <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div> -->
                 <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-                <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}</div>
+                <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                    data_object}</div>
                 <!-- <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
                     between
                     commands</div> -->
@@ -1636,13 +1638,15 @@
             });
     }
 
+
+
     function populateTable(data) {
         // Clear existing table rows
         dataTableBody.innerHTML = "";
 
         // Populate table with new data
-        data.forEach(function (rowData) {
-            var row = createDataRow(rowData);
+        data.forEach(function (rowData, index) {
+            var row = createDataRow(rowData, index);
             dataTableBody.appendChild(row);
         });
     }
@@ -1707,17 +1711,35 @@
         }
     }
 
+    var rowIndex
+
     function timeSecondsCellChanged(event) {
-        var inputValue = convertSecondsToTimeCode(event.target.value)
-        setTextOfInput(event.target.parentNode.parentNode.parentNode, 2, inputValue);
+        // Convert the input value to the desired format
+        var inputValue = convertSecondsToTimeCode(event.target.value);
+
+        // Get the clicked cell's row using the closest method to ensure correct context
+        var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
+
+        // Find the index of the clicked row within its parent (typically <tbody>)
+        rowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
+
+        // Log the row index for debugging
+        console.log("Row Index:", rowIndex);
+
+        // Update the appropriate cell in the row
+        setTextOfInput(clickedRow, 2, inputValue); // Update cell at index 2 with inputValue
     }
+
+
 
     function timeCodeCellChanged(event) {
         var inputValue = convertTimeCodeToSeconds(event.target.value)
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
     }
 
-    function createDataRow(rowData) {
+    var rowClicked = null;
+
+    function createDataRow(rowData, rowIndex) {
         var row = document.createElement("tr");
         myRowDataSplit = rowData.split("|")
 
@@ -1749,8 +1771,14 @@
 
         if (myRowDataSplit[1]) {
             var anCell = createEditableCell(myRowDataSplit[1], "500px");
+            anCell.addEventListener('click', function (event) {
+                timeSecondsCellChanged(event);
+            });
         } else {
             var anCell = createEditableCell("", "500px");
+            anCell.addEventListener('click', function (event) {
+                timeSecondsCellChanged(event);
+            });
         }
         row.appendChild(anCell);
 
