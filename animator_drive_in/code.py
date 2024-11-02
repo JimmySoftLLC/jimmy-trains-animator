@@ -925,6 +925,50 @@ def cycle_rgb_values(type, rgb_values, transition_time=2, steps=100):
             # Adjust sleep time for smooth transitions
             time.sleep(transition_time / steps)
 
+################################################################################
+# Requests
+
+import requests
+
+class ApiClient:
+    def __init__(self, base_url):
+        self.base_url = base_url
+
+    def get(self, endpoint, params=None):
+        """Perform a GET request."""
+        response = requests.get(f"{self.base_url}/{endpoint}", params=params)
+        return self.handle_response(response)
+
+    def post(self, endpoint, data=None):
+        """Perform a POST request."""
+        response = requests.post(f"{self.base_url}/{endpoint}", json=data)
+        return self.handle_response(response)
+
+    def put(self, endpoint, data=None):
+        """Perform a PUT request."""
+        response = requests.put(f"{self.base_url}/{endpoint}", json=data)
+        return self.handle_response(response)
+
+    def delete(self, endpoint):
+        """Perform a DELETE request."""
+        response = requests.delete(f"{self.base_url}/{endpoint}")
+        return self.handle_response(response)
+
+    def handle_response(self, response):
+        """Handle the HTTP response."""
+        if response.status_code == 200:
+            return response.json()  # or response.text for raw text
+        else:
+            response.raise_for_status()  # Raise an error for bad responses
+
+def send_animator_post(url, endpoint, new_data):
+    new_url = "http://" + url
+    new_data = json.loads(new_data)
+
+    api_client = ApiClient(new_url)
+    created_data = api_client.post(endpoint, data=new_data)
+    print("POST response:", created_data)
+
 
 ################################################################################
 # Setup wifi and web server
@@ -2257,6 +2301,9 @@ def set_hdw(cmd, dur):
                 file_nm = seg[1:]
                 stop_play_list = False
                 add_command(file_nm)
+            if seg[:3] == 'API':  # API_UUU_DDD = Api POST call UUU url, DDD data object i.e. {"an": data_object}
+                seg_split = seg.split("_")
+                send_animator_post(seg_split[1], "animation", seg_split[2])
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
