@@ -148,29 +148,47 @@ snd_opt_folder = code_folder + "snd_opt/"
 ################################################################################
 # Loading image as wallpaper on pi
 
+def replace_extension_to_jpg(image_path):
+    # Create the new image path with .jpg extension
+    new_image_path = os.path.splitext(image_path)[0] + '.jpg'
+    
+    # Check if the original file exists
+    if os.path.exists(new_image_path):
+        return new_image_path
+    else:
+        print(f"File not found: {new_image_path}")
+        return None
 
 def change_wallpaper(image_path):
-    # Update the wallpaper in the desktop-items-0.conf file
-    config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
+    new_image_path = replace_extension_to_jpg(image_path)
 
-    # Read the config file
-    with open(config_path, 'r') as file:
-        config = file.readlines()
+    if new_image_path:
+        print(new_image_path)  # Output will be 'path/to/your/image.jpg'
+    else:
+        new_image_path = media_folder + 'pictures/logo.jpg'
 
-    # Modify the wallpaper path
-    with open(config_path, 'w') as file:
-        for line in config:
-            if line.startswith('wallpaper='):
-                file.write(f'wallpaper={image_path}\n')
-            else:
-                file.write(line)
+    try:
+        # Update the wallpaper in the desktop-items-0.conf file
+        config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
 
-    # Refresh the desktop using subprocess
-    subprocess.run(['pcmanfm', '--reconfigure'])
+        # Read the config file
+        with open(config_path, 'r') as file:
+            config = file.readlines()
 
+        # Modify the wallpaper path
+        with open(config_path, 'w') as file:
+            for line in config:
+                if line.startswith('wallpaper='):
+                    file.write(f'wallpaper={new_image_path}\n')
+                else:
+                    file.write(line)
+
+        # Refresh the desktop using subprocess
+        subprocess.run(['pcmanfm', '--reconfigure'])
+    except Exception as e:
+        print(f"Image load error: {e}")
 
 change_wallpaper(media_folder + 'pictures/logo.jpg')
-
 
 def f_exists(filename):
     try:
@@ -1731,12 +1749,6 @@ def exit_early():
     time.sleep(0.1)
 
 
-def rst_an():
-    stop_media()
-    led.fill((0, 0, 0))
-    led.show()
-
-
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
         try:
@@ -1943,6 +1955,7 @@ def manage_audio_files():
 # Animation methods
 
 def rst_an():
+    change_wallpaper(media_folder + 'pictures/welcome-show-starting.jpg')
     stop_media()
     media_player.stop()
     led.fill((0, 0, 0))
@@ -2023,7 +2036,6 @@ def an_light(f_nm):
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
     json_fn = json_fn.replace(".wav", "")
-    json_fn = json_fn.replace("customers_owned_music_", "")
 
     flsh_t = []
 
@@ -2050,6 +2062,7 @@ def an_light(f_nm):
         if is_video:
             play_movie_file(media0)
         else:
+            change_wallpaper(media0)
             play_a_0(media0, False)
 
     srt_t = time.monotonic()  # perf_counter
