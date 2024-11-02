@@ -1955,7 +1955,7 @@ def manage_audio_files():
 # Animation methods
 
 def rst_an():
-    change_wallpaper(media_folder + 'pictures/welcome-show-starting.jpg')
+    change_wallpaper(media_folder + 'pictures/black.jpg')
     stop_media()
     media_player.stop()
     led.fill((0, 0, 0))
@@ -2111,11 +2111,9 @@ def an_ts(f_nm):
     global ts_mode, an_running
     an_running = True
 
-    cust_f = "customers_owned_music_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
     json_fn = json_fn.replace(".wav", "")
-    json_fn = json_fn.replace("customers_owned_music_", "")
 
     t_s = []
 
@@ -2138,12 +2136,8 @@ def an_ts(f_nm):
         if not mix.get_busy() and not media_player.is_playing():
             led.fill((0, 0, 0))
             led.show()
-            if cust_f:
-                files.write_json_file(
-                    media_folder + "customers_owned_music/" + json_fn + ".json", t_s)
-            else:
-                files.write_json_file(
-                    media_folder + "sndtrk/" + json_fn + ".json", t_s)
+            files.write_json_file(
+                media_folder + json_fn + ".json", t_s)
             break
 
     ts_mode = False
