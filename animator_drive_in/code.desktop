@@ -2,4 +2,4 @@
 [Desktop Entry]
 Type=Application
 Name=code.desktop
-Exec=xterm -hold -e '/usr/bin/python3 $HOME/code/code.py'
+Exec=xterm -iconic -hold -e '/usr/bin/python3 $HOME/code/code.py'

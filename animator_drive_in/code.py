@@ -1029,6 +1029,7 @@ def close_midori():
 
 
 def open_midori():
+    if cfg["show_webpage"] == False: return
     try:
         command = "midori -e Fullscreen http://animator-drive-in.local:8083/"
         subprocess.Popen(command, shell=True)
@@ -2301,9 +2302,9 @@ def set_hdw(cmd, dur):
                 file_nm = seg[1:]
                 stop_play_list = False
                 add_command(file_nm)
-            if seg[:3] == 'API':  # API_UUU_DDD = Api POST call UUU url, DDD data object i.e. {"an": data_object}
+            if seg[:3] == 'API':  # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
                 seg_split = seg.split("_")
-                send_animator_post(seg_split[1], "animation", seg_split[2])
+                send_animator_post(seg_split[1], seg_split[2], seg_split[3])
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
