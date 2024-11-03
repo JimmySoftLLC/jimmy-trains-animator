@@ -304,7 +304,7 @@ lst_opt = ''
 an_running = False
 is_gtts_reachable = False
 stop_play_list = False
-terminal_window_during_playback = True
+terminal_window_during_playback = False
 
 
 ################################################################################
@@ -1436,7 +1436,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def mode_post(self, rq_d):
         print(rq_d)
-        global cfg, cont_run, ts_mode
+        global cfg, cont_run, ts_mode, terminal_window_during_playback
         if rq_d["an"] == "cont_mode_on":
             play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
             cont_run = True
@@ -1450,6 +1450,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif rq_d["an"] == "timestamp_mode_off":
             play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
             ts_mode = False
+        elif rq_d["an"] == "terminal_mode_on":
+            play_a_0(code_folder + "mvc/terminal_mode_on.wav")
+            terminal_window_during_playback = True
+        elif rq_d["an"] == "terminal_mode_off":
+            play_a_0(code_folder + "mvc/terminal_mode_off.wav")
+            terminal_window_during_playback = False
         elif "intermission_" in rq_d["an"]:
             rq_d_split = rq_d["an"].split("_")
             cfg["intermission"] = rq_d_split[1]
@@ -1461,6 +1467,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = {"mode processed": rq_d["an"]}
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
+
 
     def animation_post(self, rq_d):
         global cfg, cont_run, ts_mode, stop_play_list
