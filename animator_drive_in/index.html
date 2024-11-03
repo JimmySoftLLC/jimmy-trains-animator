@@ -467,7 +467,7 @@
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
                 <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-                <button class="mui-btn mui-btn--primary" onclick="pasteTable()">Paste Table</button>
+                <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
                 <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
@@ -1249,8 +1249,55 @@
     });
 
     // Global variables to store number of rows and data
-    var globalNumRows = 0;
-    var globalData = [];
+    var globalPasteTableNumRows = 0;
+    var globalPasteTable = [];
+    var globalRowIndex = 0; // Index for data
+
+    function pasteRowsAndResetTable() {
+        var pasteIndex = 0;
+
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+
+        // Extract data from table rows
+        var data = rows.map(function (row) {
+            var cells = Array.from(row.querySelectorAll("td"));
+            var values = cells.map(function (cell) {
+                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null;
+                return cellValue;
+            });
+            return values;
+        });
+
+        console.log(globalPasteTable);
+        console.log(data);
+
+        // First mutate the data
+        while (globalRowIndex < data.length && pasteIndex < globalPasteTable.length) {
+            // Replace data[globalRowIndex][2] with the item from globalPasteTable
+            data[globalRowIndex][2] = globalPasteTable[pasteIndex];
+            globalRowIndex++; // Move to the next row in data
+            pasteIndex++; // Move to the next item in globalPasteTable
+        }
+
+        // Now combine the data into combinedData
+        const combinedData = data.map(function (row) {
+            var secondsConverted = convertTimeCodeToSeconds(row[1]);
+            return secondsConverted + "|" + (row[2] || ""); // Ensure a fallback in case row[2] is undefined
+        });
+
+        console.log(combinedData);
+
+        // Populate the table with the combined data
+        populateTable(combinedData);
+    }
+
+
+
+    function animationCellClicked(event) {
+        var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
+        globalRowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
+        console.log("Row Index:", globalRowIndex);
+    }
 
     function editPasteTableDialog() {
         var modalEl = document.getElementById("modalEl");
@@ -1296,8 +1343,8 @@
         saveBtn.textContent = 'Save';
         saveBtn.addEventListener('click', function () {
             var data = collectTableData();
-            globalData = data; // Save data globally
-            globalNumRows = data.length; // Save the number of rows globally
+            globalPasteTable = data; // Save data globally
+            globalPasteTableNumRows = data.length; // Save the number of rows globally
             mui.overlay('off', modalEl); // Close modal after saving
         });
         form.appendChild(saveBtn);
@@ -1328,14 +1375,14 @@
         mui.overlay('on', modalEl);
 
         // Populate fields if there's existing data
-        document.getElementById('numRows').value = globalNumRows;
-        if (globalNumRows > 0) {
-            generateTable(globalData); // Generate the table with existing data
+        document.getElementById('numRows').value = globalPasteTableNumRows;
+        if (globalPasteTableNumRows > 0) {
+            generateTable(globalPasteTable); // Generate the table with existing data
         }
 
         // Function to generate the table
         function generateTable(data) {
-            var numRows = parseInt(document.getElementById('numRows').value, 10) || globalNumRows;
+            var numRows = parseInt(document.getElementById('numRows').value, 10) || globalPasteTableNumRows;
             var tableContainer = document.getElementById('tableContainer');
             removePasteTableChildNodes(tableContainer); // Clear existing table if any
 
@@ -1395,11 +1442,6 @@
             parent.removeChild(parent.firstChild);
         }
     }
-
-    function pasteTable() {
-        console.log(globalData);
-    }
-
 
     function createPlaylistDialog() {
         var modalEl = document.getElementById("modalEl")
@@ -1864,26 +1906,16 @@
         }
     }
 
-    var rowIndex
 
     function timeSecondsCellChanged(event) {
         var inputValue = convertSecondsToTimeCode(event.target.value);
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 2, inputValue);
     }
 
-    function animationCellClicked(event) {
-        var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
-        rowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
-        console.log("Row Index:", rowIndex);
-    }
-
-
     function timeCodeCellChanged(event) {
         var inputValue = convertTimeCodeToSeconds(event.target.value)
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
     }
-
-    var rowClicked = null;
 
     function createDataRow(rowData, rowIndex) {
         var row = document.createElement("tr");

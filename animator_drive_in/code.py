@@ -1958,6 +1958,7 @@ def rst_an():
     change_wallpaper(media_folder + 'pictures/black.jpg')
     stop_media()
     media_player.stop()
+    led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
 
@@ -2218,7 +2219,7 @@ def set_hdw(cmd, dur):
                 set_neo_module_to(mod_n, index, v)
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0] == 'B':
-                br = int(seg[2:])
+                br = int(seg[1:])
                 led.brightness = float(br/100)
                 led.show()
             # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
