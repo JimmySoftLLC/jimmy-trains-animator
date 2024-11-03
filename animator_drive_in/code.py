@@ -125,6 +125,7 @@ from collections import OrderedDict
 import signal
 import copy
 from pydub import AudioSegment
+import sys
 
 
 # Turn off audio while setting things up
@@ -303,6 +304,7 @@ lst_opt = ''
 an_running = False
 is_gtts_reachable = False
 stop_play_list = False
+terminal_window_during_playback = True
 
 
 ################################################################################
@@ -337,6 +339,72 @@ four_sw = Debouncer(switch_io_4)
 pygame.mixer.init()
 mix = pygame.mixer.music
 
+
+################################################################################
+# Terminal to observe timestamp during playback
+
+terminal_process = None
+
+def kill_terminal_process():
+    global terminal_process  # Use the global variable
+    if terminal_process is not None:
+        terminal_process.terminate()  # Gracefully terminate the terminal
+        print("Terminal process has been terminated.")
+        terminal_process.kill()  # Use this to force kill if necessary
+        print("Terminal process has been forcefully killed.")
+    else:
+        print("No terminal process to kill.")
+
+def open_terminal():
+    # Check for Linux platform
+    if sys.platform.startswith('linux'):
+        # Set the font size for the terminal (example value)
+        font_size = "3.0"  # Adjust this value to set the desired font size
+        try:
+            # Attempt to set the font size
+            subprocess.run(['gsettings', 'set', 'org.gnome.desktop.interface', 'text-scaling-factor', font_size], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error setting font size: {e}")
+            return None
+        try:
+            # Open LXTerminal
+            terminal_process = subprocess.Popen(['lxterminal', '--command', 'tail -f /tmp/output.log'])
+            time.sleep(2)  # Wait a moment for the terminal to open
+
+            # Use xdotool to find the window and resize/move it
+            window_ids = subprocess.check_output(['xdotool', 'search', '--name', 'lxterminal']).strip().decode('utf-8').split()
+            for window_id in window_ids:
+                subprocess.run(['xdotool', 'windowmove', window_id, '0', '0'])
+                subprocess.run(['xdotool', 'windowsize', window_id, '300', '300'])
+                print("Terminal window moved and resized.")
+            else:
+                print("LXTerminal window not found.")
+            return terminal_process
+        except Exception as e:
+            print(f"Error opening terminal: {e}")
+            return None
+    else:
+        print("Unsupported platform.")
+        return None
+    
+def move_vlc_window():
+    try:
+        # Find the VLC window by name
+        window_id = subprocess.check_output(['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
+        if window_id:
+            # Move the window to (100, 100) and resize to 800x600
+            subprocess.run(['xdotool', 'windowmove', window_id, '640', '360'])
+            subprocess.run(['xdotool', 'windowsize', window_id, '640', '360'])
+            print("VLC window moved and resized.")
+        else:
+            print("VLC window not found.")
+    except Exception as e:
+        print(f"Error moving VLC window: {e}")
+    
+def write_to_log(message):
+    if terminal_window_during_playback:
+        with open('/tmp/output.log', 'a') as f:
+            f.write(message + '\n')
 ################################################################################
 # Setup video hardware
 
@@ -344,16 +412,12 @@ mix = pygame.mixer.music
 instance = vlc.Instance('--aout=alsa')
 media_player = vlc.MediaPlayer(instance)
 
-
 def play_movie_file(movie_filename):
     # Load media
     media = instance.media_new(movie_filename)
     media_player.set_media(media)
 
-    media_player.set_fullscreen(True)
-
-    # Set the volume explicitly for each media file
-    upd_vol(0.05)
+    media_player.set_fullscreen(not terminal_window_during_playback)
 
     # Play the video
     media_player.play()
@@ -361,6 +425,11 @@ def play_movie_file(movie_filename):
     while not media_player.is_playing():
         time.sleep(.05)
 
+    if terminal_window_during_playback:
+        move_vlc_window()
+
+    # Set the volume explicitly for each media file
+    upd_vol(0.05)
 
 def pause_movie():
     media_player.pause()
@@ -1958,6 +2027,7 @@ def rst_an():
     change_wallpaper(media_folder + 'pictures/black.jpg')
     stop_media()
     media_player.stop()
+    kill_terminal_process()
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
@@ -2026,7 +2096,7 @@ def return_file_to_use (f_nm):
 
 
 def an_light(f_nm):
-    global ts_mode, an_running
+    global ts_mode, an_running, terminal_process
     an_running = True
     if stop_play_list:
         return
@@ -2060,6 +2130,8 @@ def an_light(f_nm):
 
     if not plylst_f:
         media0 = media_folder + f_nm
+        if terminal_window_during_playback:
+            terminal_process = open_terminal()
         if is_video:
             play_movie_file(media0)
         else:
@@ -2081,8 +2153,9 @@ def an_light(f_nm):
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             t_elaspsed = "{:.1f}".format(t_past)
-            files.log_item("Time elapsed: " + str(t_elaspsed) +
-                           " Timestamp: " + ft1[0])
+            log_this = "Time elapsed: " + str(t_elaspsed) + " Timestamp: " + ft1[0]
+            files.log_item(log_this)
+            write_to_log(log_this)
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
                 rst_an()
