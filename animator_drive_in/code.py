@@ -301,7 +301,7 @@ add_snd = cfg_add_song["add_sounds_animate"]
 cont_run = False
 ts_mode = False
 lst_opt = ''
-an_running = False
+an_running = ""
 is_gtts_reachable = False
 stop_play_list = False
 terminal_window_during_playback = False
@@ -2104,7 +2104,6 @@ def return_file_to_use (f_nm):
 
 def an_light(f_nm):
     global ts_mode, an_running, terminal_process
-    an_running = True
     if stop_play_list:
         return
 
@@ -2140,8 +2139,10 @@ def an_light(f_nm):
         if terminal_window_during_playback:
             terminal_process = open_terminal()
         if is_video:
+            an_running = "media_player"
             play_movie_file(media0)
         else:
+            an_running = "mix"
             change_wallpaper(media0)
             play_a_0(media0, False)
 
@@ -2167,7 +2168,7 @@ def an_light(f_nm):
             if resp == "STOP":
                 rst_an()
                 time.sleep(.2)
-                an_running = False
+                an_running = ""
                 return
             flsh_i += 1
         if not mix.get_busy() and not media_player.is_playing():  # and not plylst_f and not an_running
@@ -2175,14 +2176,14 @@ def an_light(f_nm):
             media_player.stop()
             rst_an()
             time.sleep(.2)
-            an_running = False
+            an_running = ""
             return "DONE"
         if flsh_i > len(flsh_t)-1:
             mix.stop()
             media_player.stop()
             rst_an()
             time.sleep(.2)
-            an_running = False
+            an_running = ""
             return "DONE"
         time.sleep(.1)
 
@@ -2574,18 +2575,31 @@ class BseSt(Ste):
             switch_state = utilities.switch_state_four_switches(
                 l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
             if switch_state == "left" and cfg["can_cancel"]:
-                an_running = False
+                an_running = ""
                 mix.stop()
                 media_player.stop()
+                rst_an()
+                time.sleep(.5)
+            if switch_state == "left_held" and cfg["can_cancel"]:
+                clear_queue()
+                an_running = ""
+                mix.stop()
+                media_player.stop()
+                cont_run = False
+                stop_play_list = True
                 rst_an()
                 time.sleep(.5)
             if switch_state == "right" and cfg["can_cancel"]:
-                an_running = False  
-                stop_play_list = True
-                mix.stop()
-                media_player.stop()
-                rst_an()
-                time.sleep(.5)
+                if an_running = "media_player":
+                    if media_player.is_playing():
+                        media_player.pause()
+                    else:
+                        media_player.play()
+                if an_running = "mix":
+                    if mix.get_busy():
+                        mix.pause(0)
+                    else:
+                        mix.unpause(0)
             if switch_state == "three":
                 print("sw three fell")
                 ch_vol("lower")
