@@ -409,12 +409,12 @@ def write_to_log(message):
 # Setup video hardware
 
 # create vlc media player object for playing video, music etc
-instance = vlc.Instance('--aout=alsa')
-media_player = vlc.MediaPlayer(instance)
+vlc_instance = vlc.Instance('--aout=alsa')
+media_player = vlc.MediaPlayer(vlc_instance)
 
 def play_movie_file(movie_filename):
     # Load media
-    media = instance.media_new(movie_filename)
+    media = vlc_instance.media_new(movie_filename)
     media_player.set_media(media)
 
     media_player.set_fullscreen(not terminal_window_during_playback)
@@ -422,7 +422,7 @@ def play_movie_file(movie_filename):
     # Play the video
     media_player.play()
 
-    while not media_player.is_playing():
+    while not media_player_state() == "Playing":
         time.sleep(.05)
 
     if terminal_window_during_playback:
@@ -437,6 +437,19 @@ def pause_movie():
 
 def play_movie():
     media_player.play()
+
+def media_player_state():
+    state = media_player.get_state()
+    if state == vlc.State.Playing:
+        return "Playing"
+    elif state == vlc.State.Paused:
+        return "Paused"
+    elif state == vlc.State.Stopped:
+        return "Stopped"
+    elif state == vlc.State.Ended:
+        return "Ended"
+    else:
+        return "Other state"
 
 
 ################################################################################
@@ -1805,15 +1818,15 @@ def play_a_0(file_name, wait_until_done=True, allow_exit=True):
 
 
 def wait_snd():
-    while mix.get_busy() or media_player.is_playing():
+    while mix.get_busy() or media_player_state() == "Playing":
         exit_early()
     print("done playing")
 
 
 def stop_media():
-    media_player.stop()
+    # media_player.stop()
     mix.stop()
-    while mix.get_busy() or media_player.is_playing():
+    while mix.get_busy() or media_player_state() == "Playing":
         pass
 
 
@@ -2033,7 +2046,7 @@ def manage_audio_files():
 def rst_an():
     change_wallpaper(media_folder + 'pictures/black.jpg')
     stop_media()
-    media_player.stop()
+    # media_player.stop()
     kill_terminal_process()
     led.brightness = 1.0
     led.fill((0, 0, 0))
@@ -2171,16 +2184,16 @@ def an_light(f_nm):
                 an_running = ""
                 return
             flsh_i += 1
-        if not mix.get_busy() and not media_player.is_playing():  # and not plylst_f and not an_running
+        if not mix.get_busy() and not media_player_state() == "Playing" and not media_player_state() == "Paused":
             mix.stop()
-            media_player.stop()
+            # media_player.stop()
             rst_an()
             time.sleep(.2)
             an_running = ""
             return "DONE"
         if flsh_i > len(flsh_t)-1:
             mix.stop()
-            media_player.stop()
+            # media_player.stop()
             rst_an()
             time.sleep(.2)
             an_running = ""
@@ -2191,7 +2204,7 @@ def an_light(f_nm):
 def an_ts(f_nm):
     print("time stamp mode")
     global ts_mode, an_running
-    an_running = True
+    an_running == "time_stamp_mode"
 
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
@@ -2215,7 +2228,7 @@ def an_ts(f_nm):
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
-        if not mix.get_busy() and not media_player.is_playing():
+        if not mix.get_busy() and not media_player_state() == "Playing":
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
@@ -2227,6 +2240,7 @@ def an_ts(f_nm):
     play_a_0(code_folder + "mvc/timestamp_saved.wav")
     play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
     play_a_0(code_folder + "mvc/animations_are_now_active.wav")
+    an_running = ""
 
 
 ###############
@@ -2571,42 +2585,42 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global cont_run, an_running, stop_play_list
-        if an_running:
+        if an_running and an_running != "time_stamp_mode":
             switch_state = utilities.switch_state_four_switches(
                 l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
             if switch_state == "left" and cfg["can_cancel"]:
                 an_running = ""
                 mix.stop()
-                media_player.stop()
+                # media_player.stop()
                 rst_an()
                 time.sleep(.5)
-            if switch_state == "left_held" and cfg["can_cancel"]:
+            elif switch_state == "left_held" and cfg["can_cancel"]:
                 clear_queue()
                 an_running = ""
                 mix.stop()
-                media_player.stop()
+                # media_player.stop()
                 cont_run = False
                 stop_play_list = True
                 rst_an()
                 time.sleep(.5)
-            if switch_state == "right" and cfg["can_cancel"]:
-                if an_running = "media_player":
-                    if media_player.is_playing():
+            elif switch_state == "right" and cfg["can_cancel"]:
+                if an_running == "media_player":
+                    if media_player_state() == "Playing":
                         media_player.pause()
                     else:
                         media_player.play()
-                if an_running = "mix":
+                if an_running == "mix":
                     if mix.get_busy():
                         mix.pause(0)
                     else:
                         mix.unpause(0)
-            if switch_state == "three":
+            elif switch_state == "three":
                 print("sw three fell")
                 ch_vol("lower")
-            if switch_state == "four":
+            elif switch_state == "four":
                 print("sw four fell")
                 ch_vol("raise")
-        else:
+        elif an_running != "time_stamp_mode":
             switch_state = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0)
             if switch_state == "left_held":
