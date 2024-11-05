@@ -126,6 +126,7 @@ import signal
 import copy
 from pydub import AudioSegment
 import sys
+import queue
 
 
 # Turn off audio while setting things up
@@ -149,10 +150,11 @@ snd_opt_folder = code_folder + "snd_opt/"
 ################################################################################
 # Loading image as wallpaper on pi
 
+
 def replace_extension_to_jpg(image_path):
     # Create the new image path with .jpg extension
     new_image_path = os.path.splitext(image_path)[0] + '.jpg'
-    
+
     # Check if the original file exists
     if os.path.exists(new_image_path):
         return new_image_path
@@ -160,40 +162,45 @@ def replace_extension_to_jpg(image_path):
         print(f"File not found: {new_image_path}")
         return None
 
+wallpaper_lock = threading.Lock()
+
 def change_wallpaper(image_path):
-    # return
-    new_image_path = replace_extension_to_jpg(image_path)
+    # Attempt to acquire the lock using a context manager
+    with wallpaper_lock:  # This ensures the lock is released properly
+        try:
+            new_image_path = replace_extension_to_jpg(image_path)
 
-    if new_image_path:
-        print(new_image_path)  # Output will be 'path/to/your/image.jpg'
-    else:
-        new_image_path = media_folder + 'pictures/logo.jpg'
+            if new_image_path:
+                # Output will be 'path/to/your/image.jpg'
+                print(new_image_path)
+            else:
+                new_image_path = media_folder + 'pictures/logo.jpg'
 
-    try:
-        # Update the wallpaper in the desktop-items-0.conf file
-        config_path = get_home_path() + '.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
+            # Update the wallpaper in the desktop-items-0.conf file
+            config_path = get_home_path() + '.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
 
-        # Read the config file
-        with open(config_path, 'r') as file:
-            config = file.readlines()
+            # Read the config file
+            with open(config_path, 'r') as file:
+                config = file.readlines()
 
-        # Modify the wallpaper path
-        with open(config_path, 'w') as file:
-            for line in config:
-                if line.startswith('wallpaper='):
-                    file.write(f'wallpaper={new_image_path}\n')
-                else:
-                    file.write(line)
+            # Modify the wallpaper path
+            with open(config_path, 'w') as file:
+                for line in config:
+                    if line.startswith('wallpaper='):
+                        file.write(f'wallpaper={new_image_path}\n')
+                    else:
+                        file.write(line)
 
-        # Refresh the desktop using subprocess
-        # subprocess.run(['pcmanfm', '--reconfigure'])
-        os.system('pcmanfm --reconfigure')
-        print("Wall paper should be updated.")
-        time.sleep(1)
-    except Exception as e:
-        print(f"Image load error: {e}")
+            # Refresh the desktop, os.system will only return when finished
+            os.system('pcmanfm --reconfigure')
+            print("Wallpaper updated.")
+
+        except Exception as e:
+            print(f"Image load error: {e}")
+
 
 change_wallpaper(media_folder + 'pictures/logo.jpg')
+
 
 def f_exists(filename):
     try:
@@ -295,7 +302,8 @@ web_m = cfg_web["web_menu"]
 cfg_vol = files.read_json_file(code_folder + "mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
 
-cfg_intermission_settings = files.read_json_file(code_folder + "mvc/intermission_settings.json")
+cfg_intermission_settings = files.read_json_file(
+    code_folder + "mvc/intermission_settings.json")
 intermission_settings = cfg_intermission_settings["intermission_settings"]
 
 cfg_add_song = files.read_json_file(
@@ -349,6 +357,7 @@ mix = pygame.mixer.music
 
 terminal_process = None
 
+
 def kill_terminal_process():
     global terminal_process  # Use the global variable
     if terminal_process is not None:
@@ -359,6 +368,7 @@ def kill_terminal_process():
     else:
         print("No terminal process to kill.")
 
+
 def open_terminal():
     # Check for Linux platform
     if sys.platform.startswith('linux'):
@@ -366,20 +376,24 @@ def open_terminal():
         font_size = "3.0"  # Adjust this value to set the desired font size
         try:
             # Attempt to set the font size
-            subprocess.run(['gsettings', 'set', 'org.gnome.desktop.interface', 'text-scaling-factor', font_size], check=True)
+            subprocess.run(['gsettings', 'set', 'org.gnome.desktop.interface',
+                           'text-scaling-factor', font_size], check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error setting font size: {e}")
             return None
         try:
             # Open LXTerminal
-            terminal_process = subprocess.Popen(['lxterminal', '--command', 'tail -f /tmp/output.log'])
+            terminal_process = subprocess.Popen(
+                ['lxterminal', '--command', 'tail -f /tmp/output.log'])
             time.sleep(2)  # Wait a moment for the terminal to open
 
             # Use xdotool to find the window and resize/move it
-            window_ids = subprocess.check_output(['xdotool', 'search', '--name', 'lxterminal']).strip().decode('utf-8').split()
+            window_ids = subprocess.check_output(
+                ['xdotool', 'search', '--name', 'lxterminal']).strip().decode('utf-8').split()
             for window_id in window_ids:
                 subprocess.run(['xdotool', 'windowmove', window_id, '0', '0'])
-                subprocess.run(['xdotool', 'windowsize', window_id, '300', '300'])
+                subprocess.run(
+                    ['xdotool', 'windowsize', window_id, '300', '300'])
                 print("Terminal window moved and resized.")
             else:
                 print("LXTerminal window not found.")
@@ -390,11 +404,13 @@ def open_terminal():
     else:
         print("Unsupported platform.")
         return None
-    
+
+
 def move_vlc_window():
     try:
         # Find the VLC window by name
-        window_id = subprocess.check_output(['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
+        window_id = subprocess.check_output(
+            ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
         if window_id:
             # Move the window to (100, 100) and resize to 800x600
             subprocess.run(['xdotool', 'windowmove', window_id, '640', '360'])
@@ -404,7 +420,8 @@ def move_vlc_window():
             print("VLC window not found.")
     except Exception as e:
         print(f"Error moving VLC window: {e}")
-    
+
+
 def write_to_log(message):
     if terminal_window_during_playback:
         with open('/tmp/output.log', 'a') as f:
@@ -412,9 +429,11 @@ def write_to_log(message):
 ################################################################################
 # Setup video hardware
 
+
 # create vlc media player object for playing video, music etc
 vlc_instance = vlc.Instance('--aout=alsa')
 media_player = vlc.MediaPlayer(vlc_instance)
+
 
 def play_movie_file(movie_filename):
     # Load media
@@ -435,12 +454,14 @@ def play_movie_file(movie_filename):
     # Set the volume explicitly for each media file
     upd_vol(0.05)
 
+
 def pause_movie():
     media_player.pause()
 
 
 def play_movie():
     media_player.play()
+
 
 def media_player_state():
     state = media_player.get_state()
@@ -1002,7 +1023,6 @@ def cycle_rgb_values(type, rgb_values, transition_time=2, steps=100):
 ################################################################################
 # Requests
 
-import requests
 
 class ApiClient:
     def __init__(self, base_url):
@@ -1034,6 +1054,7 @@ class ApiClient:
             return response.json()  # or response.text for raw text
         else:
             response.raise_for_status()  # Raise an error for bad responses
+
 
 def send_animator_post(url, endpoint, new_data):
     new_url = "http://" + url
@@ -1103,14 +1124,14 @@ def close_midori():
 
 
 def open_midori():
-    if cfg["show_webpage"] == False: return
+    if cfg["show_webpage"] == False:
+        return
     try:
         command = "midori -e Fullscreen http://animator-drive-in.local:8083/"
         subprocess.Popen(command, shell=True)
         print("Midori launched.")
     except Exception as e:
         print(f"Failed to start Midori: {e}")
-
 
 
 ################################################################################
@@ -1485,7 +1506,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-
     def animation_post(self, rq_d):
         global cfg, cont_run, ts_mode, stop_play_list
         cfg["option_selected"] = rq_d["an"]
@@ -1680,6 +1700,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
+
 if (web):
     # Get the local IP address
     local_ip = get_local_ip()
@@ -1691,11 +1712,9 @@ if (web):
     httpd = socketserver.TCPServer((local_ip, PORT), handler)
     httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-
     def start_server():
         print(f"Serving on {local_ip}:{PORT}")
         httpd.serve_forever()
-
 
     # Set up mDNS service info
     name_str = cfg["HOST_NAME"] + "._http._tcp.local."
@@ -1716,20 +1735,19 @@ gc_col("web server")
 ################################################################################
 # Command queue
 
-import queue
-import threading
-import time
 
 # Create a FIFO queue
 command_queue = queue.Queue()
 stop_flag = False
+
 
 def add_command(command):
     """Add a command to the queue."""
     command_queue.put(command)
     print(f"Command added: {command}")
 
-def process_commands():
+
+def process_commands():  # note this method is run on its own thread
     """Continuously process commands from the queue."""
     global stop_flag, cfg
     while not stop_flag:
@@ -1741,11 +1759,13 @@ def process_commands():
         else:
             time.sleep(1)  # Sleep for a while if the queue is empty
 
+
 def clear_queue():
     """Clear the queue."""
     with command_queue.mutex:
         command_queue.queue.clear()
     print("Command queue cleared.")
+
 
 def stop_all_queue_commands():
     """Stop processing and clear the queue."""
@@ -1918,7 +1938,8 @@ def get_random_joke():
 
 
 def check_gtts_status():
-    if web == False: return False
+    if web == False:
+        return False
     try:
         # gTTS API endpoint
         url = "https://translate.google.com"
@@ -1962,7 +1983,8 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 def text_to_mp3_file(text, file_name, timeout_duration):
     global is_gtts_reachable
-    if is_gtts_reachable == False: return
+    if is_gtts_reachable == False:
+        return
     try:
         # Set the timeout (in seconds)
         signal.alarm(timeout_duration)
@@ -1997,7 +2019,8 @@ def text_to_mp3_file(text, file_name, timeout_duration):
 
 
 def generate_mp3_from_filename(file_name):
-    if is_gtts_reachable == False: return
+    if is_gtts_reachable == False:
+        return
     text_to_speak = file_name.replace("_", " ")
     text_to_speak = text_to_speak.replace(".mp3", "")
 
@@ -2026,7 +2049,8 @@ def generate_mp3_from_filename(file_name):
 
 
 def manage_audio_files():
-    if is_gtts_reachable == False: return
+    if is_gtts_reachable == False:
+        return
 
     # Get all files in the folder
     files = os.listdir(snd_opt_folder)
@@ -2056,6 +2080,7 @@ def rst_an():
     led.fill((0, 0, 0))
     led.show()
 
+
 def an(f_nm):
     global cfg, lst_opt, an_running
     print("Filename: " + f_nm)
@@ -2067,7 +2092,7 @@ def an(f_nm):
         else:
             an_light(cur_opt)
             gc_col("animation cleanup")
-            if rnd_prob (float(cfg["intermission"])):
+            if rnd_prob(float(cfg["intermission"])):
                 cur_opt = return_file_to_use("random_intermission")
                 an_light(cur_opt)
                 gc_col("animation cleanup")
@@ -2078,7 +2103,8 @@ def an(f_nm):
         return
     gc_col("Animation complete.")
 
-def return_file_to_use (f_nm):
+
+def return_file_to_use(f_nm):
     global cfg, lst_opt, an_running
     cur_opt = f_nm
     if f_nm == "random_play lists":
@@ -2178,9 +2204,10 @@ def an_light(f_nm):
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             t_elaspsed = "{:.1f}".format(t_past)
-            log_this = "Time elapsed: " + str(t_elaspsed) + " Timestamp: " + ft1[0]
+            log_this = "Time elapsed: " + \
+                str(t_elaspsed) + " Timestamp: " + ft1[0]
             files.log_item(log_this)
-            write_to_log("Timestamp: " + ft1[0]+ " Cmd: " + ft1[1])
+            write_to_log("Timestamp: " + ft1[0] + " Cmd: " + ft1[1])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
                 rst_an()
@@ -2262,8 +2289,10 @@ def rnd_prob(random_value):
         return True
     else:
         y = random.random()
-        if y < random_value: return True
+        if y < random_value:
+            return True
     return False
+
 
 def set_hdw(cmd, dur):
     global sp, br, stop_play_list
@@ -2378,12 +2407,14 @@ def set_hdw(cmd, dur):
                         s_arr[i].angle = v
                 else:
                     s_arr[num-1].angle = int(v)
-                        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-            if seg[0] == 'Q':  # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
+                    # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
+            # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
+            if seg[0] == 'Q':
                 file_nm = seg[1:]
                 stop_play_list = False
                 add_command(file_nm)
-            if seg[:3] == 'API':  # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
+            # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
+            if seg[:3] == 'API':
                 seg_split = seg.split("_")
                 send_animator_post(seg_split[1], seg_split[2], seg_split[3])
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
@@ -2619,9 +2650,9 @@ class BseSt(Ste):
                         media_player.play()
                 if an_running == "mix":
                     if mix.get_busy():
-                        mix.pause(0)
+                        mix.pause()
                     else:
-                        mix.unpause(0)
+                        mix.unpause()
             elif switch_state == "three":
                 print("sw three fell")
                 ch_vol("lower")
@@ -2645,6 +2676,7 @@ class BseSt(Ste):
             elif switch_state == "right":
                 mch.go_to('main_menu')
         time.sleep(.1)
+
 
 class Main(Ste):
 
@@ -2782,6 +2814,7 @@ class IntermissionSettings(Ste):
                 files.write_json_file(code_folder + "cfg.json", cfg)
                 play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
+
 
 class AddSnds(Ste):
 
@@ -2993,7 +3026,8 @@ while True:
         input("Press enter to exit...\n\n")
     finally:
         stop_all_queue_commands()
-        command_queue_processing_thread.join() # Wait for the command queue processing thread to finish
+        # Wait for the command queue processing thread to finish
+        command_queue_processing_thread.join()
         if (web):
             print("Unregistering mDNS service...")
             zeroconf.unregister_service(info)
