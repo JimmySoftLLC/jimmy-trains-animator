@@ -2071,8 +2071,8 @@ def manage_audio_files():
 ################################################################################
 # Animation methods
 
-def rst_an():
-    change_wallpaper(media_folder + 'pictures/black.jpg')
+def rst_an(file_name = media_folder + 'pictures/black.jpg'):
+    change_wallpaper(file_name)
     stop_media()
     media_player.stop()
     kill_terminal_process()
@@ -3021,6 +3021,18 @@ if (web):
     close_midori()
     open_midori()
 
+def stop_program():
+    stop_all_queue_commands()
+    # Wait for the command queue processing thread to finish
+    command_queue_processing_thread.join()
+    if (web):
+        print("Unregistering mDNS service...")
+        zeroconf.unregister_service(info)
+        zeroconf.close()
+        httpd.shutdown()
+    rst_an(media_folder + 'pictures/logo.jpg')
+    quit()
+
 while True:
     try:
         input("Press enter to exit...\n\n")
@@ -3033,7 +3045,7 @@ while True:
             zeroconf.unregister_service(info)
             zeroconf.close()
             httpd.shutdown()
-        rst_an()
+        rst_an(media_folder + 'pictures/logo.jpg')
         quit()
 
 
