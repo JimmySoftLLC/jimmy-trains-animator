@@ -161,6 +161,7 @@ def replace_extension_to_jpg(image_path):
         return None
 
 def change_wallpaper(image_path):
+    # return
     new_image_path = replace_extension_to_jpg(image_path)
 
     if new_image_path:
@@ -185,7 +186,10 @@ def change_wallpaper(image_path):
                     file.write(line)
 
         # Refresh the desktop using subprocess
-        subprocess.run(['pcmanfm', '--reconfigure'])
+        # subprocess.run(['pcmanfm', '--reconfigure'])
+        os.system('pcmanfm --reconfigure')
+        print("Wall paper should be updated.")
+        time.sleep(1)
     except Exception as e:
         print(f"Image load error: {e}")
 
@@ -1824,7 +1828,7 @@ def wait_snd():
 
 
 def stop_media():
-    # media_player.stop()
+    media_player.stop()
     mix.stop()
     while mix.get_busy() or media_player_state() == "Playing":
         pass
@@ -2046,7 +2050,7 @@ def manage_audio_files():
 def rst_an():
     change_wallpaper(media_folder + 'pictures/black.jpg')
     stop_media()
-    # media_player.stop()
+    media_player.stop()
     kill_terminal_process()
     led.brightness = 1.0
     led.fill((0, 0, 0))
@@ -2176,7 +2180,7 @@ def an_light(f_nm):
             t_elaspsed = "{:.1f}".format(t_past)
             log_this = "Time elapsed: " + str(t_elaspsed) + " Timestamp: " + ft1[0]
             files.log_item(log_this)
-            write_to_log(log_this)
+            write_to_log("Timestamp: " + ft1[0]+ "Cmd: " ft1[1])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
                 rst_an()
@@ -2186,14 +2190,14 @@ def an_light(f_nm):
             flsh_i += 1
         if not mix.get_busy() and not media_player_state() == "Playing" and not media_player_state() == "Paused":
             mix.stop()
-            # media_player.stop()
+            media_player.stop()
             rst_an()
             time.sleep(.2)
             an_running = ""
             return "DONE"
         if flsh_i > len(flsh_t)-1:
             mix.stop()
-            # media_player.stop()
+            media_player.stop()
             rst_an()
             time.sleep(.2)
             an_running = ""
@@ -2202,6 +2206,7 @@ def an_light(f_nm):
 
 
 def an_ts(f_nm):
+    global terminal_process
     print("time stamp mode")
     global ts_mode, an_running
     an_running == "time_stamp_mode"
@@ -2214,6 +2219,8 @@ def an_ts(f_nm):
 
     media0 = media_folder + f_nm
 
+    if terminal_window_during_playback:
+        terminal_process = open_terminal()
     if is_video:
         play_movie_file(media0)
     else:
@@ -2228,6 +2235,7 @@ def an_ts(f_nm):
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
+            write_to_log("Timestamp: " + t_elsp)
         if not mix.get_busy() and not media_player_state() == "Playing":
             led.fill((0, 0, 0))
             led.show()
@@ -2591,14 +2599,14 @@ class BseSt(Ste):
             if switch_state == "left" and cfg["can_cancel"]:
                 an_running = ""
                 mix.stop()
-                # media_player.stop()
+                media_player.stop()
                 rst_an()
                 time.sleep(.5)
             elif switch_state == "left_held" and cfg["can_cancel"]:
                 clear_queue()
                 an_running = ""
                 mix.stop()
-                # media_player.stop()
+                media_player.stop()
                 cont_run = False
                 stop_play_list = True
                 rst_an()
