@@ -64,6 +64,9 @@
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
             <h2>Random play:</h2>
             <div id="topicButtonContainer"></div>
+            <h2>Current Media Queue</h2>
+            <div id="currentMedia"></div>
+            <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
             <h2>Playlists:</h2>
             <div id="playlistContainer"></div>
             <h2>Media:</h2>
@@ -535,6 +538,7 @@
         getSceneChanges()
         getNeoChanges()
         getLifxEnabled()
+        makeSocketConnection()
     });
 
     function getLightString() {
@@ -2351,6 +2355,53 @@
             });
     });
 
+    function makeSocketConnection() {
+        const cfg = {
+            "HOST_NAME": "animator-drive-in" // Replace with your actual host name
+        };
+
+        const server_str = `${cfg["HOST_NAME"]}.local`; // Adjust as needed
+        const websocketUrl = `ws://${server_str}:8001`; // Ensure this matches your server setup
+
+        const queueList = document.getElementById('queueList');
+        const socket = new WebSocket(websocketUrl);
+
+        const currentMedia = document.getElementById('currentMedia');
+
+        socket.onopen = function (event) {
+            console.log('WebSocket connection established.');
+        };
+
+        socket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            // console.log("Received data:", data);  // Log received data for debugging
+            currentMedia.innerHTML = '';
+            const pElement = document.createElement('p');
+            pElement.textContent = "Playing: " + data.current_media_playing;
+            currentMedia.appendChild(pElement);
+            updateQueue(data.commands);
+        };
+
+        socket.onerror = function (error) {
+            console.error('WebSocket error:', error);
+        };
+
+        socket.onclose = function (event) {
+            console.log('WebSocket connection closed:', event);
+        };
+
+        function updateQueue(commands) {
+            // Clear the current list
+            queueList.innerHTML = '';
+            // Populate the list with new queue items
+            commands.forEach(command => {
+                const listItem = document.createElement('li');
+                listItem.className = 'MuiListItem-root MuiListItem-gutters MuiListItem-button';
+                listItem.textContent = command; // Assuming each command is a string
+                queueList.appendChild(listItem);
+            });
+        }
+    }
 
 </script>
 

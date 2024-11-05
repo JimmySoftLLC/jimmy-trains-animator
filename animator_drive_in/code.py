@@ -127,6 +127,8 @@ import copy
 from pydub import AudioSegment
 import sys
 import queue
+import asyncio
+import websockets
 
 
 # Turn off audio while setting things up
@@ -146,6 +148,7 @@ code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 plylst_folder = get_home_path() + "media/play lists/"
 snd_opt_folder = code_folder + "snd_opt/"
+current_media_playing = ""
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -162,7 +165,9 @@ def replace_extension_to_jpg(image_path):
         print(f"File not found: {new_image_path}")
         return None
 
+
 wallpaper_lock = threading.Lock()
+
 
 def change_wallpaper(image_path):
     # Attempt to acquire the lock using a context manager
@@ -1702,32 +1707,76 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
 if (web):
+
+
     # Get the local IP address
     local_ip = get_local_ip()
     print(f"Local IP address: {local_ip}")
-
-    # Set up the HTTP server
+    
+    QUEUE_PORT = 8001
     PORT = 8083  # Use port 80 for default HTTP access
-    handler = MyHttpRequestHandler
-    httpd = socketserver.TCPServer((local_ip, PORT), handler)
-    httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    
+    httpd = None
 
-    def start_server():
+    def start_http_server():
+        global httpd
+        # Set up the HTTP server
+        handler = MyHttpRequestHandler
+        httpd = socketserver.TCPServer((local_ip, PORT), handler)
+        httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         print(f"Serving on {local_ip}:{PORT}")
         httpd.serve_forever()
 
-    # Set up mDNS service info
-    name_str = cfg["HOST_NAME"] + "._http._tcp.local."
-    server_str = cfg["HOST_NAME"] + ".local."
-    desc = {'path': '/'}
-    info = ServiceInfo(
-        "_http._tcp.local.",
-        name_str,
-        addresses=[socket.inet_aton(local_ip)],
-        port=PORT,
-        properties=desc,
-        server=server_str
-    )
+    def get_mdns_info():
+        # Set up mDNS service info
+        name_str = cfg["HOST_NAME"] + "._http._tcp.local."
+        server_str = cfg["HOST_NAME"] + ".local."
+        desc = {'path': '/'}
+        mdns_info = ServiceInfo(
+            "_http._tcp.local.",
+            name_str,
+            addresses=[socket.inet_aton(local_ip)],
+            port=PORT,
+            properties=desc,
+            server=server_str
+        )
+        return mdns_info
+    
+    mdns_info = get_mdns_info()
+
+
+    async def command_queue_handler(websocket, path):
+        global current_media_playing
+        print("WebSocket connection established")
+        try:
+            while True:
+                if not command_queue.empty():  # Check if there are items in the queue
+                    commands = list(command_queue.queue)  # Convert to a list for JSON serialization
+                    # print(f"Sending command queue data: {commands}")
+                    response = {
+                        'commands': commands,
+                        'current_media_playing': current_media_playing
+                    }
+                    await websocket.send(json.dumps(response))  # Send the object
+                else:
+                    # print("Queue is empty, sending an empty queue")
+                    response = {
+                        'commands': [],
+                        'current_media_playing': current_media_playing
+                    }
+                    await websocket.send(json.dumps(response))
+                
+                await asyncio.sleep(1)  # Send updates every second
+        except Exception as e:
+            print(f"Error in queue_handler: {e}")  # Log any errors
+        finally:
+            print("WebSocket connection closed")  # Log when the connection is closed
+
+
+    async def websocket_server():
+        async with websockets.serve(command_queue_handler, "0.0.0.0", QUEUE_PORT):
+            print(f"WebSocket server running on port {QUEUE_PORT}")
+            await asyncio.Future()  # Run forever
 
 gc_col("web server")
 
@@ -1760,18 +1809,18 @@ def process_commands():  # note this method is run on its own thread
             time.sleep(1)  # Sleep for a while if the queue is empty
 
 
-def clear_queue():
+def clear_command_queue():
     """Clear the queue."""
     with command_queue.mutex:
         command_queue.queue.clear()
     print("Command queue cleared.")
 
 
-def stop_all_queue_commands():
+def stop_all_commands():
     """Stop processing and clear the queue."""
     global stop_flag
     stop_flag = True  # Set the stop flag to True
-    clear_queue()     # Clear the queue
+    clear_command_queue()     # Clear the queue
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
@@ -2071,7 +2120,8 @@ def manage_audio_files():
 ################################################################################
 # Animation methods
 
-def rst_an(file_name = media_folder + 'pictures/black.jpg'):
+def rst_an(file_name=media_folder + 'pictures/black.jpg'):
+    global current_media_playing
     change_wallpaper(file_name)
     stop_media()
     media_player.stop()
@@ -2079,6 +2129,7 @@ def rst_an(file_name = media_folder + 'pictures/black.jpg'):
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
+    current_media_playing = ""
 
 
 def an(f_nm):
@@ -2146,7 +2197,8 @@ def return_file_to_use(f_nm):
 
 
 def an_light(f_nm):
-    global ts_mode, an_running, terminal_process
+    global ts_mode, an_running, terminal_process, current_media_playing
+    current_media_playing = f_nm
     if stop_play_list:
         return
 
@@ -2634,7 +2686,7 @@ class BseSt(Ste):
                 rst_an()
                 time.sleep(.5)
             elif switch_state == "left_held" and cfg["can_cancel"]:
-                clear_queue()
+                clear_command_queue()
                 an_running = ""
                 mix.stop()
                 media_player.stop()
@@ -2975,10 +3027,10 @@ if (web):
         # Register mDNS service
         zeroconf = Zeroconf()
         print("Registering mDNS service...")
-        zeroconf.register_service(info)
+        zeroconf.register_service(mdns_info)
 
         # Run the server in a separate thread to allow mDNS to work simultaneously
-        server_thread = threading.Thread(target=start_server)
+        server_thread = threading.Thread(target=start_http_server)
         server_thread.daemon = True
         server_thread.start()
         spk_web()
@@ -3005,44 +3057,48 @@ def run_state_machine():
 
 # Start the state machine in a separate thread
 state_machine_thread = threading.Thread(target=run_state_machine)
-
-# Daemonize the thread to end with the main program
 state_machine_thread.daemon = True
 state_machine_thread.start()
 
 # Start the queue processing thread
 command_queue_processing_thread = threading.Thread(target=process_commands)
-
-# Daemonize the thread to end with the main program
 command_queue_processing_thread.daemon = True
 command_queue_processing_thread.start()
+
+# Start the WebSocket server in a separate thread
+websocket_thread = threading.Thread(target=lambda: asyncio.run(websocket_server()))
+websocket_thread.daemon = True
+websocket_thread.start()
 
 if (web):
     close_midori()
     open_midori()
 
+
+
 def stop_program():
-    stop_all_queue_commands()
+    stop_all_commands()
     # Wait for the command queue processing thread to finish
     command_queue_processing_thread.join()
     if (web):
         print("Unregistering mDNS service...")
-        zeroconf.unregister_service(info)
+        zeroconf.unregister_service(mdns_info)
         zeroconf.close()
         httpd.shutdown()
     rst_an(media_folder + 'pictures/logo.jpg')
     quit()
 
+
 while True:
     try:
         input("Press enter to exit...\n\n")
     finally:
-        stop_all_queue_commands()
+        stop_all_commands()
         # Wait for the command queue processing thread to finish
         command_queue_processing_thread.join()
         if (web):
             print("Unregistering mDNS service...")
-            zeroconf.unregister_service(info)
+            zeroconf.unregister_service(mdns_info)
             zeroconf.close()
             httpd.shutdown()
         rst_an(media_folder + 'pictures/logo.jpg')
