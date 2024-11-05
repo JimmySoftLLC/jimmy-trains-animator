@@ -171,7 +171,7 @@ def change_wallpaper(image_path):
 
     try:
         # Update the wallpaper in the desktop-items-0.conf file
-        config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
+        config_path = get_home_path() + '.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
 
         # Read the config file
         with open(config_path, 'r') as file:
@@ -2180,7 +2180,7 @@ def an_light(f_nm):
             t_elaspsed = "{:.1f}".format(t_past)
             log_this = "Time elapsed: " + str(t_elaspsed) + " Timestamp: " + ft1[0]
             files.log_item(log_this)
-            write_to_log("Timestamp: " + ft1[0]+ "Cmd: " ft1[1])
+            write_to_log("Timestamp: " + ft1[0]+ " Cmd: " + ft1[1])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
                 rst_an()
@@ -2235,7 +2235,7 @@ def an_ts(f_nm):
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
-            write_to_log("Timestamp: " + t_elsp)
+            write_to_log("Timestamp: " + str(t_elsp))
         if not mix.get_busy() and not media_player_state() == "Playing":
             led.fill((0, 0, 0))
             led.show()
