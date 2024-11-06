@@ -450,7 +450,7 @@ def play_movie_file(movie_filename):
     # Play the video
     media_player.play()
 
-    while not media_player_state() == "Playing":
+    while not media_player.is_playing():
         time.sleep(.05)
 
     if terminal_window_during_playback:
@@ -1787,7 +1787,6 @@ gc_col("web server")
 
 # Create a FIFO queue
 command_queue = queue.Queue()
-stop_flag = False
 
 
 def add_command(command):
@@ -1798,15 +1797,14 @@ def add_command(command):
 
 def process_commands():  # note this method is run on its own thread
     """Continuously process commands from the queue."""
-    global stop_flag, cfg
-    while not stop_flag:
-        if not command_queue.empty():
-            command = command_queue.get()
-            print(f"Processing command: {command}")
-            an(command)
-            command_queue.task_done()
-        else:
-            time.sleep(1)  # Sleep for a while if the queue is empty
+    global cfg
+    if not command_queue.empty():
+        command = command_queue.get()
+        print(f"Processing command: {command}")
+        an(command)
+        command_queue.task_done()
+    else:
+        time.sleep(1)  # Sleep for a while if the queue is empty
 
 
 def clear_command_queue():
@@ -1818,8 +1816,6 @@ def clear_command_queue():
 
 def stop_all_commands():
     """Stop processing and clear the queue."""
-    global stop_flag
-    stop_flag = True  # Set the stop flag to True
     clear_command_queue()     # Clear the queue
     print("Processing stopped and command queue cleared.")
 
@@ -2143,10 +2139,6 @@ def an(f_nm):
         else:
             an_light(cur_opt)
             gc_col("animation cleanup")
-            if rnd_prob(float(cfg["intermission"])):
-                cur_opt = return_file_to_use("random_intermission")
-                an_light(cur_opt)
-                gc_col("animation cleanup")
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -2196,7 +2188,7 @@ def return_file_to_use(f_nm):
     return cur_opt
 
 
-def an_light(f_nm):
+def an_light(f_nm, run_intermission = True):
     global ts_mode, an_running, terminal_process, current_media_playing
     current_media_playing = f_nm
     if stop_play_list:
@@ -2262,26 +2254,29 @@ def an_light(f_nm):
             write_to_log("Timestamp: " + ft1[0] + " Cmd: " + ft1[1])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
-                rst_an()
-                time.sleep(.2)
-                an_running = ""
-                return
+                result = an_done_wrap_up(run_intermission)
+                return result
             flsh_i += 1
         if not mix.get_busy() and not media_player_state() == "Playing" and not media_player_state() == "Paused":
-            mix.stop()
-            media_player.stop()
-            rst_an()
-            time.sleep(.2)
-            an_running = ""
-            return "DONE"
+            result = an_done_wrap_up(run_intermission)
+            return result
         if flsh_i > len(flsh_t)-1:
-            mix.stop()
-            media_player.stop()
-            rst_an()
-            time.sleep(.2)
-            an_running = ""
-            return "DONE"
+            result = an_done_wrap_up(run_intermission)
+            return result
         time.sleep(.1)
+
+def an_done_wrap_up(run_intermission):
+    global an_running
+    # mix.stop()
+    # media_player.stop()
+    rst_an()
+    time.sleep(.2)
+    if rnd_prob(float(cfg["intermission"]) and run_intermission):
+        cur_opt = return_file_to_use("random_intermission")
+        an_light(cur_opt, False)
+        gc_col("animation cleanup")
+    an_running = ""
+    return "DONE"
 
 
 def an_ts(f_nm):
@@ -2684,7 +2679,7 @@ class BseSt(Ste):
                 mix.stop()
                 media_player.stop()
                 rst_an()
-                time.sleep(.5)
+                time.sleep(2)
             elif switch_state == "left_held" and cfg["can_cancel"]:
                 clear_command_queue()
                 an_running = ""
@@ -2693,7 +2688,7 @@ class BseSt(Ste):
                 cont_run = False
                 stop_play_list = True
                 rst_an()
-                time.sleep(.5)
+                time.sleep(2)
             elif switch_state == "right" and cfg["can_cancel"]:
                 if an_running == "media_player":
                     if media_player_state() == "Playing":
@@ -2724,7 +2719,7 @@ class BseSt(Ste):
             elif switch_state == "left" or cont_run:
                 stop_play_list = False
                 add_command(cfg["option_selected"])
-                time.sleep(.5)
+                time.sleep(2)
             elif switch_state == "right":
                 mch.go_to('main_menu')
         time.sleep(.1)
