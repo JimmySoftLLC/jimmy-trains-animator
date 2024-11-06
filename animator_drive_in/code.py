@@ -318,7 +318,7 @@ add_snd = cfg_add_song["add_sounds_animate"]
 cont_run = False
 ts_mode = False
 lst_opt = ''
-an_running = ""
+an_running_mode = ""
 is_gtts_reachable = False
 stop_play_list = False
 terminal_window_during_playback = False
@@ -366,12 +366,8 @@ terminal_process = None
 def kill_terminal_process():
     global terminal_process  # Use the global variable
     if terminal_process is not None:
-        terminal_process.terminate()  # Gracefully terminate the terminal
-        print("Terminal process has been terminated.")
-        terminal_process.kill()  # Use this to force kill if necessary
-        print("Terminal process has been forcefully killed.")
-    else:
-        print("No terminal process to kill.")
+        terminal_process.terminate()
+        terminal_process.kill()  
 
 
 def open_terminal():
@@ -1513,10 +1509,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def animation_post(self, rq_d):
         global cfg, cont_run, ts_mode, stop_play_list
-        cfg["option_selected"] = rq_d["an"]
-        files.write_json_file(code_folder + "cfg.json", cfg)
         stop_play_list = False
+        cfg["option_selected"] = rq_d["an"]
         add_command(cfg["option_selected"])
+        files.write_json_file(code_folder + "cfg.json", cfg)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1797,14 +1793,10 @@ def add_command(command):
 
 def process_commands():  # note this method is run on its own thread
     """Continuously process commands from the queue."""
-    global cfg
-    if not command_queue.empty():
+    while not command_queue.empty():
         command = command_queue.get()
         print(f"Processing command: {command}")
         an(command)
-        command_queue.task_done()
-    else:
-        time.sleep(1)  # Sleep for a while if the queue is empty
 
 
 def clear_command_queue():
@@ -1887,7 +1879,7 @@ def play_a_0(file_name, wait_until_done=True, allow_exit=True):
 
 
 def wait_snd():
-    while mix.get_busy() or media_player_state() == "Playing":
+    while mix.get_busy() or media_player.is_playing():
         exit_early()
     print("done playing")
 
@@ -1895,7 +1887,7 @@ def wait_snd():
 def stop_media():
     media_player.stop()
     mix.stop()
-    while mix.get_busy() or media_player_state() == "Playing":
+    while mix.get_busy() or media_player.is_playing():
         pass
 
 
@@ -2115,12 +2107,45 @@ def manage_audio_files():
 
 ################################################################################
 # Animation methods
+def check_switches():
+    global cont_run, stop_play_list, an_running_mode
+    switch_state = utilities.switch_state_four_switches(
+        l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+    if switch_state == "left" and cfg["can_cancel"]:
+        an_running_mode = ""
+        mix.stop()
+        media_player.stop()
+        rst_an()
+    elif switch_state == "left_held" and cfg["can_cancel"]:
+        clear_command_queue()
+        an_running_mode = ""
+        mix.stop()
+        media_player.stop()
+        cont_run = False
+        stop_play_list = True
+        rst_an()
+    elif switch_state == "right" and cfg["can_cancel"]:
+        if an_running_mode == "media_player":
+            if not media_player.is_playing():
+                media_player.pause()
+            else:
+                media_player.play()
+        if an_running_mode == "mix":
+            if mix.get_busy():
+                mix.pause()
+            else:
+                mix.unpause()
+    elif switch_state == "three":
+        print("sw three fell")
+        ch_vol("lower")
+    elif switch_state == "four":
+        print("sw four fell")
+        ch_vol("raise")
 
 def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     global current_media_playing
     change_wallpaper(file_name)
     stop_media()
-    media_player.stop()
     kill_terminal_process()
     led.brightness = 1.0
     led.fill((0, 0, 0))
@@ -2129,7 +2154,7 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
 
 
 def an(f_nm):
-    global cfg, lst_opt, an_running
+    global cfg, lst_opt, an_running_mode
     print("Filename: " + f_nm)
     try:
         cur_opt = return_file_to_use(f_nm)
@@ -2148,7 +2173,7 @@ def an(f_nm):
 
 
 def return_file_to_use(f_nm):
-    global cfg, lst_opt, an_running
+    global cfg, lst_opt, an_running_mode
     cur_opt = f_nm
     if f_nm == "random_play lists":
         h_i = len(play_list_options) - 1
@@ -2188,14 +2213,11 @@ def return_file_to_use(f_nm):
     return cur_opt
 
 
-def an_light(f_nm, run_intermission = True):
-    global ts_mode, an_running, terminal_process, current_media_playing
+def an_light(f_nm):
+    global ts_mode, an_running_mode, terminal_process, current_media_playing
     current_media_playing = f_nm
-    if stop_play_list:
-        return
-
-    time.sleep(.1)
-
+    # if stop_play_list:
+    #     return
     plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
@@ -2226,10 +2248,10 @@ def an_light(f_nm, run_intermission = True):
         if terminal_window_during_playback:
             terminal_process = open_terminal()
         if is_video:
-            an_running = "media_player"
+            an_running_mode = "media_player"
             play_movie_file(media0)
         else:
-            an_running = "mix"
+            an_running_mode = "mix"
             change_wallpaper(media0)
             play_a_0(media0, False)
 
@@ -2254,36 +2276,36 @@ def an_light(f_nm, run_intermission = True):
             write_to_log("Timestamp: " + ft1[0] + " Cmd: " + ft1[1])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
-                result = an_done_wrap_up(run_intermission)
+                result = an_done_wrap_up()
                 return result
             flsh_i += 1
-        if not mix.get_busy() and not media_player_state() == "Playing" and not media_player_state() == "Paused":
-            result = an_done_wrap_up(run_intermission)
+        check_switches()
+        media_player_state_now = media_player_state()
+        # print(media_player_state_now, media_player.is_playing())
+        if not mix.get_busy() and not media_player.is_playing() and media_player_state_now != "Paused":
+            result = an_done_wrap_up()
             return result
         if flsh_i > len(flsh_t)-1:
-            result = an_done_wrap_up(run_intermission)
+            result = an_done_wrap_up()
             return result
         time.sleep(.1)
 
-def an_done_wrap_up(run_intermission):
-    global an_running
-    # mix.stop()
-    # media_player.stop()
+def an_done_wrap_up():
+    global an_running_mode
     rst_an()
     time.sleep(.2)
-    if rnd_prob(float(cfg["intermission"]) and run_intermission):
-        cur_opt = return_file_to_use("random_intermission")
-        an_light(cur_opt, False)
-        gc_col("animation cleanup")
-    an_running = ""
+    an_running_mode = ""
     return "DONE"
 
+def add_intermission_to_queue():
+    if rnd_prob(float(cfg["intermission"])):
+        add_command("random_intermission")
 
 def an_ts(f_nm):
     global terminal_process
     print("time stamp mode")
-    global ts_mode, an_running
-    an_running == "time_stamp_mode"
+    global ts_mode, an_running_mode
+    an_running_mode == "time_stamp_mode"
 
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
@@ -2310,7 +2332,7 @@ def an_ts(f_nm):
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
             write_to_log("Timestamp: " + str(t_elsp))
-        if not mix.get_busy() and not media_player_state() == "Playing":
+        if not mix.get_busy() and not media_player.is_playing():
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
@@ -2322,7 +2344,7 @@ def an_ts(f_nm):
     play_a_0(code_folder + "mvc/timestamp_saved.wav")
     play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
     play_a_0(code_folder + "mvc/animations_are_now_active.wav")
-    an_running = ""
+    an_running_mode = ""
 
 
 ###############
@@ -2490,7 +2512,7 @@ def rbow(spd, dur):
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            if not an_running:
+            if not an_running_mode:
                 return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
@@ -2541,7 +2563,7 @@ def fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in firei:
-            if not an_running:
+            if not an_running_mode:
                 return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
@@ -2557,7 +2579,7 @@ def fire(dur):
 
 def multi_color():
     for i in range(0, n_px):
-        if not an_running:
+        if not an_running_mode:
             return
         r = random.randint(128, 255)
         g = random.randint(128, 255)
@@ -2670,43 +2692,9 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, an_running, stop_play_list
-        if an_running and an_running != "time_stamp_mode":
-            switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
-            if switch_state == "left" and cfg["can_cancel"]:
-                an_running = ""
-                mix.stop()
-                media_player.stop()
-                rst_an()
-                time.sleep(2)
-            elif switch_state == "left_held" and cfg["can_cancel"]:
-                clear_command_queue()
-                an_running = ""
-                mix.stop()
-                media_player.stop()
-                cont_run = False
-                stop_play_list = True
-                rst_an()
-                time.sleep(2)
-            elif switch_state == "right" and cfg["can_cancel"]:
-                if an_running == "media_player":
-                    if media_player_state() == "Playing":
-                        media_player.pause()
-                    else:
-                        media_player.play()
-                if an_running == "mix":
-                    if mix.get_busy():
-                        mix.pause()
-                    else:
-                        mix.unpause()
-            elif switch_state == "three":
-                print("sw three fell")
-                ch_vol("lower")
-            elif switch_state == "four":
-                print("sw four fell")
-                ch_vol("raise")
-        elif an_running != "time_stamp_mode":
+        global cont_run, an_running_mode, stop_play_list
+        if an_running_mode != "time_stamp_mode":
+            process_commands()
             switch_state = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0)
             if switch_state == "left_held":
@@ -2716,14 +2704,15 @@ class BseSt(Ste):
                 else:
                     cont_run = True
                     play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
+                time.sleep(0.05)
             elif switch_state == "left" or cont_run:
                 stop_play_list = False
                 add_command(cfg["option_selected"])
-                time.sleep(2)
+
+                time.sleep(1)
             elif switch_state == "right":
                 mch.go_to('main_menu')
-        time.sleep(.1)
-
+        time.sleep(.05)
 
 class Main(Ste):
 
@@ -3009,9 +2998,9 @@ st_mch.add(WebOpt())
 st_mch.add(IntermissionSettings())
 
 
-time.sleep(0)
+time.sleep(.5)
 aud_en.value = True
-upd_vol(1)
+upd_vol(.5)
 
 if (web):
     files.log_item("starting server...")
@@ -3050,16 +3039,6 @@ def run_state_machine():
         time.sleep(.1)
 
 
-# Start the state machine in a separate thread
-state_machine_thread = threading.Thread(target=run_state_machine)
-state_machine_thread.daemon = True
-state_machine_thread.start()
-
-# Start the queue processing thread
-command_queue_processing_thread = threading.Thread(target=process_commands)
-command_queue_processing_thread.daemon = True
-command_queue_processing_thread.start()
-
 # Start the WebSocket server in a separate thread
 websocket_thread = threading.Thread(target=lambda: asyncio.run(websocket_server()))
 websocket_thread.daemon = True
@@ -3069,12 +3048,13 @@ if (web):
     close_midori()
     open_midori()
 
-
+# Start the state machine in a separate thread
+state_machine_thread = threading.Thread(target=run_state_machine)
+state_machine_thread.daemon = True
+state_machine_thread.start()
 
 def stop_program():
     stop_all_commands()
-    # Wait for the command queue processing thread to finish
-    command_queue_processing_thread.join()
     if (web):
         print("Unregistering mDNS service...")
         zeroconf.unregister_service(mdns_info)
@@ -3088,16 +3068,7 @@ while True:
     try:
         input("Press enter to exit...\n\n")
     finally:
-        stop_all_commands()
-        # Wait for the command queue processing thread to finish
-        command_queue_processing_thread.join()
-        if (web):
-            print("Unregistering mDNS service...")
-            zeroconf.unregister_service(mdns_info)
-            zeroconf.close()
-            httpd.shutdown()
-        rst_an(media_folder + 'pictures/logo.jpg')
-        quit()
+        stop_program()
 
 
 # type: ignore
