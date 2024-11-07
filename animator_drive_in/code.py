@@ -2130,7 +2130,7 @@ def check_switches():
                 media_player.pause()
             else:
                 media_player.play()
-        if running_mode == "mix":
+        elif running_mode == "mix":
             if mix_is_paused:
                 mix.unpause()
                 mix_is_paused = False
@@ -2282,7 +2282,7 @@ def an_light(f_nm):
             flsh_i += 1
         check_switches()
         media_player_state_now = media_player_state()
-        if not mix.get_busy() and not media_player.is_playing() and media_player_state_now != "Paused":
+        if not mix.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
             result = an_done_reset("DONE")
             return result
         if flsh_i > len(flsh_t)-1:
