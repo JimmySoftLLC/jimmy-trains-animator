@@ -318,10 +318,10 @@ add_snd = cfg_add_song["add_sounds_animate"]
 cont_run = False
 ts_mode = False
 lst_opt = ''
-an_running_mode = ""
+running_mode = ""
 is_gtts_reachable = False
-stop_play_list = False
 terminal_window_during_playback = False
+mix_is_paused = False
 
 
 ################################################################################
@@ -1508,8 +1508,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode, stop_play_list
-        stop_play_list = False
+        global cfg, cont_run, ts_mode
         cfg["option_selected"] = rq_d["an"]
         add_command(cfg["option_selected"])
         files.write_json_file(code_folder + "cfg.json", cfg)
@@ -1786,13 +1785,11 @@ command_queue = queue.Queue()
 
 
 def add_command(command):
-    """Add a command to the queue."""
     command_queue.put(command)
     print(f"Command added: {command}")
 
 
-def process_commands():  # note this method is run on its own thread
-    """Continuously process commands from the queue."""
+def process_commands():
     while not command_queue.empty():
         command = command_queue.get()
         print(f"Processing command: {command}")
@@ -1800,15 +1797,19 @@ def process_commands():  # note this method is run on its own thread
 
 
 def clear_command_queue():
-    """Clear the queue."""
     with command_queue.mutex:
         command_queue.queue.clear()
     print("Command queue cleared.")
 
 
 def stop_all_commands():
-    """Stop processing and clear the queue."""
-    clear_command_queue()     # Clear the queue
+    global running_mode, cont_run
+    clear_command_queue()
+    running_mode = ""
+    mix.stop()
+    media_player.stop()
+    cont_run = False
+    rst_an()
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
@@ -2085,7 +2086,7 @@ def generate_mp3_from_filename(file_name):
     print(f"MP3 for {file_name} generated and volume adjusted.")
 
 
-def manage_audio_files():
+def update_folder_name_mp3s():
     if is_gtts_reachable == False:
         return
 
@@ -2108,33 +2109,34 @@ def manage_audio_files():
 ################################################################################
 # Animation methods
 def check_switches():
-    global cont_run, stop_play_list, an_running_mode
+    global cont_run, running_mode, mix_is_paused
     switch_state = utilities.switch_state_four_switches(
         l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
     if switch_state == "left" and cfg["can_cancel"]:
-        an_running_mode = ""
+        running_mode = ""
         mix.stop()
         media_player.stop()
         rst_an()
     elif switch_state == "left_held" and cfg["can_cancel"]:
         clear_command_queue()
-        an_running_mode = ""
+        running_mode = ""
         mix.stop()
         media_player.stop()
         cont_run = False
-        stop_play_list = True
         rst_an()
     elif switch_state == "right" and cfg["can_cancel"]:
-        if an_running_mode == "media_player":
-            if not media_player.is_playing():
+        if running_mode == "media_player":
+            if media_player.is_playing():
                 media_player.pause()
             else:
                 media_player.play()
-        if an_running_mode == "mix":
-            if mix.get_busy():
-                mix.pause()
-            else:
+        if running_mode == "mix":
+            if mix_is_paused:
                 mix.unpause()
+                mix_is_paused = False
+            else:
+                mix.pause()
+                mix_is_paused = True
     elif switch_state == "three":
         print("sw three fell")
         ch_vol("lower")
@@ -2154,7 +2156,7 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
 
 
 def an(f_nm):
-    global cfg, lst_opt, an_running_mode
+    global cfg, lst_opt, running_mode
     print("Filename: " + f_nm)
     try:
         cur_opt = return_file_to_use(f_nm)
@@ -2162,8 +2164,11 @@ def an(f_nm):
             an_ts(cur_opt)
             gc_col("animation cleanup")
         else:
-            an_light(cur_opt)
+            if not "intermission/" in cur_opt:
+                add_intermission_to_queue()
+            result = an_light(cur_opt)
             gc_col("animation cleanup")
+            return result
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -2173,7 +2178,7 @@ def an(f_nm):
 
 
 def return_file_to_use(f_nm):
-    global cfg, lst_opt, an_running_mode
+    global cfg, lst_opt, running_mode
     cur_opt = f_nm
     if f_nm == "random_play lists":
         h_i = len(play_list_options) - 1
@@ -2196,9 +2201,7 @@ def return_file_to_use(f_nm):
         print("Random sound option: " + f_nm)
         print("Sound file: " + cur_opt)
     elif "random_" in f_nm:
-        # Specify the folder name
         folder_name = f_nm.split("_")
-        # Filter the media list to only include items from the specified folder
         filtered_list = [
             item for item in media_list_flattened if item.startswith(folder_name[1])]
         h_i = len(filtered_list) - 1
@@ -2212,12 +2215,9 @@ def return_file_to_use(f_nm):
         print("Sound file: " + cur_opt)
     return cur_opt
 
-
 def an_light(f_nm):
-    global ts_mode, an_running_mode, terminal_process, current_media_playing
+    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused
     current_media_playing = f_nm
-    # if stop_play_list:
-    #     return
     plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
@@ -2248,14 +2248,15 @@ def an_light(f_nm):
         if terminal_window_during_playback:
             terminal_process = open_terminal()
         if is_video:
-            an_running_mode = "media_player"
+            running_mode = "media_player"
             play_movie_file(media0)
         else:
-            an_running_mode = "mix"
+            running_mode = "mix"
             change_wallpaper(media0)
             play_a_0(media0, False)
+            mix_is_paused = False
 
-    srt_t = time.monotonic()  # perf_counter
+    srt_t = time.monotonic()
 
     while True:
         t_past = time.monotonic()-srt_t
@@ -2276,26 +2277,25 @@ def an_light(f_nm):
             write_to_log("Timestamp: " + ft1[0] + " Cmd: " + ft1[1])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
-                result = an_done_wrap_up()
+                result = an_done_reset(resp)
                 return result
             flsh_i += 1
         check_switches()
         media_player_state_now = media_player_state()
-        # print(media_player_state_now, media_player.is_playing())
         if not mix.get_busy() and not media_player.is_playing() and media_player_state_now != "Paused":
-            result = an_done_wrap_up()
+            result = an_done_reset("DONE")
             return result
         if flsh_i > len(flsh_t)-1:
-            result = an_done_wrap_up()
+            result = an_done_reset("DONE")
             return result
         time.sleep(.1)
 
-def an_done_wrap_up():
-    global an_running_mode
+def an_done_reset(return_value):
+    global running_mode
     rst_an()
     time.sleep(.2)
-    an_running_mode = ""
-    return "DONE"
+    running_mode = ""
+    return return_value
 
 def add_intermission_to_queue():
     if rnd_prob(float(cfg["intermission"])):
@@ -2304,8 +2304,8 @@ def add_intermission_to_queue():
 def an_ts(f_nm):
     global terminal_process
     print("time stamp mode")
-    global ts_mode, an_running_mode
-    an_running_mode == "time_stamp_mode"
+    global ts_mode, running_mode
+    running_mode == "time_stamp_mode"
 
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
@@ -2344,7 +2344,7 @@ def an_ts(f_nm):
     play_a_0(code_folder + "mvc/timestamp_saved.wav")
     play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
     play_a_0(code_folder + "mvc/animations_are_now_active.wav")
-    an_running_mode = ""
+    running_mode = ""
 
 
 ###############
@@ -2364,15 +2364,13 @@ def rnd_prob(random_value):
 
 
 def set_hdw(cmd, dur):
-    global sp, br, stop_play_list
+    global sp, br
 
     if cmd == "":
         return "NOCMDS"
 
-    # Split the input string into segments
     segs = cmd.split(",")
 
-    # Process each segment
     try:
         for seg in segs:
             f_nm = ""
@@ -2389,7 +2387,6 @@ def set_hdw(cmd, dur):
                     play_a_0(f_nm, False)
                 if seg[1] == "A":
                     f_nm = seg[2:]
-                    stop_play_list = False
                     res = an(f_nm)
                     if res == "STOP":
                         return "STOP"
@@ -2476,11 +2473,9 @@ def set_hdw(cmd, dur):
                         s_arr[i].angle = v
                 else:
                     s_arr[num-1].angle = int(v)
-                    # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
             # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
             if seg[0] == 'Q':
                 file_nm = seg[1:]
-                stop_play_list = False
                 add_command(file_nm)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
@@ -2512,7 +2507,7 @@ def rbow(spd, dur):
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            if not an_running_mode:
+            if not running_mode:
                 return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
@@ -2563,7 +2558,7 @@ def fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in firei:
-            if not an_running_mode:
+            if not running_mode:
                 return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
@@ -2579,7 +2574,7 @@ def fire(dur):
 
 def multi_color():
     for i in range(0, n_px):
-        if not an_running_mode:
+        if not running_mode:
             return
         r = random.randint(128, 255)
         g = random.randint(128, 255)
@@ -2692,8 +2687,8 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, an_running_mode, stop_play_list
-        if an_running_mode != "time_stamp_mode":
+        global cont_run, running_mode
+        if running_mode != "time_stamp_mode":
             process_commands()
             switch_state = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0)
@@ -2706,10 +2701,8 @@ class BseSt(Ste):
                     play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
                 time.sleep(0.05)
             elif switch_state == "left" or cont_run:
-                stop_play_list = False
                 add_command(cfg["option_selected"])
-
-                time.sleep(1)
+                time.sleep(0.05)
             elif switch_state == "right":
                 mch.go_to('main_menu')
         time.sleep(.05)
@@ -3026,27 +3019,24 @@ discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
-manage_audio_files()
+update_folder_name_mp3s()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
-gc_col("animations started.")
+gc_col("animations started.")   
 
+if (web):
+    # Start the WebSocket server in a separate thread
+    websocket_thread = threading.Thread(target=lambda: asyncio.run(websocket_server()))
+    websocket_thread.daemon = True
+    websocket_thread.start()
+    close_midori()
+    open_midori()
 
 def run_state_machine():
     while True:
         st_mch.upd()
         time.sleep(.1)
-
-
-# Start the WebSocket server in a separate thread
-websocket_thread = threading.Thread(target=lambda: asyncio.run(websocket_server()))
-websocket_thread.daemon = True
-websocket_thread.start()
-
-if (web):
-    close_midori()
-    open_midori()
 
 # Start the state machine in a separate thread
 state_machine_thread = threading.Thread(target=run_state_machine)
@@ -3062,7 +3052,6 @@ def stop_program():
         httpd.shutdown()
     rst_an(media_folder + 'pictures/logo.jpg')
     quit()
-
 
 while True:
     try:
