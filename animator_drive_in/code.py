@@ -2171,7 +2171,7 @@ def an(f_nm):
             gc_col("animation cleanup")
         else:
             if not "intermission/" in cur_opt:
-                add_intermission_to_queue()
+                insert_intermission_start_of_queue()
             result = an_light(cur_opt)
             gc_col("animation cleanup")
             return result
@@ -2306,9 +2306,9 @@ def an_done_reset(return_value):
     return return_value
 
 
-def add_intermission_to_queue():
+def insert_intermission_start_of_queue():
     if rnd_prob(float(cfg["intermission"])):
-        add_command("random_intermission")
+        add_command("random_intermission",True)
 
 
 def an_ts(f_nm):
