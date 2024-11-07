@@ -121,12 +121,11 @@ from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLO
 import subprocess
 import time
 import netifaces
-from collections import OrderedDict
+from collections import OrderedDict, deque
 import signal
 import copy
 from pydub import AudioSegment
 import sys
-import queue
 import asyncio
 import websockets
 
@@ -367,7 +366,7 @@ def kill_terminal_process():
     global terminal_process  # Use the global variable
     if terminal_process is not None:
         terminal_process.terminate()
-        terminal_process.kill()  
+        terminal_process.kill()
 
 
 def open_terminal():
@@ -1703,14 +1702,13 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 if (web):
 
-
     # Get the local IP address
     local_ip = get_local_ip()
     print(f"Local IP address: {local_ip}")
-    
+
     QUEUE_PORT = 8001
     PORT = 8083  # Use port 80 for default HTTP access
-    
+
     httpd = None
 
     def start_http_server():
@@ -1736,7 +1734,7 @@ if (web):
             server=server_str
         )
         return mdns_info
-    
+
     mdns_info = get_mdns_info()
 
 
@@ -1745,28 +1743,27 @@ if (web):
         print("WebSocket connection established")
         try:
             while True:
-                if not command_queue.empty():  # Check if there are items in the queue
-                    commands = list(command_queue.queue)  # Convert to a list for JSON serialization
-                    # print(f"Sending command queue data: {commands}")
+                if command_queue:  # Check if there are items in the deque
+                    # Convert deque to a list for JSON serialization
+                    commands = list(command_queue)
                     response = {
                         'commands': commands,
                         'current_media_playing': current_media_playing
                     }
                     await websocket.send(json.dumps(response))  # Send the object
                 else:
-                    # print("Queue is empty, sending an empty queue")
                     response = {
                         'commands': [],
                         'current_media_playing': current_media_playing
                     }
                     await websocket.send(json.dumps(response))
-                
+
                 await asyncio.sleep(1)  # Send updates every second
         except Exception as e:
-            print(f"Error in queue_handler: {e}")  # Log any errors
+            print(f"Error in command_queue_handler: {e}")  # Log any errors
         finally:
-            print("WebSocket connection closed")  # Log when the connection is closed
-
+            # Log when the connection is closed
+            print("WebSocket connection closed")
 
     async def websocket_server():
         async with websockets.serve(command_queue_handler, "0.0.0.0", QUEUE_PORT):
@@ -1780,29 +1777,36 @@ gc_col("web server")
 # Command queue
 
 
-# Create a FIFO queue
-command_queue = queue.Queue()
+# Create a deque to hold commands
+command_queue = deque()
 
 
-def add_command(command):
-    command_queue.put(command)
-    print(f"Command added: {command}")
+def add_command(command, to_start=False):
+    """Add a command to the queue. If to_start is True, add to the front."""
+    if to_start:
+        command_queue.appendleft(command)  # Add to the front
+        print(f"Command added to the start: {command}")
+    else:
+        command_queue.append(command)  # Add to the end
+        print(f"Command added to the end: {command}")
 
 
 def process_commands():
-    while not command_queue.empty():
-        command = command_queue.get()
+    """Process commands in a FIFO order from the front."""
+    while command_queue:
+        command = command_queue.popleft()  # Retrieve from the front
         print(f"Processing command: {command}")
         an(command)
 
 
 def clear_command_queue():
-    with command_queue.mutex:
-        command_queue.queue.clear()
+    """Clear all commands from the queue."""
+    command_queue.clear()
     print("Command queue cleared.")
 
 
 def stop_all_commands():
+    """Stop all commands and clear the queue."""
     global running_mode, cont_run
     clear_command_queue()
     running_mode = ""
@@ -1811,6 +1815,7 @@ def stop_all_commands():
     cont_run = False
     rst_an()
     print("Processing stopped and command queue cleared.")
+
 
 ################################################################################
 # Global Methods
@@ -2144,6 +2149,7 @@ def check_switches():
         print("sw four fell")
         ch_vol("raise")
 
+
 def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     global current_media_playing
     change_wallpaper(file_name)
@@ -2214,6 +2220,7 @@ def return_file_to_use(f_nm):
         print("Random sound option: " + f_nm)
         print("Sound file: " + cur_opt)
     return cur_opt
+
 
 def an_light(f_nm):
     global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused
@@ -2290,6 +2297,7 @@ def an_light(f_nm):
             return result
         time.sleep(.1)
 
+
 def an_done_reset(return_value):
     global running_mode
     rst_an()
@@ -2297,9 +2305,11 @@ def an_done_reset(return_value):
     running_mode = ""
     return return_value
 
+
 def add_intermission_to_queue():
     if rnd_prob(float(cfg["intermission"])):
         add_command("random_intermission")
+
 
 def an_ts(f_nm):
     global terminal_process
@@ -2707,6 +2717,7 @@ class BseSt(Ste):
                 mch.go_to('main_menu')
         time.sleep(.05)
 
+
 class Main(Ste):
 
     def __init__(self):
@@ -3023,25 +3034,29 @@ update_folder_name_mp3s()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
-gc_col("animations started.")   
+gc_col("animations started.")
 
 if (web):
     # Start the WebSocket server in a separate thread
-    websocket_thread = threading.Thread(target=lambda: asyncio.run(websocket_server()))
+    websocket_thread = threading.Thread(
+        target=lambda: asyncio.run(websocket_server()))
     websocket_thread.daemon = True
     websocket_thread.start()
     close_midori()
     open_midori()
+
 
 def run_state_machine():
     while True:
         st_mch.upd()
         time.sleep(.1)
 
+
 # Start the state machine in a separate thread
 state_machine_thread = threading.Thread(target=run_state_machine)
 state_machine_thread.daemon = True
 state_machine_thread.start()
+
 
 def stop_program():
     stop_all_commands()
@@ -3052,6 +3067,7 @@ def stop_program():
         httpd.shutdown()
     rst_an(media_folder + 'pictures/logo.jpg')
     quit()
+
 
 while True:
     try:
