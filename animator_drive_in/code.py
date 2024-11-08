@@ -84,7 +84,8 @@
 # sudo apt-get install pulseaudio
 
 ############################################################
-# This code will automatically up mp3 files for folder names to make this work you need gtts and pydub install these as follows
+# This code will automatically create wav files for folder names to make this work you need 
+# gtts and pydub install these as follows
 # pip install gtts
 # sudo apt install ffmpeg
 # pip install pydub
@@ -266,7 +267,7 @@ def get_media_files(folder_to_search, extensions):
 def upd_media():
     global play_list_options, media_list_flattened, media_files, menu_snd_opt
 
-    extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
+    extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
     # gets folders in the random_config directory, currently only all and play lists, the folders are empty
     rand_files = get_media_files(media_folder + "random_config/", extensions)
@@ -1352,13 +1353,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 an = rq_d[3].split("_")
                 if "plylst" == an[0]:
                     snd_f = rq_d[3].replace("plylst_", "")
-                    snd_f = snd_f.replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
                     f_n = plylst_folder + \
                         snd_f + ".json"
                 else:
-                    snd_f = rq_d[3].replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
                     f_n = media_folder + snd_f + ".json"
@@ -1395,7 +1394,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def get_animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
         snd_f = rq_d["an"]
-        snd_f = snd_f.replace(".mp3", "")
         snd_f = snd_f.replace(".mp4", "")
         snd_f = snd_f.replace(".wav", "")
         if "plylst_" in snd_f:
@@ -2047,13 +2045,13 @@ def text_to_wav_file(text, file_name, timeout_duration):
         # Convert text to mp3 file
         # text = files.strip_path_and_extension(f_nm)
         tts = gTTS(text=text, lang='en')
-        tts.save("temp.mp3")
+        tts.save(code_folder + "temp.mp3")
 
         # Cancel the alarm if operation completes before timeout
         signal.alarm(0)
 
         # Load the audio file with pydub
-        audio = AudioSegment.from_file("temp.mp3")
+        audio = AudioSegment.from_file(code_folder + "temp.mp3")
 
         # Adjust the volume
         volume_change = -5  # Decrease volume by 5db
@@ -2061,7 +2059,7 @@ def text_to_wav_file(text, file_name, timeout_duration):
 
         # Save the adjusted audio
         adjusted_audio.export(file_name, format="wav")
-        print(f"MP3 for {file_name} generated and volume adjusted.")
+        print(f"Wav for {file_name} generated and volume adjusted.")
 
         play_mix(file_name)
 
@@ -2089,10 +2087,10 @@ def generate_wav_from_filename(file_name):
 
     # Generate speech from text
     tts = gTTS(text=text_to_speak, lang='en')
-    tts.save("temp.mp3")
+    tts.save(code_folder + "temp.mp3")
 
     # Load the audio file with pydub
-    audio = AudioSegment.from_file("temp.mp3")
+    audio = AudioSegment.from_file(code_folder + "temp.mp3")
 
     # Adjust the volume
     volume_change = -5  # Decrease volume by 5db
@@ -2100,27 +2098,27 @@ def generate_wav_from_filename(file_name):
 
     # Save the adjusted audio
     adjusted_audio.export(wav_file, format="wav")
-    print(f"MP3 for {file_name} generated and volume adjusted.")
+    print(f"Wav for {file_name} generated and volume adjusted.")
 
 
-def update_folder_name_mp3s():
+def update_folder_name_wavs():
     if is_gtts_reachable == False:
         return
 
     # Get all files in the folder
     files = os.listdir(snd_opt_folder)
 
-    mp3_files = {f for f in files if f.endswith('.mp3')}
+    wav_files = {f for f in files if f.endswith('.wav')}
 
-    # Generate mp3s for valid files
+    # Generate wavs for valid files
     for my_file in menu_snd_opt:
         generate_wav_from_filename(my_file)
 
-    # Delete orphaned mp3 files (those without a corresponding key in menu_snd_opt)
-    for mp3_file in mp3_files:
-        if f"{os.path.splitext(mp3_file)[0]}.mp3" not in menu_snd_opt:
-            os.remove(os.path.join(snd_opt_folder, mp3_file))
-            print(f"Deleted orphaned MP3: {mp3_file}")
+    # Delete orphaned wav files (those without a corresponding key in menu_snd_opt)
+    for wav_file in wav_files:
+        if f"{os.path.splitext(wav_file)[0]}.wav" not in menu_snd_opt:
+            os.remove(os.path.join(snd_opt_folder, wav_file))
+            print(f"Deleted orphaned wav: {wav_file}")
 
 
 ################################################################################
@@ -3088,7 +3086,7 @@ discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
-update_folder_name_mp3s()
+update_folder_name_wavs()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
