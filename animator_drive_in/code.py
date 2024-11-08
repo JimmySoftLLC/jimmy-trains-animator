@@ -1896,7 +1896,7 @@ def play_mix_media(file_name):
 
 
 def wait_snd():
-    while mix.get_busy() or media_player.is_playing():
+    while mix_media.get_busy() or media_player.is_playing():
         exit_early()
     print("done playing")
 
@@ -2131,13 +2131,12 @@ def logo_when_idle():
 
     while True:
         if not running_mode:
-            time_counter += 1  # Increment the counter if running_mode is not truthy
-            if time_counter >= 10:
+            time_counter += 1
+            if time_counter == 5:
                 change_wallpaper(media_folder + 'pictures/logo.jpg')
-                time_counter = 0  # Reset the counter after calling set_image
         else:
-            time_counter = 0  # Reset the counter if running_mode is truthy
-        time.sleep(1)  # Wait for 1 second before checking again
+            time_counter = 0
+        time.sleep(1)
 
 
 def check_switches(stop_event):
@@ -2146,19 +2145,15 @@ def check_switches(stop_event):
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
         if switch_state == "left" and cfg["can_cancel"]:
-            stop_event.set()  # Signal to stop the thread
-            running_mode = ""
             mix_media.stop()
             media_player.stop()
-            rst_an()
-        elif switch_state == "left_held" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
+        elif switch_state == "left_held" and cfg["can_cancel"]:
             clear_command_queue()
-            running_mode = ""
             mix_media.stop()
             media_player.stop()
             cont_run = False
-            rst_an()
+            stop_event.set()  # Signal to stop the thread
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
                 if media_player.is_playing():
@@ -2261,7 +2256,7 @@ def return_file_to_use(f_nm):
 
 
 def an_light(f_nm):
-    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused
+    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing
     current_media_playing = f_nm
     plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
@@ -2284,9 +2279,9 @@ def an_light(f_nm):
     ft2 = []
 
     ft1 = flsh_t[len(flsh_t)-1].split("|")
-    tm = float(ft1[0]) + 1
+    tm = float(ft1[0]) + 0.1
     flsh_t.append(str(tm) + "|E")
-    flsh_t.append(str(tm + 1) + "|E")
+    flsh_t.append(str(tm + 0.1) + "|E")
 
     check_thread, stop_event = run_check_switches_thread()
 
@@ -2302,6 +2297,8 @@ def an_light(f_nm):
             change_wallpaper(media0)
             play_mix_media(media0)
             mix_is_paused = False
+    else:
+        running_mode = "play_list"
 
     srt_t = time.monotonic()
 
@@ -2328,16 +2325,29 @@ def an_light(f_nm):
                 return result
             flsh_i += 1
         media_player_state_now = media_player_state()
-        if not mix_media.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
-            stop_event.set()  # Signal the thread to stop
-            check_thread.join()  # Wait for the thread to finish
-            result = an_done_reset("DONE")
-            return result
-        elif flsh_i > len(flsh_t)-1:
-            stop_event.set()  # Signal the thread to stop
-            check_thread.join()  # Wait for the thread to finish
-            result = an_done_reset("DONE")
-            return result
+        if plylst_f:
+            if flsh_i > len(flsh_t)-1:
+                stop_event.set()  # Signal the thread to stop
+                check_thread.join()  # Wait for the thread to finish
+                change_wallpaper(media_folder + 'pictures/black.jpg')
+                kill_terminal_process()
+                led.brightness = 1.0
+                led.fill((0, 0, 0))
+                led.show()
+                current_media_playing = ""
+                running_mode = ""
+                return "DONE"
+        else:
+            if not mix_media.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
+                stop_event.set()  # Signal the thread to stop
+                check_thread.join()  # Wait for the thread to finish
+                result = an_done_reset("DONE")
+                return result
+            elif flsh_i > len(flsh_t)-1:
+                stop_event.set()  # Signal the thread to stop
+                check_thread.join()  # Wait for the thread to finish
+                result = an_done_reset("DONE")
+                return result
         time.sleep(.01)
 
 
@@ -2417,7 +2427,7 @@ def rnd_prob(random_value):
 
 
 def set_hdw(cmd, dur):
-    global sp, br
+    global sp, br, running_mode
 
     if cmd == "":
         return "NOCMDS"
@@ -2430,21 +2440,21 @@ def set_hdw(cmd, dur):
             if seg[0] == 'E':  # end an
                 return "STOP"
             # MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)
-            elif seg[0] == 'M':
-                stop_all_media()
-                if seg[1] == "P":
-                    f_nm = pylst_folder + "plylst_" + seg[2:]
-                else:
-                    f_nm = media_folder + seg[2:]
-                if seg[1] == "W" or seg[1] == "M":
-                    play_mix(f_nm, False)
-                if seg[1] == "A":
-                    f_nm = seg[2:]
-                    res = an(f_nm)
-                    if res == "STOP":
-                        return "STOP"
-                if seg[1] == "W":
-                    wait_snd()
+            # elif seg[0] == 'M':
+            #     stop_all_media()
+            #     if seg[1] == "P":
+            #         f_nm = pylst_folder + "plylst_" + seg[2:]
+            #     else:
+            #         f_nm = media_folder + seg[2:]
+            #     if seg[1] == "W" or seg[1] == "M":
+            #         play_mix_media(f_nm, False)
+            #     if seg[1] == "A":
+            #         f_nm = seg[2:]
+            #         res = an(f_nm)
+            #         if res == "STOP":
+            #             return "STOP"
+            #     if seg[1] == "W":
+            #         wait_snd()
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
@@ -2741,8 +2751,8 @@ class BseSt(Ste):
         global cont_run, running_mode
         if running_mode != "time_stamp_mode":
             process_commands()
-            switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0)
+            switch_state = utilities.switch_state_four_switches(
+                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
@@ -2756,7 +2766,14 @@ class BseSt(Ste):
                 time.sleep(0.05)
             elif switch_state == "right":
                 mch.go_to('main_menu')
-        time.sleep(.05)
+            elif switch_state == "three":
+                print("sw three fell")
+                ch_vol("lower")
+            elif switch_state == "four":
+                print("sw four fell")
+                ch_vol("raise")
+
+        time.sleep(.1)
 
 
 class Main(Ste):
