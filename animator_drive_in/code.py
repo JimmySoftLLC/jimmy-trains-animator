@@ -288,7 +288,7 @@ def upd_media():
 
     for myKey in media_files:
         if myKey != "random_config" and myKey != "pictures":
-            menu_snd_opt.append("random_" + myKey + ".mp3")
+            menu_snd_opt.append("random_" + myKey + ".wav")
 
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
@@ -1985,8 +1985,8 @@ def get_random_joke():
     else:
         print("Failed to retrieve a joke.")
 
-    text_to_mp3_file(joke['setup'], "myjoke.mp3", 2)
-    text_to_mp3_file(joke['punchline'], "myjoke.mp3", 2)
+    text_to_wav_file(joke['setup'], "myjoke.wav", 2)
+    text_to_wav_file(joke['punchline'], "myjoke.wav", 2)
 
 ###############################################################################
 # Text to speech
@@ -2036,7 +2036,7 @@ def timeout_handler(signum, frame):
 signal.signal(signal.SIGALRM, timeout_handler)
 
 
-def text_to_mp3_file(text, file_name, timeout_duration):
+def text_to_wav_file(text, file_name, timeout_duration):
     global is_gtts_reachable
     if is_gtts_reachable == False:
         return
@@ -2047,20 +2047,20 @@ def text_to_mp3_file(text, file_name, timeout_duration):
         # Convert text to mp3 file
         # text = files.strip_path_and_extension(f_nm)
         tts = gTTS(text=text, lang='en')
-        tts.save(file_name)
+        tts.save("temp.mp3")
 
         # Cancel the alarm if operation completes before timeout
         signal.alarm(0)
 
         # Load the audio file with pydub
-        audio = AudioSegment.from_file(file_name)
+        audio = AudioSegment.from_file("temp.mp3")
 
         # Adjust the volume
         volume_change = -5  # Decrease volume by 5db
         adjusted_audio = audio + volume_change
 
         # Save the adjusted audio
-        adjusted_audio.export(file_name, format="mp3")
+        adjusted_audio.export(file_name, format="wav")
         print(f"MP3 for {file_name} generated and volume adjusted.")
 
         play_mix(file_name)
@@ -2073,33 +2073,33 @@ def text_to_mp3_file(text, file_name, timeout_duration):
         is_gtts_reachable = False
 
 
-def generate_mp3_from_filename(file_name):
+def generate_wav_from_filename(file_name):
     if is_gtts_reachable == False:
         return
     text_to_speak = file_name.replace("_", " ")
-    text_to_speak = text_to_speak.replace(".mp3", "")
+    text_to_speak = text_to_speak.replace(".wav", "")
 
-    mp3_file = os.path.join(
-        snd_opt_folder, f"{os.path.splitext(file_name)[0]}.mp3")
+    wav_file = os.path.join(
+        snd_opt_folder, f"{os.path.splitext(file_name)[0]}.wav")
 
-    # If mp3 already exists, skip
-    if os.path.exists(mp3_file):
-        print(f"MP3 for {file_name} already exists. Skipping...")
+    # If wav file already exists, skip
+    if os.path.exists(wav_file):
+        print(f"Wav for {file_name} already exists. Skipping...")
         return
 
     # Generate speech from text
     tts = gTTS(text=text_to_speak, lang='en')
-    tts.save(mp3_file)
+    tts.save("temp.mp3")
 
     # Load the audio file with pydub
-    audio = AudioSegment.from_file(mp3_file)
+    audio = AudioSegment.from_file("temp.mp3")
 
     # Adjust the volume
     volume_change = -5  # Decrease volume by 5db
     adjusted_audio = audio + volume_change
 
     # Save the adjusted audio
-    adjusted_audio.export(mp3_file, format="mp3")
+    adjusted_audio.export(wav_file, format="wav")
     print(f"MP3 for {file_name} generated and volume adjusted.")
 
 
@@ -2114,7 +2114,7 @@ def update_folder_name_mp3s():
 
     # Generate mp3s for valid files
     for my_file in menu_snd_opt:
-        generate_mp3_from_filename(my_file)
+        generate_wav_from_filename(my_file)
 
     # Delete orphaned mp3 files (those without a corresponding key in menu_snd_opt)
     for mp3_file in mp3_files:
