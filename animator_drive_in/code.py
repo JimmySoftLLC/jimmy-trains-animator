@@ -1737,7 +1737,6 @@ if (web):
 
     mdns_info = get_mdns_info()
 
-
     async def command_queue_handler(websocket, path):
         global current_media_playing
         print("WebSocket connection established")
@@ -1750,7 +1749,8 @@ if (web):
                         'commands': commands,
                         'current_media_playing': current_media_playing
                     }
-                    await websocket.send(json.dumps(response))  # Send the object
+                    # Send the object
+                    await websocket.send(json.dumps(response))
                 else:
                     response = {
                         'commands': [],
@@ -2113,41 +2113,52 @@ def update_folder_name_mp3s():
 
 ################################################################################
 # Animation methods
-def check_switches():
+
+def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused
-    switch_state = utilities.switch_state_four_switches(
-        l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
-    if switch_state == "left" and cfg["can_cancel"]:
-        running_mode = ""
-        mix.stop()
-        media_player.stop()
-        rst_an()
-    elif switch_state == "left_held" and cfg["can_cancel"]:
-        clear_command_queue()
-        running_mode = ""
-        mix.stop()
-        media_player.stop()
-        cont_run = False
-        rst_an()
-    elif switch_state == "right" and cfg["can_cancel"]:
-        if running_mode == "media_player":
-            if media_player.is_playing():
-                media_player.pause()
-            else:
-                media_player.play()
-        elif running_mode == "mix":
-            if mix_is_paused:
-                mix.unpause()
-                mix_is_paused = False
-            else:
-                mix.pause()
-                mix_is_paused = True
-    elif switch_state == "three":
-        print("sw three fell")
-        ch_vol("lower")
-    elif switch_state == "four":
-        print("sw four fell")
-        ch_vol("raise")
+    while not stop_event.is_set():  # Check the stop event
+        switch_state = utilities.switch_state_four_switches(
+            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+        if switch_state == "left" and cfg["can_cancel"]:
+            stop_event.set()  # Signal to stop the thread
+            running_mode = ""
+            mix.stop()
+            media_player.stop()
+            rst_an()
+        elif switch_state == "left_held" and cfg["can_cancel"]:
+            stop_event.set()  # Signal to stop the thread
+            clear_command_queue()
+            running_mode = ""
+            mix.stop()
+            media_player.stop()
+            cont_run = False
+            rst_an()
+        elif switch_state == "right" and cfg["can_cancel"]:
+            if running_mode == "media_player":
+                if media_player.is_playing():
+                    media_player.pause()
+                else:
+                    media_player.play()
+            elif running_mode == "mix":
+                if mix_is_paused:
+                    mix.unpause()
+                    mix_is_paused = False
+                else:
+                    mix.pause()
+                    mix_is_paused = True
+        elif switch_state == "three":
+            print("sw three fell")
+            ch_vol("lower")
+        elif switch_state == "four":
+            print("sw four fell")
+            ch_vol("raise")
+        time.sleep(0.1)  # Add a small delay to prevent busy waiting
+
+def run_check_switches_thread():
+    stop_event = threading.Event()  # Create a stop event
+    check_thread = threading.Thread(target=check_switches, args=(stop_event,))
+    check_thread.start()
+    return check_thread, stop_event
 
 
 def rst_an(file_name=media_folder + 'pictures/black.jpg'):
@@ -2250,6 +2261,8 @@ def an_light(f_nm):
     flsh_t.append(str(tm) + "|E")
     flsh_t.append(str(tm + 1) + "|E")
 
+    check_thread, stop_event = run_check_switches_thread()
+
     if not plylst_f:
         media0 = media_folder + f_nm
         if terminal_window_during_playback:
@@ -2287,15 +2300,18 @@ def an_light(f_nm):
                 result = an_done_reset(resp)
                 return result
             flsh_i += 1
-        check_switches()
         media_player_state_now = media_player_state()
         if not mix.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
+            stop_event.set()  # Signal the thread to stop
+            check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
             return result
-        if flsh_i > len(flsh_t)-1:
+        elif flsh_i > len(flsh_t)-1:
+            stop_event.set()  # Signal the thread to stop
+            check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
             return result
-        time.sleep(.1)
+        time.sleep(.01)
 
 
 def an_done_reset(return_value):
@@ -2308,7 +2324,7 @@ def an_done_reset(return_value):
 
 def insert_intermission_start_of_queue():
     if rnd_prob(float(cfg["intermission"])):
-        add_command("random_intermission",True)
+        add_command("random_intermission", True)
 
 
 def an_ts(f_nm):
