@@ -1358,7 +1358,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     f_n = plylst_folder + \
                         snd_f + ".json"
                 else:
-                    snd_f = snd_f.replace(".mp4", "")
+                    snd_f = rq_d[3].replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
                     f_n = media_folder + snd_f + ".json"
                 files.write_json_file(f_n, data)
