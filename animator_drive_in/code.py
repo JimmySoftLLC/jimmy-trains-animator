@@ -265,7 +265,7 @@ def get_media_files(folder_to_search, extensions):
 
 
 def upd_media():
-    global play_list_options, media_list_flattened, media_files, menu_snd_opt
+    global play_list_options, media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission
 
     extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
@@ -278,10 +278,17 @@ def upd_media():
     #     "plylst_", plylst_folder, ".json", True)
     # # print("Play lists: " + str(plylst_opt))
 
-    media_list_flattened = []
+    media_list_all = []
     for topic, my_files in media_files.items():
-        media_list_flattened.extend(
+        media_list_all.extend(
             [f"{topic}/{my_file}" for my_file in my_files])
+
+    media_list_all_no_intermission = []
+    for topic, my_files in media_files.items():
+        if "intermission" not in topic.lower():  # Ignore topics with 'intermission'
+            media_list_all_no_intermission.extend(
+                [f"{topic}/{my_file}" for my_file in my_files])
+
 
     # print(str(rand_files.keys))
 
@@ -1829,7 +1836,7 @@ def rst_def():
 
 def upd_vol(seconds):
     volume = int(cfg["volume"])
-    mix.set_volume(volume/100)
+    mix.set_volume(volume/100*.7)
     mix_media.set_volume(volume/100)
     media_player.audio_set_volume(volume)
     time.sleep(seconds)
@@ -2230,11 +2237,11 @@ def return_file_to_use(f_nm):
         print("Random sound option: " + f_nm)
         print("Sound file: " + cur_opt)
     elif f_nm == "random_all":
-        h_i = len(media_list_flattened) - 1
-        cur_opt = media_list_flattened[random.randint(
+        h_i = len(media_list_all_no_intermission) - 1
+        cur_opt = media_list_all_no_intermission[random.randint(
             0, h_i)]
-        while lst_opt == cur_opt and len(media_list_flattened) > 1:
-            cur_opt = media_list_flattened[random.randint(
+        while lst_opt == cur_opt and len(media_list_all_no_intermission) > 1:
+            cur_opt = media_list_all_no_intermission[random.randint(
                 0, h_i)]
         lst_opt = cur_opt
         print("Random sound option: " + f_nm)
@@ -2242,7 +2249,7 @@ def return_file_to_use(f_nm):
     elif "random_" in f_nm:
         folder_name = f_nm.split("_")
         filtered_list = [
-            item for item in media_list_flattened if item.startswith(folder_name[1])]
+            item for item in media_list_all if item.startswith(folder_name[1])]
         h_i = len(filtered_list) - 1
         cur_opt = filtered_list[random.randint(
             0, h_i)]
