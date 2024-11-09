@@ -274,9 +274,9 @@ def upd_media():
     media_files.update(rand_files)  # add rand_files to media_files dictionary
     # print("All media: " + str(media_files))
 
-    play_list_options = files.return_directory(
-        "plylst_", plylst_folder, ".json", True)
-    # print("Play lists: " + str(plylst_opt))
+    # play_list_options = files.return_directory(
+    #     "plylst_", plylst_folder, ".json", True)
+    # # print("Play lists: " + str(plylst_opt))
 
     media_list_flattened = []
     for topic, my_files in media_files.items():
@@ -1291,8 +1291,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
-        elif self.path == "/get-scripts":
-            self.get_scripts_post(post_data_obj)
+        # elif self.path == "/get-scripts":
+        #     self.get_scripts_post(post_data_obj)
         elif self.path == "/create-playlist":
             self.create_playlist_post(post_data_obj)
         elif self.path == "/get-animation":
@@ -2150,7 +2150,9 @@ def check_switches(stop_event):
             clear_command_queue()
             mix_media.stop()
             media_player.stop()
-            cont_run = False
+            if cont_run:
+                    cont_run = False
+                    play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
             stop_event.set()  # Signal to stop the thread
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":

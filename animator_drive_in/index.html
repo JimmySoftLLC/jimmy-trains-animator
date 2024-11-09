@@ -67,8 +67,8 @@
             <h2>Current Media Queue</h2>
             <div id="currentMedia"></div>
             <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-            <h2>Playlists:</h2>
-            <div id="playlistContainer"></div>
+            <!-- <h2>Playlists:</h2>
+            <div id="playlistContainer"></div> -->
             <h2>Media:</h2>
             <div id="mediaContainer"></div>
             <h2>Intermission between movies:</h2>
@@ -465,12 +465,12 @@
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
-            <h2>Playlists:</h2>
+            <!-- <h2>Playlists:</h2>
             <button class="mui-btn mui-btn--primary" onclick="createPlaylistDialog()">Create playlist</button>
             <button class="mui-btn mui-btn--primary" onclick="duplicatePlaylistDialog()">Duplicate playlist</button>
             <button class="mui-btn mui-btn--primary" onclick="renamePlaylistDialog()">Rename playlist</button>
             <button class="mui-btn mui-btn--primary" onclick="deletePlaylistDialog()">Delete playlist</button>
-            <div id="playlistScriptContainer"></div>
+            <div id="playlistScriptContainer"></div> -->
             <h2>Media:</h2>
             <div id="mediaScriptContainer"></div>
             <h2>Animation script table:</h2>
@@ -489,8 +489,8 @@
                 <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time between
                     transitions in decimal seconds
                 </div>
-                <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
-                    XXX/XXX ("folder/filename" or use "random_folder")</div>
+                <!-- <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
+                    XXX/XXX ("folder/filename" or use "random_folder")</div> -->
                 <div>ZRAND = Random rainbow, fire, or color change</div>
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
@@ -532,7 +532,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         getWebSiteUrl()
         getVolume()
-        getPlaylists()
+        // getPlaylists()
         getLightString()
         getMedia()
         getSceneChanges()
@@ -678,26 +678,26 @@
             });
     }
 
-    function getPlaylists() {
-        fetch('/get-scripts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                my_data = JSON.parse(data)
-                setPlylstButtons(my_data)
-                setPlylstScriptButtons(my_data)
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
-    }
+    // function getPlaylists() {
+    //     fetch('/get-scripts', {
+    //         method: 'POST',
+    //         headers: {
+    //             'Content-Type': 'application/json',
+    //         },
+    //     })
+    //         .then(function (response) {
+    //             return response.text(); // assuming the response is plain text
+    //         })
+    //         .then(function (data) {
+    //             my_data = JSON.parse(data)
+    //             setPlylstButtons(my_data)
+    //             setPlylstScriptButtons(my_data)
+    //         })
+    //         .catch(function (error) {
+    //             console.log(error);
+    //             showAlert(error);
+    //         });
+    // }
 
     function setPlylstButtons(my_data) {
         // Loop through the data and create a button for each item
@@ -1733,13 +1733,13 @@
         mui.overlay('on', modalEl);
     }
 
-    function updatePlaylists() {
-        const myPlaylistDiv = document.getElementById("playlistContainer");
-        removeChildNodes(myPlaylistDiv)
-        const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
-        removeChildNodes(myPlaylistScriptDiv)
-        getPlaylists()
-    }
+    // function updatePlaylists() {
+    //     const myPlaylistDiv = document.getElementById("playlistContainer");
+    //     removeChildNodes(myPlaylistDiv)
+    //     const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
+    //     removeChildNodes(myPlaylistScriptDiv)
+    //     getPlaylists()
+    // }
 
     function removeChildNodes(myDiv) {
         // Remove all child nodes
