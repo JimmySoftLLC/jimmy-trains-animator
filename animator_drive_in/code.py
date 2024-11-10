@@ -84,7 +84,7 @@
 # sudo apt-get install pulseaudio
 
 ############################################################
-# This code will automatically create wav files for folder names to make this work you need 
+# This code will automatically create wav files for folder names to make this work you need
 # gtts and pydub install these as follows
 # pip install gtts
 # sudo apt install ffmpeg
@@ -129,6 +129,7 @@ from pydub import AudioSegment
 import sys
 import asyncio
 import websockets
+import pyautogui
 
 
 # Turn off audio while setting things up
@@ -164,7 +165,7 @@ def replace_extension_to_jpg(image_path):
     else:
         print(f"File not found: {new_image_path}")
         return None
-
+    
 
 wallpaper_lock = threading.Lock()
 
@@ -199,6 +200,15 @@ def change_wallpaper(image_path):
             # Refresh the desktop, os.system will only return when finished
             os.system('pcmanfm --reconfigure')
             print("Wallpaper updated.")
+
+            # Temporarily disable the fail-safe for this operation
+            pyautogui.FAILSAFE = False
+
+            # Move the mouse off-screen (e.g., to the right and bottom)
+            pyautogui.moveTo(1920, 1080)
+
+            # After moving the mouse, re-enable the fail-safe
+            pyautogui.FAILSAFE = True
 
         except Exception as e:
             print(f"Image load error: {e}")
@@ -288,7 +298,6 @@ def upd_media():
         if "intermission" not in topic.lower():  # Ignore topics with 'intermission'
             media_list_all_no_intermission.extend(
                 [f"{topic}/{my_file}" for my_file in my_files])
-
 
     # print(str(rand_files.keys))
 
@@ -619,7 +628,7 @@ def bld_neo():
 
 def show_l():
     led.show()
-    time.sleep(.3)
+    time.sleep(.05)
     led.fill((0, 0, 0))
     led.show()
 
@@ -860,11 +869,13 @@ lifx = {}
 
 
 def discover_lights():
+    if web == False:
+        return False
     if cfg["lifx_enabled"] == False:
         return
     global devices, lifx
     play_mix(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
-    lifx = LifxLAN(18)  # Assuming 2 is the number of lights
+    lifx = LifxLAN(30)  # Assuming 30 is the number of lights
 
     # Discover LIFX devices on the local network
     devices = lifx.get_devices()
@@ -1086,10 +1097,7 @@ def get_default_gateway():
 
 def wait_for_network():
     global number_tries
-    if number_tries > 10:
-        print("Network not available after multiple tries.")
-        return
-    while True:
+    while number_tries <= 10:
         try:
             gateway_ip = get_default_gateway()
             if gateway_ip is None:
@@ -1099,13 +1107,17 @@ def wait_for_network():
             response = os.system(f"ping -c 1 {gateway_ip}")
             if response == 0:
                 print("Wi-Fi is connected to the LAN!")
-                return
+                return True
             else:
                 raise OSError("No response from gateway")
-        except OSError:
+        except OSError as e:
+            print(f"Error: {e}")
             print("Waiting for Wi-Fi connection to LAN...")
             time.sleep(1)
             number_tries += 1
+
+    print("Network not available after multiple tries.")
+    return False
 
 
 def get_local_ip():
@@ -1703,75 +1715,72 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
 
-if (web):
+if web:
+    if wait_for_network():
+        # Get the local IP address
+        local_ip = get_local_ip()
+        print(f"Local IP address: {local_ip}")
 
-    # Get the local IP address
-    local_ip = get_local_ip()
-    print(f"Local IP address: {local_ip}")
+        QUEUE_PORT = 8001
+        PORT = 8083
 
-    QUEUE_PORT = 8001
-    PORT = 8083  # Use port 80 for default HTTP access
+        httpd = None
 
-    httpd = None
+        def start_http_server():
+            global httpd
+            handler = MyHttpRequestHandler
+            httpd = socketserver.TCPServer((local_ip, PORT), handler)
+            httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            print(f"Serving on {local_ip}:{PORT}")
+            httpd.serve_forever()
 
-    def start_http_server():
-        global httpd
-        # Set up the HTTP server
-        handler = MyHttpRequestHandler
-        httpd = socketserver.TCPServer((local_ip, PORT), handler)
-        httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        print(f"Serving on {local_ip}:{PORT}")
-        httpd.serve_forever()
+        def get_mdns_info():
+            name_str = cfg["HOST_NAME"] + "._http._tcp.local."
+            server_str = cfg["HOST_NAME"] + ".local."
+            desc = {'path': '/'}
+            mdns_info = ServiceInfo(
+                "_http._tcp.local.",
+                name_str,
+                addresses=[socket.inet_aton(local_ip)],
+                port=PORT,
+                properties=desc,
+                server=server_str
+            )
+            return mdns_info
 
-    def get_mdns_info():
-        # Set up mDNS service info
-        name_str = cfg["HOST_NAME"] + "._http._tcp.local."
-        server_str = cfg["HOST_NAME"] + ".local."
-        desc = {'path': '/'}
-        mdns_info = ServiceInfo(
-            "_http._tcp.local.",
-            name_str,
-            addresses=[socket.inet_aton(local_ip)],
-            port=PORT,
-            properties=desc,
-            server=server_str
-        )
-        return mdns_info
+        mdns_info = get_mdns_info()
 
-    mdns_info = get_mdns_info()
+        async def command_queue_handler(websocket, path):
+            global current_media_playing
+            print("WebSocket connection established")
+            try:
+                while True:
+                    if command_queue:
+                        commands = list(command_queue)
+                        response = {
+                            'commands': commands,
+                            'current_media_playing': current_media_playing
+                        }
+                        await websocket.send(json.dumps(response))
+                    else:
+                        response = {
+                            'commands': [],
+                            'current_media_playing': current_media_playing
+                        }
+                        await websocket.send(json.dumps(response))
 
-    async def command_queue_handler(websocket, path):
-        global current_media_playing
-        print("WebSocket connection established")
-        try:
-            while True:
-                if command_queue:  # Check if there are items in the deque
-                    # Convert deque to a list for JSON serialization
-                    commands = list(command_queue)
-                    response = {
-                        'commands': commands,
-                        'current_media_playing': current_media_playing
-                    }
-                    # Send the object
-                    await websocket.send(json.dumps(response))
-                else:
-                    response = {
-                        'commands': [],
-                        'current_media_playing': current_media_playing
-                    }
-                    await websocket.send(json.dumps(response))
+                    await asyncio.sleep(1)
+            except Exception as e:
+                print(f"Error in command_queue_handler: {e}")  # Log any errors
+            finally:
+                print("WebSocket connection closed")
 
-                await asyncio.sleep(1)  # Send updates every second
-        except Exception as e:
-            print(f"Error in command_queue_handler: {e}")  # Log any errors
-        finally:
-            # Log when the connection is closed
-            print("WebSocket connection closed")
-
-    async def websocket_server():
-        async with websockets.serve(command_queue_handler, "0.0.0.0", QUEUE_PORT):
-            print(f"WebSocket server running on port {QUEUE_PORT}")
-            await asyncio.Future()  # Run forever
+        async def websocket_server():
+            async with websockets.serve(command_queue_handler, "0.0.0.0", QUEUE_PORT):
+                print(f"WebSocket server running on port {QUEUE_PORT}")
+                await asyncio.Future()  # Run forever
+    else:
+        web = False
 
 gc_col("web server")
 
@@ -1779,8 +1788,6 @@ gc_col("web server")
 ################################################################################
 # Command queue
 
-
-# Create a deque to hold commands
 command_queue = deque()
 
 
@@ -1867,7 +1874,7 @@ def ch_vol(action):
         v = 1
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
-    upd_vol(.01)
+    upd_vol(.05)
     files.write_json_file(code_folder + "cfg.json", cfg)
     play_mix(code_folder + "mvc/volume.wav")
     spk_str(cfg["volume"], False)
@@ -1880,7 +1887,7 @@ def play_mix(file_name, wait_until_done=True, allow_exit=True):
         while mix.get_busy():
             pass
     mix_sound = pygame.mixer.Sound(file_name)
-    upd_vol(.001)
+    upd_vol(.05)
     mix.play(mix_sound, loops=0)
     while mix.get_busy() and wait_until_done:
         if allow_exit:
@@ -1895,7 +1902,7 @@ def play_mix_media(file_name):
         while mix.get_busy():
             pass
     mix_media_sound = pygame.mixer.Sound(file_name)
-    upd_vol(.001)
+    upd_vol(.05)
     mix_media.play(mix_media_sound, loops=0)
     print("done playing")
 
@@ -1919,7 +1926,7 @@ def exit_early():
     r_sw.update()
     if l_sw.fell:
         stop_all_media()
-    time.sleep(0.1)
+    time.sleep(0.05)
 
 
 def spk_str(str_to_speak, addLocal):
@@ -2109,6 +2116,8 @@ def generate_wav_from_filename(file_name):
 
 
 def update_folder_name_wavs():
+    if web == False:
+        return False
     if is_gtts_reachable == False:
         return
 
@@ -2158,8 +2167,8 @@ def check_switches(stop_event):
             mix_media.stop()
             media_player.stop()
             if cont_run:
-                    cont_run = False
-                    play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
+                cont_run = False
+                play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
             stop_event.set()  # Signal to stop the thread
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
@@ -2198,6 +2207,11 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
+    time.sleep(0.5)
+    l_sw.update()
+    r_sw.update()
+    three_sw.update()
+    four_sw.update()
     current_media_playing = ""
 
 
@@ -2249,7 +2263,7 @@ def return_file_to_use(f_nm):
     elif "random_" in f_nm:
         folder_name = f_nm.split("_")
         filtered_list = [
-            item for item in media_list_all if item.startswith(folder_name[1])]
+            item for item in media_list_all if item.startswith(folder_name[1]+ "/") ]
         h_i = len(filtered_list) - 1
         cur_opt = filtered_list[random.randint(
             0, h_i)]
@@ -2355,13 +2369,13 @@ def an_light(f_nm):
                 check_thread.join()  # Wait for the thread to finish
                 result = an_done_reset("DONE")
                 return result
-        time.sleep(.01)
+        time.sleep(.05)
 
 
 def an_done_reset(return_value):
     global running_mode
     rst_an()
-    time.sleep(.2)
+    time.sleep(0.05)
     running_mode = ""
     return return_value
 
@@ -2780,7 +2794,7 @@ class BseSt(Ste):
                 print("sw four fell")
                 ch_vol("raise")
 
-        time.sleep(.1)
+        time.sleep(0.05)
 
 
 class Main(Ste):
@@ -2921,7 +2935,7 @@ class IntermissionSettings(Ste):
                 mch.go_to('base_state')
 
 
-class AddSnds(Ste):
+class AddSnds(Ste): 
 
     def __init__(self):
         self.i = 0
@@ -3001,7 +3015,7 @@ class VolumeLevelAdjustment(Ste):
                 play_mix(code_folder + "mvc/all_changes_complete.wav")
                 done = True
                 mch.go_to('base_state')
-            time.sleep(0.1)
+            time.sleep(0.05)
             pass
 
 
@@ -3067,16 +3081,13 @@ st_mch.add(WebOpt())
 st_mch.add(IntermissionSettings())
 
 
-time.sleep(.5)
+time.sleep(0.05)
 aud_en.value = True
-upd_vol(.5)
+upd_vol(0.05)
 
 if (web):
     files.log_item("starting server...")
     try:
-        # Wait for the network to be ready before continuing
-        wait_for_network()
-
         # Register mDNS service
         zeroconf = Zeroconf()
         print("Registering mDNS service...")
@@ -3086,9 +3097,9 @@ if (web):
         server_thread = threading.Thread(target=start_http_server)
         server_thread.daemon = True
         server_thread.start()
-        spk_web()
+
     except OSError:
-        time.sleep(5)
+        web = False
         files.log_item("server did not start...")
 
 discover_lights()
@@ -3096,10 +3107,6 @@ discover_lights()
 is_gtts_reachable = check_gtts_status()
 
 update_folder_name_wavs()
-
-st_mch.go_to('base_state')
-files.log_item("animator has started...")
-gc_col("animations started.")
 
 if (web):
     # Start the WebSocket server in a separate thread
@@ -3109,13 +3116,16 @@ if (web):
     websocket_thread.start()
     close_midori()
     open_midori()
+    spk_web()
 
+st_mch.go_to('base_state')
+files.log_item("animator has started...")
+gc_col("animations started.")
 
 def run_state_machine():
     while True:
         st_mch.upd()
-        time.sleep(.1)
-
+        time.sleep(0.05)
 
 # Start the state machine in a separate thread
 state_machine_thread = threading.Thread(target=run_state_machine)
