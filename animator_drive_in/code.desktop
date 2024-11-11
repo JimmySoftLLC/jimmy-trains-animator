@@ -2,4 +2,4 @@
 [Desktop Entry]
 Type=Application
 Name=code.desktop
-Exec=xterm -iconic -hold -e '/usr/bin/python3 $HOME/code/code.py'
+Exec=xterm -fa 'Monospace' -fs 24 -iconic -hold -e '/usr/bin/python3 $HOME/code/code.py'

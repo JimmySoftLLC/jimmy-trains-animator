@@ -380,48 +380,55 @@ mix_media = pygame.mixer.Channel(1)
 terminal_process = None
 
 
-def kill_terminal_process():
-    global terminal_process  # Use the global variable
-    if terminal_process is not None:
-        terminal_process.terminate()
-        terminal_process.kill()
+def hide_terminal():
+    # Check for Linux platform
+    if sys.platform.startswith('linux'):
+        try:
+            # Use xdotool to find the terminal running 'code.py'
+            window_ids = subprocess.check_output(
+                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
+            
+            if window_ids:
+                for window_id in window_ids:
+                    # Minimize (hide) the terminal window
+                    subprocess.run(['xdotool', 'windowminimize', window_id])
+                    print("Terminal window minimized and hidden.")
+            else:
+                print("Terminal window running 'code.py' not found.")
+        except Exception as e:
+            print(f"Error hiding terminal: {e}")
+    else:
+        print("Unsupported platform.")
 
 
 def open_terminal():
     # Check for Linux platform
     if sys.platform.startswith('linux'):
-        # Set the font size for the terminal (example value)
-        font_size = "3.0"  # Adjust this value to set the desired font size
         try:
-            # Attempt to set the font size
-            subprocess.run(['gsettings', 'set', 'org.gnome.desktop.interface',
-                           'text-scaling-factor', font_size], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error setting font size: {e}")
-            return None
-        try:
-            # Open LXTerminal
-            terminal_process = subprocess.Popen(
-                ['lxterminal', '--command', 'tail -f /tmp/output.log'])
-            time.sleep(2)  # Wait a moment for the terminal to open
-
-            # Use xdotool to find the window and resize/move it
+            # Use xdotool to find the terminal running 'code.py'
             window_ids = subprocess.check_output(
-                ['xdotool', 'search', '--name', 'lxterminal']).strip().decode('utf-8').split()
-            for window_id in window_ids:
-                subprocess.run(['xdotool', 'windowmove', window_id, '0', '0'])
-                subprocess.run(
-                    ['xdotool', 'windowsize', window_id, '300', '300'])
-                print("Terminal window moved and resized.")
+                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
+            
+            if window_ids:
+                for window_id in window_ids:
+                    # Unhide and bring the terminal window to the front
+                    subprocess.run(['xdotool', 'windowmap', window_id])  # Unhide window
+                    subprocess.run(['xdotool', 'windowactivate', '--sync', window_id])  # Focus window
+
+                    # Resize and move the terminal as required
+                    subprocess.run(['xdotool', 'windowmove', window_id, '0', '0'])
+                    subprocess.run(['xdotool', 'windowsize', window_id, '1280', '360'])
+                    print("Terminal window unhidden, moved, and resized.")
             else:
-                print("LXTerminal window not found.")
-            return terminal_process
+                print("Terminal window running 'code.py' not found.")
+            return True
         except Exception as e:
             print(f"Error opening terminal: {e}")
             return None
     else:
         print("Unsupported platform.")
         return None
+
 
 
 def move_vlc_window():
@@ -431,8 +438,8 @@ def move_vlc_window():
             ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
         if window_id:
             # Move the window to (100, 100) and resize to 800x600
-            subprocess.run(['xdotool', 'windowmove', window_id, '640', '360'])
-            subprocess.run(['xdotool', 'windowsize', window_id, '640', '360'])
+            subprocess.run(['xdotool', 'windowmove', window_id, '0', '360'])
+            subprocess.run(['xdotool', 'windowsize', window_id, '1280', '360'])
             print("VLC window moved and resized.")
         else:
             print("VLC window not found.")
@@ -440,10 +447,6 @@ def move_vlc_window():
         print(f"Error moving VLC window: {e}")
 
 
-def write_to_log(message):
-    if terminal_window_during_playback:
-        with open('/tmp/output.log', 'a') as f:
-            f.write(message + '\n')
 ################################################################################
 # Setup video hardware
 
@@ -1923,7 +1926,6 @@ def stop_all_media():
 
 def exit_early():
     l_sw.update()
-    r_sw.update()
     if l_sw.fell:
         stop_all_media()
     time.sleep(0.05)
@@ -2162,6 +2164,7 @@ def check_switches(stop_event):
             mix_media.stop()
             media_player.stop()
             stop_event.set()  # Signal to stop the thread
+            l_sw.update()
         elif switch_state == "left_held" and cfg["can_cancel"]:
             clear_command_queue()
             mix_media.stop()
@@ -2170,6 +2173,7 @@ def check_switches(stop_event):
                 cont_run = False
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
             stop_event.set()  # Signal to stop the thread
+            r_sw.update()
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
                 if media_player.is_playing():
@@ -2186,9 +2190,11 @@ def check_switches(stop_event):
         elif switch_state == "three":
             print("sw three fell")
             ch_vol("lower")
+            three_sw.update()
         elif switch_state == "four":
             print("sw four fell")
             ch_vol("raise")
+            four_sw.update()
         upd_vol(0.05)
 
 
@@ -2203,7 +2209,7 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     global current_media_playing
     change_wallpaper(file_name)
     stop_all_media()
-    kill_terminal_process()
+    hide_terminal()
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
@@ -2337,9 +2343,8 @@ def an_light(f_nm):
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             t_elaspsed = "{:.1f}".format(t_past)
             log_this = "Time elapsed: " + \
-                str(t_elaspsed) + " Timestamp: " + ft1[0]
+                str(t_elaspsed) + " Timestamp: " + ft1[0] + " Cmd: " + ft1[1]
             files.log_item(log_this)
-            write_to_log("Timestamp: " + ft1[0] + " Cmd: " + ft1[1])
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
                 result = an_done_reset(resp)
@@ -2351,7 +2356,7 @@ def an_light(f_nm):
                 stop_event.set()  # Signal the thread to stop
                 check_thread.join()  # Wait for the thread to finish
                 change_wallpaper(media_folder + 'pictures/black.jpg')
-                kill_terminal_process()
+                hide_terminal()
                 led.brightness = 1.0
                 led.fill((0, 0, 0))
                 led.show()
@@ -2415,7 +2420,6 @@ def an_ts(f_nm):
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
-            write_to_log("Timestamp: " + str(t_elsp))
         if not mix_media.get_busy() and not media_player.is_playing():
             led.fill((0, 0, 0))
             led.show()
@@ -2781,19 +2785,22 @@ class BseSt(Ste):
                 else:
                     cont_run = True
                     play_mix(code_folder + "mvc/continuous_mode_activated.wav")
+                l_sw.update()
                 time.sleep(0.05)
             elif switch_state == "left" or cont_run:
                 add_command(cfg["option_selected"])
+                r_sw.update()
                 time.sleep(0.05)
             elif switch_state == "right":
                 mch.go_to('main_menu')
             elif switch_state == "three":
                 print("sw three fell")
                 ch_vol("lower")
+                three_sw.update()
             elif switch_state == "four":
                 print("sw four fell")
                 ch_vol("raise")
-
+                four_sw.update()
         time.sleep(0.05)
 
 
