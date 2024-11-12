@@ -165,7 +165,7 @@ def replace_extension_to_jpg(image_path):
     else:
         print(f"File not found: {new_image_path}")
         return None
-    
+
 
 wallpaper_lock = threading.Lock()
 
@@ -338,6 +338,7 @@ running_mode = ""
 is_gtts_reachable = False
 terminal_window_during_playback = False
 mix_is_paused = False
+exit_set_hdw = False
 
 
 ################################################################################
@@ -387,7 +388,7 @@ def hide_terminal():
             # Use xdotool to find the terminal running 'code.py'
             window_ids = subprocess.check_output(
                 ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
-            
+
             if window_ids:
                 for window_id in window_ids:
                     # Minimize (hide) the terminal window
@@ -408,16 +409,21 @@ def open_terminal():
             # Use xdotool to find the terminal running 'code.py'
             window_ids = subprocess.check_output(
                 ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
-            
+
             if window_ids:
                 for window_id in window_ids:
                     # Unhide and bring the terminal window to the front
-                    subprocess.run(['xdotool', 'windowmap', window_id])  # Unhide window
-                    subprocess.run(['xdotool', 'windowactivate', '--sync', window_id])  # Focus window
+                    # Unhide window
+                    subprocess.run(['xdotool', 'windowmap', window_id])
+                    # Focus window
+                    subprocess.run(
+                        ['xdotool', 'windowactivate', '--sync', window_id])
 
                     # Resize and move the terminal as required
-                    subprocess.run(['xdotool', 'windowmove', window_id, '0', '0'])
-                    subprocess.run(['xdotool', 'windowsize', window_id, '1280', '360'])
+                    subprocess.run(
+                        ['xdotool', 'windowmove', window_id, '0', '0'])
+                    subprocess.run(
+                        ['xdotool', 'windowsize', window_id, '1280', '360'])
                     print("Terminal window unhidden, moved, and resized.")
             else:
                 print("Terminal window running 'code.py' not found.")
@@ -428,7 +434,6 @@ def open_terminal():
     else:
         print("Unsupported platform.")
         return None
-
 
 
 def move_vlc_window():
@@ -1331,6 +1336,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.test_animation_post(post_data_obj)
 
     def test_animation_post(self, rq_d):
+        global exit_set_hdw
+        exit_set_hdw = False
         set_hdw(rq_d["an"], 3)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1820,9 +1827,10 @@ def clear_command_queue():
 
 def stop_all_commands():
     """Stop all commands and clear the queue."""
-    global running_mode, cont_run
+    global running_mode, cont_run, exit_set_hdw
     clear_command_queue()
     running_mode = ""
+    exit_set_hdw = True
     mix.stop()
     media_player.stop()
     cont_run = False
@@ -2156,7 +2164,7 @@ def logo_when_idle():
 
 
 def check_switches(stop_event):
-    global cont_run, running_mode, mix_is_paused
+    global cont_run, running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
@@ -2164,6 +2172,7 @@ def check_switches(stop_event):
             mix_media.stop()
             media_player.stop()
             stop_event.set()  # Signal to stop the thread
+            exit_set_hdw = True
             l_sw.update()
         elif switch_state == "left_held" and cfg["can_cancel"]:
             clear_command_queue()
@@ -2173,13 +2182,15 @@ def check_switches(stop_event):
                 cont_run = False
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
             stop_event.set()  # Signal to stop the thread
-            r_sw.update()
+            exit_set_hdw = True
+            l_sw.update()
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
                 if media_player.is_playing():
                     media_player.pause()
                 else:
                     media_player.play()
+                r_sw.update()
             elif running_mode == "mix":
                 if mix_is_paused:
                     mix_media.unpause()
@@ -2187,6 +2198,7 @@ def check_switches(stop_event):
                 else:
                     mix_media.pause()
                     mix_is_paused = True
+                r_sw.update()
         elif switch_state == "three":
             print("sw three fell")
             ch_vol("lower")
@@ -2269,7 +2281,7 @@ def return_file_to_use(f_nm):
     elif "random_" in f_nm:
         folder_name = f_nm.split("_")
         filtered_list = [
-            item for item in media_list_all if item.startswith(folder_name[1]+ "/") ]
+            item for item in media_list_all if item.startswith(folder_name[1] + "/")]
         h_i = len(filtered_list) - 1
         cur_opt = filtered_list[random.randint(
             0, h_i)]
@@ -2283,7 +2295,8 @@ def return_file_to_use(f_nm):
 
 
 def an_light(f_nm):
-    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing
+    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
+    exit_set_hdw = False
     current_media_playing = f_nm
     plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
@@ -2342,8 +2355,9 @@ def an_light(f_nm):
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             t_elaspsed = "{:.1f}".format(t_past)
-            log_this = "Time elapsed: " + \
-                str(t_elaspsed) + " Timestamp: " + ft1[0] + " Cmd: " + ft1[1]
+            duration = "{:.1f}".format(dur)
+            log_this = "TE: " + \
+                str(t_elaspsed) + " TS: " + ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
             files.log_item(log_this)
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
@@ -2452,7 +2466,7 @@ def rnd_prob(random_value):
 
 
 def set_hdw(cmd, dur):
-    global sp, br, running_mode
+    global sp, br, running_mode, exit_set_hdw
 
     if cmd == "":
         return "NOCMDS"
@@ -2461,6 +2475,8 @@ def set_hdw(cmd, dur):
 
     try:
         for seg in segs:
+            if exit_set_hdw:
+                return "STOP"
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
@@ -2591,11 +2607,12 @@ def random_effect(il, ih, d):
 
 
 def rbow(spd, dur):
+    global exit_set_hdw
     st = time.monotonic()
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            if not running_mode:
+            if exit_set_hdw:
                 return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
@@ -2606,6 +2623,8 @@ def rbow(spd, dur):
             if te > dur:
                 return
         for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw:
+                return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -2617,6 +2636,7 @@ def rbow(spd, dur):
 
 
 def fire(dur):
+    global exit_set_hdw
     st = time.monotonic()
 
     firei = []
@@ -2644,7 +2664,7 @@ def fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in firei:
-            if not running_mode:
+            if exit_set_hdw:
                 return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
@@ -2942,7 +2962,7 @@ class IntermissionSettings(Ste):
                 mch.go_to('base_state')
 
 
-class AddSnds(Ste): 
+class AddSnds(Ste):
 
     def __init__(self):
         self.i = 0
@@ -3129,10 +3149,12 @@ st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
+
 def run_state_machine():
     while True:
         st_mch.upd()
         time.sleep(0.05)
+
 
 # Start the state machine in a separate thread
 state_machine_thread = threading.Thread(target=run_state_machine)
