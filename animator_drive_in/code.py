@@ -2318,10 +2318,11 @@ def an_light(f_nm):
     ft1 = []
     ft2 = []
 
-    ft1 = flsh_t[len(flsh_t)-1].split("|")
-    tm = float(ft1[0]) + 0.1
-    flsh_t.append(str(tm) + "|E")
-    flsh_t.append(str(tm + 0.1) + "|E")
+    # add end command to time stamps to stop video when timestamps run out
+    ft_last = flsh_t[len(flsh_t)-1].split("|")
+    tm_last = float(ft_last[0]) + 1
+    flsh_t.append(str(tm_last) + "|E")
+    flsh_t.append(str(tm_last + 1) + "|E")
 
     check_thread, stop_event = run_check_switches_thread()
 
@@ -2405,7 +2406,7 @@ def insert_intermission_start_of_queue():
 
 
 def an_ts(f_nm):
-    global terminal_process
+    global terminal_process, terminal_window_during_playback
     print("time stamp mode")
     global ts_mode, running_mode
     running_mode == "time_stamp_mode"
@@ -2416,7 +2417,12 @@ def an_ts(f_nm):
 
     t_s = []
 
+    t_s.append("0.0|")
+
     media0 = media_folder + f_nm
+
+    previous_terminal_mode = terminal_window_during_playback
+    terminal_window_during_playback = True
 
     if terminal_window_during_playback:
         terminal_process = open_terminal()
@@ -2435,12 +2441,14 @@ def an_ts(f_nm):
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
         if not mix_media.get_busy() and not media_player.is_playing():
+            t_s.append(str(t_elsp) + "|")
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
                 media_folder + json_fn + ".json", t_s)
             break
 
+    terminal_window_during_playback = previous_terminal_mode    
     ts_mode = False
     rst_an()
     play_mix(code_folder + "mvc/timestamp_saved.wav")
