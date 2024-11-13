@@ -2214,21 +2214,15 @@ def check_switches(stop_event):
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
         if switch_state == "left" and cfg["can_cancel"]:
-            mix_media.stop()
-            media_player.stop()
             stop_event.set()  # Signal to stop the thread
-            exit_set_hdw = True
-            time.sleep(.5)
+            rst_an()
         elif switch_state == "left_held" and cfg["can_cancel"]:
+            stop_event.set()  # Signal to stop the thread
             clear_command_queue()
-            mix_media.stop()
-            media_player.stop()
+            rst_an()
             if cont_run:
                 cont_run = False
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
-            stop_event.set()  # Signal to stop the thread
-            exit_set_hdw = True
-            time.sleep(.5)
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
                 if media_player.is_playing():
@@ -2242,15 +2236,12 @@ def check_switches(stop_event):
                 else:
                     mix_media.pause()
                     mix_is_paused = True
-            time.sleep(.5)
         elif switch_state == "three":
             print("sw three fell")
             ch_vol("lower")
-            time.sleep(.5)
         elif switch_state == "four":
             print("sw four fell")
             ch_vol("raise")
-            time.sleep(.5)
         upd_vol(0.05)
 
 
@@ -2262,13 +2253,14 @@ def run_check_switches_thread():
 
 
 def rst_an(file_name=media_folder + 'pictures/black.jpg'):
-    global current_media_playing
-    change_wallpaper(file_name)
+    global current_media_playing, exit_set_hdw
+    exit_set_hdw = True
     stop_all_media()
     hide_terminal()
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
+    change_wallpaper(file_name)
     time.sleep(0.5)
     l_sw.update()
     r_sw.update()
