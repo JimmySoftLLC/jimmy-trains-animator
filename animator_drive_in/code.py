@@ -130,6 +130,7 @@ import sys
 import asyncio
 import websockets
 import pyautogui
+import math
 
 
 # Turn off audio while setting things up
@@ -1851,12 +1852,56 @@ def rst_def():
 ################################################################################
 # Dialog and sound play methods
 
+# Manually defined logarithmic values for lookup table (approximate)
+linear_values = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+# Logarithmic values approximated between 0 and 1
+log_values = [
+    0,        # log(0) is undefined, but we set it to 0 for this table
+    0.001,    # log(0.1)
+    0.01,     # log(0.2)
+    0.1,      # log(0.3)
+    0.2,      # log(0.4)
+    0.3,      # log(0.5)
+    0.4,      # log(0.6)
+    0.5,      # log(0.7)
+    0.6,      # log(0.8)
+    0.7,      # log(0.9)
+    1.0       # log(1) is 0, but here we set it to 1 for the table
+]
+
+# Print out the tables as arrays
+print("Linear values:", linear_values)
+print("Log values:", log_values)
+
+def interpolate(x, x_values, y_values):
+    # Ensure x is within the valid range of x_values
+    if x <= x_values[0]:
+        return y_values[0]
+    elif x >= x_values[-1]:
+        return y_values[-1]
+
+    # Find the interval [x1, x2]
+    for i in range(1, len(x_values)):
+        if x_values[i] >= x:
+            x1, x2 = x_values[i-1], x_values[i]
+            y1, y2 = y_values[i-1], y_values[i]
+            # Interpolate
+            return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+
+# Example: Interpolate for linear input of 0.75
+linear_input = 0.75
+log_output = interpolate(linear_input, linear_values, log_values)
+print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
+
 
 def upd_vol(seconds):
     volume = int(cfg["volume"])
-    mix.set_volume(volume/100*.7)
-    mix_media.set_volume(volume/100)
-    media_player.audio_set_volume(volume)
+    volume_0_1 = volume/100
+    log_to_linear = int(interpolate(volume_0_1,log_values,linear_values)*100)
+    mix.set_volume(volume_0_1*0.7)
+    mix_media.set_volume(volume_0_1*0.7)
+    media_player.audio_set_volume(log_to_linear)
     time.sleep(seconds)
 
 
@@ -2173,7 +2218,7 @@ def check_switches(stop_event):
             media_player.stop()
             stop_event.set()  # Signal to stop the thread
             exit_set_hdw = True
-            l_sw.update()
+            time.sleep(.5)
         elif switch_state == "left_held" and cfg["can_cancel"]:
             clear_command_queue()
             mix_media.stop()
@@ -2183,14 +2228,13 @@ def check_switches(stop_event):
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
             stop_event.set()  # Signal to stop the thread
             exit_set_hdw = True
-            l_sw.update()
+            time.sleep(.5)
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
                 if media_player.is_playing():
                     media_player.pause()
                 else:
                     media_player.play()
-                r_sw.update()
             elif running_mode == "mix":
                 if mix_is_paused:
                     mix_media.unpause()
@@ -2198,15 +2242,15 @@ def check_switches(stop_event):
                 else:
                     mix_media.pause()
                     mix_is_paused = True
-                r_sw.update()
+            time.sleep(.5)
         elif switch_state == "three":
             print("sw three fell")
             ch_vol("lower")
-            three_sw.update()
+            time.sleep(.5)
         elif switch_state == "four":
             print("sw four fell")
             ch_vol("raise")
-            four_sw.update()
+            time.sleep(.5)
         upd_vol(0.05)
 
 
@@ -2307,11 +2351,19 @@ def an_light(f_nm):
 
     if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
+        if (f_exists(plylst_folder + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
+        else:
+            flsh_t.append("0.0|")
+            flsh_t.append("5000.0|")
+            files.write_json_file(plylst_folder + f_nm + ".json", flsh_t)
     else:
         if (f_exists(media_folder + json_fn + ".json") == True):
-            flsh_t = files.read_json_file(
-                media_folder + json_fn + ".json")
+            flsh_t = files.read_json_file(media_folder + json_fn + ".json")
+        else:
+            flsh_t.append("0.0|")
+            flsh_t.append("5000.0|")
+            files.write_json_file(media_folder + json_fn + ".json", flsh_t)
 
     flsh_i = 0
 
@@ -2358,7 +2410,8 @@ def an_light(f_nm):
             t_elaspsed = "{:.1f}".format(t_past)
             duration = "{:.1f}".format(dur)
             log_this = "TE: " + \
-                str(t_elaspsed) + " TS: " + ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
+                str(t_elaspsed) + " TS: " + \
+                ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
             files.log_item(log_this)
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
@@ -2448,7 +2501,7 @@ def an_ts(f_nm):
                 media_folder + json_fn + ".json", t_s)
             break
 
-    terminal_window_during_playback = previous_terminal_mode    
+    terminal_window_during_playback = previous_terminal_mode
     ts_mode = False
     rst_an()
     play_mix(code_folder + "mvc/timestamp_saved.wav")
@@ -2813,22 +2866,21 @@ class BseSt(Ste):
                 else:
                     cont_run = True
                     play_mix(code_folder + "mvc/continuous_mode_activated.wav")
-                l_sw.update()
-                time.sleep(0.05)
+                time.sleep(.5)
             elif switch_state == "left" or cont_run:
                 add_command(cfg["option_selected"])
-                r_sw.update()
-                time.sleep(0.05)
+                time.sleep(.5)
             elif switch_state == "right":
                 mch.go_to('main_menu')
+                time.sleep(.5)
             elif switch_state == "three":
                 print("sw three fell")
                 ch_vol("lower")
-                three_sw.update()
+                time.sleep(.5)
             elif switch_state == "four":
                 print("sw four fell")
                 ch_vol("raise")
-                four_sw.update()
+                time.sleep(.5)
         time.sleep(0.05)
 
 
