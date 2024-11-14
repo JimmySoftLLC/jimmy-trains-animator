@@ -130,7 +130,6 @@ import sys
 import asyncio
 import websockets
 import pyautogui
-import math
 
 
 # Turn off audio while setting things up
@@ -1842,12 +1841,9 @@ def stop_all_commands():
 ################################################################################
 # Global Methods
 
-
 def rst_def():
     global cfg
-    cfg["HOST_NAME"] = "animator-drive-in"
-    cfg["option_selected"] = "random all"
-    cfg["volume"] = "20"
+    cfg = copy.deepcopy(default_cfg)
 
 ################################################################################
 # Dialog and sound play methods
