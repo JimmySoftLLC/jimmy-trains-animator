@@ -1,0 +1,35 @@
+{
+  "option_selected": "random_all",
+  "can_cancel": true,
+  "volume_pot": false,
+  "volume": "60",
+  "serve_webpage": true,
+  "show_webpage": true,
+  "HOST_NAME": "animator-video-train",
+  "light_string": "bar-10",
+  "lifx_enabled": false,
+  "scene_changes": {
+    "noon": [255, 255, 255],
+    "afternoon": [255, 223, 186],
+    "sunset": [255, 102, 51],
+    "dusk": [153, 102, 155],
+    "twilight": [51, 51, 153],
+    "earlynight": [25, 25, 102],
+    "midnight": [15, 15, 30],
+    "deepnight": [10, 10, 20],
+    "predawn": [15, 15, 30],
+    "earlydawn": [25, 25, 102],
+    "dawn": [102, 102, 255],
+    "earlymorning": [255, 153, 102],
+    "morning": [255, 204, 153],
+    "beforenoon": [255, 223, 186],
+    "secondnoon": [255, 255, 255]
+  },
+  "neo_changes": {
+    "red": [255, 0, 0],
+    "green": [0, 255, 0],
+    "blue": [0, 0, 255],
+    "white": [255, 255, 255]
+  },
+  "intermission": "0.33"
+}

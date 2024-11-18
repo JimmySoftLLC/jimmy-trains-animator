@@ -1,0 +1,2408 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Animator - Video train</title>
+    <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/mui.min.css" />
+    <script src="/mui.min.js"></script>
+    <style>
+        #progressContainer {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            width: 0;
+            height: 30px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 100px;
+            background-color: #ffffff;
+            border: 3px solid #000;
+            display: inline-block;
+        }
+
+        .bottom-gap {
+            height: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="modalEl"></div>
+    <div class="mui-container">
+        <h1>Animator - Video train</h1>
+        <p style="padding-top:0.5rem;">
+            Use this web app to control and setup your Animator - Video train
+            product. Have fun animating.
+        </p>
+        <ul class="mui-tabs__bar">
+            <li class="mui--is-active">
+                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="lighting">lights</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
+            </li>
+        </ul>
+        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+            <h2>Random play:</h2>
+            <div id="topicButtonContainer"></div>
+            <h2>Current Media Queue</h2>
+            <div id="currentMedia"></div>
+            <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
+            <!-- <h2>Playlists:</h2>
+            <div id="playlistContainer"></div> -->
+            <h2>Media:</h2>
+            <div id="mediaContainer"></div>
+            <h2>Intermission between movies:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0" data-url="/mode"
+                    type="button">
+                    Off
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.33" data-url="/mode"
+                    type="button">
+                    Infrequent
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.66" data-url="/mode"
+                    type="button">
+                    Frequent
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_1" data-url="/mode"
+                    type="button">
+                    Always
+                </button>
+            </div>
+            <h2>Animation settings:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
+            <h2>Instructions on how to add your own media:</h2>
+            <p>
+                Media goes in folders you create in the media folder in your home directory. Name these folders with
+                logical names related to what is in them. For
+                example Christmas music could go in a folder named Holiday.
+            </p>
+            <h2>Animation timing:</h2>
+            <p>
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
+                left button to start your animation. Once the media starts press the right button for each point
+                that you want an animation timestamp. Time your button presses to key moments in the media. Continue
+                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
+                animation script will be ready to add animations to.
+            </p>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
+                    type="button">
+                    Timestamp Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/mode" type="button">
+                    Timestamp Mode Off
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_on" data-url="/mode"
+                    type="button">
+                    Terminal Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_off" data-url="/mode"
+                    type="button">
+                    Terminal Mode Off
+                </button>
+            </div>
+
+            <div class="mui-textfield">
+                <h2>Upload a File</h1>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
+                        <input type="file" id="fileInput" name="file" style="display: none;" required>
+                    </form>
+                    <div id="progressContainer">
+                        <div id="progressBar">0%</div>
+                    </div>
+                    <p id="status"></p>
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
+            <!-- <h2>Platform positions:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
+                    type="button">
+                    All 0
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S090" data-url="/lights"
+                    type="button">
+                    All 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S0180" data-url="/lights"
+                    type="button">
+                    All 180
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
+                    type="button">
+                    Servo 1 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
+                    type="button">
+                    Servo 2 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
+                    type="button">
+                    Servo 3 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S490" data-url="/lights"
+                    type="button">
+                    Servo 4 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S590" data-url="/lights"
+                    type="button">
+                    Servo 5 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S690" data-url="/lights"
+                    type="button">
+                    Servo 6 90
+                </button>
+            </div> -->
+            <h2>Setup light string:</h2>
+            <div class="mui-textfield">
+                <p>
+                    Enter your light string in the order which each component is connected together by pressing neo-6,
+                    cane-4...
+                    When finished press "Save".
+                </p>
+                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
+                    data-url="/update-light-string">
+                    Save
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
+                    data-url="/update-light-string">
+                    Clear
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
+                    data-url="/update-light-string">
+                    Set to defaults
+                </button>
+            </div>
+            <div class="mui-textfield">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
+                    data-url="/update-light-string">
+                    projector-1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
+                    data-url="/update-light-string">
+                    concession-6
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
+                    data-url="/update-light-string">
+                    sign-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
+                    data-url="/update-light-string">
+                    cane-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
+                    data-url="/update-light-string">
+                    grandtree-21
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neo-6"
+                    data-url="/update-light-string">
+                    neo-6
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
+                    data-url="/update-light-string">
+                    bolt-1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-2"
+                    data-url="/update-light-string">
+                    bolt-2
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-3"
+                    data-url="/update-light-string">
+                    bolt-3
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-4"
+                    data-url="/update-light-string">
+                    bolt-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bar-10"
+                    data-url="/update-light-string">
+                    bar-10
+                </button>
+            </div>
+            <h2>Test neopixel lights:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
+                    type="button">
+                    Red
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
+                    type="button">
+                    Green
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
+                    type="button">
+                    Blue
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
+                    type="button">
+                    White
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN0" data-url="/lights"
+                    type="button">
+                    Off
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN20" data-url="/lights"
+                    type="button">
+                    20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN40" data-url="/lights"
+                    type="button">
+                    40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN60" data-url="/lights"
+                    type="button">
+                    60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN80" data-url="/lights"
+                    type="button">
+                    80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN100" data-url="/lights"
+                    type="button">
+                    100
+                </button>
+            </div>
+            <h2>Neo pixel colors:</h2>
+            <div id="neoButtonContainer"></div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_neo_to_defaults"
+                    data-url="/defaults" type="button">
+                    Reset neo pixel colors to defaults
+                </button>
+            </div>
+            <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="lifxCheckbox" data-url="/set-lifx-enabled">
+                    Enable Lifx lights
+                </label>
+            </div>
+            <div id="lifxDiv">
+                <h2>Test lifx lights:</h2>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
+                        type="button">
+                        Red
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
+                        type="button">
+                        Green
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
+                        type="button">
+                        Blue
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255"
+                        data-url="/lights" type="button">
+                        White
+                    </button>
+                </div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
+                        type="button">
+                        Off
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX20" data-url="/lights"
+                        type="button">
+                        20
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX40" data-url="/lights"
+                        type="button">
+                        40
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX60" data-url="/lights"
+                        type="button">
+                        60
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX80" data-url="/lights"
+                        type="button">
+                        80
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX100" data-url="/lights"
+                        type="button">
+                        100
+                    </button>
+                </div>
+                <h2>Scene colors:</h2>
+                <div id="sceneButtonContainer"></div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="reset_scene_to_defaults"
+                        data-url="/defaults" type="button">
+                        Reset scene colors to defaults
+                    </button>
+                </div>
+                <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
+            </div>
+            <div class="bottom-gap"></div>
+        </div>
+        <div class="mui-tabs__pane" id="settings">
+            <div class="mui-textfield">
+                <input class="input" id="volume" type="number" disabled>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume10">
+                    Volume 10
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume20">
+                    Volume 20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume30">
+                    Volume 30
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume40">
+                    Volume 40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume50">
+                    Volume 50
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume60">
+                    Volume 60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume70">
+                    Volume 70
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume80">
+                    Volume 80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume90">
+                    Volume 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume100">
+                    Volume 100
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="lower1">
+                    Lower Volume by 1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="raise1">
+                    Raise Volume by 1
+                </button>
+            </div>
+
+            <p>
+                Valid volume levels are from 1 to 100
+            </p>
+
+            <h2>Animator web page name:</h2>
+
+            <div class="mui-textfield">
+                <input class="input" id="websiteUrl" type="text" placeholder="Enter website name">
+                <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/update-host-name">
+                    Change
+                </button>
+            </div>
+
+            <p>
+                Use alphanumerics and dashes only. All names are automatically
+                appended with .local:8083. So your website url will be something like
+                "website-name.local:8083"
+            </p>
+
+            <h2>Utilities:</h2>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
+                type="button">
+                Speaker Test
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
+                type="button">
+                Reset to defaults
+            </button>
+        </div>
+        <div class="mui-tabs__pane" id="tables">
+            <h2>Animation scripts:</h2>
+            <p>
+                Animation scripts run the animation. To load the script press the button for the sound track you want to
+                modify.
+                Modify the script as needed and press save to save the script.
+            </p>
+            <!-- <h2>Playlists:</h2>
+            <button class="mui-btn mui-btn--primary" onclick="createPlaylistDialog()">Create playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicatePlaylistDialog()">Duplicate playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="renamePlaylistDialog()">Rename playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="deletePlaylistDialog()">Delete playlist</button>
+            <div id="playlistScriptContainer"></div> -->
+            <h2>Media:</h2>
+            <div id="mediaScriptContainer"></div>
+            <h2>Animation script table:</h2>
+            <div class="mui-textfield">
+                <input class="input" id="animationName" type="text" disabled>
+            </div>
+            <div>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+                <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
+                <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
+                <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+                <div>BXXX = Brightness (Neopixel lights/Neo 6 modules) XXX 000 to 100</div>
+                <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time between
+                    transitions in decimal seconds
+                </div>
+                <!-- <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
+                    XXX/XXX ("folder/filename" or use "random_folder")</div> -->
+                <div>ZRAND = Random rainbow, fire, or color change</div>
+                <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+                <div>ZFIRE = Fire</div>
+                <div>ZCOLCH = Color change</div>
+                <div>ZJ = Joke</div>
+                <div id="neoInstructionsContainer"></div>
+                <div id="sceneInstructionsContainer"></div>
+                <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
+                <!-- <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div> -->
+                <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+                <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                    data_object}</div>
+                <!-- <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
+                    between
+                    commands</div> -->
+                <div>E = End script<div>
+                        <table id="dataTable" class="mui-table">
+                            <thead>
+                                <tr>
+                                    <th>TimeStamp</th>
+                                    <th>TimeCode</th>
+                                    <th>Animation</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    let isRequestInProgress = false;
+
+    // Load initial data after webpage loads
+    document.addEventListener('DOMContentLoaded', function () {
+        getWebSiteUrl()
+        getVolume()
+        // getPlaylists()
+        getLightString()
+        getMedia()
+        getSceneChanges()
+        getNeoChanges()
+        getLifxEnabled()
+        makeSocketConnection()
+    });
+
+    function getLightString() {
+        fetch('/get-light-string', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lightString.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            })
+    };
+
+    function getMedia() {
+        fetch('/get-all-media', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setMediaButtons(my_data)
+                setMediaScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getSceneChanges() {
+        fetch('/get-scene-changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setSceneChangeButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getNeoChanges() {
+        fetch('/get-neo-changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setNeoChangeButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getWebSiteUrl() {
+        fetch('/get-host-name', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                websiteUrl.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getVolume() {
+        fetch('/get-volume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getLifxEnabled() {
+        fetch('/get-lifx-enabled', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lifx_enabled = (data === 'true'); // Convert to Boolean
+                setLifxCheckboxState(lifx_enabled)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    // function getPlaylists() {
+    //     fetch('/get-scripts', {
+    //         method: 'POST',
+    //         headers: {
+    //             'Content-Type': 'application/json',
+    //         },
+    //     })
+    //         .then(function (response) {
+    //             return response.text(); // assuming the response is plain text
+    //         })
+    //         .then(function (data) {
+    //             my_data = JSON.parse(data)
+    //             setPlylstButtons(my_data)
+    //             setPlylstScriptButtons(my_data)
+    //         })
+    //         .catch(function (error) {
+    //             console.log(error);
+    //             showAlert(error);
+    //         });
+    // }
+
+    function setPlylstButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("plylst_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            button.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled');
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            playlistContainer.appendChild(button);
+        });
+    }
+
+    function setPlylstScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("plylst_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        animationName.value = animation
+                        populateTable(myData)
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled')
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            playlistScriptContainer.appendChild(button);
+        });
+    }
+
+    function setMediaButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const topicButtonContainer = document.getElementById("topicButtonContainer");
+        topicButtonContainer.innerHTML = '';
+
+        // Clear the existing buttons (if needed)
+        const mediaContainer = document.getElementById("mediaContainer");
+        mediaContainer.innerHTML = '';
+
+        // Loop through each folder (topic) in my_data
+        Object.keys(my_data).forEach((topic) => {
+            if (topic.includes('pictures') || topic.includes('random_config')) {
+                return; // Skip this topic
+            }
+            // Create and add a button for the folder (topic)
+            const topicButton = document.createElement("button");
+            topicButton.textContent = topic;
+            topicButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            topicButton.setAttribute("data-value", "random_" + topic);
+            topicButton.setAttribute("data-url", "/animation");
+            topicButton.setAttribute("type", "button");
+            topicButton.addEventListener('click', function () {
+                var url = topicButton.getAttribute('data-url');
+                var animation = topicButton.getAttribute('data-value');
+                var redirectUrl = topicButton.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                topicButton.setAttribute('disabled', 'true');
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            topicButton.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        topicButton.removeAttribute('disabled');
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+
+            // Append the topic button to the topic button container
+            topicButtonContainer.appendChild(topicButton);
+
+            if (topic.includes('random_config') || topic.includes('all') || topic.includes('play lists')) {
+                return; // Skip adding files
+            }
+
+            // Create and add a title for the folder (topic)
+            const title = document.createElement("h2");
+            title.textContent = topic + " :";
+            mediaContainer.appendChild(title);
+
+            // Get the array of files for this topic
+            const files = my_data[topic];
+
+            // Loop through each file in the topic and create a button for it
+            files.forEach((file) => {
+                const fileButton = document.createElement("button");
+                fileButton.textContent = file.replace("customers_owned_music_", "");
+                fileButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+                fileButton.setAttribute("data-value", topic + "/" + file);
+                fileButton.setAttribute("data-url", "/animation");
+                fileButton.setAttribute("type", "button");
+                fileButton.addEventListener('click', function () {
+                    var url = fileButton.getAttribute('data-url');
+                    var animation = fileButton.getAttribute('data-value');
+                    var redirectUrl = fileButton.getAttribute('data-redirect');
+
+                    // Create an object with the data to be sent in the request
+                    var data = {
+                        an: animation,
+                    };
+
+                    fileButton.setAttribute('disabled', 'true');
+
+                    // Make a POST request using fetch
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    })
+                        .then(function (response) {
+                            // Handle the response from the server
+                            if (redirectUrl) {
+                                window.location.href = redirectUrl;
+                            } else {
+                                fileButton.removeAttribute('disabled');
+                            }
+                        })
+                        .catch(function (error) {
+                            fileButton.removeAttribute('disabled');
+                            console.log(error);
+                            showAlert(error);
+                        });
+                });
+
+                // Append the file button to the file button container
+                mediaContainer.appendChild(fileButton);
+            });
+        });
+    }
+
+
+
+    function setMediaScriptButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const mediaScriptContainer = document.getElementById("mediaScriptContainer");
+        mediaScriptContainer.innerHTML = '';
+
+        // Loop through each folder (topic) in my_data
+        Object.keys(my_data).forEach((topic) => {
+            if (topic.includes('pictures') || topic.includes('random') || topic.includes('play lists') || topic.includes('all')) {
+                return; // Skip this topic
+            }
+            // Create and add a title for the folder (topic)
+            const title = document.createElement("h2");
+            title.textContent = topic + " :";
+            mediaScriptContainer.appendChild(title);
+
+            // Get the array of files for this topic
+            const files = my_data[topic];
+
+            // Loop through each file in the topic and create a button for it
+            files.forEach((file) => {
+                const button = document.createElement("button");
+                button.textContent = file.replace("customers_owned_music_", "");
+                button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+                button.setAttribute("data-value", topic + "/" + file);
+                button.setAttribute("data-url", "/get-animation");
+                button.setAttribute("type", "button");
+                button.addEventListener('click', function () {
+                    var url = button.getAttribute('data-url');
+                    var animation = button.getAttribute('data-value');
+                    var redirectUrl = button.getAttribute('data-redirect');
+
+                    // Create an object with the data to be sent in the request
+                    var data = {
+                        an: animation,
+                    };
+
+                    button.setAttribute('disabled', 'true');
+
+                    // Make a POST request using fetch
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    })
+                        .then(function (response) {
+                            return response.text(); // assuming the response is plain text
+                        })
+                        .then(function (data) {
+                            myData = JSON.parse(data); // Set the value of the input field with the received data
+                            animationName.value = animation;
+                            populateTable(myData);
+                            button.removeAttribute('disabled');
+                        })
+                        .catch(function (error) {
+                            button.removeAttribute('disabled');
+                            console.log(error);
+                            showAlert(error);
+                        });
+                });
+                // Append the button under the current folder title
+                mediaScriptContainer.appendChild(button);
+            });
+        });
+    }
+
+
+    function setNeoChangeButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const neoButtonContainer = document.getElementById("neoButtonContainer");
+        neoButtonContainer.innerHTML = '';
+
+        // Clear the existing buttons (if needed)
+        const neoInstructionsContainer = document.getElementById("neoInstructionsContainer");
+        neoInstructionsContainer.innerHTML = '';
+
+        instructions = ""
+
+        // Loop through neo in my_data
+        Object.keys(my_data).forEach((neo) => {
+            // Create and add a button for the neo and add to the instructions string
+            instructions += neo + ", "
+            const neoButton = document.createElement("button");
+            neoButton.textContent = neo;
+            neoButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            neoButton.setAttribute("data-value", neo);
+            neoButton.setAttribute("data-url", "/lights-neo");
+            neoButton.setAttribute("type", "button");
+            neoButton.addEventListener('click', function () {
+                var url = neoButton.getAttribute('data-url');
+                var animation = neoButton.getAttribute('data-value');
+                var redirectUrl = neoButton.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                neoButton.setAttribute('disabled', 'true');
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        colorPickerNeo.value = rgbToHex(data[0], data[1], data[2]);
+                        neoButton.removeAttribute('disabled');
+                    })
+                    .catch(error => {
+                        neoButton.removeAttribute('disabled');
+                        console.error('Error fetching default color:', error);
+                    });
+            });
+
+            // Append the topic button to the topic button container
+            neoButtonContainer.appendChild(neoButton);
+        });
+
+        instructions = instructions.slice(0, -2);
+
+        neoInstructionsContainer.innerHTML = 'ZN_S_E_T_I = Neopixel scene change S start E end using(' + instructions + '), time, increments';
+    }
+
+
+    function setSceneChangeButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const sceneButtonContainer = document.getElementById("sceneButtonContainer");
+        sceneButtonContainer.innerHTML = '';
+
+        // Clear the existing buttons (if needed)
+        const sceneInstructionsContainer = document.getElementById("sceneInstructionsContainer");
+        sceneInstructionsContainer.innerHTML = '';
+
+        instructions = ""
+
+        // Loop through scene in my_data
+        Object.keys(my_data).forEach((scene) => {
+            // Create and add a button for the scene and add to the instructions string
+            instructions += scene + ", "
+            const sceneButton = document.createElement("button");
+            sceneButton.textContent = scene;
+            sceneButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            sceneButton.setAttribute("data-value", scene);
+            sceneButton.setAttribute("data-url", "/lights-scene");
+            sceneButton.setAttribute("type", "button");
+            sceneButton.addEventListener('click', function () {
+                var url = sceneButton.getAttribute('data-url');
+                var animation = sceneButton.getAttribute('data-value');
+                var redirectUrl = sceneButton.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                sceneButton.setAttribute('disabled', 'true');
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        colorPickerLifx.value = rgbToHex(data[0], data[1], data[2]);
+                        sceneButton.removeAttribute('disabled');
+                    })
+                    .catch(error => {
+                        sceneButton.removeAttribute('disabled');
+                        console.error('Error fetching default color:', error);
+                    });
+            });
+
+            // Append the topic button to the topic button container
+            sceneButtonContainer.appendChild(sceneButton);
+        });
+
+        instructions = instructions.slice(0, -2);
+
+        sceneInstructionsContainer.innerHTML = 'ZL_S_E_T_I = Lifx scene change S start E end using(' + instructions + '), time, increments';
+    }
+
+    // Get all buttons with the 'animator-action' class
+    // Add click event listener to each button
+    var actionButtons = document.querySelectorAll('.animator-action');
+    actionButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = button.getAttribute('data-url');
+            var animation = button.getAttribute('data-value');
+            var redirectUrl = button.getAttribute('data-redirect');
+
+            // Create an object with the data to be sent in the request
+            var data = {
+                an: animation,
+            };
+
+            button.setAttribute('disabled', 'true')
+
+            // Make a POST request using fetch
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    // Handle the response from the server
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                    } else {
+                        button.removeAttribute('disabled');
+                    }
+                })
+                .catch(function (error) {
+                    button.removeAttribute('disabled');
+                    alert('Try Again');
+                });
+        });
+    });
+
+    // Get all buttons with the 'animator-light-update' class
+    // Add click event listener to each button
+    var lightUpdateButtons = document.querySelectorAll('.animator-light-update');
+    lightUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            var data = {}
+            if (action == "save" || action == "clear" || action == "defaults") {
+                var lightStringElement = document.getElementById('lightString');
+                lightStringValue = lightStringElement.value
+                if (action == "defaults") lightStringValue = "projector-1, concession-6, sign-4"
+                if (action == "clear") lightStringValue = ""
+                data = {
+                    text: lightStringValue,
+                    action: action
+                }
+            } else {
+                data = {
+                    text: action,
+                    action: action
+                }
+            }
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    lightString.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    // Get all buttons with the 'animator-volume-update' class
+    // Add click event listener to each button
+    var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
+    volumeUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            data = {
+                action: action
+            }
+
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    volume.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    // Add click event listener to website submit button
+    var websiteSubmitButton = document.getElementById('websiteSubmitButton');
+    websiteSubmitButton.addEventListener('click', function () {
+        var websiteUrl = document.getElementById('websiteUrl');
+        var websiteUrlText = websiteUrl.value;
+        var url = this.getAttribute('data-url');
+
+        var data = {
+            text: websiteUrlText,
+        };
+
+        websiteSubmitButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                websiteUrl.value = data; // Set the value of the input field with the received data
+                websiteSubmitButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                websiteSubmitButton.removeAttribute('disabled')
+            });
+    });
+
+    // Restrict input to letters, numbers, and hyphens only
+    websiteUrl.addEventListener('input', function () {
+        var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
+        this.value = validatedValue;
+    });
+
+    // Global variables to store number of rows and data
+    var globalPasteTableNumRows = 0;
+    var globalPasteTable = [];
+    var globalRowIndex = 0; // Index for data
+
+    function pasteRowsAndResetTable() {
+        var pasteIndex = 0;
+
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+
+        // Extract data from table rows
+        var data = rows.map(function (row) {
+            var cells = Array.from(row.querySelectorAll("td"));
+            var values = cells.map(function (cell) {
+                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null;
+                return cellValue;
+            });
+            return values;
+        });
+
+        console.log(globalPasteTable);
+        console.log(data);
+
+        // First mutate the data
+        while (globalRowIndex < data.length && pasteIndex < globalPasteTable.length) {
+            // Replace data[globalRowIndex][2] with the item from globalPasteTable
+            data[globalRowIndex][2] = globalPasteTable[pasteIndex];
+            globalRowIndex++; // Move to the next row in data
+            pasteIndex++; // Move to the next item in globalPasteTable
+        }
+
+        // Now combine the data into combinedData
+        const combinedData = data.map(function (row) {
+            var secondsConverted = convertTimeCodeToSeconds(row[1]);
+            return secondsConverted + "|" + (row[2] || ""); // Ensure a fallback in case row[2] is undefined
+        });
+
+        console.log(combinedData);
+
+        // Populate the table with the combined data
+        populateTable(combinedData);
+    }
+
+
+
+    function animationCellClicked(event) {
+        var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
+        globalRowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
+        console.log("Row Index:", globalRowIndex);
+    }
+
+    function editPasteTableDialog() {
+        var modalEl = document.getElementById("modalEl");
+        removeChildNodes(modalEl);
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px';
+        form.style.margin = '20px';
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Paste table';
+        form.appendChild(legend);
+
+        // Input for number of rows
+        var numberRowsInput = document.createElement('div');
+        numberRowsInput.className = 'mui-textfield';
+        numberRowsInput.innerHTML = '<input type="number" id="numRows" placeholder="Number of rows" min="1" />';
+        form.appendChild(numberRowsInput);
+
+        // Button to generate the table
+        var generateBtn = document.createElement('button');
+        generateBtn.type = 'button';
+        generateBtn.className = 'mui-btn mui-btn--primary';
+        generateBtn.textContent = 'Generate Table';
+        generateBtn.addEventListener('click', generateTable);
+        form.appendChild(generateBtn);
+
+        // Container for the table
+        var tableContainer = document.createElement('div');
+        tableContainer.id = 'tableContainer';
+        form.appendChild(tableContainer);
+
+        // Save button
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', function () {
+            var data = collectTableData();
+            globalPasteTable = data; // Save data globally
+            globalPasteTableNumRows = data.length; // Save the number of rows globally
+            mui.overlay('off', modalEl); // Close modal after saving
+        });
+        form.appendChild(saveBtn);
+
+        // Clear button
+        var clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'mui-btn mui-btn--secondary';
+        clearBtn.textContent = 'Clear';
+        clearBtn.addEventListener('click', function () {
+            clearTableData(); // Clear input values but keep the table structure
+        });
+        form.appendChild(clearBtn);
+
+        // Cancel button
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+
+        // Populate fields if there's existing data
+        document.getElementById('numRows').value = globalPasteTableNumRows;
+        if (globalPasteTableNumRows > 0) {
+            generateTable(globalPasteTable); // Generate the table with existing data
+        }
+
+        // Function to generate the table
+        function generateTable(data) {
+            var numRows = parseInt(document.getElementById('numRows').value, 10) || globalPasteTableNumRows;
+            var tableContainer = document.getElementById('tableContainer');
+            removePasteTableChildNodes(tableContainer); // Clear existing table if any
+
+            if (numRows > 0) {
+                var table = document.createElement('table');
+                table.className = 'mui-table';
+                // Create rows
+                for (var i = 0; i < numRows; i++) {
+                    var row = table.insertRow();
+                    var myCell = row.insertCell(0);
+                    myCell.style.padding = '0';
+                    var textFieldDiv = document.createElement('div');
+                    textFieldDiv.className = 'mui-textfield';
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.placeholder = 'Enter value';
+                    input.value = data[i] || ''; // Populate with existing data if available
+                    textFieldDiv.appendChild(input);
+                    myCell.appendChild(textFieldDiv);
+                }
+
+                tableContainer.appendChild(table);
+            } else {
+                showAlert("Please enter a valid number of rows.");
+            }
+        }
+
+        // Function to collect data from the table
+        function collectTableData() {
+            var table = document.querySelector('#tableContainer table');
+            var data = [];
+
+            if (table) {
+                for (var i = 0; i < table.rows.length; i++) {
+                    var rowData = table.rows[i].cells[0].querySelector('input').value;
+                    data.push(rowData);
+                }
+            }
+
+            return data;
+        }
+
+        // Function to clear input values from the table
+        function clearTableData() {
+            var table = document.querySelector('#tableContainer table');
+            if (table) {
+                for (var i = 0; i < table.rows.length; i++) {
+                    table.rows[i].cells[0].querySelector('input').value = '';
+                }
+            }
+        }
+    }
+
+    // Helper function to remove all child nodes from an element
+    function removePasteTableChildNodes(parent) {
+        while (parent.firstChild) {
+            parent.removeChild(parent.firstChild);
+        }
+    }
+
+    function createPlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Create playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', createPlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function createPlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fn: filenameInput,
+            };
+
+            fetch("/create-playlist", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function duplicatePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Duplicate playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', duplicatePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function duplicatePlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            saveData("plylst_" + filenameInput, true);
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function renamePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Rename playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', renamePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function renamePlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fo: animationName.value,
+                fn: filenameInput,
+            };
+
+            fetch("/rename-playlist", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function deletePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Delete playlist';
+        form.appendChild(legend);
+
+        var message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        form.appendChild(message);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Delete';
+        saveBtn.addEventListener('click', deletePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    // function updatePlaylists() {
+    //     const myPlaylistDiv = document.getElementById("playlistContainer");
+    //     removeChildNodes(myPlaylistDiv)
+    //     const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
+    //     removeChildNodes(myPlaylistScriptDiv)
+    //     getPlaylists()
+    // }
+
+    function removeChildNodes(myDiv) {
+        // Remove all child nodes
+        while (myDiv.firstChild) {
+            myDiv.removeChild(myDiv.firstChild);
+        }
+        // Remove all event listeners attached to the div
+        const clonedDiv = myDiv.cloneNode(true);
+        myDiv.parentNode.replaceChild(clonedDiv, myDiv);
+    }
+
+
+    function showAlert(message) {
+        var alertModal = document.createElement('div');
+        alertModal.className = 'mui-container';
+        alertModal.style.width = '400px';
+        alertModal.style.margin = '100px auto'; // Center horizontally with top margin
+        alertModal.style.backgroundColor = '#fff';
+        alertModal.style.borderRadius = '5px';
+        alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+
+        alertModal.innerHTML = `
+            <div class="mui-form" style="padding: 20px;">
+                <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
+                <div style="margin: 10px 0; font-size: 1em; color: #333;">
+                    ${message}
+                </div>
+                <button class="mui-btn mui-btn--primary" onclick="closeAlert()" style="margin-top: 15px;">OK</button>
+            </div>`;
+
+        mui.overlay('on', alertModal);
+    }
+
+
+    function closeAlert() {
+        mui.overlay('off');
+    }
+
+    // Table component
+    var saveDataButton = document.getElementById("saveDataButton");
+    var stopButton = document.getElementById("stopButton");
+    var dataTable = document.getElementById("dataTable");
+    var dataTableBody = document.querySelector("#dataTable tbody");
+    var deletePlaylistButton = document.getElementById("deletePlaylistButton");
+
+
+    stopButton.addEventListener("click", function () {
+        stopAnimation();
+    });
+
+    saveDataButton.addEventListener("click", function () {
+        saveData(animationName.value, false);
+    });
+
+    function stopAnimation() {
+        stopButton.setAttribute("disabled", "true");
+
+        var data = {
+            an: animationName.value,
+        };
+
+        fetch("/stop", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log("file deleted")
+                stopButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                stopButton.removeAttribute('disabled')
+            });
+    }
+
+    function deletePlaylist() {
+        var data = {
+            fn: animationName.value,
+        };
+
+        fetch("/delete-playlist", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                updatePlaylists()
+                console.log("file deleted")
+                var modalEl = document.getElementById("modalEl")
+                mui.overlay('off', modalEl)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+
+
+    function populateTable(data) {
+        // Clear existing table rows
+        dataTableBody.innerHTML = "";
+
+        // Populate table with new data
+        data.forEach(function (rowData, index) {
+            var row = createDataRow(rowData, index);
+            dataTableBody.appendChild(row);
+        });
+    }
+
+    dataTableBody.addEventListener("click", function (event) {
+        var target = event.target;
+        if (target.classList.contains("insert-row-btn")) {
+            insertRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("delete-row-btn")) {
+            deleteRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("add-row-btn")) {
+            addRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("test-row-btn")) {
+            testAnimation(target)
+        }
+    });
+
+    function testAnimation(target) {
+        const rowElement = target.parentNode.parentNode;
+        const thirdInput = getTextOfInput(rowElement, 3);
+        target.setAttribute("disabled", "true");
+        var url = "/test-animation";
+
+        var data = {
+            an: thirdInput,
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                console.log(data);
+                target.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                target.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getTextOfInput(rowElement, elNum) {
+        const inputElements = rowElement.querySelectorAll('input');
+        if (inputElements.length >= elNum) {
+            return inputElements[elNum - 1].value;
+        } else {
+            return "";
+        }
+    }
+
+    function setTextOfInput(rowElement, elNum, textVal) {
+        const inputElements = rowElement.querySelectorAll('input');
+        if (inputElements.length >= elNum) {
+            inputElements[elNum - 1].value = textVal;
+        }
+    }
+
+
+    function timeSecondsCellChanged(event) {
+        var inputValue = convertSecondsToTimeCode(event.target.value);
+        setTextOfInput(event.target.parentNode.parentNode.parentNode, 2, inputValue);
+    }
+
+    function timeCodeCellChanged(event) {
+        var inputValue = convertTimeCodeToSeconds(event.target.value)
+        setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
+    }
+
+    function createDataRow(rowData, rowIndex) {
+        var row = document.createElement("tr");
+        myRowDataSplit = rowData.split("|")
+
+        if (myRowDataSplit[0]) {
+            var tsCell = createEditableCell(myRowDataSplit[0], "80px");
+            tsCell.addEventListener('keydown', function (event) {
+                if (event.keyCode === 13) {
+                    timeSecondsCellChanged(event);
+                }
+            });
+        } else {
+            var tsCell = createEditableCell("", "80px");
+        }
+        row.appendChild(tsCell);
+
+        if (myRowDataSplit[0]) {
+            var timeCode = convertSecondsToTimeCode(myRowDataSplit[0])
+            var tcCell = createEditableCell(timeCode, "110px");
+            tcCell.addEventListener('keydown', function (event) {
+                if (event.keyCode === 13) {
+                    timeCodeCellChanged(event);
+                }
+            });
+
+        } else {
+            var tcCell = createEditableCell("", "110px");
+        }
+        row.appendChild(tcCell);
+
+        if (myRowDataSplit[1]) {
+            var anCell = createEditableCell(myRowDataSplit[1], "500px");
+            anCell.addEventListener('click', function (event) {
+                animationCellClicked(event);
+            });
+        } else {
+            var anCell = createEditableCell("", "500px");
+            anCell.addEventListener('click', function (event) {
+                animationCellClicked(event);
+            });
+        }
+        row.appendChild(anCell);
+
+        var actionCell = document.createElement("td");
+        actionCell.style.paddingTop = "0px";  // Adjust top padding
+        actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
+
+        var testButton = createTestButton();
+        actionCell.appendChild(testButton);
+
+        var insertButton = createInsertButton();
+        actionCell.appendChild(insertButton);
+
+        var addButton = createAddButton();
+        actionCell.appendChild(addButton);
+
+        var deleteButton = createDeleteButton();
+        actionCell.appendChild(deleteButton);
+
+        row.appendChild(actionCell);
+
+        return row;
+    }
+
+    function createEditableCell(value, widthVal) {
+        var cell = document.createElement("td");
+        cell.style.paddingTop = "0px";  // Adjust top padding
+        cell.style.paddingBottom = "0px";  // Adjust bottom padding
+        var input = document.createElement("input");
+        input.type = "text";
+        input.className = "pure-input-rounded";
+        input.value = value;
+        input.style.width = widthVal
+        input.style.whiteSpace = "pre-wrap";
+        input.style.overflow = "visible";
+        var div = document.createElement("div");
+        div.className = "mui-textfield";
+        div.appendChild(input);
+        cell.appendChild(div);
+        return cell;
+    }
+
+    function createTestButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary test-row-btn";
+        button.innerHTML = 'Tst';
+        return button;
+    }
+
+    function createDeleteButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary delete-row-btn";
+        button.innerHTML = 'Del';
+        return button;
+    }
+
+    function createInsertButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary insert-row-btn";
+        button.innerHTML = 'Ins';
+        return button;
+    }
+
+    function createAddButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary add-row-btn";
+        button.innerHTML = 'Add';
+        return button;
+    }
+
+    function deleteRow(row) {
+        row.parentNode.removeChild(row);
+        copyAndResetTable();
+    }
+
+    function addRow(row) {
+        var newRow = createDataRow("|");
+        dataTableBody.insertBefore(newRow, row.nextSibling);
+        copyAndResetTable();
+    }
+
+    function insertRow(row) {
+        var newRow = createDataRow("|");
+        dataTableBody.insertBefore(newRow, row);
+        copyAndResetTable();
+    }
+
+    function copyAndResetTable() {
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+
+        // Extract data from table rows
+        var data = rows.map(function (row) {
+            var cells = Array.from(row.querySelectorAll("td"));
+            var values = cells.map(function (cell) {
+                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
+                return cellValue;
+            });
+            return values;
+        });
+
+        combinedData = []
+
+        for (let i = 0; i < data.length; i++) {
+            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
+            combinedData.push(secondsConverted + "|" + data[i][2])
+        }
+
+        populateTable(combinedData)
+    }
+
+
+    function saveData(file_name, get_changes) {
+        saveDataButton.setAttribute("disabled", "true");
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+
+        // Extract data from table rows
+        var data = rows.map(function (row) {
+            var cells = Array.from(row.querySelectorAll("td"));
+            var values = cells.map(function (cell) {
+                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
+                return cellValue;
+            });
+            return values;
+        });
+
+        combinedData = []
+
+        for (let i = 0; i < data.length; i++) {
+            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
+            combinedData.push(secondsConverted + "|" + data[i][2])
+        }
+
+        const blockSize = 5;
+        const totalBlocks = Math.ceil(combinedData.length / blockSize);
+
+        // Function to send each block sequentially
+        function sendBlockSequentially(index) {
+            if (index >= totalBlocks) {
+                if (get_changes == true) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                }
+                // All blocks have been sent, enable the button
+                saveDataButton.removeAttribute('disabled');
+                return;
+            }
+
+            const startIdx = index * blockSize;
+            const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
+            const block = combinedData.slice(startIdx, endIdx);
+            let myObject = [index, totalBlocks - 1, block]
+            if (index == totalBlocks - 1) {
+                myObject = [index, totalBlocks - 1, block, file_name]
+            }
+
+            // Send data to the server
+            fetch("/save-data", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(myObject)
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("Error saving data. Please try again.");
+                    }
+                    // Send the next block sequentially
+                    sendBlockSequentially(index + 1);
+                })
+                .catch(function (error) {
+                    saveDataButton.removeAttribute('disabled');
+                    console.log(error);
+                    showAlert(error);
+                });
+        }
+
+        // Start sending blocks sequentially
+        sendBlockSequentially(0);
+    }
+
+    // Function to convert DaVinci Resolve timestamp to seconds
+    function convertTimeCodeToSeconds(timestamp) {
+        var parts = timestamp.split(':');
+        var hours = parseInt(parts[0]);
+        var minutes = parseInt(parts[1]);
+        var seconds = parseInt(parts[2]);
+        var frames = parseInt(parts[3]);
+
+        hours -= 1
+
+        var totalSeconds = hours * 3600 + minutes * 60 + seconds + frames / 24;
+
+        if (!totalSeconds) totalSeconds = 0;
+
+        return totalSeconds.toFixed(1);
+    }
+
+    // Function to convert seconds to DaVinci Resolve timestamp
+    function convertSecondsToTimeCode(seconds) {
+        var hours = Math.floor(seconds / 3600) + 1;
+        seconds %= 3600;
+        var minutes = Math.floor(seconds / 60);
+        seconds %= 60;
+        var frames = Math.round((seconds - Math.floor(seconds)) * 24);
+
+        if (!seconds) {
+            hours = 1
+            minutes = 0
+            frames = 0
+        }
+
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
+    }
+
+    const colorPickerLifx = document.getElementById('colorPickerLifx');
+    colorPickerLifx.addEventListener('input', function () {
+        const color = colorPickerLifx.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("lifx", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
+    const colorPickerNeo = document.getElementById('colorPickerNeo');
+    colorPickerNeo.addEventListener('input', function () {
+        const color = colorPickerNeo.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("neo", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
+    // Add click event listener to file input button
+    document.getElementById('fileInput').addEventListener('change', function () {
+        if (this.files.length > 0) {
+            document.getElementById('status').innerText = '';
+            const percentComplete = (event.loaded / event.total) * 100;
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentComplete + '%';
+            progressBar.innerText = percentComplete.toFixed(2) + '%';
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+
+            xhr.upload.onprogress = function (event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    const progressBar = document.getElementById('progressBar');
+                    progressBar.style.width = percentComplete + '%';
+                    progressBar.innerText = percentComplete.toFixed(2) + '%';
+                }
+            };
+
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    document.getElementById('status').innerText = 'File uploaded successfully!';
+                    document.getElementById('progressBar').style.backgroundColor = '#4caf50';
+                } else {
+                    document.getElementById('status').innerText = 'File upload failed!';
+                    document.getElementById('progressBar').style.backgroundColor = '#f44336';
+                }
+            };
+
+            xhr.onerror = function () {
+                document.getElementById('status').innerText = 'File upload failed!';
+                document.getElementById('progressBar').style.backgroundColor = '#f44336';
+            };
+
+            xhr.send(formData);
+        }
+    })
+
+    function hexToRgb(hex) {
+        hex = hex.replace(/^#/, '');
+        const bigint = parseInt(hex, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b };
+    }
+
+    function rgbToHex(r, g, b) {
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase()}`;
+    }
+
+    function sendRGBValues(item, r, g, b) {
+        console.log(r)
+        console.log(g)
+        console.log(b)
+        const endpoint = "/set-item-lights";
+        const data = {
+            item: item,
+            r: r,
+            g: g,
+            b: b
+        };
+
+        fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data)
+                isRequestInProgress = false; // Reset the flag after the request is completed
+            })
+            .catch(error => {
+                console.error('Error:', error)
+                isRequestInProgress = false; // Reset the flag in case of an error
+            });
+    }
+
+    // Function to enable or disable elements in lifxDiv
+    function toggleLifxDiv() {
+        const isChecked = document.getElementById("lifxCheckbox").checked;
+        const lifxDiv = document.getElementById("lifxDiv");
+        lifxDiv.style.display = isChecked ? "block" : "none";
+    }
+
+    var lifxCheckbox = document.getElementById("lifxCheckbox");
+
+    // Flag to indicate programmatic changes
+    let programmaticChange = false;
+
+    // Function to change checkbox state programmatically
+    function setLifxCheckboxState(newState) {
+        programmaticChange = true;
+        lifxCheckbox.checked = newState;
+        toggleLifxDiv()
+        programmaticChange = false;
+    }
+
+
+    // Combined event listener for checkbox change
+    lifxCheckbox.addEventListener('change', function () {
+        // Skip fetch request if this is a programmatic change
+        if (programmaticChange) return;
+
+        const url = this.getAttribute('data-url');
+        const isChecked = this.checked;
+
+        toggleLifxDiv()
+
+        const data = {
+            enabled: isChecked
+        };
+
+        lifxCheckbox.setAttribute('disabled', 'true');
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Response:', data);
+                lifxCheckbox.removeAttribute('disabled');
+            })
+            .catch(error => {
+                console.log(error);
+                lifxCheckbox.removeAttribute('disabled');
+            });
+    });
+
+    function makeSocketConnection() {
+        const cfg = {
+            "HOST_NAME": "animator-drive-in" // Replace with your actual host name
+        };
+
+        const server_str = `${cfg["HOST_NAME"]}.local`; // Adjust as needed
+        const websocketUrl = `ws://${server_str}:8001`; // Ensure this matches your server setup
+
+        const queueList = document.getElementById('queueList');
+        const socket = new WebSocket(websocketUrl);
+
+        const currentMedia = document.getElementById('currentMedia');
+
+        socket.onopen = function (event) {
+            console.log('WebSocket connection established.');
+        };
+
+        socket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            // console.log("Received data:", data);  // Log received data for debugging
+            currentMedia.innerHTML = '';
+            const pElement = document.createElement('p');
+            pElement.textContent = "Playing: " + data.current_media_playing;
+            currentMedia.appendChild(pElement);
+            updateQueue(data.commands);
+        };
+
+        socket.onerror = function (error) {
+            console.error('WebSocket error:', error);
+        };
+
+        socket.onclose = function (event) {
+            console.log('WebSocket connection closed:', event);
+        };
+
+        function updateQueue(commands) {
+            // Clear the current list
+            queueList.innerHTML = '';
+            // Populate the list with new queue items
+            commands.forEach(command => {
+                const listItem = document.createElement('li');
+                listItem.className = 'MuiListItem-root MuiListItem-gutters MuiListItem-button';
+                listItem.textContent = command; // Assuming each command is a string
+                queueList.appendChild(listItem);
+            });
+        }
+    }
+
+</script>
+
+</html>
