@@ -238,7 +238,7 @@ def restart_pi():
 
 
 def restart_pi_timer():
-    play_mix(code_folder + "mvc/restarting_animator_drive_in.wav")
+    play_mix(code_folder + "mvc/restarting_animator_video_train.wav")
     delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
@@ -1153,7 +1153,7 @@ def open_midori():
     if cfg["show_webpage"] == False:
         return
     try:
-        command = "midori -e Fullscreen http://animator-drive-in.local:8083/"
+        command = "midori -e Fullscreen http://animator-video-train.local:8083/"
         subprocess.Popen(command, shell=True)
         print("Midori launched.")
     except Exception as e:
@@ -2030,8 +2030,8 @@ def no_trk():
 def spk_web():
     play_mix(code_folder + "mvc/animator_available_on_network.wav")
     play_mix(code_folder + "mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-video-car":
-        play_mix(code_folder + "mvc/animator_dash_video_dash_car.wav")
+    if cfg["HOST_NAME"] == "animator-video-train":
+        play_mix(code_folder + "mvc/animator_dash_video_dash_train.wav")
         play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
