@@ -66,7 +66,7 @@
 
 # i2s audio is setup on pi itself using an overlay, there is no hardware that needs to be set up in python
 # the i2s amps are on the JimmyTrains ANPISBC HAT which provides the audio.  The amps have an audio enable
-# feature that is contorlled via pin 26.  It is enabled by this program just before it annouces the animations are active
+# feature that is controlled via pin 26.  It is enabled by this program just before it announces the animations are active
 # The volume is also controlled by this program.  So the volume control on the pi has no effect.
 # The amp circuits are set to the highest possible gain so audio tracks and movies should be normalized to -10.0dB to avoid
 # clipping.
