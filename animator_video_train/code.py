@@ -423,7 +423,7 @@ def open_terminal():
                     subprocess.run(
                         ['xdotool', 'windowmove', window_id, '0', '0'])
                     subprocess.run(
-                        ['xdotool', 'windowsize', window_id, '1280', '360'])
+                        ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
                     print("Terminal window unhidden, moved, and resized.")
             else:
                 print("Terminal window running 'code.py' not found.")
@@ -437,19 +437,29 @@ def open_terminal():
 
 
 def move_vlc_window():
-    try:
-        # Find the VLC window by name
-        window_id = subprocess.check_output(
-            ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
-        if window_id:
-            # Move the window to (100, 100) and resize to 800x600
-            subprocess.run(['xdotool', 'windowmove', window_id, '0', '360'])
-            subprocess.run(['xdotool', 'windowsize', window_id, '1280', '360'])
-            print("VLC window moved and resized.")
-        else:
-            print("VLC window not found.")
-    except Exception as e:
-        print(f"Error moving VLC window: {e}")
+    attempts = 4
+    for attempt in range(attempts):
+        try:
+            # Find the VLC window by name
+            window_id = subprocess.check_output(
+                ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
+            if window_id:
+                # Move the window to (100, 100) and resize to 800x600
+                subprocess.run(['xdotool', 'windowmove', window_id,
+                               '0', str(cfg["vertical_resolution"]/2)])
+                subprocess.run(
+                    ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
+                print("VLC window moved and resized.")
+                break  # Exit the loop if successful
+            else:
+                print("VLC window not found.")
+        except Exception as e:
+            print(f"Error moving VLC window: {e}")
+
+        if attempt < attempts - 1:  # Only wait if not the last attempt
+            print("Retrying...")
+            time.sleep(1)  # Wait for 1 second before retrying
+
 
 
 ################################################################################
@@ -473,9 +483,6 @@ def play_movie_file(movie_filename):
 
     while not media_player.is_playing():
         time.sleep(.05)
-
-    if terminal_window_during_playback:
-        move_vlc_window()
 
 
 def pause_movie():
@@ -1848,6 +1855,7 @@ def rst_def():
 ################################################################################
 # Dialog and sound play methods
 
+
 # Manually defined logarithmic values for lookup table (approximate)
 linear_values = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
@@ -1870,6 +1878,7 @@ log_values = [
 print("Linear values:", linear_values)
 print("Log values:", log_values)
 
+
 def interpolate(x, x_values, y_values):
     # Ensure x is within the valid range of x_values
     if x <= x_values[0]:
@@ -1885,6 +1894,7 @@ def interpolate(x, x_values, y_values):
             # Interpolate
             return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
 
+
 # Example: Interpolate for linear input of 0.75
 linear_input = 0.75
 log_output = interpolate(linear_input, linear_values, log_values)
@@ -1894,7 +1904,7 @@ print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    log_to_linear = int(interpolate(volume_0_1,log_values,linear_values)*100)
+    log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
     mix.set_volume(volume_0_1*0.7)
     mix_media.set_volume(volume_0_1*0.7)
     media_player.audio_set_volume(log_to_linear)
@@ -2383,6 +2393,8 @@ def an_light(f_nm):
 
     srt_t = time.monotonic()
 
+    window_moved = False
+
     while True:
         t_past = time.monotonic()-srt_t
 
@@ -2406,6 +2418,9 @@ def an_light(f_nm):
                 result = an_done_reset(resp)
                 return result
             flsh_i += 1
+        if terminal_window_during_playback and not window_moved and t_past > 3:
+            move_vlc_window()
+            window_moved = True
         media_player_state_now = media_player_state()
         if plylst_f:
             if flsh_i > len(flsh_t)-1:
@@ -2475,6 +2490,8 @@ def an_ts(f_nm):
     startTime = time.perf_counter()
     time.sleep(.1)
 
+    window_moved = False
+
     while True:
         t_elsp = round(time.perf_counter()-startTime, 1)
         r_sw.update()
@@ -2488,6 +2505,9 @@ def an_ts(f_nm):
             files.write_json_file(
                 media_folder + json_fn + ".json", t_s)
             break
+        if terminal_window_during_playback and not window_moved and t_elsp > 3:
+            move_vlc_window()
+            window_moved = True
 
     terminal_window_during_playback = previous_terminal_mode
     ts_mode = False

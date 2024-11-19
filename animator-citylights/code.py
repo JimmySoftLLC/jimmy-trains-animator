@@ -83,8 +83,17 @@
 ###########################################################
 # sudo apt-get install pulseaudio
 
+############################################################
+# This code will automatically create wav files for folder names to make this work you need
+# gtts and pydub install these as follows
+# pip install gtts
+# sudo apt install ffmpeg
+# pip install pydub
 
 
+from lifxlan import LifxLAN
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Tuple
 import http.server
 import socket
 import socketserver
@@ -94,7 +103,6 @@ import json
 import os
 import gc
 import vlc
-import time
 import board
 import digitalio
 from adafruit_debouncer import Debouncer
@@ -110,10 +118,18 @@ import psutil
 import random
 from gtts import gTTS
 import requests
-import signal
 from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
-import sys
 import subprocess
+import time
+import netifaces
+from collections import OrderedDict, deque
+import signal
+import copy
+from pydub import AudioSegment
+import sys
+import asyncio
+import websockets
+import pyautogui
 
 
 # Turn off audio while setting things up
@@ -132,28 +148,71 @@ def get_home_path(subpath=""):
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 plylst_folder = get_home_path() + "media/play lists/"
+snd_opt_folder = code_folder + "snd_opt/"
+current_media_playing = ""
 
 ################################################################################
 # Loading image as wallpaper on pi
 
+
+def replace_extension_to_jpg(image_path):
+    # Create the new image path with .jpg extension
+    new_image_path = os.path.splitext(image_path)[0] + '.jpg'
+
+    # Check if the original file exists
+    if os.path.exists(new_image_path):
+        return new_image_path
+    else:
+        print(f"File not found: {new_image_path}")
+        return None
+
+
+wallpaper_lock = threading.Lock()
+
+
 def change_wallpaper(image_path):
-    # Update the wallpaper in the desktop-items-0.conf file
-    config_path = '/home/drivein/.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
-    
-    # Read the config file
-    with open(config_path, 'r') as file:
-        config = file.readlines()
-    
-    # Modify the wallpaper path
-    with open(config_path, 'w') as file:
-        for line in config:
-            if line.startswith('wallpaper='):
-                file.write(f'wallpaper={image_path}\n')
+    # Attempt to acquire the lock using a context manager
+    with wallpaper_lock:  # This ensures the lock is released properly
+        try:
+            new_image_path = replace_extension_to_jpg(image_path)
+
+            if new_image_path:
+                # Output will be 'path/to/your/image.jpg'
+                print(new_image_path)
             else:
-                file.write(line)
-    
-    # Refresh the desktop using subprocess
-    subprocess.run(['pcmanfm', '--reconfigure'])
+                new_image_path = media_folder + 'pictures/logo.jpg'
+
+            # Update the wallpaper in the desktop-items-0.conf file
+            config_path = get_home_path() + '.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
+
+            # Read the config file
+            with open(config_path, 'r') as file:
+                config = file.readlines()
+
+            # Modify the wallpaper path
+            with open(config_path, 'w') as file:
+                for line in config:
+                    if line.startswith('wallpaper='):
+                        file.write(f'wallpaper={new_image_path}\n')
+                    else:
+                        file.write(line)
+
+            # Refresh the desktop, os.system will only return when finished
+            os.system('pcmanfm --reconfigure')
+            print("Wallpaper updated.")
+
+            # Temporarily disable the fail-safe for this operation
+            pyautogui.FAILSAFE = False
+
+            # Move the mouse off-screen (e.g., to the right and bottom)
+            pyautogui.moveTo(1920, 1080)
+
+            # After moving the mouse, re-enable the fail-safe
+            pyautogui.FAILSAFE = True
+
+        except Exception as e:
+            print(f"Image load error: {e}")
+
 
 change_wallpaper(media_folder + 'pictures/logo.jpg')
 
@@ -179,7 +238,8 @@ def restart_pi():
 
 
 def restart_pi_timer():
-    delay = 5
+    play_mix(code_folder + "mvc/restarting_animator_city_lights.wav")
+    delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
 
@@ -190,18 +250,19 @@ gc_col("Imports gc, files")
 # config variables
 
 cfg = files.read_json_file(code_folder + "cfg.json")
+default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
 
-def get_media_files(main_folder, extensions):
+def get_media_files(folder_to_search, extensions):
     media_dict = {}
 
     # Normalize extensions (e.g., ensure they all start with a dot)
     extensions = [ext if ext.startswith(
         '.') else f'.{ext}' for ext in extensions]
 
-    # Loop through each folder (topic) in the main media directory
-    for topic in os.listdir(main_folder):
-        topic_path = os.path.join(main_folder, topic)
+    # Loop through each folder (topic) in the folder_to_search directory
+    for topic in os.listdir(folder_to_search):
+        topic_path = os.path.join(folder_to_search, topic)
 
         # Ensure it's a directory before proceeding
         if os.path.isdir(topic_path):
@@ -214,25 +275,38 @@ def get_media_files(main_folder, extensions):
 
 
 def upd_media():
-    global play_list_options, media_list_flattened, media_files, menu_snd_opt
+    global play_list_options, media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission
 
-    extensions = ['.mp3', '.wav', '.mp4']  # List of extensions to filter by
+    extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
+    # gets folders in the random_config directory, currently only all and play lists, the folders are empty
     rand_files = get_media_files(media_folder + "random_config/", extensions)
-    media_files.update(rand_files)
+    media_files.update(rand_files)  # add rand_files to media_files dictionary
     # print("All media: " + str(media_files))
 
-    play_list_options = files.return_directory(
-        "plylst_", plylst_folder, ".json", True)
-    # print("Play lists: " + str(plylst_opt))
+    # play_list_options = files.return_directory(
+    #     "plylst_", plylst_folder, ".json", True)
+    # # print("Play lists: " + str(plylst_opt))
 
-    media_list_flattened = []
+    media_list_all = []
     for topic, my_files in media_files.items():
-        media_list_flattened.extend([f"{topic}/{my_file}" for my_file in my_files])
+        media_list_all.extend(
+            [f"{topic}/{my_file}" for my_file in my_files])
 
+    media_list_all_no_intermission = []
+    for topic, my_files in media_files.items():
+        if "intermission" not in topic.lower():  # Ignore topics with 'intermission'
+            media_list_all_no_intermission.extend(
+                [f"{topic}/{my_file}" for my_file in my_files])
 
-    menu_snd_opt = ['random_all.wav', 'random_movies.wav', 'random_music videos.wav',
-               'random_christmas.wav', 'random_music.wav', 'random_play lists.wav']
+    # print(str(rand_files.keys))
+
+    menu_snd_opt = []
+
+    for myKey in media_files:
+        if myKey != "random_config" and myKey != "pictures":
+            menu_snd_opt.append("random_" + myKey + ".wav")
+
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
 
@@ -249,6 +323,10 @@ web_m = cfg_web["web_menu"]
 cfg_vol = files.read_json_file(code_folder + "mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
 
+cfg_intermission_settings = files.read_json_file(
+    code_folder + "mvc/intermission_settings.json")
+intermission_settings = cfg_intermission_settings["intermission_settings"]
+
 cfg_add_song = files.read_json_file(
     code_folder + "mvc/add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
@@ -256,11 +334,11 @@ add_snd = cfg_add_song["add_sounds_animate"]
 cont_run = False
 ts_mode = False
 lst_opt = ''
-an_running = False
+running_mode = ""
 is_gtts_reachable = False
-stop_play_list = False
-
-
+terminal_window_during_playback = False
+mix_is_paused = False
+exit_set_hdw = False
 
 
 ################################################################################
@@ -285,44 +363,120 @@ switch_io_4.pull = digitalio.Pull.UP
 
 l_sw = Debouncer(switch_io_1)
 r_sw = Debouncer(switch_io_2)
-w_sw = Debouncer(switch_io_3)
-b_sw = Debouncer(switch_io_4)
+three_sw = Debouncer(switch_io_3)
+four_sw = Debouncer(switch_io_4)
 
 ################################################################################
 # Setup sound
 
-#set the audio driver to pulse audio
-os.environ["SDL_AUDIODRIVER"] = "pulse"
-
 # Setup the mixer to play wav files
 pygame.mixer.init()
-mix = pygame.mixer.music
+mix = pygame.mixer.Channel(0)
+mix_media = pygame.mixer.Channel(1)
+
+
+################################################################################
+# Terminal to observe timestamp during playback
+
+terminal_process = None
+
+
+def hide_terminal():
+    # Check for Linux platform
+    if sys.platform.startswith('linux'):
+        try:
+            # Use xdotool to find the terminal running 'code.py'
+            window_ids = subprocess.check_output(
+                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
+
+            if window_ids:
+                for window_id in window_ids:
+                    # Minimize (hide) the terminal window
+                    subprocess.run(['xdotool', 'windowminimize', window_id])
+                    print("Terminal window minimized and hidden.")
+            else:
+                print("Terminal window running 'code.py' not found.")
+        except Exception as e:
+            print(f"Error hiding terminal: {e}")
+    else:
+        print("Unsupported platform.")
+
+
+def open_terminal():
+    # Check for Linux platform
+    if sys.platform.startswith('linux'):
+        try:
+            # Use xdotool to find the terminal running 'code.py'
+            window_ids = subprocess.check_output(
+                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
+
+            if window_ids:
+                for window_id in window_ids:
+                    # Unhide and bring the terminal window to the front
+                    # Unhide window
+                    subprocess.run(['xdotool', 'windowmap', window_id])
+                    # Focus window
+                    subprocess.run(
+                        ['xdotool', 'windowactivate', '--sync', window_id])
+
+                    # Resize and move the terminal as required
+                    subprocess.run(
+                        ['xdotool', 'windowmove', window_id, '0', '0'])
+                    subprocess.run(
+                        ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
+                    print("Terminal window unhidden, moved, and resized.")
+            else:
+                print("Terminal window running 'code.py' not found.")
+            return True
+        except Exception as e:
+            print(f"Error opening terminal: {e}")
+            return None
+    else:
+        print("Unsupported platform.")
+        return None
+
+
+def move_vlc_window():
+    attempts = 4
+    for attempt in range(attempts):
+        try:
+            # Find the VLC window by name
+            window_id = subprocess.check_output(
+                ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
+            if window_id:
+                # Move the window to (100, 100) and resize to 800x600
+                subprocess.run(['xdotool', 'windowmove', window_id,
+                               '0', str(cfg["vertical_resolution"]/2)])
+                subprocess.run(
+                    ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
+                print("VLC window moved and resized.")
+                break  # Exit the loop if successful
+            else:
+                print("VLC window not found.")
+        except Exception as e:
+            print(f"Error moving VLC window: {e}")
+
+        if attempt < attempts - 1:  # Only wait if not the last attempt
+            print("Retrying...")
+            time.sleep(1)  # Wait for 1 second before retrying
+
+
 
 ################################################################################
 # Setup video hardware
 
+
 # create vlc media player object for playing video, music etc
-instance = vlc.Instance()
-media_player = vlc.MediaPlayer(instance)
+vlc_instance = vlc.Instance('--aout=alsa')
+media_player = vlc.MediaPlayer(vlc_instance)
 
 
 def play_movie_file(movie_filename):
-    global media_player
-
-    # Release the media player to reset state before the next video
-    media_player.release()
-
-    # Create a fresh VLC instance and media player for each video
-    instance = vlc.Instance('--aout=pulse')
-    media_player = vlc.MediaPlayer(instance)
-    media_player.toggle_fullscreen()
-
     # Load media
-    media = instance.media_new(movie_filename)
+    media = vlc_instance.media_new(movie_filename)
     media_player.set_media(media)
 
-    # Set the volume explicitly for each media file
-    upd_vol(0.05)
+    media_player.set_fullscreen(not terminal_window_during_playback)
 
     # Play the video
     media_player.play()
@@ -337,6 +491,20 @@ def pause_movie():
 
 def play_movie():
     media_player.play()
+
+
+def media_player_state():
+    state = media_player.get_state()
+    if state == vlc.State.Playing:
+        return "Playing"
+    elif state == vlc.State.Paused:
+        return "Paused"
+    elif state == vlc.State.Stopped:
+        return "Stopped"
+    elif state == vlc.State.Ended:
+        return "Ended"
+    else:
+        return "Other state"
 
 
 ################################################################################
@@ -363,6 +531,7 @@ p_arr = [90, 90, 90, 90, 90, 90]
 
 s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
 
+
 def m_servo(n, p):
     global p_arr
     if p < 0:
@@ -372,8 +541,13 @@ def m_servo(n, p):
     s_arr[n].angle = p
     p_arr[n][n] = p
 
+
 ################################################################################
-# Setup neo pixels
+# Create an ordered dictionary to preserve the order of insertion
+neo_changes = OrderedDict(cfg["neo_changes"])
+
+# Get the ordered list of keys
+ordered_neo_changes_keys = list(neo_changes.keys())
 
 trees = []
 canes = []
@@ -469,7 +643,7 @@ def bld_neo():
 
 def show_l():
     led.show()
-    time.sleep(.3)
+    time.sleep(.05)
     led.fill((0, 0, 0))
     led.show()
 
@@ -628,46 +802,337 @@ def upd_l_str():
 
 upd_l_str()
 
+# Neo pixel / neo 6 module methods
+
+br = 0
+
+
+def is_neo(number, nested_array):
+    return any(number in sublist for sublist in nested_array)
+
+
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):  # in range(n_px)
+            if is_neo(i, neos):
+                led[i] = (g, r, b)
+            else:
+                led[i] = (r, g, b)
+    else:
+        if is_neo(light_n, neos):
+            led[light_n] = (g, r, b)
+        else:
+            led[light_n] = (r, g, b)
+    led.show()
+
+
+def get_neo_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neos):
+            matches.append(num)
+    return matches
+
+
+def set_neo_module_to(mod_n, ind, v):
+    cur = []
+    neo_ids = get_neo_ids()
+    print(mod_n, ind, v, neo_ids)
+    if mod_n == 0:
+        for i in neo_ids:
+            led[i] = (v, v, v)
+            led[i+1] = (v, v, v)
+    elif ind == 0:
+        led[neo_ids[mod_n-1]] = (v, v, v)
+        led[neo_ids[mod_n-1]+1] = (v, v, v)
+    elif ind < 4:
+        ind -= 1
+        if ind == 0:
+            ind = 1
+        elif ind == 1:
+            ind = 0
+        cur = list(led[neo_ids[mod_n-1]])
+        cur[ind] = v
+        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+        print(led[neo_ids[mod_n-1]])
+    else:
+        ind -= 1
+        if ind == 3:
+            ind = 4
+        elif ind == 4:
+            ind = 3
+        cur = list(led[neo_ids[mod_n-1]+1])
+        cur[ind-3] = v
+        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
+    led.show()
+
+
 gc_col("Neopixels setup")
 
 
 ################################################################################
 # Setup lifx lights
+
+# Create an ordered dictionary to preserve the order of insertion
+scene_changes = OrderedDict(cfg["scene_changes"])
+
+# Get the ordered list of keys
+ordered_scene_changes_keys = list(scene_changes.keys())
+
 devices = []
-lights = []
+lifx = {}
+
 
 def discover_lights():
-    # Initialize the LifxLAN object
-    lifx = LifxLAN(2)
+    if web == False:
+        return False
+    if cfg["lifx_enabled"] == False:
+        return
+    global devices, lifx
+    play_mix(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
+    lifx = LifxLAN(30)  # Assuming 30 is the number of lights
 
     # Discover LIFX devices on the local network
     devices = lifx.get_devices()
 
     # Report the count of discovered devices
     device_count = len(devices)
+    spk_str(str(device_count), False)
+    play_mix(code_folder + "mvc/" + "lifx_lights_found" + ".wav")
+
     print(f"Discovered {device_count} device(s).")
 
+    lifx.set_power_all_lights("on")
+
     # Iterate over each discovered device and control it
-    for device in devices:
-        print(f"Found device: {device.get_label()}")
-        # Set light to a specific color (red in this case)
-        # (Hue, Saturation, Brightness, Kelvin)
-        device.set_color([65535, 65535, 65535, 3500])
-        device.set_power("on")
+    # for device in devices:
+    #     try:
+    #         # print(f"Found device: {device.get_label()}")
+    #         device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
+    #         device.set_power("on")
+    #     except Exception as e:
+    #         print(f"Error setting color for {device.get_label()}: {e}")
+
+
+def set_light_color_threaded(device, r, g, b):
+    """Function to set the light color, executed in a thread."""
+    try:
+        # Set color instantly
+        device.set_color(rgb_to_hsbk(r, g, b), duration=0)
+        print(f"Setting color for {device.get_label()} to RGB({r}, {g}, {b})")
+    except Exception as e:
+        print(f"Error setting color for {device.get_label()}: {e}")
+
+
+def set_all_lights_parallel(r, g, b):
+    """Set color for all lights in parallel using threads."""
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(
+            set_light_color_threaded, device, r, g, b) for device in devices]
+        for future in futures:
+            future.result()  # Wait for all threads to complete
+
+
+def set_light_color(light_n, r, g, b):
+    if cfg["lifx_enabled"] == "false":
+        return
+    """Set color for a specific light or all lights."""
+    if light_n == -1:
+        # Set color for all lights in parallel
+        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b))
+        # set_all_lights_parallel(r, g, b)
+    else:
+        # Set color for a specific light
+        devices[light_n].set_color(rgb_to_hsbk(r, g, b))
+
+
+################################################################################
+# Color helpers
+
+
+def scene_change(type, start, end, time=5, increments=100):
+    """Handle a scene change by interpolating between two times and cycling RGB values."""
+    rgb_cycle = interpolate(type, start, end)
+    cycle_rgb_values(type, rgb_cycle, time, increments)
+
+
+def interpolate_color(start_color, end_color, steps):
+    """Gradually interpolate between two RGB colors."""
+    r_step = (end_color[0] - start_color[0]) / steps
+    g_step = (end_color[1] - start_color[1]) / steps
+    b_step = (end_color[2] - start_color[2]) / steps
+
+    interpolated_colors = []
+
+    for step in range(steps + 1):
+        r = int(start_color[0] + r_step * step)
+        g = int(start_color[1] + g_step * step)
+        b = int(start_color[2] + b_step * step)
+        interpolated_colors.append((r, g, b))
+
+    return interpolated_colors
+
+
+def interpolate(type, start_key: str, end_key: str):
+    """Interpolate between the start and end keys in the scene_changes dictionary."""
+    try:
+        if type == "lifx":
+            start_index = ordered_scene_changes_keys.index(start_key)
+            end_index = ordered_scene_changes_keys.index(end_key)
+        elif type == "neo":
+            start_index = ordered_neo_changes_keys.index(start_key)
+            end_index = ordered_neo_changes_keys.index(end_key)
+
+    except ValueError:
+        raise ValueError("Invalid key provided.")
+
+    if start_index > end_index:
+        # Reverse interpolation
+        if type == "lifx":
+            interpolated_values = [cfg["scene_changes"][key]
+                                   # end_index is exclusive
+                                   for key in ordered_scene_changes_keys[start_index:end_index:-1]]
+            # Ensure inclusion of end_index
+            interpolated_values.append(
+                cfg["scene_changes"][ordered_scene_changes_keys[end_index]])
+        elif type == "neo":
+            interpolated_values = [cfg["neo_changes"][key]
+                                   # end_index is exclusive
+                                   for key in ordered_neo_changes_keys[start_index:end_index:-1]]
+            # Ensure inclusion of end_index
+            interpolated_values.append(
+                cfg["neo_changes"][ordered_neo_changes_keys[end_index]])
+    else:
+        # Forward interpolation
+        if type == "lifx":
+            interpolated_values = [cfg["scene_changes"][key]
+                                   # end_index is inclusive
+                                   for key in ordered_scene_changes_keys[start_index:end_index + 1]]
+        elif type == "neo":
+            interpolated_values = [cfg["neo_changes"][key]
+                                   # end_index is inclusive
+                                   for key in ordered_neo_changes_keys[start_index:end_index + 1]]
+
+    return interpolated_values
+
+
+def rgb_to_hsbk(r, g, b):
+    import colorsys
+
+    # Normalize RGB values to the range 0-1
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+
+    # Convert RGB to HSB (Hue, Saturation, Brightness)
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+    # Convert HSB to LIFX HSBK
+    hue = int(h * 65535)          # Hue in range 0-65535
+    saturation = int(s * 65535)    # Saturation in range 0-65535
+    brightness = int(v * 65535)    # Brightness in range 0-65535
+    # Fixed Kelvin value (can adjust for white balance)
+    kelvin = 3500
+
+    return [hue, saturation, brightness, kelvin]
+
+
+def cycle_rgb_values(type, rgb_values, transition_time=2, steps=100):
+    """Cycles through a list of RGB tuples, transitioning between each in order."""
+    for i in range(len(rgb_values) - 1):
+        start_color = rgb_values[i]
+        end_color = rgb_values[i + 1]
+        color_transition = interpolate_color(start_color, end_color, steps)
+
+        for color in color_transition:
+            # Use threading to set color for all lights at once
+            if type == "lifx":
+                set_light_color(-1, color[0], color[1], color[2])
+            elif type == "neo":
+                set_neo_to(-1, color[0], color[1], color[2])
+            print(f"Setting color to {color}")
+            # Adjust sleep time for smooth transitions
+            time.sleep(transition_time / steps)
+
+################################################################################
+# Requests
+
+
+class ApiClient:
+    def __init__(self, base_url):
+        self.base_url = base_url
+
+    def get(self, endpoint, params=None):
+        """Perform a GET request."""
+        response = requests.get(f"{self.base_url}/{endpoint}", params=params)
+        return self.handle_response(response)
+
+    def post(self, endpoint, data=None):
+        """Perform a POST request."""
+        response = requests.post(f"{self.base_url}/{endpoint}", json=data)
+        return self.handle_response(response)
+
+    def put(self, endpoint, data=None):
+        """Perform a PUT request."""
+        response = requests.put(f"{self.base_url}/{endpoint}", json=data)
+        return self.handle_response(response)
+
+    def delete(self, endpoint):
+        """Perform a DELETE request."""
+        response = requests.delete(f"{self.base_url}/{endpoint}")
+        return self.handle_response(response)
+
+    def handle_response(self, response):
+        """Handle the HTTP response."""
+        if response.status_code == 200:
+            return response.json()  # or response.text for raw text
+        else:
+            response.raise_for_status()  # Raise an error for bad responses
+
+
+def send_animator_post(url, endpoint, new_data):
+    new_url = "http://" + url
+    new_data = json.loads(new_data)
+
+    api_client = ApiClient(new_url)
+    created_data = api_client.post(endpoint, data=new_data)
+    print("POST response:", created_data)
+
 
 ################################################################################
 # Setup wifi and web server
+number_tries = 0
+
+
+def get_default_gateway():
+    gateways = netifaces.gateways()
+    default_gateway = gateways.get('default', {}).get(netifaces.AF_INET)
+    if default_gateway:
+        return default_gateway[0]
+    return None
+
 
 def wait_for_network():
-    while True:
+    global number_tries
+    while number_tries <= 10:
         try:
-            # Attempt to connect to Google's public DNS server to check network availability
-            socket.create_connection(("8.8.8.8", 53))
-            print("Network is ready!")
-            return
-        except OSError:
-            print("Waiting for network...")
+            gateway_ip = get_default_gateway()
+            if gateway_ip is None:
+                raise OSError("No default gateway found")
+
+            # Ping the default gateway
+            response = os.system(f"ping -c 1 {gateway_ip}")
+            if response == 0:
+                print("Wi-Fi is connected to the LAN!")
+                return True
+            else:
+                raise OSError("No response from gateway")
+        except OSError as e:
+            print(f"Error: {e}")
+            print("Waiting for Wi-Fi connection to LAN...")
             time.sleep(1)
+            number_tries += 1
+
+    print("Network not available after multiple tries.")
+    return False
 
 
 def get_local_ip():
@@ -682,9 +1147,28 @@ def get_local_ip():
         s.close()
     return ip
 
+
+def close_midori():
+    try:
+        subprocess.run(['pkill', 'midori'], check=True)
+        print("Midori closed successfully.")
+    except subprocess.CalledProcessError:
+        print("Midori was not running.")
+
+
+def open_midori():
+    if cfg["show_webpage"] == False:
+        return
+    try:
+        command = "midori -e Fullscreen http://animator-city-lights.local:8083/"
+        subprocess.Popen(command, shell=True)
+        print("Midori launched.")
+    except Exception as e:
+        print(f"Failed to start Midori: {e}")
+
+
 ################################################################################
 # Setup routes
-
 
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
@@ -811,24 +1295,38 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.speaker_post(post_data_obj)
         elif self.path == "/get-light-string":
             self.get_light_string_post(post_data_obj)
+        elif self.path == "/get-scene-changes":
+            self.get_scene_changes_post(post_data_obj)
+        elif self.path == "/get-neo-changes":
+            self.get_neo_changes_post(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/update-light-string":
             self.update_light_string_post(post_data_obj)
-        elif self.path == "/defaults":
-            self.defaults_post(post_data_obj)
         elif self.path == "/lights":
             self.lights_post(post_data_obj)
+        elif self.path == "/lights-scene":
+            self.lights_scene_post(post_data_obj)
+        elif self.path == "/lights-neo":
+            self.lights_neo_post(post_data_obj)
+        elif self.path == "/set-item-lights":
+            self.set_item_lights(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
             self.get_host_name_post(post_data_obj)
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
+        elif self.path == "/update-volume":
+            self.update_volume_post(post_data_obj)
+        elif self.path == "/set-lifx-enabled":
+            self.set_lifx_enabled(post_data_obj)
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
-        elif self.path == "/get-scripts":
-            self.get_scripts_post(post_data_obj)
+        elif self.path == "/get-lifx-enabled":
+            self.get_lifx_enabled(post_data_obj)
+        # elif self.path == "/get-scripts":
+        #     self.get_scripts_post(post_data_obj)
         elif self.path == "/create-playlist":
             self.create_playlist_post(post_data_obj)
         elif self.path == "/get-animation":
@@ -845,10 +1343,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.test_animation_post(post_data_obj)
 
     def test_animation_post(self, rq_d):
-        global an_running
-        an_running = True
+        global exit_set_hdw
+        exit_set_hdw = False
         set_hdw(rq_d["an"], 3)
-        an_running = True
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -870,8 +1367,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd = rq_d["fo"].replace("plylst_", "")
         fo = plylst_folder + snd + ".json"
         fn = plylst_folder + rq_d["fn"] + ".json"
-        mp3_name = media_folder + "o_snds/" + rq_d["fn"] + ".mp3"
-        text_to_mp3_file(mp3_name, timeout_duration=5)
         os.rename(fo, fn)
         upd_media()
         self.send_response(200)
@@ -894,14 +1389,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 an = rq_d[3].split("_")
                 if "plylst" == an[0]:
                     snd_f = rq_d[3].replace("plylst_", "")
-                    snd_f = snd_f.replace(".mp3", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
                     f_n = plylst_folder + \
                         snd_f + ".json"
                 else:
-                    snd_f = rq_d[3].replace(".mp3", "")
-                    snd_f = snd_f.replace(".mp4", "")
+                    snd_f = rq_d[3].replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
                     f_n = media_folder + snd_f + ".json"
                 files.write_json_file(f_n, data)
@@ -937,7 +1430,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def get_animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
         snd_f = rq_d["an"]
-        snd_f = snd_f.replace(".mp3", "")
         snd_f = snd_f.replace(".mp4", "")
         snd_f = snd_f.replace(".wav", "")
         if "plylst_" in snd_f:
@@ -989,7 +1481,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                   rq_d["action"] + " data: " + cfg["light_string"])
             files.write_json_file(code_folder + "cfg.json", cfg)
             upd_l_str()
-            play_a_0(code_folder + "mvc/all_changes_complete.wav")
+            play_mix(code_folder + "mvc/all_changes_complete.wav")
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
@@ -1005,7 +1497,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
               " data: " + cfg["light_string"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         upd_l_str()
-        play_a_0(code_folder + "mvc/all_changes_complete.wav")
+        play_mix(code_folder + "mvc/all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1014,20 +1506,31 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def mode_post(self, rq_d):
         print(rq_d)
-        global cfg, cont_run, ts_mode
+        global cfg, cont_run, ts_mode, terminal_window_during_playback
         if rq_d["an"] == "cont_mode_on":
-            play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
+            play_mix(code_folder + "mvc/continuous_mode_activated.wav")
             cont_run = True
         elif rq_d["an"] == "cont_mode_off":
-            play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
+            play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
             cont_run = False
         elif rq_d["an"] == "timestamp_mode_on":
-            play_a_0(code_folder + "mvc/timestamp_mode_on.wav")
-            play_a_0(code_folder + "mvc/timestamp_instructions.wav")
+            play_mix(code_folder + "mvc/timestamp_mode_on.wav")
+            play_mix(code_folder + "mvc/timestamp_instructions.wav")
             ts_mode = True
         elif rq_d["an"] == "timestamp_mode_off":
-            play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
+            play_mix(code_folder + "mvc/timestamp_mode_off.wav")
             ts_mode = False
+        elif rq_d["an"] == "terminal_mode_on":
+            play_mix(code_folder + "mvc/terminal_mode_on.wav")
+            terminal_window_during_playback = True
+        elif rq_d["an"] == "terminal_mode_off":
+            play_mix(code_folder + "mvc/terminal_mode_off.wav")
+            terminal_window_during_playback = False
+        elif "intermission_" in rq_d["an"]:
+            rq_d_split = rq_d["an"].split("_")
+            cfg["intermission"] = rq_d_split[1]
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_mix(code_folder + "mvc/all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1036,15 +1539,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode, stop_play_list
+        global cfg, cont_run, ts_mode
         cfg["option_selected"] = rq_d["an"]
-        stop_play_list = False
-        an(cfg["option_selected"])
+        add_command(cfg["option_selected"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        response = {"Ran animation": cfg["option_selected"]}
+        response = {"Animation added to queue: ": cfg["option_selected"]}
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
@@ -1053,15 +1555,29 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         if rq_d["an"] == "reset_to_defaults":
             rst_def()
             files.write_json_file(code_folder + "cfg.json", cfg)
-            play_a_0(code_folder + "mvc/all_changes_complete.wav")
+            play_mix(code_folder + "mvc/all_changes_complete.wav")
             st_mch.go_to('base_state')
-        self.wfile.write("Utility: " + rq_d["an"])
+        elif rq_d["an"] == "reset_scene_to_defaults":
+            cfg["scene_changes"] = copy.deepcopy(default_cfg["scene_changes"])
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_mix(code_folder + "mvc/all_changes_complete.wav")
+            st_mch.go_to('base_state')
+        elif rq_d["an"] == "reset_neo_to_defaults":
+            cfg["neo_changes"] = copy.deepcopy(default_cfg["neo_changes"])
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            play_mix(code_folder + "mvc/all_changes_complete.wav")
+            st_mch.go_to('base_state')
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))
 
     def speaker_post(self, rq_d):
         global cfg
         if rq_d["an"] == "speaker_test":
             cmd_snt = "speaker_test"
-            play_a_0(code_folder + "mvc/left_speaker_right_speaker.wav")
+            play_mix(code_folder + "mvc/left_speaker_right_speaker.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1074,6 +1590,22 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = cfg["light_string"]
         self.wfile.write(response.encode('utf-8'))
+
+    def get_scene_changes_post(self, rq_d):
+        response = cfg["scene_changes"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_neo_changes_post(self, rq_d):
+        response = cfg["neo_changes"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def update_host_name_post(self, rq_d):
         global cfg
@@ -1103,12 +1635,33 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
 
+    def set_lifx_enabled(self, rq_d):
+        global cfg
+        cfg["lifx_enabled"] = rq_d["enabled"]
+        if cfg["lifx_enabled"] == True:
+            discover_lights()
+        files.write_json_file(code_folder + "cfg.json", cfg)
+        response = cfg["lifx_enabled"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
     def get_volume_post(self, rq_d):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
+
+    def get_lifx_enabled(self, rq_d):
+        response = cfg["lifx_enabled"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def get_all_media_post(self, rq_d):
         upd_media()
@@ -1119,18 +1672,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def defaults_post(self, rq_d):
-        global cfg
-        if rq_d["an"] == "reset_to_defaults":
-            rst_def()
-            files.write_json_file(code_folder + "cfg.json", cfg)
-            play_a_0(code_folder + "mvc/all_changes_complete.wav")
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "reset_to_defaults"
-        self.wfile.write(response.encode('utf-8'))
-
     def lights_post(self, rq_d):
         set_hdw(rq_d["an"], 1)
         self.send_response(200)
@@ -1139,57 +1680,234 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = rq_d["an"]
         self.wfile.write(response.encode('utf-8'))
 
+    current_neo = ""
 
-# Get the local IP address
-local_ip = get_local_ip()
-print(f"Local IP address: {local_ip}")
+    def lights_neo_post(self, rq_d):
+        global current_neo
+        current_neo = rq_d["an"]
+        rgb_value = cfg["neo_changes"][current_neo]
+        set_hdw("LN0_" + str(rgb_value[0]) + "_" +
+                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        response = rgb_value
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
-# Set up the HTTP server
-PORT = 8083  # Use port 80 for default HTTP access
-handler = MyHttpRequestHandler
-httpd = socketserver.TCPServer((local_ip, PORT), handler)
-httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    current_scene = ""
+
+    def lights_scene_post(self, rq_d):
+        global current_scene
+        current_scene = rq_d["an"]
+        rgb_value = cfg["scene_changes"][current_scene]
+        set_hdw("LX0_" + str(rgb_value[0]) + "_" +
+                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        response = rgb_value
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def set_item_lights(self, rq_d):
+        if rq_d["item"] == "lifx":
+            set_hdw("LX0_" + str(rq_d["r"]) + "_" +
+                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            if current_scene != "":
+                cfg["scene_changes"][current_scene] = [
+                    rq_d["r"], rq_d["g"], rq_d["b"]]
+        elif rq_d["item"] == "neo":
+            set_hdw("LN0_" + str(rq_d["r"]) + "_" +
+                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            if current_neo != "":
+                cfg["neo_changes"][current_neo] = [
+                    rq_d["r"], rq_d["g"], rq_d["b"]]
+        files.write_json_file(code_folder + "cfg.json", cfg)
+        response = rq_d
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
 
-def start_server():
-    print(f"Serving on {local_ip}:{PORT}")
-    httpd.serve_forever()
+if web:
+    if wait_for_network():
+        # Get the local IP address
+        local_ip = get_local_ip()
+        print(f"Local IP address: {local_ip}")
 
+        QUEUE_PORT = 8001
+        PORT = 8083
 
-# Set up mDNS service info
-name_str = cfg["HOST_NAME"] + "._http._tcp.local."
-server_str = cfg["HOST_NAME"] + ".local."
-desc = {'path': '/'}
-info = ServiceInfo(
-    "_http._tcp.local.",
-    name_str,
-    addresses=[socket.inet_aton(local_ip)],
-    port=PORT,
-    properties=desc,
-    server=server_str
-)
+        httpd = None
 
+        def start_http_server():
+            global httpd
+            handler = MyHttpRequestHandler
+            httpd = socketserver.TCPServer((local_ip, PORT), handler)
+            httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            print(f"Serving on {local_ip}:{PORT}")
+            httpd.serve_forever()
+
+        def get_mdns_info():
+            name_str = cfg["HOST_NAME"] + "._http._tcp.local."
+            server_str = cfg["HOST_NAME"] + ".local."
+            desc = {'path': '/'}
+            mdns_info = ServiceInfo(
+                "_http._tcp.local.",
+                name_str,
+                addresses=[socket.inet_aton(local_ip)],
+                port=PORT,
+                properties=desc,
+                server=server_str
+            )
+            return mdns_info
+
+        mdns_info = get_mdns_info()
+
+        async def command_queue_handler(websocket, path):
+            global current_media_playing
+            print("WebSocket connection established")
+            try:
+                while True:
+                    if command_queue:
+                        commands = list(command_queue)
+                        response = {
+                            'commands': commands,
+                            'current_media_playing': current_media_playing
+                        }
+                        await websocket.send(json.dumps(response))
+                    else:
+                        response = {
+                            'commands': [],
+                            'current_media_playing': current_media_playing
+                        }
+                        await websocket.send(json.dumps(response))
+
+                    await asyncio.sleep(1)
+            except Exception as e:
+                print(f"Error in command_queue_handler: {e}")  # Log any errors
+            finally:
+                print("WebSocket connection closed")
+
+        async def websocket_server():
+            async with websockets.serve(command_queue_handler, "0.0.0.0", QUEUE_PORT):
+                print(f"WebSocket server running on port {QUEUE_PORT}")
+                await asyncio.Future()  # Run forever
+    else:
+        web = False
 
 gc_col("web server")
+
+
+################################################################################
+# Command queue
+
+command_queue = deque()
+
+
+def add_command(command, to_start=False):
+    """Add a command to the queue. If to_start is True, add to the front."""
+    if to_start:
+        command_queue.appendleft(command)  # Add to the front
+        print(f"Command added to the start: {command}")
+    else:
+        command_queue.append(command)  # Add to the end
+        print(f"Command added to the end: {command}")
+
+
+def process_commands():
+    """Process commands in a FIFO order from the front."""
+    while command_queue:
+        command = command_queue.popleft()  # Retrieve from the front
+        print(f"Processing command: {command}")
+        an(command)
+
+
+def clear_command_queue():
+    """Clear all commands from the queue."""
+    command_queue.clear()
+    print("Command queue cleared.")
+
+
+def stop_all_commands():
+    """Stop all commands and clear the queue."""
+    global running_mode, cont_run, exit_set_hdw
+    clear_command_queue()
+    running_mode = ""
+    exit_set_hdw = True
+    mix.stop()
+    media_player.stop()
+    cont_run = False
+    rst_an()
+    print("Processing stopped and command queue cleared.")
+
 
 ################################################################################
 # Global Methods
 
-
 def rst_def():
     global cfg
-    cfg["HOST_NAME"] = "animator-drive-in"
-    cfg["option_selected"] = "random all"
-    cfg["volume"] = "20"
+    cfg = copy.deepcopy(default_cfg)
 
 ################################################################################
 # Dialog and sound play methods
 
 
+# Manually defined logarithmic values for lookup table (approximate)
+linear_values = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+# Logarithmic values approximated between 0 and 1
+log_values = [
+    0,        # log(0) is undefined, but we set it to 0 for this table
+    0.001,    # log(0.1)
+    0.01,     # log(0.2)
+    0.1,      # log(0.3)
+    0.2,      # log(0.4)
+    0.3,      # log(0.5)
+    0.4,      # log(0.6)
+    0.5,      # log(0.7)
+    0.6,      # log(0.8)
+    0.7,      # log(0.9)
+    1.0       # log(1) is 0, but here we set it to 1 for the table
+]
+
+# Print out the tables as arrays
+print("Linear values:", linear_values)
+print("Log values:", log_values)
+
+
+def interpolate(x, x_values, y_values):
+    # Ensure x is within the valid range of x_values
+    if x <= x_values[0]:
+        return y_values[0]
+    elif x >= x_values[-1]:
+        return y_values[-1]
+
+    # Find the interval [x1, x2]
+    for i in range(1, len(x_values)):
+        if x_values[i] >= x:
+            x1, x2 = x_values[i-1], x_values[i]
+            y1, y2 = y_values[i-1], y_values[i]
+            # Interpolate
+            return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+
+
+# Example: Interpolate for linear input of 0.75
+linear_input = 0.75
+log_output = interpolate(linear_input, linear_values, log_values)
+print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
+
+
 def upd_vol(seconds):
     volume = int(cfg["volume"])
-    mix.set_volume(volume/100)
-    media_player.audio_set_volume(volume)
+    volume_0_1 = volume/100
+    log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
+    mix.set_volume(volume_0_1*0.7)
+    mix_media.set_volume(volume_0_1*0.7)
+    media_player.audio_set_volume(log_to_linear)
     time.sleep(seconds)
 
 
@@ -1218,52 +1936,58 @@ def ch_vol(action):
         v = 1
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
-    upd_vol(.01)
+    upd_vol(.05)
     files.write_json_file(code_folder + "cfg.json", cfg)
-    play_a_0(code_folder + "mvc/volume.wav")
+    play_mix(code_folder + "mvc/volume.wav")
     spk_str(cfg["volume"], False)
 
 
-def play_a_0(file_name, wait_until_done=True, allow_exit=True):
+def play_mix(file_name, wait_until_done=True, allow_exit=True):
     print("playing " + file_name)
     if mix.get_busy():
-        stop_media()
+        mix.stop()
         while mix.get_busy():
-            time.sleep(0.1)
-    mix.load(file_name)
-    upd_vol(.001)
-    mix.play(loops=0)
+            pass
+    mix_sound = pygame.mixer.Sound(file_name)
+    upd_vol(.05)
+    mix.play(mix_sound, loops=0)
     while mix.get_busy() and wait_until_done:
         if allow_exit:
             exit_early()
     print("done playing")
 
 
+def play_mix_media(file_name):
+    print("playing " + file_name)
+    if mix_media.get_busy():
+        mix_media.stop()
+        while mix.get_busy():
+            pass
+    mix_media_sound = pygame.mixer.Sound(file_name)
+    upd_vol(.05)
+    mix_media.play(mix_media_sound, loops=0)
+    print("done playing")
+
+
 def wait_snd():
-    while mix.get_busy():
+    while mix_media.get_busy() or media_player.is_playing():
         exit_early()
     print("done playing")
 
 
-def stop_media():
-    media_player.stop()
+def stop_all_media():
     mix.stop()
-    while mix.get_busy() or media_player.is_playing():
+    mix_media.stop()
+    media_player.stop()
+    while mix.get_busy() or mix_media.get_busy() or media_player.is_playing():
         pass
 
 
 def exit_early():
     l_sw.update()
-    r_sw.update()
     if l_sw.fell:
-        stop_media()
-    time.sleep(0.1)
-
-
-def rst_an():
-    stop_media()
-    led.fill((0, 0, 0))
-    led.show()
+        stop_all_media()
+    time.sleep(0.05)
 
 
 def spk_str(str_to_speak, addLocal):
@@ -1275,60 +1999,75 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            play_a_0(code_folder + "mvc/" + character + ".wav")
+            play_mix(code_folder + "mvc/" + character + ".wav")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        play_a_0(code_folder + "mvc/dot_local_colon_8083.wav")
+        play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
 
 
 def l_r_but():
-    play_a_0(code_folder + "mvc/press_left_button_right_button.wav")
+    play_mix(code_folder + "mvc/press_left_button_right_button.wav")
 
 
 def sel_web():
-    play_a_0(code_folder + "mvc/web_menu.wav")
+    play_mix(code_folder + "mvc/web_menu.wav")
     l_r_but()
 
 
 def opt_sel():
-    play_a_0(code_folder + "mvc/option_selected.wav")
+    play_mix(code_folder + "mvc/option_selected.wav")
 
 
 def spk_sng_num(song_number):
-    play_a_0(code_folder + "mvc/song.wav")
+    play_mix(code_folder + "mvc/song.wav")
     spk_str(song_number, False)
 
 
 def no_trk():
-    play_a_0(code_folder + "mvc/no_user_soundtrack_found.wav")
+    play_mix(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
             break
         if r_sw.fell:
-            play_a_0(code_folder + "mvc/create_sound_track_files.wav")
+            play_mix(code_folder + "mvc/create_sound_track_files.wav")
             break
 
 
 def spk_web():
-    play_a_0(code_folder + "mvc/animator_available_on_network.wav")
-    play_a_0(code_folder + "mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-drive-in":
-        play_a_0(code_folder + "mvc/animator_dash_drive_dash_in.wav")
-        play_a_0(code_folder + "mvc/dot_local_colon_8083.wav")
+    play_mix(code_folder + "mvc/animator_available_on_network.wav")
+    play_mix(code_folder + "mvc/to_access_type.wav")
+    if cfg["HOST_NAME"] == "animator-city-lights":
+        play_mix(code_folder + "mvc/animator_dash_city_dash_lights.wav")
+        play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    play_a_0(code_folder + "mvc/in_your_browser.wav")
+    play_mix(code_folder + "mvc/in_your_browser.wav")
 
+
+def get_random_joke():
+    url = "https://official-joke-api.appspot.com/jokes/random"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        joke = response.json()
+        print(f"{joke['setup']} - {joke['punchline']}")
+    else:
+        print("Failed to retrieve a joke.")
+
+    text_to_wav_file(joke['setup'], "myjoke.wav", 2)
+    text_to_wav_file(joke['punchline'], "myjoke.wav", 2)
 
 ###############################################################################
 # Text to speech
 
 
 def check_gtts_status():
+    if web == False:
+        return False
     try:
         # gTTS API endpoint
         url = "https://translate.google.com"
@@ -1370,21 +2109,34 @@ def timeout_handler(signum, frame):
 signal.signal(signal.SIGALRM, timeout_handler)
 
 
-def text_to_mp3_file(f_nm, timeout_duration):
+def text_to_wav_file(text, file_name, timeout_duration):
     global is_gtts_reachable
+    if is_gtts_reachable == False:
+        return
     try:
         # Set the timeout (in seconds)
         signal.alarm(timeout_duration)
 
         # Convert text to mp3 file
-        text = files.strip_path_and_extension(f_nm)
+        # text = files.strip_path_and_extension(f_nm)
         tts = gTTS(text=text, lang='en')
-        tts.save(f_nm)
+        tts.save(code_folder + "temp.mp3")
 
         # Cancel the alarm if operation completes before timeout
         signal.alarm(0)
 
-        play_a_0(f_nm)
+        # Load the audio file with pydub
+        audio = AudioSegment.from_file(code_folder + "temp.mp3")
+
+        # Adjust the volume
+        volume_change = -5  # Decrease volume by 5db
+        adjusted_audio = audio + volume_change
+
+        # Save the adjusted audio
+        adjusted_audio.export(file_name, format="wav")
+        print(f"Wav for {file_name} generated and volume adjusted.")
+
+        play_mix(file_name)
 
     except TimeoutException:
         print("TTS operation timed out.")
@@ -1394,111 +2146,254 @@ def text_to_mp3_file(f_nm, timeout_duration):
         is_gtts_reachable = False
 
 
+def generate_wav_from_filename(file_name):
+    if is_gtts_reachable == False:
+        return
+    text_to_speak = file_name.replace("_", " ")
+    text_to_speak = text_to_speak.replace(".wav", "")
+
+    wav_file = os.path.join(
+        snd_opt_folder, f"{os.path.splitext(file_name)[0]}.wav")
+
+    # If wav file already exists, skip
+    if os.path.exists(wav_file):
+        print(f"Wav for {file_name} already exists. Skipping...")
+        return
+
+    # Generate speech from text
+    tts = gTTS(text=text_to_speak, lang='en')
+    tts.save(code_folder + "temp.mp3")
+
+    # Load the audio file with pydub
+    audio = AudioSegment.from_file(code_folder + "temp.mp3")
+
+    # Adjust the volume
+    volume_change = -5  # Decrease volume by 5db
+    adjusted_audio = audio + volume_change
+
+    # Save the adjusted audio
+    adjusted_audio.export(wav_file, format="wav")
+    print(f"Wav for {file_name} generated and volume adjusted.")
+
+
+def update_folder_name_wavs():
+    if web == False:
+        return False
+    if is_gtts_reachable == False:
+        return
+
+    # Get all files in the folder
+    files = os.listdir(snd_opt_folder)
+
+    wav_files = {f for f in files if f.endswith('.wav')}
+
+    # Generate wavs for valid files
+    for my_file in menu_snd_opt:
+        generate_wav_from_filename(my_file)
+
+    # Delete orphaned wav files (those without a corresponding key in menu_snd_opt)
+    for wav_file in wav_files:
+        if f"{os.path.splitext(wav_file)[0]}.wav" not in menu_snd_opt:
+            os.remove(os.path.join(snd_opt_folder, wav_file))
+            print(f"Deleted orphaned wav: {wav_file}")
+
+
 ################################################################################
 # Animation methods
 
-def rst_an():
-    stop_media()
-    media_player.stop()
+def logo_when_idle():
+    time_counter = 0
+
+    while True:
+        if not running_mode:
+            time_counter += 1
+            if time_counter == 5:
+                change_wallpaper(media_folder + 'pictures/logo.jpg')
+        else:
+            time_counter = 0
+        time.sleep(1)
+
+
+def check_switches(stop_event):
+    global cont_run, running_mode, mix_is_paused, exit_set_hdw
+    while not stop_event.is_set():  # Check the stop event
+        switch_state = utilities.switch_state_four_switches(
+            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+        if switch_state == "left" and cfg["can_cancel"]:
+            stop_event.set()  # Signal to stop the thread
+            rst_an()
+        elif switch_state == "left_held" and cfg["can_cancel"]:
+            stop_event.set()  # Signal to stop the thread
+            clear_command_queue()
+            rst_an()
+            if cont_run:
+                cont_run = False
+                play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
+        elif switch_state == "right" and cfg["can_cancel"]:
+            if running_mode == "media_player":
+                if media_player.is_playing():
+                    media_player.pause()
+                else:
+                    media_player.play()
+            elif running_mode == "mix":
+                if mix_is_paused:
+                    mix_media.unpause()
+                    mix_is_paused = False
+                else:
+                    mix_media.pause()
+                    mix_is_paused = True
+        elif switch_state == "three":
+            print("sw three fell")
+            ch_vol("lower")
+        elif switch_state == "four":
+            print("sw four fell")
+            ch_vol("raise")
+        upd_vol(0.05)
+
+
+def run_check_switches_thread():
+    stop_event = threading.Event()  # Create a stop event
+    check_thread = threading.Thread(target=check_switches, args=(stop_event,))
+    check_thread.start()
+    return check_thread, stop_event
+
+
+def rst_an(file_name=media_folder + 'pictures/black.jpg'):
+    global current_media_playing, exit_set_hdw
+    exit_set_hdw = True
+    stop_all_media()
+    hide_terminal()
+    led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
+    change_wallpaper(file_name)
+    time.sleep(0.5)
+    l_sw.update()
+    r_sw.update()
+    three_sw.update()
+    four_sw.update()
+    current_media_playing = ""
 
 
 def an(f_nm):
-    global cfg, lst_opt, an_running
+    global cfg, lst_opt, running_mode
     print("Filename: " + f_nm)
-    cur_opt = f_nm
     try:
-        if f_nm == "random_play lists":
-            h_i = len(play_list_options) - 1
-            cur_opt = play_list_options[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(play_list_options) > 1:
-                cur_opt = play_list_options[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
-        elif f_nm == "random_all":
-            h_i = len(media_list_flattened) - 1
-            cur_opt = media_list_flattened[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(media_list_flattened) > 1:
-                cur_opt = media_list_flattened[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
-        elif "random_" in f_nm:
-            # Specify the folder name
-            folder_name = f_nm.split("_")
-            # Filter the media list to only include items from the specified folder
-            filtered_list = [item for item in media_list_flattened if item.startswith(f"{folder_name[1]}/")]
-            h_i = len(filtered_list) - 1
-            cur_opt = filtered_list[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(filtered_list) > 1:
-                cur_opt = filtered_list[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
+        cur_opt = return_file_to_use(f_nm)
         if ts_mode:
             an_ts(cur_opt)
             gc_col("animation cleanup")
         else:
-            an_light(cur_opt)
+            if not "intermission/" in cur_opt:
+                insert_intermission_start_of_queue()
+            result = an_light(cur_opt)
             gc_col("animation cleanup")
+            return result
     except Exception as e:
         files.log_item(e)
         no_trk()
-        cfg["option_selected"] = "random all media"
+        cfg["option_selected"] = "random_all"
         return
     gc_col("Animation complete.")
 
 
+def return_file_to_use(f_nm):
+    global cfg, lst_opt, running_mode
+    cur_opt = f_nm
+    if f_nm == "random_play lists":
+        h_i = len(play_list_options) - 1
+        cur_opt = play_list_options[random.randint(
+            0, h_i)]
+        while lst_opt == cur_opt and len(play_list_options) > 1:
+            cur_opt = play_list_options[random.randint(
+                0, h_i)]
+        lst_opt = cur_opt
+        print("Random sound option: " + f_nm)
+        print("Sound file: " + cur_opt)
+    elif f_nm == "random_all":
+        h_i = len(media_list_all_no_intermission) - 1
+        cur_opt = media_list_all_no_intermission[random.randint(
+            0, h_i)]
+        while lst_opt == cur_opt and len(media_list_all_no_intermission) > 1:
+            cur_opt = media_list_all_no_intermission[random.randint(
+                0, h_i)]
+        lst_opt = cur_opt
+        print("Random sound option: " + f_nm)
+        print("Sound file: " + cur_opt)
+    elif "random_" in f_nm:
+        folder_name = f_nm.split("_")
+        filtered_list = [
+            item for item in media_list_all if item.startswith(folder_name[1] + "/")]
+        h_i = len(filtered_list) - 1
+        cur_opt = filtered_list[random.randint(
+            0, h_i)]
+        while lst_opt == cur_opt and len(filtered_list) > 1:
+            cur_opt = filtered_list[random.randint(
+                0, h_i)]
+        lst_opt = cur_opt
+        print("Random sound option: " + f_nm)
+        print("Sound file: " + cur_opt)
+    return cur_opt
+
+
 def an_light(f_nm):
-    global ts_mode, an_running
-    an_running = True
-    if stop_play_list:
-        return
-
-    time.sleep(.1)
-
+    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
+    exit_set_hdw = False
+    current_media_playing = f_nm
     plylst_f = "plylst_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
     json_fn = json_fn.replace(".wav", "")
-    json_fn = json_fn.replace("customers_owned_music_", "")
 
     flsh_t = []
 
     if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
+        if (f_exists(plylst_folder + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
+        else:
+            flsh_t.append("0.0|")
+            flsh_t.append("5000.0|")
+            files.write_json_file(plylst_folder + f_nm + ".json", flsh_t)
     else:
         if (f_exists(media_folder + json_fn + ".json") == True):
-            flsh_t = files.read_json_file(
-                media_folder + json_fn + ".json")
+            flsh_t = files.read_json_file(media_folder + json_fn + ".json")
+        else:
+            flsh_t.append("0.0|")
+            flsh_t.append("5000.0|")
+            files.write_json_file(media_folder + json_fn + ".json", flsh_t)
 
     flsh_i = 0
 
     ft1 = []
     ft2 = []
 
-    ft1 = flsh_t[len(flsh_t)-1].split("|")
-    tm = float(ft1[0]) + 1
-    flsh_t.append(str(tm) + "|E")
-    flsh_t.append(str(tm + 1) + "|E")
+    # add end command to time stamps to stop video when timestamps run out
+    ft_last = flsh_t[len(flsh_t)-1].split("|")
+    tm_last = float(ft_last[0]) + 1
+    flsh_t.append(str(tm_last) + "|E")
+    flsh_t.append(str(tm_last + 1) + "|E")
+
+    check_thread, stop_event = run_check_switches_thread()
 
     if not plylst_f:
         media0 = media_folder + f_nm
+        if terminal_window_during_playback:
+            terminal_process = open_terminal()
         if is_video:
+            running_mode = "media_player"
             play_movie_file(media0)
         else:
-            play_a_0(media0, False)
+            running_mode = "mix"
+            change_wallpaper(media0)
+            play_mix_media(media0)
+            mix_is_paused = False
+    else:
+        running_mode = "play_list"
 
-    srt_t = time.monotonic()  # perf_counter
+    srt_t = time.monotonic()
+
+    window_moved = False
 
     while True:
         t_past = time.monotonic()-srt_t
@@ -1513,54 +2408,89 @@ def an_light(f_nm):
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             t_elaspsed = "{:.1f}".format(t_past)
-            files.log_item("Time elapsed: " + str(t_elaspsed) +
-                           " Timestamp: " + ft1[0])
+            duration = "{:.1f}".format(dur)
+            log_this = "TE: " + \
+                str(t_elaspsed) + " TS: " + \
+                ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
+            files.log_item(log_this)
             resp = set_hdw(ft1[1], dur)
             if resp == "STOP":
-                rst_an()
-                time.sleep(.2)
-                an_running = False
-                return
+                result = an_done_reset(resp)
+                return result
             flsh_i += 1
-        if not mix.get_busy() and not media_player.is_playing():  # and not plylst_f and not an_running
-            mix.stop()
-            media_player.stop()
-            rst_an()
-            time.sleep(.2)
-            an_running = False
-            return "DONE"
-        if flsh_i > len(flsh_t)-1:
-            mix.stop()
-            media_player.stop()
-            rst_an()
-            time.sleep(.2)
-            an_running = False
-            return "DONE"
-        time.sleep(.1)
+        if terminal_window_during_playback and not window_moved and t_past > 3:
+            move_vlc_window()
+            window_moved = True
+        media_player_state_now = media_player_state()
+        if plylst_f:
+            if flsh_i > len(flsh_t)-1:
+                stop_event.set()  # Signal the thread to stop
+                check_thread.join()  # Wait for the thread to finish
+                change_wallpaper(media_folder + 'pictures/black.jpg')
+                hide_terminal()
+                led.brightness = 1.0
+                led.fill((0, 0, 0))
+                led.show()
+                current_media_playing = ""
+                running_mode = ""
+                return "DONE"
+        else:
+            if not mix_media.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
+                stop_event.set()  # Signal the thread to stop
+                check_thread.join()  # Wait for the thread to finish
+                result = an_done_reset("DONE")
+                return result
+            elif flsh_i > len(flsh_t)-1:
+                stop_event.set()  # Signal the thread to stop
+                check_thread.join()  # Wait for the thread to finish
+                result = an_done_reset("DONE")
+                return result
+        time.sleep(.05)
+
+
+def an_done_reset(return_value):
+    global running_mode
+    rst_an()
+    time.sleep(0.05)
+    running_mode = ""
+    return return_value
+
+
+def insert_intermission_start_of_queue():
+    if rnd_prob(float(cfg["intermission"])):
+        add_command("random_intermission", True)
 
 
 def an_ts(f_nm):
+    global terminal_process, terminal_window_during_playback
     print("time stamp mode")
-    global ts_mode, an_running
-    an_running = True
+    global ts_mode, running_mode
+    running_mode == "time_stamp_mode"
 
-    cust_f = "customers_owned_music_" in f_nm
     is_video = ".mp4" in f_nm
     json_fn = f_nm.replace(".mp4", "")
     json_fn = json_fn.replace(".wav", "")
-    json_fn = json_fn.replace("customers_owned_music_", "")
 
     t_s = []
 
-    media0 = media_folder  + f_nm
+    t_s.append("0.0|")
 
+    media0 = media_folder + f_nm
+
+    previous_terminal_mode = terminal_window_during_playback
+    terminal_window_during_playback = True
+
+    if terminal_window_during_playback:
+        terminal_process = open_terminal()
     if is_video:
         play_movie_file(media0)
     else:
-        play_a_0(media0, False)
+        play_mix_media(media0)
 
     startTime = time.perf_counter()
     time.sleep(.1)
+
+    window_moved = False
 
     while True:
         t_elsp = round(time.perf_counter()-startTime, 1)
@@ -1568,135 +2498,96 @@ def an_ts(f_nm):
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
-        if not mix.get_busy() and not media_player.is_playing():
+        if not mix_media.get_busy() and not media_player.is_playing():
+            t_s.append(str(t_elsp) + "|")
             led.fill((0, 0, 0))
             led.show()
-            if cust_f:
-                files.write_json_file(
-                    media_folder + "customers_owned_music/" + json_fn + ".json", t_s)
-            else:
-                files.write_json_file(
-                    media_folder + "sndtrk/" + json_fn + ".json", t_s)
+            files.write_json_file(
+                media_folder + json_fn + ".json", t_s)
             break
+        if terminal_window_during_playback and not window_moved and t_elsp > 3:
+            move_vlc_window()
+            window_moved = True
 
+    terminal_window_during_playback = previous_terminal_mode
     ts_mode = False
     rst_an()
-    play_a_0(code_folder + "mvc/timestamp_saved.wav")
-    play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
-    play_a_0(code_folder + "mvc/animations_are_now_active.wav")
+    play_mix(code_folder + "mvc/timestamp_saved.wav")
+    play_mix(code_folder + "mvc/timestamp_mode_off.wav")
+    play_mix(code_folder + "mvc/animations_are_now_active.wav")
+    running_mode = ""
 
 
 ###############
 # Animation helpers
 
-br = 0
-
-
-def is_neo(number, nested_array):
-    return any(number in sublist for sublist in nested_array)
-
-
-def set_all_to(light_n, r, g, b):
-    if light_n == -1:
-        for i in range(n_px):  # in range(n_px)
-            if is_neo(i, neos):
-                led[i] = (g, r, b)
-            else:
-                led[i] = (r, g, b)
+def rnd_prob(random_value):
+    print("Using random value: " + str(random_value))
+    if random_value == 0:
+        return False
+    elif random_value == 1:
+        return True
     else:
-        if is_neo(light_n, neos):
-            led[light_n] = (g, r, b)
-        else:
-            led[light_n] = (r, g, b)
-    led.show()
-
-
-def get_neo_ids():
-    matches = []
-    for num in range(n_px + 1):
-        if any(num == sublist[0] for sublist in neos):
-            matches.append(num)
-    return matches
-
-
-def set_neo_module(mod_n, ind, v):
-    cur = []
-    neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
-    if mod_n == 0:
-        for i in neo_ids:
-            led[i] = (v, v, v)
-            led[i+1] = (v, v, v)
-    elif ind == 0:
-        led[neo_ids[mod_n-1]] = (v, v, v)
-        led[neo_ids[mod_n-1]+1] = (v, v, v)
-    elif ind < 4:
-        ind -= 1
-        if ind == 0:
-            ind = 1
-        elif ind == 1:
-            ind = 0
-        cur = list(led[neo_ids[mod_n-1]])
-        cur[ind] = v
-        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n-1]])
-    else:
-        ind -= 1
-        if ind == 3:
-            ind = 4
-        elif ind == 4:
-            ind = 3
-        cur = list(led[neo_ids[mod_n-1]+1])
-        cur[ind-3] = v
-        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
-    led.show()
+        y = random.random()
+        if y < random_value:
+            return True
+    return False
 
 
 def set_hdw(cmd, dur):
-    global sp, br
+    global sp, br, running_mode, exit_set_hdw
 
     if cmd == "":
         return "NOCMDS"
 
-    # Split the input string into segments
     segs = cmd.split(",")
 
-    # Process each segment
     try:
         for seg in segs:
+            if exit_set_hdw:
+                return "STOP"
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
             # MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)
-            elif seg[0] == 'M':
-                stop_media()
-                if seg[1] == "P":
-                    f_nm = pylst_folder + "plylst_" + seg[2:]
-                else:
-                    f_nm = media_folder + seg[2:]
-                if seg[1] == "W" or seg[1] == "M":
-                    play_a_0(f_nm, False)
-                if seg[1] == "A":
-                    res = an(f_nm)
-                    if res == "STOP":
-                        return "STOP"
-                if seg[1] == "W":
-                    wait_snd()
-            # lights LNNN_R_G_B = All lights NNN (0 All, 1 to 999) RGB 0 to 255
-            elif seg[0] == 'L':
+            # elif seg[0] == 'M':
+            #     stop_all_media()
+            #     if seg[1] == "P":
+            #         f_nm = pylst_folder + "plylst_" + seg[2:]
+            #     else:
+            #         f_nm = media_folder + seg[2:]
+            #     if seg[1] == "W" or seg[1] == "M":
+            #         play_mix_media(f_nm, False)
+            #     if seg[1] == "A":
+            #         f_nm = seg[2:]
+            #         res = an(f_nm)
+            #         if res == "STOP":
+            #             return "STOP"
+            #     if seg[1] == "W":
+            #         wait_snd()
+            # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
+            elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
-                light_n = int(segs_split[0][1:])-1
+                light_n = int(segs_split[0][2:])-1
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
-                set_all_to(light_n, r, g, b)
-            # modules MNNN_I_XXX = Neo modules MMM (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
+                set_neo_to(light_n, r, g, b)
+            # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+            elif seg[:2] == 'LX':
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][2:])-1
+                r = int(segs_split[1])
+                g = int(segs_split[2])
+                b = int(segs_split[3])
+                set_light_color(light_n, r, g, b)
+            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0][1:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
-                set_neo_module(mod_n, index, v)
+                set_neo_module_to(mod_n, index, v)
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0] == 'B':
                 br = int(seg[1:])
@@ -1729,6 +2620,19 @@ def set_hdw(cmd, dur):
             # ZCOLCH = Color change
             elif seg[0:] == 'ZCOLCH':
                 random_effect(2, 2, dur)
+            # ZL_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments
+            elif seg[:2] == 'ZL':
+                segs_split = seg[3:].split("_")
+                scene_change("lifx", segs_split[0], segs_split[1],
+                             float(segs_split[2]), int(segs_split[3]))
+            # ZN_S_E_T_I = Scene change S start E end using (red,green,....), time, increments
+            elif seg[:2] == 'ZN':
+                segs_split = seg[3:].split("_")
+                scene_change("neo", segs_split[0], segs_split[1],
+                             float(segs_split[2]), int(segs_split[3]))
+            # ZJ = Joke
+            elif seg[:2] == 'ZJ':
+                get_random_joke()
             # image IXXX/XXX XXX/XXXX(folder/filename)
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
@@ -1742,6 +2646,14 @@ def set_hdw(cmd, dur):
                         s_arr[i].angle = v
                 else:
                     s_arr[num-1].angle = int(v)
+            # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
+            if seg[0] == 'Q':
+                file_nm = seg[1:]
+                add_command(file_nm)
+            # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
+            if seg[:3] == 'API':
+                seg_split = seg.split("_")
+                send_animator_post(seg_split[1], seg_split[2], seg_split[3])
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
@@ -1764,11 +2676,12 @@ def random_effect(il, ih, d):
 
 
 def rbow(spd, dur):
+    global exit_set_hdw
     st = time.monotonic()
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            if not an_running:
+            if exit_set_hdw:
                 return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
@@ -1779,6 +2692,8 @@ def rbow(spd, dur):
             if te > dur:
                 return
         for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw:
+                return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -1790,6 +2705,7 @@ def rbow(spd, dur):
 
 
 def fire(dur):
+    global exit_set_hdw
     st = time.monotonic()
 
     firei = []
@@ -1814,12 +2730,10 @@ def fire(dur):
     g = random.randint(0, 255)
     b = random.randint(0, 255)
 
-    print(len(firei))
-
     # Flicker, based on our initial RGB values
     while True:
         for i in firei:
-            if not an_running:
+            if exit_set_hdw:
                 return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
@@ -1835,7 +2749,7 @@ def fire(dur):
 
 def multi_color():
     for i in range(0, n_px):
-        if not an_running:
+        if not running_mode:
             return
         r = random.randint(128, 255)
         g = random.randint(128, 255)
@@ -1940,7 +2854,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        play_a_0(code_folder + "mvc/animations_are_now_active.wav")
+        play_mix(code_folder + "mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -1948,23 +2862,34 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, an_running, stop_play_list
-        if not an_running:
-            switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0)
+        global cont_run, running_mode
+        if running_mode != "time_stamp_mode":
+            process_commands()
+            switch_state = utilities.switch_state_four_switches(
+                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
-                    play_a_0(code_folder + "mvc/continuous_mode_deactivated.wav")
+                    play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
                 else:
                     cont_run = True
-                    play_a_0(code_folder + "mvc/continuous_mode_activated.wav")
+                    play_mix(code_folder + "mvc/continuous_mode_activated.wav")
+                time.sleep(.5)
             elif switch_state == "left" or cont_run:
-                stop_play_list = False
-                an(cfg["option_selected"])
-                rst_an()
+                add_command(cfg["option_selected"])
+                time.sleep(.5)
             elif switch_state == "right":
                 mch.go_to('main_menu')
+                time.sleep(.5)
+            elif switch_state == "three":
+                print("sw three fell")
+                ch_vol("lower")
+                time.sleep(.5)
+            elif switch_state == "four":
+                print("sw four fell")
+                ch_vol("raise")
+                time.sleep(.5)
+        time.sleep(0.05)
 
 
 class Main(Ste):
@@ -1979,7 +2904,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        play_a_0(code_folder + "mvc/main_menu.wav")
+        play_mix(code_folder + "mvc/main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1990,7 +2915,7 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0(code_folder + "mvc/" + main_m[self.i] + ".wav")
+            play_mix(code_folder + "mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -2003,10 +2928,12 @@ class Main(Ste):
                 mch.go_to('add_sounds_animate')
             elif sel_mnu == "web_options":
                 mch.go_to('web_options')
-            elif sel_mnu == "volume_settings":
-                mch.go_to('volume_settings')
+            elif sel_mnu == "volume_level_adjustment":
+                mch.go_to('volume_level_adjustment')
+            elif sel_mnu == "intermission_settings":
+                mch.go_to('intermission_settings')
             else:
-                play_a_0(code_folder + "mvc/all_changes_complete.wav")
+                play_mix(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -2022,7 +2949,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        play_a_0(code_folder + "mvc/sound_selection_menu.wav")
+        play_mix(code_folder + "mvc/sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -2034,7 +2961,7 @@ class Snds(Ste):
         r_sw.update()
         if l_sw.fell:
             try:
-                play_a_0(code_folder + "o_snds/" + menu_snd_opt[self.i])
+                play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -2043,10 +2970,64 @@ class Snds(Ste):
             if self.i > len(menu_snd_opt)-1:
                 self.i = 0
         if r_sw.fell:
-            cfg["option_selected"] = menu_snd_opt[self.sel_i]
+            cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
             files.write_json_file(code_folder + "cfg.json", cfg)
-            play_a_0(code_folder + "mvc/option_selected.wav", "rb")
+            play_mix(code_folder + "mvc/option_selected.wav", "rb")
             mch.go_to('base_state')
+
+
+class IntermissionSettings(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'intermission_settings'
+
+    def enter(self, mch):
+        files.log_item('Intermission settings')
+        play_mix(code_folder + "mvc/intermission_settings_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global cfg
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            play_mix(
+                code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(intermission_settings)-1:
+                self.i = 0
+        if r_sw.fell:
+            sel_mnu = intermission_settings[self.sel_i]
+            if sel_mnu == "intermission_off":
+                cfg["intermission"] = "0"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_mix(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "intermission_infreq":
+                cfg["intermission"] = "0.33"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_mix(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "intermission_freq":
+                cfg["intermission"] = "0.66"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_mix(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "intermission_always":
+                cfg["intermission"] = "1"
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                play_mix(code_folder + "mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 
 class AddSnds(Ste):
@@ -2061,7 +3042,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        play_a_0(code_folder + "mvc/add_sounds_animate.wav")
+        play_mix(code_folder + "mvc/add_sounds_animate.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -2073,7 +3054,7 @@ class AddSnds(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0(
+            play_mix(
                 code_folder + "mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
@@ -2082,21 +3063,21 @@ class AddSnds(Ste):
         if r_sw.fell:
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                play_a_0(code_folder + "mvc/create_sound_track_files.wav")
+                play_mix(code_folder + "mvc/drive_in_media_instructions.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                play_a_0(code_folder + "mvc/timestamp_mode_on.wav")
-                play_a_0(code_folder + "mvc/timestamp_instructions.wav")
+                play_mix(code_folder + "mvc/timestamp_mode_on.wav")
+                play_mix(code_folder + "mvc/timestamp_instructions.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                play_a_0(code_folder + "mvc/timestamp_mode_off.wav")
+                play_mix(code_folder + "mvc/timestamp_mode_off.wav")
             else:
-                play_a_0(code_folder + "mvc/all_changes_complete.wav")
+                play_mix(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
-class VolSet(Ste):
+class VolumeLevelAdjustment(Ste):
 
     def __init__(self):
         self.i = 0
@@ -2104,58 +3085,33 @@ class VolSet(Ste):
 
     @property
     def name(self):
-        return 'volume_settings'
+        return 'volume_level_adjustment'
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        play_a_0(code_folder + "mvc/volume_settings_menu.wav")
-        l_r_but()
+        play_mix(code_folder + "mvc/volume_adjustment_menu.wav")
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            play_a_0(code_folder + "mvc/" + vol_set[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(vol_set)-1:
-                self.i = 0
-        if r_sw.fell:
-            sel_mnu = vol_set[self.sel_i]
-            if sel_mnu == "volume_level_adjustment":
-                play_a_0(code_folder + "mvc/volume_adjustment_menu.wav")
-                done = False
-                while not done:
-                    switch_state = utilities.switch_state(
-                        l_sw, r_sw, time.sleep, 3.0)
-                    if switch_state == "left":
-                        ch_vol("lower")
-                    elif switch_state == "right":
-                        ch_vol("raise")
-                    elif switch_state == "right_held":
-                        files.write_json_file(
-                            code_folder + "cfg.json", cfg)
-                        play_a_0(code_folder + "mvc/all_changes_complete.wav")
-                        done = True
-                        mch.go_to('base_state')
-                    time.sleep(0.1)
-                    pass
-            elif sel_mnu == "volume_pot_off":
-                cfg["volume_pot"] = False
-                if cfg["volume"] == 0:
-                    cfg["volume"] = 10
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_a_0(code_folder + "mvc/all_changes_complete.wav")
+        done = False
+        while not done:
+            switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0)
+            if switch_state == "left":
+                ch_vol("lower")
+            elif switch_state == "right":
+                ch_vol("raise")
+            elif switch_state == "right_held":
+                files.write_json_file(
+                    code_folder + "cfg.json", cfg)
+                play_mix(code_folder + "mvc/all_changes_complete.wav")
+                done = True
                 mch.go_to('base_state')
-            elif sel_mnu == "volume_pot_on":
-                cfg["volume_pot"] = True
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_a_0(code_folder + "mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
+            time.sleep(0.05)
+            pass
 
 
 class WebOpt(Ste):
@@ -2176,10 +3132,11 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global cfg
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            play_a_0(code_folder + "mvc/" + web_m[self.i] + ".wav")
+            play_mix(code_folder + "mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -2189,20 +3146,20 @@ class WebOpt(Ste):
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
                 opt_sel()
-                sel_web()
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                restart_pi_timer()
             elif selected_menu_item == "web_off":
                 cfg["serve_webpage"] = False
                 opt_sel()
-                sel_web()
+                files.write_json_file(code_folder + "cfg.json", cfg)
+                restart_pi_timer()
             elif selected_menu_item == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif selected_menu_item == "hear_instr_web":
-                play_a_0(code_folder + "mvc/web_instruct.wav")
+                play_mix(code_folder + "mvc/hear_instr_web_drive_in.wav")
                 sel_web()
             else:
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_a_0(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 ###############################################################################
@@ -2214,37 +3171,47 @@ st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
 st_mch.add(AddSnds())
-st_mch.add(VolSet())
+st_mch.add(VolumeLevelAdjustment())
 st_mch.add(WebOpt())
+st_mch.add(IntermissionSettings())
 
 
-time.sleep(0)
+time.sleep(0.05)
 aud_en.value = True
-upd_vol(1)
+upd_vol(0.05)
 
 if (web):
     files.log_item("starting server...")
     try:
-        # Wait for the network to be ready before continuing
-        wait_for_network()
-
         # Register mDNS service
         zeroconf = Zeroconf()
         print("Registering mDNS service...")
-        zeroconf.register_service(info)
+        zeroconf.register_service(mdns_info)
 
         # Run the server in a separate thread to allow mDNS to work simultaneously
-        server_thread = threading.Thread(target=start_server)
+        server_thread = threading.Thread(target=start_http_server)
         server_thread.daemon = True
         server_thread.start()
-        spk_web()
+
     except OSError:
-        time.sleep(5)
+        web = False
         files.log_item("server did not start...")
 
-# discover_lights()
+discover_lights()
 
 is_gtts_reachable = check_gtts_status()
+
+update_folder_name_wavs()
+
+if (web):
+    # Start the WebSocket server in a separate thread
+    websocket_thread = threading.Thread(
+        target=lambda: asyncio.run(websocket_server()))
+    websocket_thread.daemon = True
+    websocket_thread.start()
+    close_midori()
+    open_midori()
+    spk_web()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -2254,58 +3221,36 @@ gc_col("animations started.")
 def run_state_machine():
     while True:
         st_mch.upd()
-        time.sleep(.1)
+        time.sleep(0.05)
 
 
 # Start the state machine in a separate thread
 state_machine_thread = threading.Thread(target=run_state_machine)
-
-# Daemonize the thread to end with the main program
 state_machine_thread.daemon = True
 state_machine_thread.start()
 
-
-def button_check():
-    global an_running, stop_play_list
-    while True:
-        if an_running:
-            l_sw.update()
-            r_sw.update()
-            w_sw.update()
-            b_sw.update()
-            if l_sw.fell and cfg["can_cancel"]:
-                an_running = False
-                stop_play_list = True
-                mix.stop()
-                media_player.stop()
-                rst_an()
-            if w_sw.fell:
-                print ("sw 3 fell")
-                ch_vol("lower")
-            if b_sw.fell:
-                print ("sw 4 fell")
-                ch_vol("raise")
-        time.sleep(.1)
+# Start the logo_when_idle in a separate thread
+logo_when_idle_thread = threading.Thread(target=logo_when_idle)
+logo_when_idle_thread.daemon = True
+logo_when_idle_thread.start()
 
 
-# Start the state machine in a separate thread
-button_check_thread = threading.Thread(target=button_check)
-
-# Daemonize the thread to end with the main program
-button_check_thread.daemon = True
-button_check_thread.start()
+def stop_program():
+    stop_all_commands()
+    if (web):
+        print("Unregistering mDNS service...")
+        zeroconf.unregister_service(mdns_info)
+        zeroconf.close()
+        httpd.shutdown()
+    rst_an(media_folder + 'pictures/logo.jpg')
+    quit()
 
 
 while True:
     try:
         input("Press enter to exit...\n\n")
     finally:
-        print("Unregistering mDNS service...")
-        zeroconf.unregister_service(info)
-        zeroconf.close()
-        httpd.shutdown()
-        rst_an()
-        quit()
+        stop_program()
 
 
 # type: ignore

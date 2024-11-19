@@ -5,7 +5,7 @@
   "volume": "60",
   "serve_webpage": true,
   "show_webpage": true,
-  "HOST_NAME": "animator-video-train",
+  "HOST_NAME": "animator-city-lights",
   "light_string": "bar-10",
   "lifx_enabled": false,
   "scene_changes": {

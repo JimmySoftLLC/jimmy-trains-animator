@@ -31,5 +31,7 @@
     "blue": [0, 0, 255],
     "white": [255, 255, 255]
   },
-  "intermission": "0.33"
+  "intermission": "0.33",
+  "vertical_resolution": 480,
+  "horizontal_resolution":800
 }
