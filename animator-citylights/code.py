@@ -1149,6 +1149,8 @@ def get_local_ip():
 
 
 def close_midori():
+    if cfg["show_webpage"] == False:
+        return
     try:
         subprocess.run(['pkill', 'midori'], check=True)
         print("Midori closed successfully.")
@@ -2207,7 +2209,8 @@ def logo_when_idle():
     while True:
         if not running_mode:
             time_counter += 1
-            if time_counter == 5:
+            if time_counter == 2:
+                open_midori()
                 change_wallpaper(media_folder + 'pictures/logo.jpg')
         else:
             time_counter = 0
@@ -2388,6 +2391,7 @@ def an_light(f_nm):
             change_wallpaper(media0)
             play_mix_media(media0)
             mix_is_paused = False
+            close_midori()
     else:
         running_mode = "play_list"
 
@@ -2397,7 +2401,9 @@ def an_light(f_nm):
 
     while True:
         t_past = time.monotonic()-srt_t
-
+        if is_video and terminal_window_during_playback and not window_moved and t_past > 0.5:
+            move_vlc_window()
+            window_moved = True
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
@@ -2418,9 +2424,7 @@ def an_light(f_nm):
                 result = an_done_reset(resp)
                 return result
             flsh_i += 1
-        if terminal_window_during_playback and not window_moved and t_past > 3:
-            move_vlc_window()
-            window_moved = True
+
         media_player_state_now = media_player_state()
         if plylst_f:
             if flsh_i > len(flsh_t)-1:
@@ -2505,7 +2509,7 @@ def an_ts(f_nm):
             files.write_json_file(
                 media_folder + json_fn + ".json", t_s)
             break
-        if terminal_window_during_playback and not window_moved and t_elsp > 3:
+        if is_video and terminal_window_during_playback and not window_moved and t_elsp > 0.5:
             move_vlc_window()
             window_moved = True
 
