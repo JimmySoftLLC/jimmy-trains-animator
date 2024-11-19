@@ -2209,7 +2209,7 @@ def logo_when_idle():
     while True:
         if not running_mode:
             time_counter += 1
-            if time_counter == 2:
+            if time_counter == 3:
                 open_midori()
                 change_wallpaper(media_folder + 'pictures/logo.jpg')
         else:
@@ -2401,7 +2401,7 @@ def an_light(f_nm):
 
     while True:
         t_past = time.monotonic()-srt_t
-        if is_video and terminal_window_during_playback and not window_moved and t_past > 2.0:
+        if is_video and terminal_window_during_playback and not window_moved and t_past > 3.5:
             move_vlc_window()
             window_moved = True
         if flsh_i < len(flsh_t)-1:
@@ -2509,7 +2509,7 @@ def an_ts(f_nm):
             files.write_json_file(
                 media_folder + json_fn + ".json", t_s)
             break
-        if is_video and terminal_window_during_playback and not window_moved and t_elsp > 2.0:
+        if is_video and terminal_window_during_playback and not window_moved and t_elsp > 3.5:
             move_vlc_window()
             window_moved = True
 
