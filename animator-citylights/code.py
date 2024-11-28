@@ -150,6 +150,8 @@ media_folder = get_home_path() + "media/"
 plylst_folder = get_home_path() + "media/play lists/"
 snd_opt_folder = code_folder + "snd_opt/"
 current_media_playing = ""
+current_scene = ""
+current_neo = ""
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -890,7 +892,7 @@ def discover_lights():
         return
     global devices, lifx
     play_mix(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
-    lifx = LifxLAN(30)  # Assuming 30 is the number of lights
+    lifx = LifxLAN()
 
     # Discover LIFX devices on the local network
     devices = lifx.get_devices()
@@ -1016,7 +1018,7 @@ def interpolate(type, start_key: str, end_key: str):
     return interpolated_values
 
 
-def rgb_to_hsbk(r, g, b):
+def rgb_to_hsbk(r, g, b, brightness_multiplier=1.0):
     import colorsys
 
     # Normalize RGB values to the range 0-1
@@ -1025,10 +1027,14 @@ def rgb_to_hsbk(r, g, b):
     # Convert RGB to HSB (Hue, Saturation, Brightness)
     h, s, v = colorsys.rgb_to_hsv(r, g, b)
 
+    # Scale brightness with multiplier
+    v = max(0, min(1, v * brightness_multiplier))  # Clamp between 0 and 1
+
     # Convert HSB to LIFX HSBK
     hue = int(h * 65535)          # Hue in range 0-65535
     saturation = int(s * 65535)    # Saturation in range 0-65535
     brightness = int(v * 65535)    # Brightness in range 0-65535
+
     # Fixed Kelvin value (can adjust for white balance)
     kelvin = 3500
 
@@ -1675,6 +1681,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def lights_post(self, rq_d):
+        global exit_set_hdw
+        exit_set_hdw = False
         set_hdw(rq_d["an"], 1)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1682,12 +1690,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = rq_d["an"]
         self.wfile.write(response.encode('utf-8'))
 
-    current_neo = ""
-
     def lights_neo_post(self, rq_d):
-        global current_neo
+        global current_neo, exit_set_hdw
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
+        exit_set_hdw = False
         set_hdw("LN0_" + str(rgb_value[0]) + "_" +
                 str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
         response = rgb_value
@@ -1697,12 +1704,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    current_scene = ""
-
     def lights_scene_post(self, rq_d):
-        global current_scene
+        global current_scene, exit_set_hdw
         current_scene = rq_d["an"]
         rgb_value = cfg["scene_changes"][current_scene]
+        exit_set_hdw = False
         set_hdw("LX0_" + str(rgb_value[0]) + "_" +
                 str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
         response = rgb_value
@@ -1713,6 +1719,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def set_item_lights(self, rq_d):
+        global current_neo, current_scene,exit_set_hdw
+        exit_set_hdw = False
         if rq_d["item"] == "lifx":
             set_hdw("LX0_" + str(rq_d["r"]) + "_" +
                     str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
@@ -1732,7 +1740,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
-
 
 if web:
     if wait_for_network():
@@ -2593,8 +2600,8 @@ def set_hdw(cmd, dur):
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
             # brightness BXXX = Brightness XXX 000 to 100
-            elif seg[0] == 'B':
-                br = int(seg[1:])
+            elif seg[0:2] == 'BN':
+                br = int(seg[2:])
                 led.brightness = float(br/100)
                 led.show()
             # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
