@@ -66,18 +66,19 @@ prev_pos_arr = [180, 180]
 servo_arr = [servo_1, servo_2]
 
 # Setup the switches
-l_sw = board.GP11
-r_sw = board.GP20
+top_sw = board.GP20
+bot_sw = board.GP11
 
-l_sw = digitalio.DigitalInOut(l_sw)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
+top_sw = digitalio.DigitalInOut(top_sw)
+top_sw.direction = digitalio.Direction.INPUT
+top_sw.pull = digitalio.Pull.UP
+top_sw = Debouncer(top_sw)
 
-r_sw = digitalio.DigitalInOut(r_sw)
-r_sw.direction = digitalio.Direction.INPUT
-r_sw.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw)
+bot_sw = digitalio.DigitalInOut(bot_sw)
+bot_sw.direction = digitalio.Direction.INPUT
+bot_sw.pull = digitalio.Pull.UP
+bot_sw = Debouncer(bot_sw)
+
 
 ################################################################################
 # get the calibration settings from the picos flash memory
@@ -143,15 +144,15 @@ def show_timer_mode():
         show_mode(2)
     else:
         show_mode(1)
-        
-def show_timer_program_option(n, center_pt, cyc, spd, wiggle_amount=7):
-    for _ in range(cyc):
-        move_at_speed(n, center_pt - 2 * wiggle_amount, spd)
-        move_at_speed(n, center_pt, spd)
 
 
-# Initialize all servos to 90 degree position upon startup
-move_at_speed(0, cfg["wiggle_pos"], cfg["gentle_speed"])
+def show_timer_program_option(cycles):
+    middle_point = int((cfg["wiggle_pos"]+cfg["cast_pos"])/2)
+    middle_point = int((middle_point+cfg["cast_pos"])/2)
+    move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
+    for _ in range(cycles):
+        move_at_speed(0, middle_point, cfg["wiggle_speed"])
+        move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
 
 ################################################################################
 # State Machine
@@ -220,7 +221,7 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global rand_timer, srt_t
-        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
         if sw == "left_held":
             rand_timer = 0
             if cfg["timer"] == True:
@@ -270,17 +271,16 @@ class Main(Ste):
 
     def upd(self, mch):
         global rand_timer, srt_t
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        top_sw.update()
+        bot_sw.update()
+        if top_sw.fell:
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m) - 1:
                 self.i = 0
             print(main_m[self.sel_i])
-            show_timer_program_option(
-                0, cfg["cast_pos"], self.sel_i+1, cfg["wiggle_speed"])
-        if r_sw.fell:
+            show_timer_program_option(self.sel_i+1)
+        if bot_sw.fell:
             sel_i = main_m[self.sel_i]
             if sel_i == "exit_this_menu":
                 print(sel_i)
@@ -304,7 +304,18 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 
-time.sleep(5)
+sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
+if sw == "left_held":  # top switch counter clockwise
+    cfg["cast_pos"] = 0
+    files.write_json_file("cfg.json", cfg)
+    show_mode(4)
+elif sw == "right_held":  # top switch clockwise
+    cfg["cast_pos"] = 180
+    files.write_json_file("cfg.json", cfg)
+    show_mode(4)
+else:
+    move_at_speed(0, cfg["wiggle_pos"], cfg["gentle_speed"])
+    time.sleep(5)
 
 st_mch.go_to("base_state")
 files.log_item("animator has started...")
@@ -314,4 +325,3 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     time.sleep(0.01)
-

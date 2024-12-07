@@ -15,7 +15,7 @@
     "random_10_20",
     "timer_5_seconds",
     "timer_10_seconds",
-    "timer_30_seconds"
+    "timer_20_seconds"
   ],
   "timer": false,
   "timer_val": "random_5_10"
