@@ -1,4 +1,24 @@
-
+# MIT License
+#
+# Copyright (c) 2024 JimmySoftLLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import files
 import utilities
@@ -94,10 +114,10 @@ def m_servo(n, p):
 
 ################################################################################
 # animations
-def s_1_wiggle_movement(n, center_pt, cyc, spd):
+def s_1_wiggle_movement(n, center_pt, cyc, spd, wiggle_amount=7):
     for _ in range(cyc):
-        move_at_speed(n, center_pt-7, spd)
-        move_at_speed(n, center_pt+7, spd)
+        move_at_speed(n, center_pt-wiggle_amount, spd)
+        move_at_speed(n, center_pt+wiggle_amount, spd)
 
 
 def an():
@@ -182,34 +202,29 @@ class BseSt(Ste):
         global rand_timer
         sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
         if sw == "left_held":
+            move_at_speed(0, cfg["wiggle_pos"], cfg["wiggle_speed"])
+            move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
+            rand_timer = 0
             if cfg["timer"] == True:
                 cfg["timer"] = False
-                cfg["cont_run"] = False
                 files.write_json_file("cfg.json", cfg)
-                return
-            if cfg["cont_run"] == True:
-                cfg["cont_run"] = False
-                files.write_json_file("cfg.json", cfg)
-                return
             elif cfg["timer"] == False:
                 cfg["timer"] = True
                 files.write_json_file("cfg.json", cfg)
-                return
         elif cfg["timer"] == True:
             if rand_timer <= 0:
                 an()
                 timer_val_split = cfg["timer_val"].split("_")
                 if timer_val_split[0] == "random":
-                    print("random")
-                    rand_timer = random.random(
+                    rand_timer = random.uniform(
                         float(timer_val_split[1]), float(timer_val_split[2]))
-                if timer_val_split[0] == "random":
-                    print("timer")
+                if timer_val_split[0] == "timer":
                     rand_timer = float(timer_val_split[1])
-                print("an done")
+                    next_time = "{:.1f}".format(rand_timer)
+                print("Next time : " + next_time)
             else:
                 rand_timer -= .1
-        elif sw == "left" or cfg["cont_run"]:
+        elif sw == "left":
             an()
             print("an done")
         elif sw == "right":
@@ -217,6 +232,7 @@ class BseSt(Ste):
 
 
 class Main(Ste):
+    global rand_timer
 
     def __init__(self):
         self.i = 0
@@ -228,6 +244,8 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item("Main menu")
+        move_at_speed(0, cfg["wiggle_pos"], cfg["wiggle_speed"])
+        move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -242,15 +260,25 @@ class Main(Ste):
             if self.i > len(main_m) - 1:
                 self.i = 0
             print(main_m[self.sel_i])
+            if self.sel_i == len(main_m) - 1:
+                move_at_speed(0, cfg["wiggle_pos"], cfg["wiggle_speed"])
+                move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
+            else:
+                s_1_wiggle_movement(
+                    0, cfg["cast_pos"], self.sel_i+1, cfg["wiggle_speed"], 14)
         if r_sw.fell:
             sel_i = main_m[self.sel_i]
             if sel_i == "exit_this_menu":
                 print(sel_i)
+                cfg["timer"] = False
+                rand_timer = 0
+                files.write_json_file("cfg.json", cfg)
                 mch.go_to("base_state")
             else:
                 print(sel_i)
                 cfg["timer"] = True
                 cfg["timer_val"] = sel_i
+                rand_timer = 0
                 files.write_json_file("cfg.json", cfg)
                 mch.go_to("base_state")
 
@@ -261,6 +289,8 @@ class Main(Ste):
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
+
+time.sleep(5)
 
 st_mch.go_to("base_state")
 files.log_item("animator has started...")

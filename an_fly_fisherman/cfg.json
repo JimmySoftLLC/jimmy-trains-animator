@@ -8,15 +8,15 @@
   "cast_pos": 180,
   "gentle_speed": 0.03,
   "main_menu": [
+    "timer_0_seconds",
+    "random_1_5",
     "random_5_10",
-    "random_5_20",
-    "random_5_60",
+    "random_10_60",
+    "timer_15_seconds",
     "timer_30_seconds",
     "timer_60_seconds",
-    "timer_120_seconds",
     "exit_this_menu"
   ],
   "timer": false,
-  "timer_val": "random_5_20",
-  "cont_run": false
+  "timer_val": "random_5_10"
 }
