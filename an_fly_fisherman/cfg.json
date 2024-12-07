@@ -1,12 +1,20 @@
 {
-    "wiggle": "7",
-    "cast_speed": 0.002,
-    "wiggle_speed": 0.03,
-    "wiggle_cycles_low": 2,
-    "wiggle_cycles_high": 2,
-    "wiggle_pos": 90,
-    "cast_pos": 180,
-    "time_between_casts_low": 5,
-    "time_between_casts_high": 20,
-    "gentle_speed": 0.03
-  }
+  "wiggle": "7",
+  "cast_speed": 0.002,
+  "wiggle_speed": 0.03,
+  "wiggle_cycles_low": 2,
+  "wiggle_cycles_high": 2,
+  "wiggle_pos": 90,
+  "cast_pos": 180,
+  "time_between_casts_low": 5,
+  "time_between_casts_high": 20,
+  "gentle_speed": 0.03,
+  "main_menu": [
+    "timer_1_minute",
+    "timer_2_minutes",
+    "timer_5_minutes",
+    "timer_10_minutes",
+    "exit_this_menu"
+  ],
+  "timer": false
+}
