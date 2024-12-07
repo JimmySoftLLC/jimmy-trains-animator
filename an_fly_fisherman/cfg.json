@@ -8,14 +8,14 @@
   "cast_pos": 180,
   "gentle_speed": 0.03,
   "main_menu": [
+    "exit_this_menu",
     "timer_0_seconds",
     "random_1_5",
     "random_5_10",
-    "random_10_60",
-    "timer_15_seconds",
-    "timer_30_seconds",
-    "timer_60_seconds",
-    "exit_this_menu"
+    "random_10_20",
+    "timer_5_seconds",
+    "timer_10_seconds",
+    "timer_30_seconds"
   ],
   "timer": false,
   "timer_val": "random_5_10"

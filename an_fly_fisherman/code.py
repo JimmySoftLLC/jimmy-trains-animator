@@ -86,6 +86,7 @@ cfg = files.read_json_file("/cfg.json")
 main_m = cfg["main_menu"]
 
 rand_timer = 0
+srt_t = time.monotonic()
 
 ################################################################################
 # Servo methods
@@ -126,6 +127,22 @@ def an():
     s_1_wiggle_movement(0, cfg["wiggle_pos"], cyc, cfg["wiggle_speed"])
     time.sleep(.1)
     move_at_speed(0, cfg["cast_pos"], cfg["cast_speed"])
+
+
+def show_mode(cycles):
+    middle_point = int((cfg["wiggle_pos"]+cfg["cast_pos"])/2)
+    show_mode_spd = 0.01
+    move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
+    for _ in range(cycles):
+        move_at_speed(0, middle_point, show_mode_spd)
+        move_at_speed(0, cfg["cast_pos"], show_mode_spd)
+
+
+def show_timer_mode():
+    if cfg["timer"] == True:
+        show_mode(2)
+    else:
+        show_mode(1)
 
 
 # Initialize all servos to 90 degree position upon startup
@@ -181,8 +198,6 @@ class Ste(object):
 
 
 class BseSt(Ste):
-    global rand_timer
-
     def __init__(self):
         pass
 
@@ -199,11 +214,9 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global rand_timer
+        global rand_timer, srt_t
         sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
         if sw == "left_held":
-            move_at_speed(0, cfg["wiggle_pos"], cfg["wiggle_speed"])
-            move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
             rand_timer = 0
             if cfg["timer"] == True:
                 cfg["timer"] = False
@@ -211,8 +224,9 @@ class BseSt(Ste):
             elif cfg["timer"] == False:
                 cfg["timer"] = True
                 files.write_json_file("cfg.json", cfg)
+            show_timer_mode()
         elif cfg["timer"] == True:
-            if rand_timer <= 0:
+            if rand_timer <= time.monotonic()-srt_t:
                 an()
                 timer_val_split = cfg["timer_val"].split("_")
                 if timer_val_split[0] == "random":
@@ -224,8 +238,7 @@ class BseSt(Ste):
                     rand_timer = float(timer_val_split[1])
                     next_time = "{:.1f}".format(rand_timer)
                     print("Next time : " + next_time)
-            else:
-                rand_timer -= .1
+                srt_t = time.monotonic()
         elif sw == "left":
             an()
             print("an done")
@@ -234,8 +247,6 @@ class BseSt(Ste):
 
 
 class Main(Ste):
-    global rand_timer
-
     def __init__(self):
         self.i = 0
         self.sel_i = 0
@@ -246,14 +257,14 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item("Main menu")
-        move_at_speed(0, cfg["wiggle_pos"], cfg["wiggle_speed"])
-        move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
+        show_mode(3)
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global rand_timer, srt_t
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -262,12 +273,8 @@ class Main(Ste):
             if self.i > len(main_m) - 1:
                 self.i = 0
             print(main_m[self.sel_i])
-            if self.sel_i == len(main_m) - 1:
-                move_at_speed(0, cfg["wiggle_pos"], cfg["wiggle_speed"])
-                move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
-            else:
-                s_1_wiggle_movement(
-                    0, cfg["cast_pos"], self.sel_i+1, cfg["wiggle_speed"], 14)
+            s_1_wiggle_movement(
+                0, cfg["cast_pos"], self.sel_i+1, cfg["wiggle_speed"], 14)
         if r_sw.fell:
             sel_i = main_m[self.sel_i]
             if sel_i == "exit_this_menu":
@@ -298,7 +305,8 @@ st_mch.go_to("base_state")
 files.log_item("animator has started...")
 gc_col("animations started")
 
+show_timer_mode()
+
 while True:
     st_mch.upd()
     time.sleep(0.1)
-
