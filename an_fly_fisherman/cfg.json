@@ -6,15 +6,17 @@
   "wiggle_cycles_high": 2,
   "wiggle_pos": 90,
   "cast_pos": 180,
-  "time_between_casts_low": 5,
-  "time_between_casts_high": 20,
   "gentle_speed": 0.03,
   "main_menu": [
-    "timer_1_minute",
-    "timer_2_minutes",
-    "timer_5_minutes",
-    "timer_10_minutes",
+    "random_5_10",
+    "random_5_20",
+    "random_5_60",
+    "timer_30_seconds",
+    "timer_60_seconds",
+    "timer_120_seconds",
     "exit_this_menu"
   ],
-  "timer": false
+  "timer": false,
+  "timer_val": "random_5_20",
+  "cont_run": false
 }

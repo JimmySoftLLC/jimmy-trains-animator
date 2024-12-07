@@ -605,7 +605,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, fig_web, rand_timer
+        global cont_run, rand_timer
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
             if cfg["timer"] == True:

@@ -65,17 +65,10 @@ cfg = files.read_json_file("/cfg.json")
 
 main_m = cfg["main_menu"]
 
-cont_run = False
+rand_timer = 0
 
 ################################################################################
 # Servo methods
-
-
-def random_wait(low, hi):
-    # Generate a random delay between low and hi seconds
-    delay = random.randint(low, hi)
-    print(f"Waiting for {delay:.2f} seconds...")
-    time.sleep(delay)
 
 
 def move_at_speed(n, new_position, speed):
@@ -113,7 +106,6 @@ def an():
     s_1_wiggle_movement(0, cfg["wiggle_pos"], cyc, cfg["wiggle_speed"])
     time.sleep(.1)
     move_at_speed(0, cfg["cast_pos"], cfg["cast_speed"])
-    # random_wait(cfg["time_between_casts_low"], cfg["time_between_casts_high"])
 
 
 # Initialize all servos to 90 degree position upon startup
@@ -187,26 +179,37 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, fig_web, rand_timer
+        global rand_timer
         sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
         if sw == "left_held":
             if cfg["timer"] == True:
                 cfg["timer"] = False
-                cont_run = False
+                cfg["cont_run"] = False
                 files.write_json_file("cfg.json", cfg)
                 return
-            if cont_run:
-                cont_run = False
+            if cfg["cont_run"] == True:
+                cfg["cont_run"] = False
+                files.write_json_file("cfg.json", cfg)
+                return
             elif cfg["timer"] == False:
-                cont_run = True
+                cfg["timer"] = True
+                files.write_json_file("cfg.json", cfg)
+                return
         elif cfg["timer"] == True:
             if rand_timer <= 0:
                 an()
-                rand_timer = int(cfg["timer_val"]) * 60
+                timer_val_split = cfg["timer_val"].split("_")
+                if timer_val_split[0] == "random":
+                    print("random")
+                    rand_timer = random.random(
+                        float(timer_val_split[1]), float(timer_val_split[2]))
+                if timer_val_split[0] == "random":
+                    print("timer")
+                    rand_timer = float(timer_val_split[1])
                 print("an done")
             else:
-                rand_timer -= 1
-        elif sw == "left" or cont_run:
+                rand_timer -= .1
+        elif sw == "left" or cfg["cont_run"]:
             an()
             print("an done")
         elif sw == "right":
@@ -241,18 +244,14 @@ class Main(Ste):
             print(main_m[self.sel_i])
         if r_sw.fell:
             sel_i = main_m[self.sel_i]
-            if sel_i == "timer_1_minute":
-                print(sel_i)
-            elif sel_i == "timer_2_minutes":
-                print(sel_i)
-            elif sel_i == "timer_5_minutes":
-                print(sel_i)
-            elif sel_i == "timer_10_minutes":
-                print(sel_i)
-            elif sel_i == "exit_this_menu":
+            if sel_i == "exit_this_menu":
                 print(sel_i)
                 mch.go_to("base_state")
             else:
+                print(sel_i)
+                cfg["timer"] = True
+                cfg["timer_val"] = sel_i
+                files.write_json_file("cfg.json", cfg)
                 mch.go_to("base_state")
 
 
@@ -269,4 +268,4 @@ gc_col("animations started")
 
 while True:
     st_mch.upd()
-    time.sleep(0.01)
+    time.sleep(0.1)
