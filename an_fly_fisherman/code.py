@@ -218,10 +218,12 @@ class BseSt(Ste):
                 if timer_val_split[0] == "random":
                     rand_timer = random.uniform(
                         float(timer_val_split[1]), float(timer_val_split[2]))
+                    next_time = "{:.1f}".format(rand_timer)
+                    print("Next time : " + next_time)
                 if timer_val_split[0] == "timer":
                     rand_timer = float(timer_val_split[1])
                     next_time = "{:.1f}".format(rand_timer)
-                print("Next time : " + next_time)
+                    print("Next time : " + next_time)
             else:
                 rand_timer -= .1
         elif sw == "left":
@@ -299,3 +301,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     time.sleep(0.1)
+
