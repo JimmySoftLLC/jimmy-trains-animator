@@ -143,6 +143,11 @@ def show_timer_mode():
         show_mode(2)
     else:
         show_mode(1)
+        
+def show_timer_program_option(n, center_pt, cyc, spd, wiggle_amount=7):
+    for _ in range(cyc):
+        move_at_speed(n, center_pt - 2 * wiggle_amount, spd)
+        move_at_speed(n, center_pt, spd)
 
 
 # Initialize all servos to 90 degree position upon startup
@@ -206,7 +211,7 @@ class BseSt(Ste):
         return "base_state"
 
     def enter(self, mch):
-        # set servos to starting position
+        show_timer_mode()
         files.log_item("Entered base Ste")
         Ste.enter(self, mch)
 
@@ -273,8 +278,8 @@ class Main(Ste):
             if self.i > len(main_m) - 1:
                 self.i = 0
             print(main_m[self.sel_i])
-            s_1_wiggle_movement(
-                0, cfg["cast_pos"], self.sel_i+1, cfg["wiggle_speed"], 14)
+            show_timer_program_option(
+                0, cfg["cast_pos"], self.sel_i+1, cfg["wiggle_speed"])
         if r_sw.fell:
             sel_i = main_m[self.sel_i]
             if sel_i == "exit_this_menu":
@@ -305,8 +310,8 @@ st_mch.go_to("base_state")
 files.log_item("animator has started...")
 gc_col("animations started")
 
-show_timer_mode()
 
 while True:
     st_mch.upd()
-    time.sleep(0.1)
+    time.sleep(0.01)
+
