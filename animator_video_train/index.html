@@ -538,7 +538,6 @@
         getSceneChanges()
         getNeoChanges()
         getLifxEnabled()
-        makeSocketConnection()
     });
 
     function getLightString() {
@@ -632,6 +631,7 @@
             })
             .then(function (data) {
                 websiteUrl.value = data; // Set the value of the input field with the received data
+                makeSocketConnection(data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -2355,9 +2355,9 @@
             });
     });
 
-    function makeSocketConnection() {
+    function makeSocketConnection(webSiteUrl) {
         const cfg = {
-            "HOST_NAME": "animator-drive-in" // Replace with your actual host name
+            "HOST_NAME": webSiteUrl
         };
 
         const server_str = `${cfg["HOST_NAME"]}.local`; // Adjust as needed
