@@ -152,6 +152,7 @@ snd_opt_folder = code_folder + "snd_opt/"
 current_media_playing = ""
 current_scene = ""
 current_neo = ""
+is_midori_running = False
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -341,6 +342,7 @@ is_gtts_reachable = False
 terminal_window_during_playback = False
 mix_is_paused = False
 exit_set_hdw = False
+local_ip = ""
 
 
 ################################################################################
@@ -1155,21 +1157,26 @@ def get_local_ip():
 
 
 def close_midori():
+    global is_midori_running
     if cfg["show_webpage"] == False:
         return
     try:
         subprocess.run(['pkill', 'midori'], check=True)
+        is_midori_running = False
         print("Midori closed successfully.")
     except subprocess.CalledProcessError:
         print("Midori was not running.")
 
 
 def open_midori():
-    if cfg["show_webpage"] == False:
+    global is_midori_running
+    if cfg["show_webpage"] == False or is_midori_running:
         return
     try:
-        command = "midori -e Fullscreen http://animator-city-lights.local:8083/"
+        midori_url = "http://" + local_ip + ":" + str(PORT) + "/"
+        command = "midori -e Fullscreen " + midori_url
         subprocess.Popen(command, shell=True)
+        is_midori_running = True
         print("Midori launched.")
     except Exception as e:
         print(f"Failed to start Midori: {e}")
