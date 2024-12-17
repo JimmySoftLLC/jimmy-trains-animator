@@ -343,6 +343,8 @@ terminal_window_during_playback = False
 mix_is_paused = False
 exit_set_hdw = False
 local_ip = ""
+t_s = []
+t_elsp = 0.0
 
 
 ################################################################################
@@ -465,10 +467,8 @@ def move_vlc_window():
             time.sleep(1)  # Wait for 1 second before retrying
 
 
-
 ################################################################################
 # Setup video hardware
-
 
 # create vlc media player object for playing video, music etc
 vlc_instance = vlc.Instance('--aout=alsa')
@@ -1319,7 +1319,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/update-light-string":
             self.update_light_string_post(post_data_obj)
         elif self.path == "/lights":
-            self.lights_post(post_data_obj)
+            self.lights_lifx_post(post_data_obj)
         elif self.path == "/lights-scene":
             self.lights_scene_post(post_data_obj)
         elif self.path == "/lights-neo":
@@ -1687,9 +1687,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def lights_post(self, rq_d):
+    def lights_lifx_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
+        add_command_to_ts(rq_d["an"])
         set_hdw(rq_d["an"], 1)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1702,8 +1703,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
         exit_set_hdw = False
-        set_hdw("LN0_" + str(rgb_value[0]) + "_" +
-                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        command = "LN0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        add_command_to_ts(command)
+        set_hdw(command, 0)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1716,8 +1718,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_scene = rq_d["an"]
         rgb_value = cfg["scene_changes"][current_scene]
         exit_set_hdw = False
-        set_hdw("LX0_" + str(rgb_value[0]) + "_" +
-                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        command = "LX0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        add_command_to_ts(command)
+        set_hdw(command, 0)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1726,17 +1729,21 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def set_item_lights(self, rq_d):
-        global current_neo, current_scene,exit_set_hdw
+        global current_neo, current_scene, exit_set_hdw
         exit_set_hdw = False
         if rq_d["item"] == "lifx":
-            set_hdw("LX0_" + str(rq_d["r"]) + "_" +
-                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            command = "LX0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw(command, 0)
             if current_scene != "":
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
         elif rq_d["item"] == "neo":
-            set_hdw("LN0_" + str(rq_d["r"]) + "_" +
-                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            command = "LN0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw(command, 0)
             if current_neo != "":
                 cfg["neo_changes"][current_neo] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
@@ -1747,6 +1754,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
+
 
 if web:
     if wait_for_network():
@@ -2427,8 +2435,8 @@ def an_light(f_nm):
         if dur < 0:
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            t_elaspsed = "{:.1f}".format(t_past)
-            duration = "{:.1f}".format(dur)
+            t_elaspsed = "{:.3f}".format(t_past)
+            duration = "{:.3f}".format(dur)
             log_this = "TE: " + \
                 str(t_elaspsed) + " TS: " + \
                 ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
@@ -2479,10 +2487,18 @@ def insert_intermission_start_of_queue():
         add_command("random_intermission", True)
 
 
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
+
+
 def an_ts(f_nm):
-    global terminal_process, terminal_window_during_playback
+    global t_s, t_elsp, terminal_process, terminal_window_during_playback, ts_mode, running_mode
     print("time stamp mode")
-    global ts_mode, running_mode
     running_mode == "time_stamp_mode"
 
     is_video = ".mp4" in f_nm
@@ -2511,13 +2527,12 @@ def an_ts(f_nm):
     window_moved = False
 
     while True:
-        t_elsp = round(time.perf_counter()-startTime, 1)
+        t_elsp = time.perf_counter()-startTime
         r_sw.update()
         if r_sw.fell:
-            t_s.append(str(t_elsp) + "|")
-            files.log_item(t_elsp)
+            add_command_to_ts("")
         if not mix_media.get_busy() and not media_player.is_playing():
-            t_s.append(str(t_elsp) + "|")
+            add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
