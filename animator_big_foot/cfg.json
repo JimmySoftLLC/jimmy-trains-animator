@@ -1,12 +1,11 @@
 {
   "swagger": 20,
-  "walking_speed": 0.04,
-  "swagger_speed": 0.01,
   "turning_speed": 0.01,
   "backward": 0,
+  "hidden": 125,
+  "swagger_speed": 0.01,
   "forward": 180,
-  "hidden": 130,
-  "visible": 55,
+  "visible": 50,
   "main_menu": [
     "exit_this_menu",
     "timer_0_seconds",
@@ -17,6 +16,7 @@
     "timer_10_seconds",
     "timer_20_seconds"
   ],
-  "timer": false,
-  "timer_val": "random_5_10"
+  "walking_speed": 0.04,
+  "timer_val": "random_5_10",
+  "timer": false
 }

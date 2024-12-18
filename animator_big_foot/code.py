@@ -132,14 +132,18 @@ def an():
     move_at_speed(0, cfg["forward"], cfg["turning_speed"])
 
 
-def show_mode(cycles):
+def show_mode(cycles, stay_at_middle = False):
     middle_point = int((cfg["visible"]+cfg["hidden"])/2)
-    middle_point = int((middle_point+cfg["hidden"])/2)
+    show_mode_point = int((middle_point+cfg["visible"])/2)
     show_mode_spd = 0.04
-    move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+    move_at_speed(1, middle_point, show_mode_spd)
+    time.sleep(1)
     for _ in range(cycles):
+        move_at_speed(1, show_mode_point, show_mode_spd)
         move_at_speed(1, middle_point, show_mode_spd)
-        move_at_speed(1, cfg["hidden"], show_mode_spd)
+    if not stay_at_middle:
+        time.sleep(1)
+        move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
 
 
 def show_timer_mode():
@@ -307,6 +311,15 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 
+sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 6.0)
+if sw == "left_held":  # top switch counter clockwise
+    cfg["hidden"] = 120
+    files.write_json_file("cfg.json", cfg)
+    show_mode(4)
+elif sw == "right_held":  # top switch clockwise
+    cfg["visible"] = 60
+    files.write_json_file("cfg.json", cfg)
+    show_mode(4)
 
 #initialize figures in correct position
 move_at_speed(0, cfg["forward"], cfg["turning_speed"])
@@ -320,4 +333,3 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     time.sleep(0.01)
-
