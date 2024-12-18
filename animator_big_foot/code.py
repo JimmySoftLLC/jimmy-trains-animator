@@ -56,7 +56,7 @@ cfg = files.read_json_file("/cfg.json")
 main_m = cfg["main_menu"]
 
 rand_timer = 0
-srt_t = time.monotonic()    
+srt_t = time.monotonic()
 
 ################################################################################
 # Setup hardware
@@ -88,7 +88,6 @@ bot_sw = digitalio.DigitalInOut(bot_sw)
 bot_sw.direction = digitalio.Direction.INPUT
 bot_sw.pull = digitalio.Pull.UP
 bot_sw = Debouncer(bot_sw)
-
 
 
 ################################################################################
@@ -126,13 +125,14 @@ def swagger_movement(n, center_pt, cyc, spd, wiggle_amount):
 
 def an():
     move_at_speed(1, cfg["visible"], cfg["walking_speed"])
-    swagger_movement(0, cfg["forward"]-cfg["swagger"], 2, cfg["swagger_speed"], cfg["swagger"])
+    swagger_movement(0, cfg["forward"]-cfg["swagger"],
+                     2, cfg["swagger_speed"], cfg["swagger"])
     move_at_speed(0, cfg["backward"], cfg["turning_speed"])
     move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
     move_at_speed(0, cfg["forward"], cfg["turning_speed"])
 
 
-def show_mode(cycles, stay_at_middle = False):
+def show_mode(cycles, stay_at_middle=False):
     middle_point = int((cfg["visible"]+cfg["hidden"])/2)
     show_mode_point = int((middle_point+cfg["visible"])/2)
     show_mode_spd = 0.04
@@ -154,12 +154,12 @@ def show_timer_mode():
 
 
 def show_timer_program_option(cycles):
-    middle_point = int((cfg["visible"]+cfg["hidden"])/2)
-    middle_point = int((middle_point+cfg["hidden"])/2)
-    move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+    middle_point = int((cfg["forward"]+cfg["backward"])/2)
+    show_mode_point = int((middle_point+cfg["forward"])/2)
+    move_at_speed(0, cfg["forward"], cfg["turning_speed"])
     for _ in range(cycles):
-        move_at_speed(1, middle_point, cfg["walking_speed"])
-        move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+        move_at_speed(0, show_mode_point, cfg["turning_speed"])
+        move_at_speed(0, cfg["forward"], cfg["turning_speed"])
 
 ################################################################################
 # State Machine
@@ -270,7 +270,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item("Main menu")
-        show_mode(3)
+        show_mode(3, True)
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -321,7 +321,7 @@ elif sw == "right_held":  # top switch clockwise
     files.write_json_file("cfg.json", cfg)
     show_mode(4)
 
-#initialize figures in correct position
+# initialize figures in correct position
 move_at_speed(0, cfg["forward"], cfg["turning_speed"])
 move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
 time.sleep(5)

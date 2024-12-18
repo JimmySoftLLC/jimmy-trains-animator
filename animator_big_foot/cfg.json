@@ -17,6 +17,7 @@
     "timer_20_seconds"
   ],
   "walking_speed": 0.04,
+  "show_mode_speed": 0.04,
   "timer_val": "random_5_10",
   "timer": false
 }
