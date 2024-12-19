@@ -94,6 +94,7 @@ bot_sw = Debouncer(bot_sw)
 ################################################################################
 # misc methods
 
+
 def rnd_prob(random_value):
     print("Using random value: " + str(random_value))
     if random_value == 0:
@@ -144,7 +145,8 @@ async def move_at_speed_async(n, new_position, speed):
     if prev_pos_arr[n] > new_position:
         sign = - 1
     for servo_pos in range(prev_pos_arr[n], new_position, sign):
-        if not  async_running: return
+        if not async_running:
+            return
         m_servo(n, servo_pos)
         await asyncio.sleep(speed)
     m_servo(n, new_position)
@@ -154,45 +156,53 @@ async def walking_swagger(n, center_pt, spd, wiggle_amount):
     global async_running
     while async_running:
         await move_at_speed_async(n, center_pt-wiggle_amount, spd)
-        if not  async_running: return
+        if not async_running:
+            return
         await move_at_speed_async(n, center_pt+wiggle_amount, spd)
-        if not  async_running: return
+        if not async_running:
+            return
+
 
 async def walking(n, destination, spd,):
     global async_running
     await move_at_speed_async(n, destination, spd)
     async_running = False
 
+
 async def swagger_walk(figure_location, figure_rotation):
     global async_running, cfg
     async_running = True
     walk_swag_f = asyncio.create_task(walking_swagger(1, figure_rotation,
-                     cfg["swagger_speed"], cfg["swagger"]))
-    walk_f = asyncio.create_task(walking(0, figure_location, cfg["walking_speed"]))
+                                                      cfg["swagger_speed"], cfg["swagger"]))
+    walk_f = asyncio.create_task(
+        walking(0, figure_location, cfg["walking_speed"]))
     await asyncio.gather(walk_f, walk_swag_f)
 
+
 def an():
-    if rnd_prob(.6): # come all the way out
-        asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
+    if rnd_prob(.6):  # come all the way out
+        asyncio.run(swagger_walk(cfg["visible"], cfg["forward"] - cfg["swagger"]))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
         if rnd_prob(.4):
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
-            move_at_speed(1, cfg["forward"], cfg["staring_speed"])
+            move_at_speed(1, cfg["forward"],
+                          cfg["staring_speed"])
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
             move_at_speed(1, cfg["backward"], cfg["turning_speed"])
-        asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
+        asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"] + cfg["swagger"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
-    else: # peek to see if someone is there
-        peek_pos = int((cfg["visible"]-cfg["hidden"])*cfg["peek"]+cfg["hidden"])
+    else:  # peek to see if someone is there
+        peek_pos = int((cfg["visible"]-cfg["hidden"])
+                       * cfg["peek"]+cfg["hidden"])
         asyncio.run(swagger_walk(peek_pos, cfg["peek_rotation"]))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
-        asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
+        asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"] + cfg["swagger"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
 
 
@@ -221,8 +231,8 @@ def show_timer_mode():
 
 
 def show_timer_program_option(cycles):
-    middle_point = int((cfg["forward"]+cfg["backward"])/2)
-    show_mode_point = int((middle_point+cfg["forward"])/2)
+    middle_point = int((cfg["forward"] + cfg["backward"])/2)
+    show_mode_point = int((middle_point + cfg["forward"])/2)
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     for _ in range(cycles):
         move_at_speed(1, show_mode_point, cfg["turning_speed"])
@@ -457,6 +467,3 @@ else:  # initialize figures in correct position
 while True:
     st_mch.upd()
     time.sleep(0.01)
-
-
-

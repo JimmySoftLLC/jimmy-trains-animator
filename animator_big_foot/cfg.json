@@ -7,8 +7,8 @@
   "hidden_default": 120,
   "visible_default": 60,
   "swagger_speed": 0.015,
-  "forward": 165,
-  "backward": 15,
+  "forward": 180,
+  "backward": 0,
   "peek": 0.3,
   "peek_rotation": 90,
   "main_menu": [
