@@ -1,13 +1,13 @@
 {
-  "swagger": 20,
+  "swagger": 15,
   "turning_speed": 0.01,
   "hidden": 120,
   "visible": 60,
   "hidden_default": 120,
   "visible_default": 60,
-  "swagger_speed": 0.01,
-  "forward": 180,
-  "backward": 0,
+  "swagger_speed": 0.015,
+  "forward": 165,
+  "backward": 15,
   "main_menu": [
     "exit_this_menu",
     "timer_0_seconds",

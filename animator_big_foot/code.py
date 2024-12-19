@@ -29,6 +29,7 @@ import pwmio
 import digitalio
 import random
 import gc
+import asyncio
 
 from analogio import AnalogIn
 from adafruit_motor import servo
@@ -58,6 +59,7 @@ main_m = cfg["main_menu"]
 rand_timer = 0
 srt_t = time.monotonic()
 current_setting = "hidden"
+async_running = False
 
 ################################################################################
 # Setup hardware
@@ -116,21 +118,54 @@ def m_servo(n, p):
 
 
 ################################################################################
-# animations
-def swagger_movement(n, center_pt, cyc, spd, wiggle_amount):
-    for _ in range(cyc):
-        move_at_speed(n, center_pt-wiggle_amount, spd)
-        move_at_speed(n, center_pt+wiggle_amount, spd)
+# async methods
 
+loop = asyncio.get_event_loop()
+
+
+async def move_at_speed_async(n, new_position, speed):
+    global prev_pos_arr, async_running
+    sign = 1
+    if prev_pos_arr[n] > new_position:
+        sign = - 1
+    for servo_pos in range(prev_pos_arr[n], new_position, sign):
+        if not  async_running: return
+        m_servo(n, servo_pos)
+        await asyncio.sleep(speed)
+    m_servo(n, new_position)
+
+
+async def walking_swagger(n, center_pt, spd, wiggle_amount):
+    global async_running
+    while async_running:
+        await move_at_speed_async(n, center_pt-wiggle_amount, spd)
+        if not  async_running: return
+        await move_at_speed_async(n, center_pt+wiggle_amount, spd)
+        if not  async_running: return
+
+async def walking(n, destination, spd,):
+    global async_running
+    await move_at_speed_async(n, destination, spd)
+    async_running = False
+
+async def swagger_walk(figure_location, figure_rotation):
+    global async_running, cfg
+    async_running = True
+    walk_swag_f = asyncio.create_task(walking_swagger(1, figure_rotation,
+                     cfg["swagger_speed"], cfg["swagger"]))
+    walk_f = asyncio.create_task(walking(0, figure_location, cfg["walking_speed"]))
+    await asyncio.gather(walk_f, walk_swag_f)
 
 def an():
-    move_at_speed(0, cfg["visible"], cfg["walking_speed"])
-    swagger_movement(1, cfg["forward"]-cfg["swagger"],
-                     2, cfg["swagger_speed"], cfg["swagger"])
-    move_at_speed(1, cfg["backward"], cfg["turning_speed"])
-    move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
+    asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
+    time.sleep(3)
+    move_at_speed(1, cfg["backward"], cfg["turning_speed"])0......0
+    asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
 
+
+################################################################################
+# animations
 
 def show_mode(cycles, stay_at_middle=False):
     middle_point = int((cfg["visible"]+cfg["hidden"])/2)
@@ -383,7 +418,6 @@ elif sw == "right_held":  # bottom switch visible settings
 else:  # initialize figures in correct position
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
-    time.sleep(5)
     st_mch.go_to("base_state")
     files.log_item("animator has started...")
     gc_col("animations started")
@@ -391,4 +425,5 @@ else:  # initialize figures in correct position
 while True:
     st_mch.upd()
     time.sleep(0.01)
+
 
