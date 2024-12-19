@@ -182,6 +182,7 @@ async def swagger_walk(figure_location, figure_rotation):
 def an():
     if rnd_prob(.6):  # come all the way out
         asyncio.run(swagger_walk(cfg["visible"], cfg["forward"] - cfg["swagger"]))
+        move_at_speed(1, cfg["forward"], cfg["swagger_speed"])
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
