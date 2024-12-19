@@ -57,10 +57,10 @@ main_m = cfg["main_menu"]
 
 rand_timer = 0
 srt_t = time.monotonic()
+current_setting = "hidden"
 
 ################################################################################
 # Setup hardware
-
 
 # Setup the servo this animation can have up to two servos
 # also get the programmed values for position which is stored on the pico itself
@@ -160,6 +160,21 @@ def show_timer_program_option(cycles):
     for _ in range(cycles):
         move_at_speed(0, show_mode_point, cfg["turning_speed"])
         move_at_speed(0, cfg["forward"], cfg["turning_speed"])
+
+
+def ch_servo(n, setting, action):
+    s = cfg[setting]
+    if action == "lower":
+        s -= 1
+    elif action == "raise":
+        s += 1
+    if s > 180:
+        s = 100
+    if s < 0:
+        s = 0
+    cfg[setting] = s
+    print(s)
+    move_at_speed(n, cfg[setting], cfg["turning_speed"])
 
 ################################################################################
 # State Machine
@@ -304,32 +319,73 @@ class Main(Ste):
                 mch.go_to("base_state")
 
 
+class ServoSet(Ste):
+    global current_setting, cfg
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return "servo_settings"
+
+    def enter(self, mch):
+        print(cfg)
+        files.write_json_file("cfg.json", cfg)
+        show_mode(4)
+        files.log_item("Set " + current_setting + " servo settings")
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        top_sw.update()
+        bot_sw.update()
+        done = False
+        while not done:
+            sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
+            if sw == "left":
+                ch_servo(1, current_setting, "raise")
+            elif sw == "right":
+                ch_servo(1, current_setting, "lower")
+            elif sw == "right_held":
+                files.write_json_file("cfg.json", cfg)
+                move_at_speed(0, cfg["forward"], cfg["turning_speed"])
+                move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+                done = True
+                mch.go_to("base_state")
+            pass
+
+
 ###############################################################################
 # Create the Ste mch
 
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
+st_mch.add(ServoSet())
+
 
 sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 6.0)
-if sw == "left_held":  # top switch counter clockwise
-    cfg["hidden"] = 120
-    files.write_json_file("cfg.json", cfg)
-    show_mode(4)
-elif sw == "right_held":  # top switch clockwise
-    cfg["visible"] = 60
-    files.write_json_file("cfg.json", cfg)
-    show_mode(4)
-
-# initialize figures in correct position
-move_at_speed(0, cfg["forward"], cfg["turning_speed"])
-move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
-time.sleep(5)
-
-st_mch.go_to("base_state")
-files.log_item("animator has started...")
-gc_col("animations started")
+if sw == "left_held":  # top switch hidden settings
+    current_setting = "hidden"
+    cfg[current_setting] = cfg["hidden_default"]
+    st_mch.go_to("servo_settings")
+elif sw == "right_held":  # bottom switch visible settings
+    current_setting = "visible"
+    cfg[current_setting] = cfg["visible_default"]
+    st_mch.go_to("servo_settings")
+else:  # initialize figures in correct position
+    move_at_speed(0, cfg["forward"], cfg["turning_speed"])
+    move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+    time.sleep(5)
+    st_mch.go_to("base_state")
+    files.log_item("animator has started...")
+    gc_col("animations started")
 
 while True:
     st_mch.upd()
     time.sleep(0.01)
+
