@@ -71,7 +71,7 @@ servo_2 = pwmio.PWMOut(board.GP6, duty_cycle=2 ** 15, frequency=50)
 servo_1 = servo.Servo(servo_1, min_pulse=500, max_pulse=2500)
 servo_2 = servo.Servo(servo_2, min_pulse=500, max_pulse=2500)
 
-prev_pos_arr = [cfg["forward"], cfg["hidden"]]
+prev_pos_arr = [cfg["hidden"], cfg["forward"]]
 
 servo_arr = [servo_1, servo_2]
 
@@ -124,26 +124,26 @@ def swagger_movement(n, center_pt, cyc, spd, wiggle_amount):
 
 
 def an():
-    move_at_speed(1, cfg["visible"], cfg["walking_speed"])
-    swagger_movement(0, cfg["forward"]-cfg["swagger"],
+    move_at_speed(0, cfg["visible"], cfg["walking_speed"])
+    swagger_movement(1, cfg["forward"]-cfg["swagger"],
                      2, cfg["swagger_speed"], cfg["swagger"])
-    move_at_speed(0, cfg["backward"], cfg["turning_speed"])
-    move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
-    move_at_speed(0, cfg["forward"], cfg["turning_speed"])
+    move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+    move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
+    move_at_speed(1, cfg["forward"], cfg["turning_speed"])
 
 
 def show_mode(cycles, stay_at_middle=False):
     middle_point = int((cfg["visible"]+cfg["hidden"])/2)
     show_mode_point = int((middle_point+cfg["visible"])/2)
     show_mode_spd = 0.04
-    move_at_speed(1, middle_point, show_mode_spd)
+    move_at_speed(0, middle_point, show_mode_spd)
     time.sleep(1)
     for _ in range(cycles):
-        move_at_speed(1, show_mode_point, show_mode_spd)
-        move_at_speed(1, middle_point, show_mode_spd)
+        move_at_speed(0, show_mode_point, show_mode_spd)
+        move_at_speed(0, middle_point, show_mode_spd)
     if not stay_at_middle:
         time.sleep(1)
-        move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+        move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
 
 
 def show_timer_mode():
@@ -156,10 +156,10 @@ def show_timer_mode():
 def show_timer_program_option(cycles):
     middle_point = int((cfg["forward"]+cfg["backward"])/2)
     show_mode_point = int((middle_point+cfg["forward"])/2)
-    move_at_speed(0, cfg["forward"], cfg["turning_speed"])
+    move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     for _ in range(cycles):
-        move_at_speed(0, show_mode_point, cfg["turning_speed"])
-        move_at_speed(0, cfg["forward"], cfg["turning_speed"])
+        move_at_speed(1, show_mode_point, cfg["turning_speed"])
+        move_at_speed(1, cfg["forward"], cfg["turning_speed"])
 
 
 def ch_servo(n, setting, action):
@@ -331,9 +331,12 @@ class ServoSet(Ste):
         return "servo_settings"
 
     def enter(self, mch):
-        print(cfg)
         files.write_json_file("cfg.json", cfg)
-        show_mode(4)
+        show_mode(4, True)
+        if current_setting == "hidden":
+            move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
+        else:
+            move_at_speed(0, cfg["visible"], cfg["walking_speed"])
         files.log_item("Set " + current_setting + " servo settings")
         Ste.enter(self, mch)
 
@@ -347,13 +350,13 @@ class ServoSet(Ste):
         while not done:
             sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
             if sw == "left":
-                ch_servo(1, current_setting, "raise")
+                ch_servo(0, current_setting, "raise")
             elif sw == "right":
-                ch_servo(1, current_setting, "lower")
+                ch_servo(0, current_setting, "lower")
             elif sw == "right_held":
                 files.write_json_file("cfg.json", cfg)
-                move_at_speed(0, cfg["forward"], cfg["turning_speed"])
-                move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+                move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+                move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
                 done = True
                 mch.go_to("base_state")
             pass
@@ -378,8 +381,8 @@ elif sw == "right_held":  # bottom switch visible settings
     cfg[current_setting] = cfg["visible_default"]
     st_mch.go_to("servo_settings")
 else:  # initialize figures in correct position
-    move_at_speed(0, cfg["forward"], cfg["turning_speed"])
-    move_at_speed(1, cfg["hidden"], cfg["walking_speed"])
+    move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+    move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
     time.sleep(5)
     st_mch.go_to("base_state")
     files.log_item("animator has started...")
