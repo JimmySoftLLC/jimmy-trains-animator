@@ -91,6 +91,21 @@ bot_sw.direction = digitalio.Direction.INPUT
 bot_sw.pull = digitalio.Pull.UP
 bot_sw = Debouncer(bot_sw)
 
+################################################################################
+# misc methods
+
+def rnd_prob(random_value):
+    print("Using random value: " + str(random_value))
+    if random_value == 0:
+        return False
+    elif random_value == 1:
+        return True
+    else:
+        y = random.random()
+        if y < random_value:
+            return True
+    return False
+
 
 ################################################################################
 # Servo methods
@@ -157,11 +172,28 @@ async def swagger_walk(figure_location, figure_rotation):
     await asyncio.gather(walk_f, walk_swag_f)
 
 def an():
-    asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
-    time.sleep(3)
-    move_at_speed(1, cfg["backward"], cfg["turning_speed"])0......0
-    asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
-    move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+    if rnd_prob(.6): # come all the way out
+        asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
+        rand_timer = random.uniform(1.0, 5.0)
+        time.sleep(rand_timer)
+        move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+        if rnd_prob(.4):
+            rand_timer = random.uniform(1.0, 5.0)
+            time.sleep(rand_timer)
+            move_at_speed(1, cfg["forward"], cfg["staring_speed"])
+            rand_timer = random.uniform(1.0, 5.0)
+            time.sleep(rand_timer)
+            move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+        asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
+        move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+    else: # peek to see if someone is there
+        peek_pos = int((cfg["visible"]-cfg["hidden"])*cfg["peek"]+cfg["hidden"])
+        asyncio.run(swagger_walk(peek_pos, cfg["peek_rotation"]))
+        rand_timer = random.uniform(1.0, 5.0)
+        time.sleep(rand_timer)
+        move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+        asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
+        move_at_speed(1, cfg["forward"], cfg["turning_speed"])
 
 
 ################################################################################
@@ -425,5 +457,6 @@ else:  # initialize figures in correct position
 while True:
     st_mch.upd()
     time.sleep(0.01)
+
 
 

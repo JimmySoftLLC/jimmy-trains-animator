@@ -1,5 +1,6 @@
 {
   "swagger": 15,
+  "staring_speed": 0.001,
   "turning_speed": 0.01,
   "hidden": 120,
   "visible": 60,
@@ -8,6 +9,8 @@
   "swagger_speed": 0.015,
   "forward": 165,
   "backward": 15,
+  "peek": 0.3,
+  "peek_rotation": 90,
   "main_menu": [
     "exit_this_menu",
     "timer_0_seconds",
