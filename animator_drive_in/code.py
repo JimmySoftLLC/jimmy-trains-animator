@@ -343,6 +343,8 @@ terminal_window_during_playback = False
 mix_is_paused = False
 exit_set_hdw = False
 local_ip = ""
+t_s = []
+t_elsp = 0.0
 
 
 ################################################################################
@@ -441,24 +443,32 @@ def open_terminal():
 
 
 def move_vlc_window():
-    try:
-        # Find the VLC window by name
-        window_id = subprocess.check_output(
-            ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
-        if window_id:
-            # Move the window to (100, 100) and resize to 800x600
-            subprocess.run(['xdotool', 'windowmove', window_id, '0', '360'])
-            subprocess.run(['xdotool', 'windowsize', window_id, '1280', '360'])
-            print("VLC window moved and resized.")
-        else:
-            print("VLC window not found.")
-    except Exception as e:
-        print(f"Error moving VLC window: {e}")
+    attempts = 4
+    for attempt in range(attempts):
+        try:
+            # Find the VLC window by name
+            window_id = subprocess.check_output(
+                ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
+            if window_id:
+                # Move the window to (100, 100) and resize to 800x600
+                subprocess.run(['xdotool', 'windowmove', window_id,
+                               '0', str(cfg["vertical_resolution"]/2)])
+                subprocess.run(
+                    ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
+                print("VLC window moved and resized.")
+                break  # Exit the loop if successful
+            else:
+                print("VLC window not found.")
+        except Exception as e:
+            print(f"Error moving VLC window: {e}")
+
+        if attempt < attempts - 1:  # Only wait if not the last attempt
+            print("Retrying...")
+            time.sleep(1)  # Wait for 1 second before retrying
 
 
 ################################################################################
 # Setup video hardware
-
 
 # create vlc media player object for playing video, music etc
 vlc_instance = vlc.Instance('--aout=alsa')
@@ -477,9 +487,6 @@ def play_movie_file(movie_filename):
 
     while not media_player.is_playing():
         time.sleep(.05)
-
-    if terminal_window_during_playback:
-        move_vlc_window()
 
 
 def pause_movie():
@@ -1312,7 +1319,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/update-light-string":
             self.update_light_string_post(post_data_obj)
         elif self.path == "/lights":
-            self.lights_post(post_data_obj)
+            self.lights_lifx_post(post_data_obj)
         elif self.path == "/lights-scene":
             self.lights_scene_post(post_data_obj)
         elif self.path == "/lights-neo":
@@ -1680,9 +1687,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def lights_post(self, rq_d):
+    def lights_lifx_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
+        add_command_to_ts(rq_d["an"])
         set_hdw(rq_d["an"], 1)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1695,8 +1703,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
         exit_set_hdw = False
-        set_hdw("LN0_" + str(rgb_value[0]) + "_" +
-                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        command = "LN0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        add_command_to_ts(command)
+        set_hdw(command, 0)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1709,8 +1718,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_scene = rq_d["an"]
         rgb_value = cfg["scene_changes"][current_scene]
         exit_set_hdw = False
-        set_hdw("LX0_" + str(rgb_value[0]) + "_" +
-                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        command = "LX0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        add_command_to_ts(command)
+        set_hdw(command, 0)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1719,17 +1729,21 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def set_item_lights(self, rq_d):
-        global current_neo, current_scene,exit_set_hdw
+        global current_neo, current_scene, exit_set_hdw
         exit_set_hdw = False
         if rq_d["item"] == "lifx":
-            set_hdw("LX0_" + str(rq_d["r"]) + "_" +
-                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            command = "LX0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw(command, 0)
             if current_scene != "":
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
         elif rq_d["item"] == "neo":
-            set_hdw("LN0_" + str(rq_d["r"]) + "_" +
-                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            command = "LN0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw(command, 0)
             if current_neo != "":
                 cfg["neo_changes"][current_neo] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
@@ -1865,6 +1879,7 @@ def rst_def():
 ################################################################################
 # Dialog and sound play methods
 
+
 # Manually defined logarithmic values for lookup table (approximate)
 linear_values = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
@@ -1887,6 +1902,7 @@ log_values = [
 print("Linear values:", linear_values)
 print("Log values:", log_values)
 
+
 def interpolate(x, x_values, y_values):
     # Ensure x is within the valid range of x_values
     if x <= x_values[0]:
@@ -1901,6 +1917,7 @@ def interpolate(x, x_values, y_values):
             y1, y2 = y_values[i-1], y_values[i]
             # Interpolate
             return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+
 
 # Example: Interpolate for linear input of 0.75
 linear_input = 0.75
@@ -2214,7 +2231,8 @@ def logo_when_idle():
     while True:
         if not running_mode:
             time_counter += 1
-            if time_counter == 5:
+            if time_counter == 2:
+                open_midori()
                 change_wallpaper(media_folder + 'pictures/logo.jpg')
         else:
             time_counter = 0
@@ -2395,14 +2413,19 @@ def an_light(f_nm):
             change_wallpaper(media0)
             play_mix_media(media0)
             mix_is_paused = False
+            close_midori()
     else:
         running_mode = "play_list"
 
     srt_t = time.monotonic()
 
+    window_moved = False
+
     while True:
         t_past = time.monotonic()-srt_t
-
+        if is_video and terminal_window_during_playback and not window_moved and t_past > 0.5:
+            move_vlc_window()
+            window_moved = True
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
@@ -2412,8 +2435,8 @@ def an_light(f_nm):
         if dur < 0:
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            t_elaspsed = "{:.1f}".format(t_past)
-            duration = "{:.1f}".format(dur)
+            t_elaspsed = "{:.3f}".format(t_past)
+            duration = "{:.3f}".format(dur)
             log_this = "TE: " + \
                 str(t_elaspsed) + " TS: " + \
                 ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
@@ -2423,6 +2446,7 @@ def an_light(f_nm):
                 result = an_done_reset(resp)
                 return result
             flsh_i += 1
+
         media_player_state_now = media_player_state()
         if plylst_f:
             if flsh_i > len(flsh_t)-1:
@@ -2463,10 +2487,18 @@ def insert_intermission_start_of_queue():
         add_command("random_intermission", True)
 
 
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)    
+
+
 def an_ts(f_nm):
-    global terminal_process, terminal_window_during_playback
+    global t_s, t_elsp, terminal_process, terminal_window_during_playback, ts_mode, running_mode
     print("time stamp mode")
-    global ts_mode, running_mode
     running_mode == "time_stamp_mode"
 
     is_video = ".mp4" in f_nm
@@ -2492,19 +2524,23 @@ def an_ts(f_nm):
     startTime = time.perf_counter()
     time.sleep(.1)
 
+    window_moved = False
+
     while True:
-        t_elsp = round(time.perf_counter()-startTime, 1)
+        t_elsp = time.perf_counter()-startTime
         r_sw.update()
         if r_sw.fell:
-            t_s.append(str(t_elsp) + "|")
-            files.log_item(t_elsp)
+            add_command_to_ts("")
         if not mix_media.get_busy() and not media_player.is_playing():
-            t_s.append(str(t_elsp) + "|")
+            add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
                 media_folder + json_fn + ".json", t_s)
             break
+        if is_video and terminal_window_during_playback and not window_moved and t_elsp > 0.5:
+            move_vlc_window()
+            window_moved = True
 
     terminal_window_during_playback = previous_terminal_mode
     ts_mode = False
