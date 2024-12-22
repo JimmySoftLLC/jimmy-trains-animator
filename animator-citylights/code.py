@@ -66,7 +66,7 @@
 
 # i2s audio is setup on pi itself using an overlay, there is no hardware that needs to be set up in python
 # the i2s amps are on the JimmyTrains ANPISBC HAT which provides the audio.  The amps have an audio enable
-# feature that is controlled via pin 26.  It is enabled by this program just before it announces the animations are active
+# feature that is contorlled via pin 26.  It is enabled by this program just before it announces the animations are active
 # The volume is also controlled by this program.  So the volume control on the pi has no effect.
 # The amp circuits are set to the highest possible gain so audio tracks and movies should be normalized to -10.0dB to avoid
 # clipping.
@@ -906,13 +906,13 @@ def discover_lights():
 
     print(f"Discovered {device_count} device(s).")
 
-    lifx.set_power_all_lights("on")
+    # lifx.set_power_all_lights("on")
 
     # Iterate over each discovered device and control it
     # for device in devices:
     #     try:
     #         # print(f"Found device: {device.get_label()}")
-    #         device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
+    #         device.set_color(rgb_to_hsbk(50, 50, 50), 0, True))  # Set initial color
     #         device.set_power("on")
     #     except Exception as e:
     #         print(f"Error setting color for {device.get_label()}: {e}")
@@ -922,7 +922,7 @@ def set_light_color_threaded(device, r, g, b):
     """Function to set the light color, executed in a thread."""
     try:
         # Set color instantly
-        device.set_color(rgb_to_hsbk(r, g, b), duration=0)
+        device.set_color(rgb_to_hsbk(r, g, b), 0, True)
         print(f"Setting color for {device.get_label()} to RGB({r}, {g}, {b})")
     except Exception as e:
         print(f"Error setting color for {device.get_label()}: {e}")
@@ -942,12 +942,23 @@ def set_light_color(light_n, r, g, b):
         return
     """Set color for a specific light or all lights."""
     if light_n == -1:
-        # Set color for all lights in parallel
-        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b))
+        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b), 0, True)
         # set_all_lights_parallel(r, g, b)
     else:
         # Set color for a specific light
-        devices[light_n].set_color(rgb_to_hsbk(r, g, b))
+        devices[light_n].set_color(rgb_to_hsbk(r, g, b), 0, True)
+
+def set_light_power(light_n, off_on):
+    if light_n == -1:
+        if off_on == "ON":
+            lifx.set_power_all_lights("on", 0, True)
+        else:
+            lifx.set_power_all_lights("off", 0, True)
+    else:
+        if off_on == "ON":
+            devices[light_n].set_power("on", 0, True)
+        else:
+            devices[light_n].set_power("off", 0, True)
 
 
 ################################################################################
@@ -1928,7 +1939,7 @@ print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
+    log_to_linear = int(interpolate(volume_0_1,log_values,linear_values)*100)
     mix.set_volume(volume_0_1*0.7)
     mix_media.set_volume(volume_0_1*0.7)
     media_player.audio_set_volume(log_to_linear)
@@ -2493,7 +2504,7 @@ def add_command_to_ts(command):
         return
     t_elsp_formatted = "{:.3f}".format(t_elsp)
     t_s.append(t_elsp_formatted + "|" + command)
-    files.log_item(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)    
 
 
 def an_ts(f_nm):
@@ -2614,6 +2625,12 @@ def set_hdw(cmd, dur):
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_light_color(light_n, r, g, b)
+            # lights LPZZZ_YYY = Lifx lights ZZZ (0 All, 1 to 999) YYY power ON or OFF
+            elif seg[:2] == 'LP':
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][2:])-1
+                power = segs_split[1]
+                set_light_power(light_n, power)
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
