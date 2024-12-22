@@ -906,13 +906,13 @@ def discover_lights():
 
     print(f"Discovered {device_count} device(s).")
 
-    lifx.set_power_all_lights("on")
+    # lifx.set_power_all_lights("on")
 
     # Iterate over each discovered device and control it
     # for device in devices:
     #     try:
     #         # print(f"Found device: {device.get_label()}")
-    #         device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
+    #         device.set_color(rgb_to_hsbk(50, 50, 50), 0, True))  # Set initial color
     #         device.set_power("on")
     #     except Exception as e:
     #         print(f"Error setting color for {device.get_label()}: {e}")
@@ -922,7 +922,7 @@ def set_light_color_threaded(device, r, g, b):
     """Function to set the light color, executed in a thread."""
     try:
         # Set color instantly
-        device.set_color(rgb_to_hsbk(r, g, b), duration=0)
+        device.set_color(rgb_to_hsbk(r, g, b), 0, True)
         print(f"Setting color for {device.get_label()} to RGB({r}, {g}, {b})")
     except Exception as e:
         print(f"Error setting color for {device.get_label()}: {e}")
@@ -942,12 +942,23 @@ def set_light_color(light_n, r, g, b):
         return
     """Set color for a specific light or all lights."""
     if light_n == -1:
-        # Set color for all lights in parallel
-        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b))
+        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b), 0, True)
         # set_all_lights_parallel(r, g, b)
     else:
         # Set color for a specific light
-        devices[light_n].set_color(rgb_to_hsbk(r, g, b))
+        devices[light_n].set_color(rgb_to_hsbk(r, g, b), 0, True)
+
+def set_light_power(light_n, off_on):
+    if light_n == -1:
+        if off_on == "ON":
+            lifx.set_power_all_lights("on", 0, True)
+        else:
+            lifx.set_power_all_lights("off", 0, True)
+    else:
+        if off_on == "ON":
+            devices[light_n].set_power("on", 0, True)
+        else:
+            devices[light_n].set_power("off", 0, True)
 
 
 ################################################################################
@@ -2614,6 +2625,12 @@ def set_hdw(cmd, dur):
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_light_color(light_n, r, g, b)
+            # lights LPZZZ_YYY = Lifx lights ZZZ (0 All, 1 to 999) YYY power ON or OFF
+            elif seg[:2] == 'LP':
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][2:])-1
+                power = segs_split[1]
+                set_light_power(light_n, power)
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
