@@ -155,7 +155,7 @@ gc_col("config setup")
 
 def get_snds(dir, p_type):
     snd_ret = []
-    snds = files.return_directory("", dir, ".wav")
+    snds = files.return_directory("", dir, ".mp3")
     for element in snds:
         parts = element.split('_')
         if parts[0] == p_type:
@@ -264,10 +264,10 @@ if (web):
                 set_cfg("explosions_freq", 3)
             elif "cont_mode_on" == req_d["an"]:
                 cont_run = True
-                ply_a_0("/mvc/continuous_mode_activated.wav")
+                ply_a_0("/mvc/continuous_mode_activated.mp3")
             elif "cont_mode_off" == req_d["an"]:
                 cont_run = False
-                ply_a_0("/mvc/continuous_mode_deactivated.wav")
+                ply_a_0("/mvc/continuous_mode_deactivated.mp3")
             return Response(req, "Success")
 
         @server.route("/utilities", [POST])
@@ -275,19 +275,19 @@ if (web):
             global cfg
             req_d = req.json()
             if "speaker_test" == req_d["an"]:
-                ply_a_0("/mvc/left_speaker_right_speaker.wav")
+                ply_a_0("/mvc/left_speaker_right_speaker.mp3")
             elif "volume_pot_off" == req_d["an"]:
                 cfg["volume_pot"] = False
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
             elif "volume_pot_on" == req_d["an"]:
                 cfg["volume_pot"] = True
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
             elif "reset_to_defaults" == req_d["an"]:
                 rst_def()
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 st_mch.go_to('base_state')
 
             return Response(req, "Dialog option cal saved.")
@@ -381,7 +381,7 @@ if (web):
                 fig_web = False
                 mov_g_s(cfg["guy_down_position"], 0.01, False)
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 st_mch.go_to('base_state')
             return Response(req, cfg["figure"])
 
@@ -457,7 +457,7 @@ def ch_vol(action):
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
     files.write_json_file("cfg.json", cfg)
-    ply_a_0("/mvc/volume.wav")
+    ply_a_0("/mvc/volume.mp3")
     spk_str(cfg["volume"], False)
 
 
@@ -467,7 +467,7 @@ def ply_a_0(file_name):
         while mix.voice[0].playing:
             upd_vol(0.02)
     print("playing" + file_name)
-    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    w0 = audiocore.mp3eFile(open(file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
@@ -502,68 +502,68 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_0("/mvc/" + character + ".wav")
+            ply_a_0("/mvc/" + character + ".mp3")
         except:
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_0("/mvc/dot.wav")
-        ply_a_0("/mvc/local.wav")
+        ply_a_0("/mvc/dot.mp3")
+        ply_a_0("/mvc/local.mp3")
 
 
 def l_r_but():
-    ply_a_0("/mvc/press_left_button_right_button.wav")
+    ply_a_0("/mvc/press_left_button_right_button.mp3")
 
 
 def opt_sel():
-    ply_a_0("/mvc/option_selected.wav")
+    ply_a_0("/mvc/option_selected.mp3")
 
 
 def d_cal():
-    ply_a_0("/mvc/adjust_the_door_position_instruct.wav")
-    ply_a_0("/mvc/to_exit_press_and_hold_button_down.wav")
+    ply_a_0("/mvc/adjust_the_door_position_instruct.mp3")
+    ply_a_0("/mvc/to_exit_press_and_hold_button_down.mp3")
 
 
 def r_cal():
-    ply_a_0("/mvc/adjust_the_roof_position_instruct.wav")
-    ply_a_0("/mvc/to_exit_press_and_hold_button_down.wav")
+    ply_a_0("/mvc/adjust_the_roof_position_instruct.mp3")
+    ply_a_0("/mvc/to_exit_press_and_hold_button_down.mp3")
 
 
 def sel_web():
-    ply_a_0("/mvc/web_menu.wav")
+    ply_a_0("/mvc/web_menu.mp3")
     l_r_but()
 
 
 def spk_web():
-    ply_a_0("/mvc/animator_available_on_network.wav")
-    ply_a_0("/mvc/to_access_type.wav")
+    ply_a_0("/mvc/animator_available_on_network.mp3")
+    ply_a_0("/mvc/to_access_type.mp3")
     if cfg["HOST_NAME"] == "animator-outhouse":
-        ply_a_0("/mvc/animator_dash_outhouse.wav")
-        ply_a_0("/mvc/dot.wav")
-        ply_a_0("/mvc/local.wav")
+        ply_a_0("/mvc/animator_dash_outhouse.mp3")
+        ply_a_0("/mvc/dot.mp3")
+        ply_a_0("/mvc/local.mp3")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    ply_a_0("/mvc/in_your_browser.wav")
+    ply_a_0("/mvc/in_your_browser.mp3")
 
 
 def chk_lmt(min, max, pos):
     if pos < min:
-        ply_a_0("/mvc/limit_reached.wav")
+        ply_a_0("/mvc/limit_reached.mp3")
         return False
     if pos > max:
-        ply_a_0("/mvc/limit_reached.wav")
+        ply_a_0("/mvc/limit_reached.mp3")
         return False
     return True
 
 
 def no_user_track():
-    ply_a_0("/mvc/no_user_soundtrack_found.wav")
+    ply_a_0("/mvc/no_user_soundtrack_found.mp3")
     while True:
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
             break
         if r_sw.fell:
-            ply_a_0("/mvc/my_track_inst.wav")
+            ply_a_0("/mvc/my_track_inst.mp3")
             break
 
 ################################################################################
@@ -660,7 +660,7 @@ def cal_r_but(s, mov_typ, sign, min, max):
 
 
 def wrt_cal():
-    ply_a_0("/mvc/all_changes_complete.wav")
+    ply_a_0("/mvc/all_changes_complete.mp3")
     global cfg
     files.write_json_file("cfg.json", cfg)
 
@@ -852,7 +852,7 @@ def ply_mtch(fn, srt, end, wait):
         while mix.voice[0].playing:
             upd_vol(0.02)
     print("playing" + fn)
-    w0 = audiocore.WaveFile(open(fn, "rb"))
+    w0 = audiocore.mp3eFile(open(fn, "rb"))
     mix.voice[0].play(w0, loop=False)
     if srt > 0 and end > 0:
         time.sleep(srt)
@@ -912,7 +912,7 @@ def rnd_snd(dir, p_typ, srt, end, wait):
     snds = get_snds(dir, p_typ)
     max_i = len(snds) - 1
     i = random.randint(0, max_i)
-    ply_mtch(dir + "/" + snds[i] + ".wav", srt, end, wait)
+    ply_mtch(dir + "/" + snds[i] + ".mp3", srt, end, wait)
 
 
 def exp():
@@ -1014,14 +1014,14 @@ def ins_f(wait_but):
     mov_r_s(cfg["roof_open_position"], 0.01)
     mov_d_s(cfg["door_open_position"], 0.01)
     mov_g_s(cfg["guy_up_position"], 0.01, False)
-    ply_a_0("/mvc/install_figure_instructions.wav")
+    ply_a_0("/mvc/install_figure_instructions.mp3")
     while wait_but:
         r_sw.update()
         if r_sw.fell:
             fig_web = False
             mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("cfg.json", cfg)
-            ply_a_0("/mvc/all_changes_complete.wav")
+            ply_a_0("/mvc/all_changes_complete.mp3")
             break
 
 ################################################################################
@@ -1088,7 +1088,7 @@ class BseSt(Ste):
         mov_d_s(cfg["door_closed_position"], 0.01)
         mov_r_s(cfg["roof_closed_position"], 0.01)
 
-        ply_a_0("/mvc/animations_are_now_active.wav")
+        ply_a_0("/mvc/animations_are_now_active.mp3")
         files.log_item("Entered base Ste")
         Ste.enter(self, mch)
 
@@ -1102,10 +1102,10 @@ class BseSt(Ste):
         if sw == "left_held":
             if cont_run:
                 cont_run = False
-                ply_a_0("/mvc/continuous_mode_deactivated.wav")
+                ply_a_0("/mvc/continuous_mode_deactivated.mp3")
             else:
                 cont_run = True
-                ply_a_0("/mvc/continuous_mode_activated.wav")
+                ply_a_0("/mvc/continuous_mode_activated.mp3")
         elif sw == "left" or cont_run:
             an()
         elif sw == "right" and not fig_web:
@@ -1114,7 +1114,7 @@ class BseSt(Ste):
             fig_web = False
             mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("cfg.json", cfg)
-            ply_a_0("/mvc/all_changes_complete.wav")
+            ply_a_0("/mvc/all_changes_complete.mp3")
             st_mch.go_to('base_state')
 
 
@@ -1130,7 +1130,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_0("/mvc/main_menu.wav")
+        ply_a_0("/mvc/main_menu.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1141,7 +1141,7 @@ class Main(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/mvc/" + main_m[self.i] + ".wav")
+            ply_a_0("/mvc/" + main_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -1163,7 +1163,7 @@ class Main(Ste):
             elif sel_i == "install_figure":
                 mch.go_to('install_figure')
             else:
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -1179,7 +1179,7 @@ class MoveRD(Ste):
 
     def enter(s, mch):
         files.log_item('Move roof or door menu')
-        ply_a_0("/mvc/move_roof_or_door_menu.wav")
+        ply_a_0("/mvc/move_roof_or_door_menu.mp3")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1190,7 +1190,7 @@ class MoveRD(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/mvc/" + mov_r_d[s.i] + ".wav")
+            ply_a_0("/mvc/" + mov_r_d[s.i] + ".mp3")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(mov_r_d)-1:
@@ -1206,7 +1206,7 @@ class MoveRD(Ste):
             elif sel_i == "move_roof_closed_position":
                 mov_r_s(cfg["roof_closed_position"], 0.01)
             else:
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -1222,7 +1222,7 @@ class AdjRD(Ste):
 
     def enter(s, mch):
         files.log_item('Adjust roof or door menu')
-        ply_a_0("/mvc/adjust_roof_or_door_menu.wav")
+        ply_a_0("/mvc/adjust_roof_or_door_menu.mp3")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1234,7 +1234,7 @@ class AdjRD(Ste):
         r_sw.update()
         if l_sw.fell:
             ply_a_0(
-                "/mvc/" + adj_r_d[s.i] + ".wav")
+                "/mvc/" + adj_r_d[s.i] + ".mp3")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(adj_r_d)-1:
@@ -1262,7 +1262,7 @@ class AdjRD(Ste):
                 cal_pos(r_s, "roof_closed_position")
                 mch.go_to('base_state')
             else:
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -1278,7 +1278,7 @@ class VolSet(Ste):
 
     def enter(s, mch):
         files.log_item('Set Web Options')
-        ply_a_0("/mvc/volume_settings_menu.wav")
+        ply_a_0("/mvc/volume_settings_menu.mp3")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1289,7 +1289,7 @@ class VolSet(Ste):
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
-            ply_a_0("/mvc/" + vol_set[s.i] + ".wav")
+            ply_a_0("/mvc/" + vol_set[s.i] + ".mp3")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
@@ -1297,7 +1297,7 @@ class VolSet(Ste):
         if r_sw.fell:
             sel_i = vol_set[s.sel_i]
             if sel_i == "volume_level_adjustment":
-                ply_a_0("/mvc/volume_adjustment_menu.wav")
+                ply_a_0("/mvc/volume_adjustment_menu.mp3")
                 done = False
                 while not done:
                     sw = utilities.switch_state(
@@ -1308,7 +1308,7 @@ class VolSet(Ste):
                         ch_vol("raise")
                     elif sw == "right_held":
                         files.write_json_file("cfg.json", cfg)
-                        ply_a_0("/mvc/all_changes_complete.wav")
+                        ply_a_0("/mvc/all_changes_complete.mp3")
                         done = True
                         mch.go_to('base_state')
                     upd_vol(0.1)
@@ -1318,12 +1318,12 @@ class VolSet(Ste):
                 if cfg["volume"] == 0:
                     cfg["volume"] = 10
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
             elif sel_i == "volume_pot_on":
                 cfg["volume_pot"] = True
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -1355,7 +1355,7 @@ class WebOpt(Ste):
                 while mix.voice[0].playing:
                     pass
             else:
-                ply_a_0("/mvc/" + web_m[s.i] + ".wav")
+                ply_a_0("/mvc/" + web_m[s.i] + ".mp3")
                 s.sel_i = s.i
                 s.i += 1
                 if s.i > len(web_m)-1:
@@ -1374,11 +1374,11 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif sel_i == "hear_instr_web":
-                ply_a_0("/mvc/web_instruct.wav")
+                ply_a_0("/mvc/web_instruct.mp3")
                 sel_web()
             else:
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.wav")
+                ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -1394,7 +1394,7 @@ class Dlg_Opt(Ste):
 
     def enter(s, mch):
         files.log_item('Choose sounds menu')
-        ply_a_0("/mvc/dialog_options_menu.wav")
+        ply_a_0("/mvc/dialog_options_menu.mp3")
         l_r_but()
         Ste.enter(s, mch)
 
@@ -1411,7 +1411,7 @@ class Dlg_Opt(Ste):
                     pass
             else:
                 ply_a_0("/mvc/" +
-                        dlg_opt[s.i] + ".wav")
+                        dlg_opt[s.i] + ".mp3")
                 s.sel_i = s.i
                 s.i += 1
                 if s.i > len(dlg_opt)-1:
@@ -1441,7 +1441,7 @@ class InsFig(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_0("/mvc/install_figure_menu.wav")
+        ply_a_0("/mvc/install_figure_menu.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1454,7 +1454,7 @@ class InsFig(Ste):
         r_sw.update()
         if l_sw.fell:
             ply_a_0(
-                "/mvc/" + inst_m[self.i] + ".wav")
+                "/mvc/" + inst_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(inst_m)-1:
