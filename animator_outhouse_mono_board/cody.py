@@ -75,9 +75,15 @@ aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 # Setup sdCard
 aud_en.value = True
 
-# Setup the mixer
-mix = audiomixer.Mixer(voice_count=1, sample_rate=22050,
-                       channel_count=2, bits_per_sample=16, samples_signed=True, buffer_size=4096)
+# Setup the mixer to play mp3 files
+mix = audiomixer.Mixer(
+    voice_count=1,
+    sample_rate=22050,
+    channel_count=2,
+    bits_per_sample=16,
+    samples_signed=True,
+    buffer_size=16384,
+)
 aud.play(mix)
 
 mix.voice[0].level = .2
@@ -362,7 +368,6 @@ if (web):
                 wrt_cal()
                 st_mch.go_to('base_state')
                 return Response(req, "Tree " + door_movement_type + " cal saved.")
-            
 
         @server.route("/install-figure", [POST])
         def buttonpress(req: Request):
@@ -388,6 +393,7 @@ gc_col("web server")
 
 ################################################################################
 # Misc Methods
+
 
 def rst_def():
     global cfg
@@ -467,21 +473,25 @@ def ply_a_0(file_name):
         exit_early()
     print("done playing")
 
+
 def sw_stp_m():
     l_sw.update()
     if l_sw.fell:
         mix.voice[0].stop()
+
 
 def stop_a_0():
     mix.voice[0].stop()
     while mix.voice[0].playing:
         pass
 
+
 def exit_early():
     upd_vol(0.02)
     l_sw.update()
     if l_sw.fell:
         mix.voice[0].stop()
+
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -698,6 +708,7 @@ def cal_pos(s, mov_typ):
 ################################################################################
 # animations
 
+
 def fr_asy(r_on, g_on, b_on, spd):
     led_B.brightness = 1.0
 
@@ -740,7 +751,7 @@ def alien_tlk():
         led_B.show()
 
 
-def cyc_g_asy(spd, pos_up, pos_down,r, g, b):
+def cyc_g_asy(spd, pos_up, pos_down, r, g, b):
     global g_lst_p
     while mix.voice[0].playing:
         exit_early()
@@ -760,7 +771,7 @@ def cyc_g_asy(spd, pos_up, pos_down,r, g, b):
             fr_asy(r, g, b, spd)
 
 
-def cyc_r_asy(spd, pos_up, pos_down,r, g, b):
+def cyc_r_asy(spd, pos_up, pos_down, r, g, b):
     global r_lst_p
     while mix.voice[0].playing:
         exit_early()
@@ -780,7 +791,7 @@ def cyc_r_asy(spd, pos_up, pos_down,r, g, b):
             fr_asy(r, g, b, spd)
 
 
-def cyc_d_asy(spd, pos_up, pos_down,r, g, b):
+def cyc_d_asy(spd, pos_up, pos_down, r, g, b):
     global d_lst_p
     while mix.voice[0].playing:
         exit_early()
@@ -801,7 +812,7 @@ def cyc_d_asy(spd, pos_up, pos_down,r, g, b):
 
 
 def rn_exp(r, g, b):
-    cyc_g_asy(0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"],r, g, b)
+    cyc_g_asy(0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"], r, g, b)
     while mix.voice[0].playing:
         exit_early()
 
@@ -809,7 +820,8 @@ def rn_exp(r, g, b):
 def rn_music(r, g, b):
     led_F[0] = (0, 0, 0)
     led_F.show()
-    cyc_d_asy(0.01, cfg["door_closed_position"]-20, cfg["door_closed_position"],r, g, b)
+    cyc_d_asy(0.01, cfg["door_closed_position"]-20,
+              cfg["door_closed_position"], r, g, b)
     while mix.voice[0].playing:
         exit_early()
 
@@ -823,10 +835,12 @@ def rnd_prob(v):
         return False
     elif v == 1:
         y = random.random()
-        if y < 0.33: return True
+        if y < 0.33:
+            return True
     elif v == 2:
-        y = random.random() 
-        if y < 0.66: return True
+        y = random.random()
+        if y < 0.66:
+            return True
     elif v == 3:
         return True
     return False
@@ -926,7 +940,8 @@ def exp():
             led_B.show()
             time.sleep(.05)
         rn_exp(1, 0, 0)
-        
+
+
 def no_exp():
     global reset_roof
     reset_roof = False
@@ -953,6 +968,7 @@ def no_exp():
         led_F.show()
         d_snd(cfg["door_closed_position"])
 
+
 def rst_an(rest_roof):
     print("reset")
     led_F.fill((0, 0, 0))
@@ -973,7 +989,8 @@ def an():
     try:
         sit_d()
         run_exp = rnd_prob(cfg["explosions_freq"])
-        if cfg["figure"] == "alien": run_exp = True
+        if cfg["figure"] == "alien":
+            run_exp = True
         if run_exp:
             exp()
         else:
