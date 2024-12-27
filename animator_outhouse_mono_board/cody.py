@@ -1,10 +1,7 @@
 import time
-import audiocore
+import audiomp3
 import audiomixer
 import audiobusio
-import sdcardio
-import storage
-import busio
 import digitalio
 import board
 import microcontroller
@@ -143,7 +140,7 @@ vol_set = cfd_vol["volume_settings"]
 cfg_inst_m = files.read_json_file("/mvc/install_menu.json")
 inst_m = cfg_inst_m["install_menu"]
 
-cont_run = False
+cont_run = True
 fig_web = False
 reset_roof = True
 
@@ -467,7 +464,7 @@ def ply_a_0(file_name):
         while mix.voice[0].playing:
             upd_vol(0.02)
     print("playing" + file_name)
-    w0 = audiocore.mp3eFile(open(file_name, "rb"))
+    w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
@@ -852,7 +849,7 @@ def ply_mtch(fn, srt, end, wait):
         while mix.voice[0].playing:
             upd_vol(0.02)
     print("playing" + fn)
-    w0 = audiocore.mp3eFile(open(fn, "rb"))
+    w0 = audiomp3.MP3Decoder(open(fn, "rb"))
     mix.voice[0].play(w0, loop=False)
     if srt > 0 and end > 0:
         time.sleep(srt)
@@ -935,7 +932,7 @@ def exp():
     else:
         mov_g(cfg["guy_up_position"])
         mov_d(cfg["door_open_position"])
-        for i in range(0, 6):
+        for i in range(0, 3):
             led_B[i] = (255, 0, 0)
             led_B.show()
             time.sleep(.05)
@@ -1507,4 +1504,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
