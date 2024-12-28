@@ -876,7 +876,7 @@ def d_snd(pos):
 
 def sit_d():
     print("sitting down")
-    mov_g_s(cfg["guy_down_position"]-10, 0.05, False)
+    mov_g_s(cfg["guy_down_position"]-10, 0.01, False)
     led_F[0] = ((255, 147, 41))
     led_F.show()
     if cfg["figure"] == "alien":
@@ -955,7 +955,7 @@ def no_exp():
         rn_music(0, 1, 1)
     elif cfg["figure"] == "alien":
         d_snd(cfg["door_open_position"])
-        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        mov_g_s(cfg["guy_down_position"]-10, 0.05, False)
         rnd_snd("" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
         alien_tlk()
         led_F[0] = ((0, 0, 0))
@@ -963,7 +963,7 @@ def no_exp():
         d_snd(cfg["door_closed_position"])
     else:
         d_snd(cfg["door_open_position"])
-        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        mov_g_s(cfg["guy_down_position"]-10, 0.05, False)
         rnd_snd("" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, True)
         led_F[0] = ((0, 0, 0))
         led_F.show()
