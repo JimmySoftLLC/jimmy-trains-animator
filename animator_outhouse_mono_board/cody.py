@@ -215,6 +215,7 @@ if (web):
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
+        server.port = 80  # Explicitly set port to 80
 
         gc_col("wifi server")
 
@@ -1488,7 +1489,7 @@ aud_en.value = True
 if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
     except OSError:
