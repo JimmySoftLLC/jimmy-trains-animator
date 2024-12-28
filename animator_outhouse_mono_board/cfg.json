@@ -5,7 +5,7 @@
   "roof_open_position": 72,
   "guy_down_position": 145,
   "figure": "man",
-  "volume": 60,
+  "volume": "50",
   "can_cancel": true,
   "serve_webpage": true,
   "guy_up_position": 30,
