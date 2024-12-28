@@ -394,19 +394,36 @@ gc_col("web server")
 
 def rst_def():
     global cfg
-    cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-outhouse"
-    cfg["volume"] = 20
-    cfg["roof_open_position"] = 100
-    cfg["guy_up_position"] = 0
-    cfg["door_open_position"] = 24
-    cfg["guy_down_position"] = 180
-    cfg["roof_closed_position"] = 31
-    cfg["door_closed_position"] = 122
-    cfg["figure"] = "man"
-    cfg["explosions_freq"] = 2
-    cfg["serve_webpage"] = True
-    cfg["rating"] = "g"
+    # cfg["volume_pot"] = True
+    # cfg["HOST_NAME"] = "animator-outhouse"
+    # cfg["volume"] = 20
+    # cfg["roof_open_position"] = 100
+    # cfg["guy_up_position"] = 0
+    # cfg["door_open_position"] = 24
+    # cfg["guy_down_position"] = 180
+    # cfg["roof_closed_position"] = 31
+    # cfg["door_closed_position"] = 122
+    # cfg["figure"] = "man"
+    # cfg["explosions_freq"] = 2
+    # cfg["serve_webpage"] = True
+    # cfg["rating"] = "g"
+    cfg = {
+        "volume_pot": False,
+        "door_open_position": 24,
+        "rating": "g",
+        "roof_open_position": 72,
+        "guy_down_position": 145,
+        "figure": "man",
+        "volume": 60,
+        "can_cancel": True,
+        "serve_webpage": True,
+        "guy_up_position": 30,
+        "door_closed_position": 122,
+        "explosions_freq": 2,
+        "HOST_NAME": "animator-outhouse",
+        "roof_closed_position": 17
+    }
+
 
 ################################################################################
 # Dialog and sound play methods

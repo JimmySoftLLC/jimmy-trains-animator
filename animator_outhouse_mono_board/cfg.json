@@ -1,0 +1,16 @@
+{
+  "volume_pot": false,
+  "door_open_position": 24,
+  "rating": "g",
+  "roof_open_position": 72,
+  "guy_down_position": 145,
+  "figure": "man",
+  "volume": 60,
+  "can_cancel": true,
+  "serve_webpage": true,
+  "guy_up_position": 30,
+  "door_closed_position": 122,
+  "explosions_freq": 2,
+  "HOST_NAME": "animator-outhouse",
+  "roof_closed_position": 17
+}
