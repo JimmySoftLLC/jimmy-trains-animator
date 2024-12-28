@@ -140,7 +140,7 @@ vol_set = cfd_vol["volume_settings"]
 cfg_inst_m = files.read_json_file("/mvc/install_menu.json")
 inst_m = cfg_inst_m["install_menu"]
 
-cont_run = True
+cont_run = False
 fig_web = False
 reset_roof = True
 
@@ -1010,7 +1010,7 @@ def ins_f(wait_but):
     global fig_web
     mov_r_s(cfg["roof_open_position"], 0.01)
     mov_d_s(cfg["door_open_position"], 0.01)
-    mov_g_s(cfg["guy_up_position"], 0.01, False)
+    mov_g_s(0, 0.01, False)
     ply_a_0("/mvc/install_figure_instructions.mp3")
     while wait_but:
         r_sw.update()
