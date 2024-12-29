@@ -118,14 +118,6 @@
           Woman
         </button>
         <button class="mui-btn mui-btn--primary animator-install-figure" type="button" data-url="/install-figure"
-          data-action="alien">
-          Alien
-        </button>
-        <button class="mui-btn mui-btn--primary animator-install-figure" type="button" data-url="/install-figure"
-          data-action="music">
-          Music
-        </button>
-        <button class="mui-btn mui-btn--primary animator-install-figure" type="button" data-url="/install-figure"
           data-action="right">
           Right Button
         </button>
@@ -224,6 +216,33 @@
 </body>
 
 <script>
+  function showAlert(message) {
+      var alertModal = document.createElement('div');
+      alertModal.className = 'mui-container';
+      alertModal.style.width = '400px';
+      alertModal.style.margin = '100px auto'; // Center horizontally with top margin
+      alertModal.style.backgroundColor = '#fff';
+      alertModal.style.borderRadius = '5px';
+      alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+
+      alertModal.innerHTML = `
+          <div class="mui-form" style="padding: 20px;">
+              <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
+              <div style="margin: 10px 0; font-size: 1em; color: #333;">
+                  ${message}
+              </div>
+              <button class="mui-btn mui-btn--primary" onclick="closeAlert()" style="margin-top: 15px;">OK</button>
+          </div>`;
+
+      mui.overlay('on', alertModal);
+  }
+
+
+  function closeAlert() {
+      mui.overlay('off');
+  }
+
+
   var submitButton = document.getElementById('submitButton');
   var volumeSubmitButton = document.getElementById('volumeSubmitButton');
 
@@ -401,7 +420,7 @@
         })
         .catch(function (error) {
           button.removeAttribute('disabled');
-          alert('Try Again');
+          showAlert('Try Again');
         });
     });
   });
