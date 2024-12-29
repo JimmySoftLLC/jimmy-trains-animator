@@ -134,9 +134,6 @@ main_m = cfg_main["main_menu"]
 cfg_web = files.read_json_file("/mvc/web_menu.json")
 web_m = cfg_web["web_menu"]
 
-cfd_vol = files.read_json_file("/mvc/volume_settings.json")
-vol_set = cfd_vol["volume_settings"]
-
 cfg_inst_m = files.read_json_file("/mvc/install_menu.json")
 inst_m = cfg_inst_m["install_menu"]
 
@@ -559,14 +556,6 @@ def chk_lmt(min, max, pos):
 
 def no_user_track():
     ply_a_0("/mvc/no_user_soundtrack_found.mp3")
-    while True:
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            break
-        if r_sw.fell:
-            ply_a_0("/mvc/my_track_inst.mp3")
-            break
 
 ################################################################################
 # Servo helpers
@@ -1160,8 +1149,23 @@ class Main(Ste):
                 mch.go_to('set_dialog_options')
             elif sel_i == "web_options":
                 mch.go_to('web_options')
-            elif sel_i == "volume_settings":
-                mch.go_to('volume_settings')
+            elif sel_i == "volume_level_adjustment":
+                ply_a_0("/mvc/volume_adjustment_menu.mp3")
+                done = False
+                while not done:
+                    sw = utilities.switch_state(
+                        l_sw, r_sw, upd_vol, 3.0)
+                    if sw == "left":
+                        ch_vol("lower")
+                    elif sw == "right":
+                        ch_vol("raise")
+                    elif sw == "right_held":
+                        files.write_json_file("cfg.json", cfg)
+                        ply_a_0("/mvc/all_changes_complete.mp3")
+                        done = True
+                        mch.go_to('base_state')
+                    upd_vol(0.1)
+                    pass
             elif sel_i == "install_figure":
                 mch.go_to('install_figure')
             else:
@@ -1264,67 +1268,6 @@ class AdjRD(Ste):
                 cal_pos(r_s, "roof_closed_position")
                 mch.go_to('base_state')
             else:
-                ply_a_0("/mvc/all_changes_complete.mp3")
-                mch.go_to('base_state')
-
-
-class VolSet(Ste):
-
-    def __init__(s):
-        s.i = 0
-        s.sel_i = 0
-
-    @property
-    def name(s):
-        return 'volume_settings'
-
-    def enter(s, mch):
-        files.log_item('Set Web Options')
-        ply_a_0("/mvc/volume_settings_menu.mp3")
-        l_r_but()
-        Ste.enter(s, mch)
-
-    def exit(s, mch):
-        Ste.exit(s, mch)
-
-    def upd(s, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            ply_a_0("/mvc/" + vol_set[s.i] + ".mp3")
-            s.sel_i = s.i
-            s.i += 1
-            if s.i > len(vol_set)-1:
-                s.i = 0
-        if r_sw.fell:
-            sel_i = vol_set[s.sel_i]
-            if sel_i == "volume_level_adjustment":
-                ply_a_0("/mvc/volume_adjustment_menu.mp3")
-                done = False
-                while not done:
-                    sw = utilities.switch_state(
-                        l_sw, r_sw, upd_vol, 3.0)
-                    if sw == "left":
-                        ch_vol("lower")
-                    elif sw == "right":
-                        ch_vol("raise")
-                    elif sw == "right_held":
-                        files.write_json_file("cfg.json", cfg)
-                        ply_a_0("/mvc/all_changes_complete.mp3")
-                        done = True
-                        mch.go_to('base_state')
-                    upd_vol(0.1)
-                    pass
-            elif sel_i == "volume_pot_off":
-                cfg["volume_pot"] = False
-                if cfg["volume"] == "":
-                    cfg["volume"] = "10"
-                files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.mp3")
-                mch.go_to('base_state')
-            elif sel_i == "volume_pot_on":
-                cfg["volume_pot"] = True
-                files.write_json_file("cfg.json", cfg)
                 ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
 
@@ -1480,7 +1423,6 @@ st_mch.add(Dlg_Opt())
 st_mch.add(AdjRD())
 st_mch.add(MoveRD())
 st_mch.add(WebOpt())
-st_mch.add(VolSet())
 st_mch.add(InsFig())
 
 upd_vol(.1)
@@ -1509,3 +1451,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
