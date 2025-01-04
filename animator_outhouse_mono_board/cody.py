@@ -1365,14 +1365,18 @@ class Dlg_Opt(Ste):
             opts = dlg_opt[s.sel_i].split(" ")
             if opts[0] == "exp":
                 cfg["explosions_freq"] = int(opts[1])
+                files.log_item("Exp freq: " + str(cfg["explosions_freq"]) + " Rating: " + cfg["rating"])
+                files.write_json_file("cfg.json", cfg)
+                opt_sel()
+                mch.go_to('base_state')
+            elif dlg_opt[s.sel_i] == "exit_this_menu":
+                mch.go_to('base_state')
             else:
                 cfg["rating"] = opts[1]
-            files.log_item(
-                "Exp freq: " + str(cfg["explosions_freq"]) + " Rating: " + cfg["rating"])
-            files.write_json_file("cfg.json", cfg)
-            opt_sel()
-            mch.go_to('base_state')
-
+                files.log_item("Exp freq: " + str(cfg["explosions_freq"]) + " Rating: " + cfg["rating"])
+                files.write_json_file("cfg.json", cfg)
+                opt_sel()
+                mch.go_to('base_state')
 
 class InsFig(Ste):
 
