@@ -155,7 +155,7 @@ current_media_playing = ""
 current_scene = ""
 current_neo = ""
 is_midori_running = False
-connect_to_base_3 = False
+connect_to_base_3 = True
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -3390,8 +3390,7 @@ if connect_to_base_3 == True:
     ports = list_serial_ports()
     if target_port in ports:
         serial_connection = open_serial_connection(target_port)
-        print(f"Connected to {target_port}")
-        text_to_wav_file("Connected to {target_port}", "myjoke.wav", 2)
+        text_to_wav_file("Connected to " + target_port, "myjoke.wav", 2)
 
         # Start a thread to continuously read from the serial port
         read_thread = threading.Thread(target=read_from_serial, args=(serial_connection,))
@@ -3407,6 +3406,7 @@ def stop_program():
         zeroconf.close()
         httpd.shutdown()
     rst_an(media_folder + 'pictures/logo.jpg')
+    serial_connection.close()
     quit()
 
 
