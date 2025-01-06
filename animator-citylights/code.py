@@ -130,6 +130,8 @@ import sys
 import asyncio
 import websockets
 import pyautogui
+import serial
+import serial.tools.list_ports
 
 
 # Turn off audio while setting things up
@@ -153,6 +155,7 @@ current_media_playing = ""
 current_scene = ""
 current_neo = ""
 is_midori_running = False
+connect_to_base_3 = False
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -1115,6 +1118,100 @@ def send_animator_post(url, endpoint, new_data):
     created_data = api_client.post(endpoint, data=new_data)
     print("POST response:", created_data)
 
+################################################################################
+# Setup serial communication and TMCC
+
+def list_serial_ports():
+    ports = list(serial.tools.list_ports.comports())
+    available_ports = [port.device for port in ports]
+    return available_ports
+
+def open_serial_connection(port, baud_rate=115200):
+    ser = serial.Serial(port, baud_rate, timeout=1)
+    return ser
+
+def send_data(ser, data):
+    hex_data = bytes.fromhex(data)
+    ser.write(hex_data)
+
+def read_from_serial(ser):
+    while True:
+        if ser.in_waiting > 0:
+            received_hex = ser.read(ser.in_waiting)  # Read all available data
+            print(f"Received data in hex: {received_hex.hex()}")
+
+def get_usb_ports():
+    ports = list_serial_ports()
+    print("Available serial ports:", ports)
+    text_to_wav_file("Available serial ports are", "myjoke.wav", 2)
+    for port in ports:
+        text_to_wav_file(port, "myjoke.wav", 2)
+
+# Command decoding and processing functions
+def getCommandObject(binary_word2, binary_word3):
+    command = binary_word2[0:2]
+    response = {}
+    if command == "01":  # Switch command
+        response["module"] = "switch"
+        response["address"] = whatAddress(binary_word2, binary_word3, 7)
+    elif command == "00":  # Engine command
+        response["module"] = "engine"
+        response["address"] = whatAddress(binary_word2, binary_word3, 7)
+    elif command == "10":  # Accessory command
+        response["module"] = "accessory"
+        response["address"] = whatAddress(binary_word2, binary_word3, 7)
+    elif command == "11":  # Other command
+        response["address"] = response["module"] = "other"
+    response["command"] = whatCommand(binary_word3)
+    response["data"] = whatData(binary_word3)
+    return response
+
+def whatAddress(binary_word2, binary_word3, number_bits):
+    whole_word = binary_word2 + binary_word3
+    start = 9 - number_bits
+    end = start + number_bits
+    binary_number = whole_word[start:end]
+    return int(binary_number, 2)
+
+def whatCommand(binary_word3):
+    command = binary_word3[1:3]
+    if command == "00":
+        return "action"
+    elif command == "01":
+        return "extended"
+    elif command == "10":
+        return "relative"
+    elif command == "11":
+        return "absolute"
+
+def whatData(binary_word3):
+    return binary_word3[3:8]
+
+def scale_number(num, exponent):
+    return int((num if num >= 0 else -(-num)) ** exponent)
+
+def processCommand(response):
+    print(f"Processing command: {response}")
+    # Add logic for processing commands, e.g., playing audio or controlling servos
+
+# Poll UART and process TMCC commands
+def poll_uart():
+    while True:
+        if uart.in_waiting >= 3:  # Check if at least 3 bytes are available to read
+            received_data = uart.read(3)
+            if len(received_data) == 3:
+                word1, word2, word3 = received_data[0], received_data[1], received_data[2]
+
+                # Convert words to binary strings
+                binary_word1 = f'{word1:08b}'
+                binary_word2 = f'{word2:08b}'
+                binary_word3 = f'{word3:08b}'
+
+                response = getCommandObject(binary_word2, binary_word3)
+                processCommand(response)
+
+                # Clear UART buffer
+                uart.reset_input_buffer()
 
 ################################################################################
 # Setup wifi and web server
@@ -2593,6 +2690,10 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
+            elif seg[:3] == 'USB':
+                get_usb_ports()
+            elif seg[:4] == 'BASE3':
+                connect_to_base3()
             # MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)
             # elif seg[0] == 'M':
             #     stop_all_media()
@@ -3283,6 +3384,19 @@ state_machine_thread.start()
 logo_when_idle_thread = threading.Thread(target=logo_when_idle)
 logo_when_idle_thread.daemon = True
 logo_when_idle_thread.start()
+
+if connect_to_base_3 == True:
+    target_port = "/dev/ttyUSB0"
+    ports = list_serial_ports()
+    if target_port in ports:
+        serial_connection = open_serial_connection(target_port)
+        print(f"Connected to {target_port}")
+        text_to_wav_file("Connected to {target_port}", "myjoke.wav", 2)
+
+        # Start a thread to continuously read from the serial port
+        read_thread = threading.Thread(target=read_from_serial, args=(serial_connection,))
+        read_thread.daemon = True
+        read_thread.start()
 
 
 def stop_program():
