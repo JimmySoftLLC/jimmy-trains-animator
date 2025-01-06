@@ -1153,8 +1153,8 @@ def read_from_serial(ser):
                 #print(f"Word 1: {binary_word1}")
                 #print(f"Word 2: {binary_word2}")
                 #print(f"Word 3: {binary_word3}\n")
-                response = getCommandObject(binary_word2,binary_word3)
-                processCommand(response)
+                response = get_command_object(binary_word1, binary_word2,binary_word3)
+                process_command(response)
                 #print(response["module"],response["address"],response["command"],response["data"])
                 ser.read(ser.in_waiting)
                 
@@ -1180,32 +1180,42 @@ def get_usb_ports():
         text_to_wav_file(port, "myjoke.wav", 2)
 
 # Command decoding and processing functions
-def getCommandObject(binary_word2, binary_word3):
+def get_command_object(binary_word1, binary_word2, binary_word3):
+    print(binary_word1)
     command = binary_word2[0:2]
     response = {}
     if command == "01":  # Switch command
         response["module"] = "switch"
-        response["address"] = whatAddress(binary_word2, binary_word3, 7)
+        response["address"] = what_address(binary_word2, binary_word3, 7)
     elif command == "00":  # Engine command
         response["module"] = "engine"
-        response["address"] = whatAddress(binary_word2, binary_word3, 7)
+        response["address"] = what_address(binary_word2, binary_word3, 7)
     elif command == "10":  # Accessory command
         response["module"] = "accessory"
-        response["address"] = whatAddress(binary_word2, binary_word3, 7)
+        response["address"] = what_address(binary_word2, binary_word3, 7)
     elif command == "11":  # Other command
         response["address"] = response["module"] = "other"
-    response["command"] = whatCommand(binary_word3)
-    response["data"] = whatData(binary_word3)
+    response["command"] = what_command(binary_word3)
+    response["data"] = what_data(binary_word3)
+    response["system"] = what_system(binary_word1)
     return response
 
-def whatAddress(binary_word2, binary_word3, number_bits):
-    whole_word = binary_word2 + binary_word3
-    start = 9 - number_bits
-    end = start + number_bits
-    binary_number = whole_word[start:end]
-    return int(binary_number, 2)
-
-def whatCommand(binary_word3):
+def what_system(binary_word1):
+    # 0xFE for TMCC1 commands
+    # 0xF8 for Legacy Engine commands
+    # 0xF9 for Legacy Train commands
+    # 0xFB for Parameter commands
+    command = binary_word1[1:9]
+    if command == "11111110":
+        return "tmcc"
+    elif command == "11111000":
+        return "legacy_engine"
+    elif command == "11111001":
+        return "legacy_train"
+    elif command == "11111011":
+        return "parameter"
+    
+def what_command(binary_word3):
     command = binary_word3[1:3]
     if command == "00":
         return "action"
@@ -1216,13 +1226,20 @@ def whatCommand(binary_word3):
     elif command == "11":
         return "absolute"
 
-def whatData(binary_word3):
+def what_address(binary_word2, binary_word3, number_bits):
+    whole_word = binary_word2 + binary_word3
+    start = 9 - number_bits
+    end = start + number_bits
+    binary_number = whole_word[start:end]
+    return int(binary_number, 2)
+
+def what_data(binary_word3):
     return binary_word3[3:8]
 
 def scale_number(num, exponent):
     return int((num if num >= 0 else -(-num)) ** exponent)
 
-def processCommand(response):
+def process_command(response):
     if response["module"] == "accessory":
         if response["command"] == "extended" and response["data"] =="01011":
             play_mix(code_folder + "mvc/accessory.wav")
@@ -1286,25 +1303,6 @@ def processCommand(response):
             binary_number = response["data"][1:5]
             decimal_number = int(binary_number, 2)      
             spk_str(str(decimal_number),False)          
-
-# Poll UART and process TMCC commands
-def poll_uart():
-    while True:
-        if uart.in_waiting >= 3:  # Check if at least 3 bytes are available to read
-            received_data = uart.read(3)
-            if len(received_data) == 3:
-                word1, word2, word3 = received_data[0], received_data[1], received_data[2]
-
-                # Convert words to binary strings
-                binary_word1 = f'{word1:08b}'
-                binary_word2 = f'{word2:08b}'
-                binary_word3 = f'{word3:08b}'
-
-                response = getCommandObject(binary_word2, binary_word3)
-                processCommand(response)
-
-                # Clear UART buffer
-                uart.reset_input_buffer()
 
 ################################################################################
 # Setup wifi and web server
