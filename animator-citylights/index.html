@@ -60,6 +60,9 @@
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
             </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="tmcc">Tmcc settings</a>
+            </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
             <h2>Random play:</h2>
@@ -529,6 +532,36 @@
                 </div>
             </div>
         </div>
+        <div class="mui-tabs__pane" id="tmcc">
+            <h2>TMCC setup:</h2>
+            <p>
+                City lights can be integrated with Lionel Legacy and TMCC. Add accessories below.
+            </p>
+            <h2>Accessories:</h2>
+            <button class="mui-btn mui-btn--primary" onclick="createPlaylistDialog()">Create playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicatePlaylistDialog()">Duplicate playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="renamePlaylistDialog()">Rename playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="deletePlaylistDialog()">Delete playlist</button>
+            <div id="tmccContainer"></div>
+            <div>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Accessory</button>
+                <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+                <table id="dataTable" class="mui-table">
+                    <thead>
+                        <tr>
+                            <th>TimeStamp</th>
+                            <th>TimeCode</th>
+                            <th>Animation</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
 </body>
 
 <script>
@@ -796,7 +829,7 @@
                         showAlert(error);
                     });
             });
-            playlistScriptContainer.appendChild(button);
+            tmccContainer.appendChild(button);
         });
     }
 
@@ -1742,7 +1775,7 @@
     // function updatePlaylists() {
     //     const myPlaylistDiv = document.getElementById("playlistContainer");
     //     removeChildNodes(myPlaylistDiv)
-    //     const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
+    //     const myPlaylistScriptDiv = document.getElementById("tmccContainer");
     //     removeChildNodes(myPlaylistScriptDiv)
     //     getPlaylists()
     // }
