@@ -1136,9 +1136,41 @@ def send_data(ser, data):
 
 def read_from_serial(ser):
     while True:
-        if ser.in_waiting > 0:
-            received_hex = ser.read(ser.in_waiting)  # Read all available data
-            print(f"Received data in hex: {received_hex.hex()}")
+        if ser.in_waiting >= 3:  # Check if at least 3 bytes are available to read
+            received_data = ser.read(3)
+            if len(received_data) == 3:
+                word1, word2, word3 = received_data[0], received_data[1], received_data[2]
+                
+                # Convert words to binary strings
+                binary_word1 = f'{word1:0>8b}'
+                binary_word2 = f'{word2:0>8b}'
+                binary_word3 = f'{word3:0>8b}'
+                
+                #print("Received command: " + str(received_data))
+                #print("Received 0: " + str(received_data[0]))
+                #print("Received 1: " + str(received_data[1]))
+                #print("Received 2: " + str(received_data[2]))
+                #print(f"Word 1: {binary_word1}")
+                #print(f"Word 2: {binary_word2}")
+                #print(f"Word 3: {binary_word3}\n")
+                response = getCommandObject(binary_word2,binary_word3)
+                processCommand(response)
+                #print(response["module"],response["address"],response["command"],response["data"])
+                ser.read(ser.in_waiting)
+                
+                # Reconstruct the command bytes
+                #reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
+                #reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
+                #reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
+                
+                # Construct the command to send back
+                #reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
+                #print("Reconstructed command: " + str(reconstructed_command))
+                # Echo back the received command
+                # uart.write(reconstructed_command)  # Echo back the received command
+            else:
+                # Invalid command format, discard the data
+                ser.read(ser.in_waiting)
 
 def get_usb_ports():
     ports = list_serial_ports()
@@ -1191,8 +1223,69 @@ def scale_number(num, exponent):
     return int((num if num >= 0 else -(-num)) ** exponent)
 
 def processCommand(response):
-    print(f"Processing command: {response}")
-    # Add logic for processing commands, e.g., playing audio or controlling servos
+    if response["module"] == "accessory":
+        if response["command"] == "extended" and response["data"] =="01011":
+            play_mix(code_folder + "mvc/accessory.wav")
+            play_mix(code_folder + "mvc/set_to_id.wav")
+            spk_str(str(response["address"]),False)
+        elif response["command"] == "relative":
+            binary_number = response["data"][1:5]
+            decimal_number = scale_number(5-int(binary_number, 2),2)
+            print(decimal_number)
+            #play_mix(code_folder + "mvc/accessory.wav")
+            #spk_str(str(response["address"]),False) 
+            #play_mix(code_folder + "mvc/trottle_up.wav")
+            #moveTreeServo (tree_last_pos+1)
+            #play_mix(code_folder + "mvc/accessory.wav")
+            #spk_str(str(response["address"]),False) 
+            #play_mix(code_folder + "mvc/trottle_down.wav")
+        elif response["command"] == "action" and response["data"][0:1] =="1":
+            play_mix(code_folder + "mvc/accessory.wav")
+            spk_str(str(response["address"]),False) 
+            play_mix(code_folder + "mvc/numeric_button.wav")
+            binary_number = response["data"][1:5]
+            decimal_number = int(binary_number, 2)
+            spk_str(str(decimal_number),False)
+    if response["module"] == "engine":
+        if response["command"] == "extended" and response["data"] =="01011":
+            play_mix(code_folder + "mvc/engine.wav")
+            play_mix(code_folder + "mvc/set_to_id.wav")
+            spk_str(str(response["address"]),False)
+        elif response["command"] == "relative" and response["data"] =="00110":
+            play_mix(code_folder + "mvc/engine.wav")
+            spk_str(str(response["address"]),False) 
+            play_mix(code_folder + "mvc/trottle_up.wav")
+        elif response["command"] == "relative" and response["data"] =="00100":
+            play_mix(code_folder + "mvc/engine.wav")
+            spk_str(str(response["address"]),False) 
+            play_mix(code_folder + "mvc/trottle_down.wav")
+        elif response["command"] == "action" and response["data"][0:1] =="1":
+            play_mix(code_folder + "mvc/engine.wav")
+            spk_str(str(response["address"]),False) 
+            play_mix(code_folder + "mvc/numeric_button.wav")
+            binary_number = response["data"][1:5]
+            decimal_number = int(binary_number, 2)      
+            spk_str(str(decimal_number),False) 
+    if response["module"] == "switch":
+        if response["command"] == "extended" and response["data"] =="01011":
+            play_mix(code_folder + "mvc/switch.wav")
+            play_mix(code_folder + "mvc/set_to_id.wav")
+            spk_str(str(response["address"]),False)
+        elif response["command"] == "relative" and response["data"] =="00110":
+            play_mix(code_folder + "mvc/switch.wav")
+            spk_str(str(response["address"]),False) 
+            play_mix(code_folder + "mvc/trottle_up.wav")
+        elif response["command"] == "relative" and response["data"] =="00100":
+            play_mix(code_folder + "mvc/switch.wav")
+            spk_str(str(response["address"]),False) 
+            play_mix(code_folder + "mvc/trottle_down.wav")
+        elif response["command"] == "action" and response["data"][0:1] =="1":
+            play_mix(code_folder + "mvc/switch.wav")
+            spk_str(str(response["address"]),False) 
+            play_mix(code_folder + "mvc/numeric_button.wav")
+            binary_number = response["data"][1:5]
+            decimal_number = int(binary_number, 2)      
+            spk_str(str(decimal_number),False)          
 
 # Poll UART and process TMCC commands
 def poll_uart():
