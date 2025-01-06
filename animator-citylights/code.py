@@ -156,6 +156,7 @@ current_scene = ""
 current_neo = ""
 is_midori_running = False
 connect_to_base_3 = True
+tmp_wav_file_name = code_folder + "tmp.wav"
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -951,6 +952,7 @@ def set_light_color(light_n, r, g, b):
         # Set color for a specific light
         devices[light_n].set_color(rgb_to_hsbk(r, g, b), 0, True)
 
+
 def set_light_power(light_n, off_on):
     if light_n == -1:
         if off_on == "ON":
@@ -1121,91 +1123,105 @@ def send_animator_post(url, endpoint, new_data):
 ################################################################################
 # Setup serial communication and TMCC
 
+
 def list_serial_ports():
     ports = list(serial.tools.list_ports.comports())
     available_ports = [port.device for port in ports]
     return available_ports
 
+
 def open_serial_connection(port, baud_rate=115200):
     ser = serial.Serial(port, baud_rate, timeout=1)
     return ser
+
 
 def send_data(ser, data):
     hex_data = bytes.fromhex(data)
     ser.write(hex_data)
 
+
 def read_from_serial(ser):
     while True:
-        if ser.in_waiting >= 3:  # Check if at least 3 bytes are available to read
-            received_data = ser.read(3)
-            if len(received_data) == 3:
-                word1, word2, word3 = received_data[0], received_data[1], received_data[2]
-                
-                # Convert words to binary strings
-                binary_word1 = f'{word1:0>8b}'
-                binary_word2 = f'{word2:0>8b}'
-                binary_word3 = f'{word3:0>8b}'
-                
-                #print("Received command: " + str(received_data))
-                #print("Received 0: " + str(received_data[0]))
-                #print("Received 1: " + str(received_data[1]))
-                #print("Received 2: " + str(received_data[2]))
-                #print(f"Word 1: {binary_word1}")
-                #print(f"Word 2: {binary_word2}")
-                #print(f"Word 3: {binary_word3}\n")
-                response = get_command_object(binary_word1, binary_word2,binary_word3)
-                process_command(response)
-                #print(response["module"],response["address"],response["command"],response["data"])
-                ser.read(ser.in_waiting)
-                
-                # Reconstruct the command bytes
-                #reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
-                #reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
-                #reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
-                
-                # Construct the command to send back
-                #reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
-                #print("Reconstructed command: " + str(reconstructed_command))
-                # Echo back the received command
-                # uart.write(reconstructed_command)  # Echo back the received command
-            else:
-                # Invalid command format, discard the data
-                ser.read(ser.in_waiting)
+        try:
+            if ser.in_waiting >= 3:  # Check if at least 3 bytes are available to read
+                received_data = ser.read(3)
+                if len(received_data) == 3:
+                    word1, word2, word3 = received_data[0], received_data[1], received_data[2]
+
+                    # Convert words to binary strings
+                    binary_word1 = f'{word1:0>8b}'
+                    binary_word2 = f'{word2:0>8b}'
+                    binary_word3 = f'{word3:0>8b}'
+
+                    # print("Received command: " + str(received_data))
+                    # print("Received 0: " + str(received_data[0]))
+                    # print("Received 1: " + str(received_data[1]))
+                    # print("Received 2: " + str(received_data[2]))
+                    # print(f"Word 1: {binary_word1}")
+                    # print(f"Word 2: {binary_word2}")
+                    # print(f"Word 3: {binary_word3}\n")
+                    response = get_command_object(
+                        binary_word1, binary_word2, binary_word3)
+                    process_command(response)
+                    # print(response["system"],response["module"],response["address"],response["command"],response["data"])
+                    ser.read(ser.in_waiting)
+
+                    # Reconstruct the command bytes
+                    # reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
+                    # reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
+                    # reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
+
+                    # Construct the command to send back
+                    # reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
+                    # print("Reconstructed command: " + str(reconstructed_command))
+                    # Echo back the received command
+                    # uart.write(reconstructed_command)  # Echo back the received command
+                else:
+                    # Invalid command format, discard the data
+                    ser.read(ser.in_waiting)
+        except Exception as e:
+            print(f"Comms issue: {e}")
+
 
 def get_usb_ports():
     ports = list_serial_ports()
     print("Available serial ports:", ports)
-    text_to_wav_file("Available serial ports are", "myjoke.wav", 2)
+    text_to_wav_file("Available serial ports are", tmp_wav_file_name, 2)
     for port in ports:
-        text_to_wav_file(port, "myjoke.wav", 2)
+        text_to_wav_file(port, tmp_wav_file_name, 2)
 
 # Command decoding and processing functions
+
+
 def get_command_object(binary_word1, binary_word2, binary_word3):
     print(binary_word1)
-    command = binary_word2[0:2]
     response = {}
-    if command == "01":  # Switch command
-        response["module"] = "switch"
-        response["address"] = what_address(binary_word2, binary_word3, 7)
-    elif command == "00":  # Engine command
-        response["module"] = "engine"
-        response["address"] = what_address(binary_word2, binary_word3, 7)
-    elif command == "10":  # Accessory command
-        response["module"] = "accessory"
-        response["address"] = what_address(binary_word2, binary_word3, 7)
-    elif command == "11":  # Other command
-        response["address"] = response["module"] = "other"
-    response["command"] = what_command(binary_word3)
-    response["data"] = what_data(binary_word3)
     response["system"] = what_system(binary_word1)
+    if response["system"] == "tmcc":
+        command = binary_word2[0:2]
+        if command == "01":  # Switch command
+            response["module"] = "switch"
+            response["address"] = what_address(binary_word2, binary_word3, 7)
+        elif command == "00":  # Engine command
+            response["module"] = "engine"
+            response["address"] = what_address(binary_word2, binary_word3, 7)
+        elif command == "10":  # Accessory command
+            response["module"] = "accessory"
+            response["address"] = what_address(binary_word2, binary_word3, 7)
+        elif command == "11":  # Other command
+            response["address"] = response["module"] = "other"
+        response["command"] = what_command(binary_word3)
+        response["data"] = what_data(binary_word3)
+
     return response
+
 
 def what_system(binary_word1):
     # 0xFE for TMCC1 commands
     # 0xF8 for Legacy Engine commands
     # 0xF9 for Legacy Train commands
     # 0xFB for Parameter commands
-    command = binary_word1[1:9]
+    command = binary_word1
     if command == "11111110":
         return "tmcc"
     elif command == "11111000":
@@ -1214,7 +1230,8 @@ def what_system(binary_word1):
         return "legacy_train"
     elif command == "11111011":
         return "parameter"
-    
+
+
 def what_command(binary_word3):
     command = binary_word3[1:3]
     if command == "00":
@@ -1226,6 +1243,7 @@ def what_command(binary_word3):
     elif command == "11":
         return "absolute"
 
+
 def what_address(binary_word2, binary_word3, number_bits):
     whole_word = binary_word2 + binary_word3
     start = 9 - number_bits
@@ -1233,76 +1251,80 @@ def what_address(binary_word2, binary_word3, number_bits):
     binary_number = whole_word[start:end]
     return int(binary_number, 2)
 
+
 def what_data(binary_word3):
     return binary_word3[3:8]
+
 
 def scale_number(num, exponent):
     return int((num if num >= 0 else -(-num)) ** exponent)
 
+
 def process_command(response):
     if response["module"] == "accessory":
-        if response["command"] == "extended" and response["data"] =="01011":
+        if response["command"] == "extended" and response["data"] == "01011":
             play_mix(code_folder + "mvc/accessory.wav")
             play_mix(code_folder + "mvc/set_to_id.wav")
-            spk_str(str(response["address"]),False)
+            spk_str(str(response["address"]), False)
         elif response["command"] == "relative":
             binary_number = response["data"][1:5]
-            decimal_number = scale_number(5-int(binary_number, 2),2)
+            decimal_number = scale_number(5-int(binary_number, 2), 2)
             print(decimal_number)
-            #play_mix(code_folder + "mvc/accessory.wav")
-            #spk_str(str(response["address"]),False) 
-            #play_mix(code_folder + "mvc/trottle_up.wav")
-            #moveTreeServo (tree_last_pos+1)
-            #play_mix(code_folder + "mvc/accessory.wav")
-            #spk_str(str(response["address"]),False) 
-            #play_mix(code_folder + "mvc/trottle_down.wav")
-        elif response["command"] == "action" and response["data"][0:1] =="1":
+            # play_mix(code_folder + "mvc/accessory.wav")
+            # spk_str(str(response["address"]),False)
+            # play_mix(code_folder + "mvc/trottle_up.wav")
+            # moveTreeServo (tree_last_pos+1)
+            # play_mix(code_folder + "mvc/accessory.wav")
+            # spk_str(str(response["address"]),False)
+            # play_mix(code_folder + "mvc/trottle_down.wav")
+        elif response["command"] == "action" and response["data"][0:1] == "1":
             play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]),False) 
+            spk_str(str(response["address"]), False)
             play_mix(code_folder + "mvc/numeric_button.wav")
             binary_number = response["data"][1:5]
             decimal_number = int(binary_number, 2)
-            spk_str(str(decimal_number),False)
+            spk_str(str(decimal_number), False)
     if response["module"] == "engine":
-        if response["command"] == "extended" and response["data"] =="01011":
+        if response["command"] == "extended" and response["data"] == "01011":
             play_mix(code_folder + "mvc/engine.wav")
             play_mix(code_folder + "mvc/set_to_id.wav")
-            spk_str(str(response["address"]),False)
-        elif response["command"] == "relative" and response["data"] =="00110":
+            spk_str(str(response["address"]), False)
+        elif response["command"] == "relative" and response["data"] == "00110":
             play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]),False) 
+            spk_str(str(response["address"]), False)
             play_mix(code_folder + "mvc/trottle_up.wav")
-        elif response["command"] == "relative" and response["data"] =="00100":
+        elif response["command"] == "relative" and response["data"] == "00100":
             play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]),False) 
+            spk_str(str(response["address"]), False)
             play_mix(code_folder + "mvc/trottle_down.wav")
-        elif response["command"] == "action" and response["data"][0:1] =="1":
+        elif response["command"] == "action" and response["data"][0:1] == "1":
             play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]),False) 
+            spk_str(str(response["address"]), False)
             play_mix(code_folder + "mvc/numeric_button.wav")
             binary_number = response["data"][1:5]
-            decimal_number = int(binary_number, 2)      
-            spk_str(str(decimal_number),False) 
+            decimal_number = int(binary_number, 2)
+            spk_str(str(decimal_number), False)
     if response["module"] == "switch":
-        if response["command"] == "extended" and response["data"] =="01011":
+        if response["command"] == "extended" and response["data"] == "01011":
             play_mix(code_folder + "mvc/switch.wav")
             play_mix(code_folder + "mvc/set_to_id.wav")
-            spk_str(str(response["address"]),False)
-        elif response["command"] == "relative" and response["data"] =="00110":
+            spk_str(str(response["address"]), False)
+        elif response["command"] == "relative" and response["data"] == "00110":
             play_mix(code_folder + "mvc/switch.wav")
-            spk_str(str(response["address"]),False) 
+            spk_str(str(response["address"]), False)
             play_mix(code_folder + "mvc/trottle_up.wav")
-        elif response["command"] == "relative" and response["data"] =="00100":
+        elif response["command"] == "relative" and response["data"] == "00100":
             play_mix(code_folder + "mvc/switch.wav")
-            spk_str(str(response["address"]),False) 
+            spk_str(str(response["address"]), False)
             play_mix(code_folder + "mvc/trottle_down.wav")
-        elif response["command"] == "action" and response["data"][0:1] =="1":
+        elif response["command"] == "action" and response["data"][0:1] == "1":
             play_mix(code_folder + "mvc/switch.wav")
-            spk_str(str(response["address"]),False) 
+            spk_str(str(response["address"]), False)
             play_mix(code_folder + "mvc/numeric_button.wav")
             binary_number = response["data"][1:5]
-            decimal_number = int(binary_number, 2)      
-            spk_str(str(decimal_number),False)          
+            decimal_number = int(binary_number, 2)
+            spk_str(str(decimal_number), False)
+
 
 ################################################################################
 # Setup wifi and web server
@@ -1902,7 +1924,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
         exit_set_hdw = False
-        command = "LN0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        command = "LN0_" + str(rgb_value[0]) + "_" + \
+            str(rgb_value[1]) + "_" + str(rgb_value[2])
         add_command_to_ts(command)
         set_hdw(command, 0)
         response = rgb_value
@@ -1917,7 +1940,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_scene = rq_d["an"]
         rgb_value = cfg["scene_changes"][current_scene]
         exit_set_hdw = False
-        command = "LX0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        command = "LX0_" + str(rgb_value[0]) + "_" + \
+            str(rgb_value[1]) + "_" + str(rgb_value[2])
         add_command_to_ts(command)
         set_hdw(command, 0)
         response = rgb_value
@@ -2127,7 +2151,7 @@ print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    log_to_linear = int(interpolate(volume_0_1,log_values,linear_values)*100)
+    log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
     mix.set_volume(volume_0_1*0.7)
     mix_media.set_volume(volume_0_1*0.7)
     media_player.audio_set_volume(log_to_linear)
@@ -2281,8 +2305,8 @@ def get_random_joke():
     else:
         print("Failed to retrieve a joke.")
 
-    text_to_wav_file(joke['setup'], "myjoke.wav", 2)
-    text_to_wav_file(joke['punchline'], "myjoke.wav", 2)
+    text_to_wav_file(joke['setup'], tmp_wav_file_name, 2)
+    text_to_wav_file(joke['punchline'], tmp_wav_file_name, 2)
 
 ###############################################################################
 # Text to speech
@@ -2692,7 +2716,7 @@ def add_command_to_ts(command):
         return
     t_elsp_formatted = "{:.3f}".format(t_elsp)
     t_s.append(t_elsp_formatted + "|" + command)
-    files.log_item(t_elsp_formatted + "|" + command)    
+    files.log_item(t_elsp_formatted + "|" + command)
 
 
 def an_ts(f_nm):
@@ -3481,10 +3505,11 @@ if connect_to_base_3 == True:
     ports = list_serial_ports()
     if target_port in ports:
         serial_connection = open_serial_connection(target_port)
-        text_to_wav_file("Connected to " + target_port, "myjoke.wav", 2)
+        text_to_wav_file("Connected to " + target_port, tmp_wav_file_name, 2)
 
         # Start a thread to continuously read from the serial port
-        read_thread = threading.Thread(target=read_from_serial, args=(serial_connection,))
+        read_thread = threading.Thread(
+            target=read_from_serial, args=(serial_connection,))
         read_thread.daemon = True
         read_thread.start()
 
