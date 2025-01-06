@@ -2835,7 +2835,7 @@ def an_ts(f_nm):
     while True:
         t_elsp = time.perf_counter()-startTime
         r_sw.update()
-        if switch_state == "right":
+        if r_sw.fell:
             add_command_to_ts("")
         if not mix_media.get_busy() and not media_player.is_playing():
             add_command_to_ts("")

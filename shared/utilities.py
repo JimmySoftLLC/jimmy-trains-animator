@@ -54,7 +54,7 @@ def switch_state(l_sw, r_sw, upd_vol, h_down_sec, override_switch_state = None):
     upd_vol(0.1)
     return "none"
 
-def switch_state(l_sw, r_sw, three_sw, four_sw, upd_vol, h_down_sec, override_switch_state = None):
+def switch_state_four_switches(l_sw, r_sw, three_sw, four_sw, upd_vol, h_down_sec, override_switch_state = None):
     if override_switch_state and override_switch_state.parameter:
         return_parameter = override_switch_state.parameter
         override_switch_state.parameter = ""
