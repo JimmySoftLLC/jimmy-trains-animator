@@ -2682,7 +2682,7 @@ def an_light(f_nm):
 
     if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        if (f_exists(s_folder + f_nm + ".json") == True):
+        if (f_exists(animators_folder + f_nm + ".json") == True):
             flsh_t = files.read_json_file(animators_folder + f_nm + ".json")
         else:
             flsh_t.append("0.0|")
