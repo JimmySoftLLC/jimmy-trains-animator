@@ -467,7 +467,7 @@
                     between
                     commands</div> -->
                     <div>E = End script<div>
-                            <table id="dataTable" class="mui-table">
+                            <table id="animationsTable" class="mui-table">
                                 <thead>
                                     <tr>
                                         <th>TimeStamp</th>
@@ -501,7 +501,7 @@
             <div>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animator</button>
                 <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-                <table id="dataTable" class="mui-table">
+                <table id="animatorTable" class="mui-table">
                     <thead>
                         <tr>
                             <th>TimeStamp</th>
@@ -727,7 +727,7 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animatorName.value = animation
-                        populateTable(myData)
+                        populateAnimationsTable(myData)
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
@@ -912,7 +912,7 @@
                         .then(function (data) {
                             myData = JSON.parse(data); // Set the value of the input field with the received data
                             animationName.value = animation;
-                            populateTable(myData);
+                            populateAnimationsTable(myData);
                             button.removeAttribute('disabled');
                         })
                         .catch(function (error) {
@@ -1215,7 +1215,7 @@
     function pasteRowsAndResetTable() {
         var pasteIndex = 0;
 
-        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+        var rows = Array.from(animationsTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -1247,7 +1247,7 @@
         console.log(combinedData);
 
         // Populate the table with the combined data
-        populateTable(combinedData);
+        populateAnimationsTable(combinedData);
     }
 
 
@@ -1723,8 +1723,7 @@
     // Table component
     var saveDataButton = document.getElementById("saveDataButton");
     var stopButton = document.getElementById("stopButton");
-    var dataTable = document.getElementById("dataTable");
-    var dataTableBody = document.querySelector("#dataTable tbody");
+    var animationsTableBody = document.querySelector("#animationsTable tbody");
     var deleteAnimatorButton = document.getElementById("deleteAnimatorButton");
 
 
@@ -1790,20 +1789,18 @@
             });
     }
 
-
-
-    function populateTable(data) {
+    function populateAnimationsTable(data) {
         // Clear existing table rows
-        dataTableBody.innerHTML = "";
+        animationsTableBody.innerHTML = "";
 
         // Populate table with new data
         data.forEach(function (rowData, index) {
-            var row = createDataRow(rowData, index);
-            dataTableBody.appendChild(row);
+            var row = createAnimationsDataRow(rowData, index);
+            animationsTableBody.appendChild(row);
         });
     }
 
-    dataTableBody.addEventListener("click", function (event) {
+    animationsTableBody.addEventListener("click", function (event) {
         var target = event.target;
         if (target.classList.contains("insert-row-btn")) {
             insertRow(target.parentNode.parentNode);
@@ -1874,7 +1871,7 @@
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
     }
 
-    function createDataRow(rowData, rowIndex) {
+    function createAnimationsDataRow(rowData, rowIndex) {
         var row = document.createElement("tr");
         myRowDataSplit = rowData.split("|")
 
@@ -1994,19 +1991,19 @@
     }
 
     function addRow(row) {
-        var newRow = createDataRow("|");
-        dataTableBody.insertBefore(newRow, row.nextSibling);
+        var newRow = createAnimationsDataRow("|");
+        animationsTableBody.insertBefore(newRow, row.nextSibling);
         copyAndResetTable();
     }
 
     function insertRow(row) {
-        var newRow = createDataRow("|");
-        dataTableBody.insertBefore(newRow, row);
+        var newRow = createAnimationsDataRow("|");
+        animationsTableBody.insertBefore(newRow, row);
         copyAndResetTable();
     }
 
     function copyAndResetTable() {
-        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+        var rows = Array.from(animationsTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -2025,13 +2022,13 @@
             combinedData.push(secondsConverted + "|" + data[i][2])
         }
 
-        populateTable(combinedData)
+        populateAnimationsTable(combinedData)
     }
 
 
     function saveData(file_name, get_changes) {
         saveDataButton.setAttribute("disabled", "true");
-        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
+        var rows = Array.from(animationsTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
