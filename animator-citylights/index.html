@@ -434,7 +434,7 @@
                 <input class="input" id="animationName" type="text" disabled>
             </div>
             <div>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="saveAnimationButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
                 <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
                 <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
@@ -499,14 +499,13 @@
                 <input class="input" id="animatorName" type="text" disabled>
             </div>
             <div>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animator</button>
+                <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save Animator</button>
                 <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <table id="animatorTable" class="mui-table">
                     <thead>
                         <tr>
-                            <th>TimeStamp</th>
-                            <th>TimeCode</th>
-                            <th>Animation</th>
+                            <th>Button</th>
+                            <th>Commands</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -727,7 +726,7 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animatorName.value = animation
-                        populateAnimationsTable(myData)
+                        populateAnimatorTable(myData["table_data"])
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
@@ -1541,7 +1540,7 @@
         var errorMessage = document.querySelector('.mui--text-danger');
 
         if (filenameInput) {
-            saveData(filenameInput, true);
+            saveAnimationData(filenameInput, true);
         } else {
             errorMessage.textContent = 'Please enter a filename.';
         }
@@ -1682,7 +1681,7 @@
         removeChildNodes(myAnimatorDiv)
         getAnimators()
     }
-   
+
     function removeChildNodes(myDiv) {
         // Remove all child nodes
         while (myDiv.firstChild) {
@@ -1721,19 +1720,24 @@
     }
 
     // Table component
-    var saveDataButton = document.getElementById("saveDataButton");
+    var saveAnimationButton = document.getElementById("saveAnimationButton");
+    var saveAnimatorButton = document.getElementById("saveAnimatorButton");
     var stopButton = document.getElementById("stopButton");
     var animationsTableBody = document.querySelector("#animationsTable tbody");
-    var deleteAnimatorButton = document.getElementById("deleteAnimatorButton");
-
+    var animatorTableBody = document.querySelector("#animatorTable tbody");
 
     stopButton.addEventListener("click", function () {
         stopAnimation();
     });
 
-    saveDataButton.addEventListener("click", function () {
-        saveData(animationName.value, false);
+    saveAnimationButton.addEventListener("click", function () {
+        saveAnimationData(animationName.value, false);
     });
+
+    saveAnimatorButton.addEventListener("click", function () {
+        saveAnimatorData(animatorName.value, false);
+    });
+
 
     function stopAnimation() {
         stopButton.setAttribute("disabled", "true");
@@ -1797,6 +1801,17 @@
         data.forEach(function (rowData, index) {
             var row = createAnimationsDataRow(rowData, index);
             animationsTableBody.appendChild(row);
+        });
+    }
+
+    function populateAnimatorTable(data) {
+        // Clear existing table rows
+        animatorTableBody.innerHTML = "";
+
+        // Populate table with new data
+        data.forEach(function (rowData, index) {
+            var row = createAnimationsDataRow(rowData, index);
+            animatorTableBody.appendChild(row);
         });
     }
 
@@ -2026,8 +2041,8 @@
     }
 
 
-    function saveData(file_name, get_changes) {
-        saveDataButton.setAttribute("disabled", "true");
+    function saveAnimationData(file_name, get_changes) {
+        saveAnimationButton.setAttribute("disabled", "true");
         var rows = Array.from(animationsTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
@@ -2059,7 +2074,7 @@
                     mui.overlay('off', modalEl)
                 }
                 // All blocks have been sent, enable the button
-                saveDataButton.removeAttribute('disabled');
+                saveAnimationButton.removeAttribute('disabled');
                 return;
             }
 
@@ -2072,7 +2087,7 @@
             }
 
             // Send data to the server
-            fetch("/save-data", {
+            fetch("/save-animation-data", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -2087,7 +2102,7 @@
                     sendBlockSequentially(index + 1);
                 })
                 .catch(function (error) {
-                    saveDataButton.removeAttribute('disabled');
+                    saveAnimationButton.removeAttribute('disabled');
                     console.log(error);
                     showAlert(error);
                 });
@@ -2095,6 +2110,45 @@
 
         // Start sending blocks sequentially
         sendBlockSequentially(0);
+    }
+
+    function saveAnimatorData(file_name, get_changes) {
+        saveAnimatorButton.setAttribute("disabled", "true");
+        var rows = Array.from(animatorTableBody.querySelectorAll("tr"));
+
+        // Extract data from table rows
+        var buttonMappingTable = rows.map(function (row) {
+            var cells = Array.from(row.querySelectorAll("td"));
+            var values = cells.map(function (cell) {
+                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
+                return cellValue;
+            });
+            return values;
+        });
+
+        // Create an object with the data to be sent in the request
+        var data = {
+            fn: file_name,
+            device: "accessory",
+            id: 1,
+            table_data: buttonMappingTable
+        };
+
+        fetch("/save-animator-data", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                saveAnimatorButton.removeAttribute('disabled');
+                return response.text();
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
     }
 
     // Function to convert DaVinci Resolve timestamp to seconds
@@ -2236,7 +2290,7 @@
             })
             .catch(error => {
                 console.error('Error:', error)
-                isRequestInProgress = false; // Reset the flag in case of an error
+                isRequestInProgress = false; // Reset the flag in case of save-animation-data error
             });
     }
 

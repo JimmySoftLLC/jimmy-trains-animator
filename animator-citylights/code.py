@@ -1667,8 +1667,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_animator_post(post_data_obj) 
         elif self.path == "/delete-animator":
             self.delete_animator_post(post_data_obj)
-        elif self.path == "/save-data":
-            self.save_data_post(post_data_obj)
+        elif self.path == "/save-animation-data":
+            self.save_animation_data_post(post_data_obj)
+        elif self.path == "/save-animator-data":
+            self.save_animator_data_post(post_data_obj)
         elif self.path == "/rename-animator":
             self.rename_animator_post(post_data_obj)
         elif self.path == "/stop":
@@ -1711,7 +1713,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     data = []
 
-    def save_data_post(self, rq_d):
+    def save_animation_data_post(self, rq_d):
         global data
         try:
             if rq_d[0] == 0:
@@ -1748,6 +1750,15 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = "success"
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
+
+    def save_animator_data_post(self, rq_d):
+        f_n = animators_folder  + "test_" + rq_d["fn"]
+        files.write_json_file(f_n, rq_d)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "file save successfully"
+        self.wfile.write(response.encode('utf-8'))
 
     def delete_animator_post(self, rq_d):
         f_n = animators_folder + rq_d["fn"]
