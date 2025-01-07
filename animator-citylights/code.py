@@ -149,7 +149,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
-plylst_folder = get_home_path() + "media/play lists/"
+animators_folder = get_home_path() + "media/animators"
 snd_opt_folder = code_folder + "snd_opt/"
 current_media_playing = ""
 current_scene = ""
@@ -284,7 +284,7 @@ def get_media_files(folder_to_search, extensions):
 
 
 def upd_media():
-    global play_list_options, media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission
+    global media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission, animator_files
 
     extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
@@ -293,9 +293,10 @@ def upd_media():
     media_files.update(rand_files)  # add rand_files to media_files dictionary
     # print("All media: " + str(media_files))
 
-    # play_list_options = files.return_directory(
-    #     "plylst_", plylst_folder, ".json", True)
-    # # print("Play lists: " + str(plylst_opt))
+    extensions = ['.json']  # List of extensions to filter by
+    animator_files = get_media_files(media_folder + "animator/", extensions)
+
+    print("Animators: " + str(animator_files))
 
     media_list_all = []
     for topic, my_files in media_files.items():
@@ -1123,7 +1124,7 @@ def send_animator_post(url, endpoint, new_data):
     print("POST response:", created_data)
 
 ################################################################################
-# Setup serial communication and TMCC
+# Setup serial communication and Legacy/TMCC
 
 
 def list_serial_ports():
@@ -1656,18 +1657,18 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
-        # elif self.path == "/get-scripts":
-        #     self.get_scripts_post(post_data_obj)
-        elif self.path == "/create-playlist":
-            self.create_playlist_post(post_data_obj)
+        elif self.path == "/get-scripts":
+            self.get_scripts_post(post_data_obj)
+        elif self.path == "/create-animator":
+            self.create_animator_post(post_data_obj)
         elif self.path == "/get-animation":
             self.get_animation_post(post_data_obj)
-        elif self.path == "/delete-playlist":
-            self.delete_playlist_post(post_data_obj)
+        elif self.path == "/delete-animator":
+            self.delete_animator_post(post_data_obj)
         elif self.path == "/save-data":
             self.save_data_post(post_data_obj)
-        elif self.path == "/rename-playlist":
-            self.rename_playlist_post(post_data_obj)
+        elif self.path == "/rename-animator":
+            self.rename_animator_post(post_data_obj)
         elif self.path == "/stop":
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
@@ -1693,11 +1694,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def rename_playlist_post(self, rq_d):
+    def rename_animator_post(self, rq_d):
         global data
-        snd = rq_d["fo"].replace("plylst_", "")
-        fo = plylst_folder + snd + ".json"
-        fn = plylst_folder + rq_d["fn"] + ".json"
+        snd = rq_d["fo"]
+        fo = animators_folder + snd + ".json"
+        fn = animators_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
         upd_media()
         self.send_response(200)
@@ -1722,7 +1723,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     snd_f = rq_d[3].replace("plylst_", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = plylst_folder + \
+                    f_n = animators_folder + \
                         snd_f + ".json"
                 else:
                     snd_f = rq_d[3].replace(".mp4", "")
@@ -1747,15 +1748,15 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def delete_playlist_post(self, rq_d):
+    def delete_animator_post(self, rq_d):
         snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = plylst_folder + snd_f + ".json"
+        f_n = animators_folder + snd_f + ".json"
         os.remove(f_n)
         upd_media()
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = rq_d["fn"] + " playlist file deleted"
+        response = rq_d["fn"] + " animator file deleted"
         self.wfile.write(response.encode('utf-8'))
 
     def get_animation_post(self, rq_d):
@@ -1765,8 +1766,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd_f = snd_f.replace(".wav", "")
         if "plylst_" in snd_f:
             snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(plylst_folder + snd_f + ".json") == True):
-                f_n = plylst_folder + snd_f + ".json"
+            if (f_exists(animators_folder + snd_f + ".json") == True):
+                f_n = animators_folder + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
                 return
             else:
@@ -1783,25 +1784,23 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             return
 
     def get_scripts_post(self, rq_d):
-        sounds = []
-        sounds.extend(play_list_options)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        response = sounds
+        response = animator_files["animators"]
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def create_playlist_post(self, rq_d):
+    def create_animator_post(self, rq_d):
         global data
-        f_n = plylst_folder + rq_d["fn"] + ".json"
+        f_n = animators_folder + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
-        gc_col("created playlist")
+        gc_col("created animator")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = "created " + rq_d["fn"] + " playlist"
+        response = "created " + rq_d["fn"] + " animator"
         self.wfile.write(response.encode('utf-8'))
 
     def update_light_string_post(self, rq_d):
@@ -2643,17 +2642,7 @@ def an(f_nm):
 def return_file_to_use(f_nm):
     global cfg, lst_opt, running_mode
     cur_opt = f_nm
-    if f_nm == "random_play lists":
-        h_i = len(play_list_options) - 1
-        cur_opt = play_list_options[random.randint(
-            0, h_i)]
-        while lst_opt == cur_opt and len(play_list_options) > 1:
-            cur_opt = play_list_options[random.randint(
-                0, h_i)]
-        lst_opt = cur_opt
-        print("Random sound option: " + f_nm)
-        print("Sound file: " + cur_opt)
-    elif f_nm == "random_all":
+    if f_nm == "random_all":
         h_i = len(media_list_all_no_intermission) - 1
         cur_opt = media_list_all_no_intermission[random.randint(
             0, h_i)]
@@ -2692,12 +2681,12 @@ def an_light(f_nm):
 
     if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        if (f_exists(plylst_folder + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
+        if (f_exists(s_folder + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(animators_folder + f_nm + ".json")
         else:
             flsh_t.append("0.0|")
             flsh_t.append("5000.0|")
-            files.write_json_file(plylst_folder + f_nm + ".json", flsh_t)
+            files.write_json_file(animators_folder + f_nm + ".json", flsh_t)
     else:
         if (f_exists(media_folder + json_fn + ".json") == True):
             flsh_t = files.read_json_file(media_folder + json_fn + ".json")
