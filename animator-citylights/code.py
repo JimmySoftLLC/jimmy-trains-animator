@@ -157,6 +157,8 @@ current_neo = ""
 is_midori_running = False
 connect_to_base_3 = True
 tmp_wav_file_name = code_folder + "tmp.wav"
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -1266,6 +1268,7 @@ def scale_number(num, exponent):
 
 
 def process_command(response):
+    global override_switch_state
     if response["module"] == "accessory":
         if response["command"] == "extended" and response["data"] == "01011":
             play_mix(code_folder + "mvc/accessory.wav")
@@ -1299,21 +1302,29 @@ def process_command(response):
             spk_str(str(response["address"]), False)
             text_to_wav_file("bell", tmp_wav_file_name, 2)
         elif response["command"] == "action" and response["data"] == "00100":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("boost", tmp_wav_file_name, 2)
+            # play_mix(code_folder + "mvc/accessory.wav")
+            # spk_str(str(response["address"]), False)
+            # text_to_wav_file("boost", tmp_wav_file_name, 2)
+            override_switch_state["switch_value"] = "right"
+            time.sleep(1)
         elif response["command"] == "action" and response["data"] == "00111":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("brake", tmp_wav_file_name, 2)
+            # play_mix(code_folder + "mvc/accessory.wav")
+            # spk_str(str(response["address"]), False)
+            # text_to_wav_file("brake", tmp_wav_file_name, 2)
+            override_switch_state["switch_value"] = "four"
+            time.sleep(1)
         elif response["command"] == "action" and response["data"] == "00101":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("front coupler", tmp_wav_file_name, 2)
+            # play_mix(code_folder + "mvc/accessory.wav")
+            # spk_str(str(response["address"]), False)
+            # text_to_wav_file("front coupler", tmp_wav_file_name, 2)
+            override_switch_state["switch_value"] = "left"
+            time.sleep(1)
         elif response["command"] == "action" and response["data"] == "00110":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("rear coupler", tmp_wav_file_name, 2)
+            # play_mix(code_folder + "mvc/accessory.wav")
+            # spk_str(str(response["address"]), False)
+            # text_to_wav_file("rear coupler", tmp_wav_file_name, 2)
+            override_switch_state["switch_value"] = "three"
+            time.sleep(1)
         elif response["command"] == "action" and response["data"] == "01001":
             play_mix(code_folder + "mvc/accessory.wav")
             spk_str(str(response["address"]), False)
@@ -2315,7 +2326,7 @@ def stop_all_media():
 
 
 def exit_early():
-    switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+    switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
     if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
@@ -2357,9 +2368,10 @@ def spk_sng_num(song_number):
 
 
 def no_trk():
+    global override_switch_state
     play_mix(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             break
         if switch_state == "right":
@@ -2546,10 +2558,10 @@ def logo_when_idle():
 
 
 def check_switches(stop_event):
-    global cont_run, running_mode, mix_is_paused, exit_set_hdw
+    global cont_run, running_mode, mix_is_paused, exit_set_hdw, override_switch_state
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
-            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             rst_an()
@@ -3209,11 +3221,11 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, running_mode
+        global cont_run, running_mode, override_switch_state
         if running_mode != "time_stamp_mode":
             process_commands()
             switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
@@ -3259,7 +3271,8 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        global override_switch_state
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(code_folder + "mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
@@ -3303,7 +3316,8 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        global override_switch_state
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             try:
                 play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
@@ -3341,8 +3355,8 @@ class IntermissionSettings(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        global cfg, override_switch_state
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
@@ -3394,8 +3408,8 @@ class AddSnds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global ts_mode
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        global ts_mode, override_switch_state
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + add_snd[self.i] + ".wav")
@@ -3439,10 +3453,11 @@ class VolumeLevelAdjustment(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global override_switch_state
         done = False
         while not done:
             switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0)
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left":
                 ch_vol("lower")
             elif switch_state == "right":
@@ -3475,8 +3490,8 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        global cfg, override_switch_state
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(code_folder + "mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
