@@ -149,7 +149,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
-animators_folder = get_home_path() + "media/animators"
+animators_folder = get_home_path() + "media/animator/animators/"
 snd_opt_folder = code_folder + "snd_opt/"
 current_media_playing = ""
 current_scene = ""
@@ -1663,6 +1663,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.create_animator_post(post_data_obj)
         elif self.path == "/get-animation":
             self.get_animation_post(post_data_obj)
+        elif self.path == "/get-animator":
+            self.get_animator_post(post_data_obj) 
         elif self.path == "/delete-animator":
             self.delete_animator_post(post_data_obj)
         elif self.path == "/save-data":
@@ -1696,8 +1698,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def rename_animator_post(self, rq_d):
         global data
-        snd = rq_d["fo"]
-        fo = animators_folder + snd + ".json"
+        fo = animators_folder + rq_d["fo"]
         fn = animators_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
         upd_media()
@@ -1749,8 +1750,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def delete_animator_post(self, rq_d):
-        snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = animators_folder + snd_f + ".json"
+        f_n = animators_folder + rq_d["fn"]
         os.remove(f_n)
         upd_media()
         self.send_response(200)
@@ -1764,17 +1764,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd_f = rq_d["an"]
         snd_f = snd_f.replace(".mp4", "")
         snd_f = snd_f.replace(".wav", "")
-        if "plylst_" in snd_f:
-            snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(animators_folder + snd_f + ".json") == True):
-                f_n = animators_folder + snd_f + ".json"
-                self.handle_serve_file_name(f_n)
-                return
-            else:
-                f_n = code_folder + "t_s_def/timestamp mode.json"
-                self.handle_serve_file_name(f_n)
-                return
-        elif (f_exists(media_folder + snd_f + ".json") == True):
+        if (f_exists(media_folder + snd_f + ".json") == True):
             f_n = media_folder + snd_f + ".json"
             self.handle_serve_file_name(f_n)
             return
@@ -1782,6 +1772,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             f_n = code_folder + "t_s_def/timestamp mode.json"
             self.handle_serve_file_name(f_n)
             return
+        
+    def get_animator_post(self, rq_d):
+        global cfg, cont_run, ts_mode
+        if (f_exists(animators_folder + rq_d["an"]) == True):
+            f_n = animators_folder + rq_d["an"]
+            self.handle_serve_file_name(f_n)
+            return
+        else:
+            f_n = code_folder + "animator_def/animator.json"
+            self.handle_serve_file_name(f_n)
+            return    
 
     def get_scripts_post(self, rq_d):
         self.send_response(200)

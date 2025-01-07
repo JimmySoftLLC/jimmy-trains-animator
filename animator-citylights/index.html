@@ -494,6 +494,10 @@
             <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename Animator</button>
             <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete Animator</button>
             <div id="animatorContainer"></div>
+            <h2>Animator settings:</h2>
+            <div class="mui-textfield">
+                <input class="input" id="animatorName" type="text" disabled>
+            </div>
             <div>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animator</button>
                 <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
@@ -695,7 +699,7 @@
             button.textContent = item
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
-            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("data-url", "/get-animator");
             button.setAttribute("type", "button");
             button.addEventListener('click', function () {
                 var url = button.getAttribute('data-url');
@@ -722,7 +726,7 @@
                     })
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
-                        animationName.value = animation
+                        animatorName.value = animation
                         populateTable(myData)
                         button.removeAttribute('disabled')
                     })
@@ -1600,11 +1604,11 @@
         if (filenameInput) {
             console.log('Filename:', filenameInput);
             var data = {
-                fo: animationName.value,
+                fo: animatorName.value,
                 fn: filenameInput,
             };
 
-            fetch("/rename-Animator", {
+            fetch("/rename-animator", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1761,7 +1765,7 @@
 
     function deleteAnimator() {
         var data = {
-            fn: animationName.value,
+            fn: animatorName.value,
         };
 
         fetch("/delete-animator", {
