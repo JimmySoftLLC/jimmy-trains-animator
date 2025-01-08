@@ -260,6 +260,7 @@ gc_col("Imports gc, files")
 
 cfg = files.read_json_file(code_folder + "cfg.json")
 default_cfg = files.read_json_file(code_folder + "default_cfg.json")
+animator_configs = []
 
 
 def get_media_files(folder_to_search, extensions):
@@ -284,7 +285,7 @@ def get_media_files(folder_to_search, extensions):
 
 
 def upd_media():
-    global media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission, animator_files
+    global media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission, animator_files, animator_configs
 
     extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
@@ -317,6 +318,11 @@ def upd_media():
             menu_snd_opt.append("random_" + myKey + ".wav")
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
+    animator_configs = []
+    for animator_file in animator_files["animators"]:
+        cfg_animator = files.read_json_file(animators_folder + animator_file)
+        animator_configs.append(cfg_animator)
+
 
 upd_media()
 
@@ -339,11 +345,6 @@ cfg_add_song = files.read_json_file(
     code_folder + "mvc/add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
-animator_configs = []
-
-for animator_file in animator_files["animators"]:
-    cfg_animator = files.read_json_file(animators_folder + animator_file)
-    animator_configs.append(cfg_animator)
 
 cont_run = False
 ts_mode = False
@@ -1173,8 +1174,13 @@ def read_from_serial(ser):
                     response = get_command_object(
                         binary_word1, binary_word2, binary_word3)
                     response = process_command(response)
-                    print(response["system"], response["device"],
-                          response["address"], response["command"], response["data"], response["button"])
+                    # print(response["system"], response["device"],
+                    #       response["address"], response["command"], response["data"], response["button"])
+                    command = process_command_animator_config(response)
+                    print(command)
+                    if command:
+                        set_hdw(command[1],1)
+
                     ser.read(ser.in_waiting)
 
                     # Reconstruct the command bytes
@@ -1212,13 +1218,13 @@ def get_command_object(binary_word1, binary_word2, binary_word3):
         command = binary_word2[0:2]
         if command == "01":  # Switch command
             response["device"] = "switch"
-            response["address"] = what_address(binary_word2, binary_word3, 7)
+            response["address"] = str(what_address(binary_word2, binary_word3, 7))
         elif command == "00":  # Engine command
             response["device"] = "engine"
-            response["address"] = what_address(binary_word2, binary_word3, 7)
+            response["address"] = str(what_address(binary_word2, binary_word3, 7))
         elif command == "10":  # Accessory command
             response["device"] = "accessory"
-            response["address"] = what_address(binary_word2, binary_word3, 7)
+            response["address"] = str(what_address(binary_word2, binary_word3, 7))
         elif command == "11":  # Route, train or group command
             command = binary_word2[0:4]
             if command == "1101":  # Route command
@@ -1279,11 +1285,21 @@ def scale_number(num, exponent):
 
 
 def process_command_animator_config(response):
-    # animator_configs
-    animator = [{'fn': 'drive in.json', 'device': 'accessory', 'address': '2', 'table_data': [['1', 'API_animator-drive-in.local:8083_animation_{"an":"movies/sandy.mp4"}', None], [
-        '2', 'API_animator-drive-in.local:8083_animation_{"an":"movies/summer nights.mp4"}', None], ['3', 'API_animator-drive-in.local:8083_update-volume_{"action": "volume50"}', None], ['STOP', 'API_animator-drive-in.local:8083_stop_{"an": ""}', None]]}]
-    print(animator)
-    print (response)
+    global animator_configs
+    # response = {
+    # "system": "tmcc",
+    # "device": "engine",
+    # "address": 1,
+    # "command": "action",
+    # "data": "01001",
+    # "button": "AUX1"
+    # }
+    for item in animator_configs:
+        if item["device"] == response["device"] and item["address"] == response["address"]:
+            for row in item['table_data']:
+                if row[0] == response["button"]:
+                    return row  # Return the matched row
+    return None  # If no match is found
 
 
 speak_commands = True

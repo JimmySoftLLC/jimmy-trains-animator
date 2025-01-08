@@ -487,10 +487,6 @@
                 Animator</button>
             <div id="animatorContainer"></div>
             <h2>Animator settings:</h2>
-            <button id="saveAnimationButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
-            <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-            <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-            <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
             <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
@@ -1561,7 +1557,7 @@
         var errorMessage = document.querySelector('.mui--text-danger');
 
         if (filenameInput) {
-            saveAnimationData(filenameInput, true);
+            saveAnimatorData(filenameInput + ".json", true);
         } else {
             errorMessage.textContent = 'Please enter a filename.';
         }
@@ -2263,7 +2259,7 @@
         sendBlockSequentially(0);
     }
 
-    function saveAnimatorData(file_name, get_changes) {
+    function saveAnimatorData(file_name) {
         saveAnimatorButton.setAttribute("disabled", "true");
         var rows = Array.from(animatorTableBody.querySelectorAll("tr"));
 
@@ -2294,6 +2290,8 @@
         })
             .then(function (response) {
                 saveAnimatorButton.removeAttribute('disabled');
+                var modalEl = document.getElementById("modalEl")
+                mui.overlay('off', modalEl)
                 return response.text();
             })
             .catch(function (error) {
