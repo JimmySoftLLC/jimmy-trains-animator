@@ -1173,7 +1173,7 @@ def read_from_serial(ser):
                     response = get_command_object(
                         binary_word1, binary_word2, binary_word3)
                     response = process_command(response)
-                    print(response["system"], response["module"],
+                    print(response["system"], response["device"],
                           response["address"], response["command"], response["data"], response["button"])
                     ser.read(ser.in_waiting)
 
@@ -1211,24 +1211,24 @@ def get_command_object(binary_word1, binary_word2, binary_word3):
     if response["system"] == "tmcc":
         command = binary_word2[0:2]
         if command == "01":  # Switch command
-            response["module"] = "switch"
+            response["device"] = "switch"
             response["address"] = what_address(binary_word2, binary_word3, 7)
         elif command == "00":  # Engine command
-            response["module"] = "engine"
+            response["device"] = "engine"
             response["address"] = what_address(binary_word2, binary_word3, 7)
         elif command == "10":  # Accessory command
-            response["module"] = "accessory"
+            response["device"] = "accessory"
             response["address"] = what_address(binary_word2, binary_word3, 7)
         elif command == "11":  # Route, train or group command
             command = binary_word2[0:4]
             if command == "1101":  # Route command
-                response["module"] = "route"
+                response["device"] = "route"
             else:
                 command = binary_word2[0:5]
                 if command == "11001":  # Train command
-                    response["module"] = "train"
+                    response["device"] = "train"
                 elif command == "11000":  # Group command
-                    response["module"] = "group"
+                    response["device"] = "group"
         response["command"] = what_command(binary_word3)
         response["data"] = what_data(binary_word3)
     return response
@@ -1277,23 +1277,27 @@ def what_data(binary_word3):
 def scale_number(num, exponent):
     return int((num if num >= 0 else -(-num)) ** exponent)
 
+
 def process_command_animator_config(response):
     # animator_configs
-    # {'fn': 'drive in.json', 'device': 'accessory', 'id': '2', 'table_data': [[...], [...], [...], [...]]}
-    # [['1', 'API_animator-drive-in.local:8083_animation_{"an":"movies/sandy.mp4"}', None], ['2', 'API_animator-drive-in.local:8083_animation_{"an":"movies/summer nights.mp4"}', None], ['3', 'API_animator-drive-in.local:8083_update-volume_{"action": "volume50"}', None], ['STOP', 'API_animator-drive-in.local:8083_stop_{"an": ""}', None]]
-    print("dude")
+    animator = [{'fn': 'drive in.json', 'device': 'accessory', 'address': '2', 'table_data': [['1', 'API_animator-drive-in.local:8083_animation_{"an":"movies/sandy.mp4"}', None], [
+        '2', 'API_animator-drive-in.local:8083_animation_{"an":"movies/summer nights.mp4"}', None], ['3', 'API_animator-drive-in.local:8083_update-volume_{"action": "volume50"}', None], ['STOP', 'API_animator-drive-in.local:8083_stop_{"an": ""}', None]]}]
+    print(animator)
+    print (response)
+
 
 speak_commands = True
 
+
 def process_command(response):
     response["button"] = ""
-    if response["module"] == "accessory" or response["module"] == "engine":
+    if response["device"] == "accessory" or response["device"] == "engine":
         if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
-            play_mix(code_folder + "mvc/" + response["module"] + ".wav")
+            play_mix(code_folder + "mvc/" + response["device"] + ".wav")
             spk_str(str(response["address"]), False)
         if response["command"] == "extended" and response["data"] == "01011":
             if speak_commands:
-                play_mix(code_folder + "mvc/" + response["module"] + ".wav")
+                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
                 play_mix(code_folder + "mvc/set_to_id.wav")
                 spk_str(str(response["address"]), False)
             response["button"] = "SET"
@@ -1355,7 +1359,7 @@ def process_command(response):
                 spk_str(str(decimal_number), False)
             response["button"] = str(decimal_number)
 
-    if response["module"] == "switch":
+    if response["device"] == "switch":
         if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
             play_mix(code_folder + "mvc/switch.wav")
             spk_str(str(response["address"]), False)
@@ -1763,7 +1767,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         an_data = {
             "fn": f_n,
             "device": "accessory",
-            "id": 1,
+            "address": 1,
             "table_data": [
                 [
                     "AUX1",
@@ -2872,7 +2876,7 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            
+
             elif seg[:3] == 'USB':
                 get_usb_ports()
             elif seg[:2] == 'SW':

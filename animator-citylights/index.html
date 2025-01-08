@@ -516,9 +516,9 @@
             <div class="mui-textfield">
                 <input class="input" id="animatorName" type="text" disabled
                     style="width: 200px; padding: 5px; margin: 5px;">
-                <input type="text" id="animatorType" placeholder="Enter Device Type"
+                <input type="text" id="animatorDevice" placeholder="Enter Device Type"
                     style="width: 200px; padding: 5px; margin: 5px;" />
-                <input type="text" id="animatorId" placeholder="Enter Id"
+                <input type="text" id="animatorAddress" placeholder="Enter Address"
                     style="width: 200px; padding: 5px; margin: 5px;" />
             </div>
             <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
@@ -745,8 +745,8 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animatorName.value = animation
-                        animatorType.value = myData["device"]
-                        animatorId.value = myData["id"]
+                        animatorDevice.value = myData["device"]
+                        animatorAddress.value = myData["address"]
                         populateAnimatorTable(myData["table_data"])
                         button.removeAttribute('disabled')
                     })
@@ -2280,8 +2280,8 @@
         // Create an object with the data to be sent in the request
         var data = {
             fn: file_name,
-            device: animatorType.value,
-            id: animatorId.value,
+            device: animatorDevice.value,
+            address: animatorAddress.value,
             table_data: buttonMappingTable
         };
 
