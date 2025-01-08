@@ -433,55 +433,43 @@
             <div class="mui-textfield">
                 <input class="input" id="animationName" type="text" disabled>
             </div>
-            <div>
-                <button id="saveAnimationButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
-                <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-                <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-                <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
-                <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-                <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-                <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF
-                    <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
-                    </div>
-                    <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
-                    <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
-                    <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
-                        between
-                        transitions in decimal seconds
-                    </div>
-                    <!-- <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
-                    XXX/XXX ("folder/filename" or use "random_folder")</div> -->
-                    <div>ZRAND = Random rainbow, fire, or color change</div>
-                    <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-                    <div>ZFIRE = Fire</div>
-                    <div>ZCOLCH = Color change</div>
-                    <div>ZJ = Joke</div>
-                    <div id="neoInstructionsContainer"></div>
-                    <div id="sceneInstructionsContainer"></div>
-                    <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
-                    <!-- <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div> -->
-                    <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-                    <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
-                        data_object}</div>
-                    <!-- <div>C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds
-                    between
-                    commands</div> -->
-                    <div>E = End script<div>
-                            <table id="animationsTable" class="mui-table">
-                                <thead>
-                                    <tr>
-                                        <th>TimeStamp</th>
-                                        <th>TimeCode</th>
-                                        <th>Animation</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            <button id="saveAnimationButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+            <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+            <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
+            <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
+            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
+            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
+            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
+            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
+                between
+                transitions in decimal seconds
             </div>
+            <div>ZRAND = Random rainbow, fire, or color change</div>
+            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+            <div>ZFIRE = Fire</div>
+            <div>ZCOLCH = Color change</div>
+            <div>ZJ = Joke</div>
+            <div id="neoInstructionsContainer"></div>
+            <div id="sceneInstructionsContainer"></div>
+            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
+            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                data_object}</div>
+            <div>E = End script</div>
+            <table id="animationsTable" class="mui-table">
+                <thead>
+                    <tr>
+                        <th>TimeStamp</th>
+                        <th>TimeCode</th>
+                        <th>Animation</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
         <div class="mui-tabs__pane" id="animators">
             <h2>Animator setup:</h2>
@@ -489,35 +477,63 @@
                 Animators can be controlled using Lionel Legacy/Tmcc remotes. Add Animators below.
             </p>
             <h2>Animators:</h2>
-            <button class="mui-btn mui-btn--primary" onclick="createAnimatorDialog()">Create Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimatorDialog()">Duplicate Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="createAnimatorDialog()">Create
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimatorDialog()">Duplicate
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete
+                Animator</button>
             <div id="animatorContainer"></div>
             <h2>Animator settings:</h2>
+            <button id="saveAnimationButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+            <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+            <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
+            <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
+            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
+            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
+            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
+            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
+                between
+                transitions in decimal seconds
+            </div>
+            <div>ZRAND = Random rainbow, fire, or color change</div>
+            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+            <div>ZFIRE = Fire</div>
+            <div>ZCOLCH = Color change</div>
+            <div>ZJ = Joke</div>
+            <div id="neoInstructionsContainer"></div>
+            <div id="sceneInstructionsContainer"></div>
+            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
+            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                data_object}</div>
+            <div>E = End script</div>
             <div class="mui-textfield">
-                <input class="input" id="animatorName" type="text" disabled style="width: 200px; padding: 5px; margin: 5px;">
+                <input class="input" id="animatorName" type="text" disabled
+                    style="width: 200px; padding: 5px; margin: 5px;">
                 <input type="text" id="animatorType" placeholder="Enter Device Type"
                     style="width: 200px; padding: 5px; margin: 5px;" />
                 <input type="text" id="animatorId" placeholder="Enter Id"
                     style="width: 200px; padding: 5px; margin: 5px;" />
             </div>
-            <div>
-                <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save Animator</button>
-                <table id="animatorTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>Button</th>
-                            <th>Commands</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+            <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
+                Animator</button>
+            <table id="animatorTable" class="mui-table">
+                <thead>
+                    <tr>
+                        <th>Button</th>
+                        <th>Commands</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
-    </div>
-    </div>
     </div>
 </body>
 

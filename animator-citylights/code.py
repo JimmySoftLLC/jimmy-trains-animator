@@ -288,6 +288,7 @@ def upd_media():
 
     extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
+
     # gets folders in the random_config directory, currently only all and play lists, the folders are empty
     rand_files = get_media_files(media_folder + "random_config/", extensions)
     media_files.update(rand_files)  # add rand_files to media_files dictionary
@@ -295,8 +296,7 @@ def upd_media():
 
     extensions = ['.json']  # List of extensions to filter by
     animator_files = get_media_files(media_folder + "animator/", extensions)
-
-    print("Animators: " + str(animator_files))
+    # print("Animators: " + str(animator_files))
 
     media_list_all = []
     for topic, my_files in media_files.items():
@@ -308,7 +308,6 @@ def upd_media():
         if "intermission" not in topic.lower():  # Ignore topics with 'intermission'
             media_list_all_no_intermission.extend(
                 [f"{topic}/{my_file}" for my_file in my_files])
-
     # print(str(rand_files.keys))
 
     menu_snd_opt = []
@@ -316,7 +315,6 @@ def upd_media():
     for myKey in media_files:
         if myKey != "random_config" and myKey != "pictures":
             menu_snd_opt.append("random_" + myKey + ".wav")
-
     # print("Menu sound tracks: " + str(menu_snd_opt))
 
 
@@ -340,6 +338,15 @@ intermission_settings = cfg_intermission_settings["intermission_settings"]
 cfg_add_song = files.read_json_file(
     code_folder + "mvc/add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
+
+animator_configs = []
+
+for animator_file in animator_files["animators"]:
+    cfg_animator = files.read_json_file(animators_folder + animator_file)
+    animator_configs.append(cfg_animator)
+
+# {'fn': 'drive in.json', 'device': 'accessory', 'id': '2', 'table_data': [[...], [...], [...], [...]]}
+# [['1', 'API_animator-drive-in.local:8083_animation_{"an":"movies/sandy.mp4"}', None], ['2', 'API_animator-drive-in.local:8083_animation_{"an":"movies/summer nights.mp4"}', None], ['3', 'API_animator-drive-in.local:8083_update-volume_{"action": "volume50"}', None], ['STOP', 'API_animator-drive-in.local:8083_stop_{"an": ""}', None]]
 
 cont_run = False
 ts_mode = False
@@ -1169,7 +1176,8 @@ def read_from_serial(ser):
                     response = get_command_object(
                         binary_word1, binary_word2, binary_word3)
                     process_command(response)
-                    print(response["system"],response["module"],response["address"],response["command"],response["data"])
+                    print(response["system"], response["module"],
+                          response["address"], response["command"], response["data"])
                     ser.read(ser.in_waiting)
 
                     # Reconstruct the command bytes
@@ -1197,6 +1205,8 @@ def get_usb_ports():
         text_to_wav_file(port, tmp_wav_file_name, 2)
 
 # Command decoding and processing functions
+
+
 def get_command_object(binary_word1, binary_word2, binary_word3):
     print(binary_word1)
     response = {}
@@ -1221,7 +1231,7 @@ def get_command_object(binary_word1, binary_word2, binary_word3):
                 if command == "11001":  # Train command
                     response["module"] = "train"
                 elif command == "11000":  # Group command
-                    response["module"] = "group"   
+                    response["module"] = "group"
         response["command"] = what_command(binary_word3)
         response["data"] = what_data(binary_word3)
     return response
@@ -1279,12 +1289,12 @@ def process_command(response):
             play_mix(code_folder + "mvc/set_to_id.wav")
             spk_str(str(response["address"]), False)
         elif response["command"] == "relative":
-            #play_mix(code_folder + "mvc/accessory.wav")
-            #spk_str(str(response["address"]), False)
+            # play_mix(code_folder + "mvc/accessory.wav")
+            # spk_str(str(response["address"]), False)
             binary_number = response["data"][1:5]
-            #decimal_number = scale_number(5-int(binary_number, 2), 2)
+            # decimal_number = scale_number(5-int(binary_number, 2), 2)
             decimal_number = int(binary_number, 2)
-            #text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
+            # text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
             if decimal_number > 5:
                 decimal_number = scale_number(decimal_number-5, 2)
                 print("throttle up :" + str(decimal_number))
@@ -1351,12 +1361,12 @@ def process_command(response):
             play_mix(code_folder + "mvc/set_to_id.wav")
             spk_str(str(response["address"]), False)
         elif response["command"] == "relative":
-            #play_mix(code_folder + "mvc/engine.wav")
-            #spk_str(str(response["address"]), False)
+            # play_mix(code_folder + "mvc/engine.wav")
+            # spk_str(str(response["address"]), False)
             binary_number = response["data"][1:5]
-            #decimal_number = scale_number(5-int(binary_number, 2), 2)
+            # decimal_number = scale_number(5-int(binary_number, 2), 2)
             decimal_number = int(binary_number, 2)
-            #text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
+            # text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
             if decimal_number > 5:
                 decimal_number = scale_number(decimal_number-5, 2)
                 print("throttle up :" + str(decimal_number))
@@ -1421,8 +1431,7 @@ def process_command(response):
         elif response["command"] == "action" and response["data"][0:5] == "11111":
             play_mix(code_folder + "mvc/switch.wav")
             spk_str(str(response["address"]), False)
-            text_to_wav_file("throw out", tmp_wav_file_name, 2)    
-            
+            text_to_wav_file("throw out", tmp_wav_file_name, 2)
 
 
 ################################################################################
@@ -1667,7 +1676,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/get-animation":
             self.get_animation_post(post_data_obj)
         elif self.path == "/get-animator":
-            self.get_animator_post(post_data_obj) 
+            self.get_animator_post(post_data_obj)
         elif self.path == "/delete-animator":
             self.delete_animator_post(post_data_obj)
         elif self.path == "/save-animation-data":
@@ -1786,7 +1795,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             f_n = code_folder + "t_s_def/timestamp mode.json"
             self.handle_serve_file_name(f_n)
             return
-        
+
     def get_animator_post(self, rq_d):
         global cfg, cont_run, ts_mode
         if (f_exists(animators_folder + rq_d["an"]) == True):
@@ -1796,7 +1805,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         else:
             f_n = code_folder + "animator_def/animator.json"
             self.handle_serve_file_name(f_n)
-            return    
+            return
 
     def get_scripts_post(self, rq_d):
         self.send_response(200)
@@ -2355,7 +2364,8 @@ def stop_all_media():
 
 
 def exit_early():
-    switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+    switch_state = utilities.switch_state(
+        l_sw, r_sw, time.sleep, 3.0, override_switch_state)
     if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
@@ -2400,7 +2410,8 @@ def no_trk():
     global override_switch_state
     play_mix(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             break
         if switch_state == "right":
@@ -3291,7 +3302,8 @@ class Main(Ste):
 
     def upd(self, mch):
         global override_switch_state
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(code_folder + "mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
@@ -3336,7 +3348,8 @@ class Snds(Ste):
 
     def upd(self, mch):
         global override_switch_state
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             try:
                 play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
@@ -3375,7 +3388,8 @@ class IntermissionSettings(Ste):
 
     def upd(self, mch):
         global cfg, override_switch_state
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
@@ -3428,7 +3442,8 @@ class AddSnds(Ste):
 
     def upd(self, mch):
         global ts_mode, override_switch_state
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + add_snd[self.i] + ".wav")
@@ -3510,7 +3525,8 @@ class WebOpt(Ste):
 
     def upd(self, mch):
         global cfg, override_switch_state
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(code_folder + "mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
