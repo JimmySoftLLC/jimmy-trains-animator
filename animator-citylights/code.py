@@ -1116,12 +1116,15 @@ class ApiClient:
 
 
 def send_animator_post(url, endpoint, new_data):
-    new_url = "http://" + url
-    new_data = json.loads(new_data)
+    try:
+        new_url = "http://" + url
+        new_data_loads = json.loads(new_data)
+        api_client = ApiClient(new_url)
+        created_data = api_client.post(endpoint, data=new_data_loads)
+        print("POST response:", created_data)
+    except Exception as e:
+        print(f"Comms issue: {e}")
 
-    api_client = ApiClient(new_url)
-    created_data = api_client.post(endpoint, data=new_data)
-    print("POST response:", created_data)
 
 ################################################################################
 # Setup serial communication and Legacy/TMCC
