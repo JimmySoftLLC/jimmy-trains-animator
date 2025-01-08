@@ -1214,7 +1214,7 @@
     function pasteRowsAndResetTable() {
         var pasteIndex = 0;
 
-        var rows = Array.from(animationsTableBody.querySelectorAll("tr"));
+        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -1723,7 +1723,7 @@
     var saveAnimationButton = document.getElementById("saveAnimationButton");
     var saveAnimatorButton = document.getElementById("saveAnimatorButton");
     var stopButton = document.getElementById("stopButton");
-    var animationsTableBody = document.querySelector("#animationsTable tbody");
+    var animationTableBody = document.querySelector("#animationsTable tbody");
     var animatorTableBody = document.querySelector("#animatorTable tbody");
 
     stopButton.addEventListener("click", function () {
@@ -1795,12 +1795,12 @@
 
     function populateAnimationsTable(data) {
         // Clear existing table rows
-        animationsTableBody.innerHTML = "";
+        animationTableBody.innerHTML = "";
 
         // Populate table with new data
         data.forEach(function (rowData, index) {
             var row = createAnimationsDataRow(rowData, index);
-            animationsTableBody.appendChild(row);
+            animationTableBody.appendChild(row);
         });
     }
 
@@ -1810,54 +1810,36 @@
 
         // Populate table with new data
         data.forEach(function (rowData, index) {
-            var row = createAnimationsDataRow(rowData, index);
+            var row = createAnimatorDataRow(rowData, index);
             animatorTableBody.appendChild(row);
         });
     }
 
-    animationsTableBody.addEventListener("click", function (event) {
+    animationTableBody.addEventListener("click", function (event) {
         var target = event.target;
-        if (target.classList.contains("insert-row-btn")) {
-            insertRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("delete-row-btn")) {
-            deleteRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("add-row-btn")) {
-            addRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("test-row-btn")) {
-            testAnimation(target)
+        if (target.classList.contains("animation-insert-row-btn")) {
+            animationInsertRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animation-delete-row-btn")) {
+            animationDeleteRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animation-add-row-btn")) {
+            animationAddRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animation-test-row-btn")) {
+            animationTestAnimation(target)
         }
     });
 
-    function testAnimation(target) {
-        const rowElement = target.parentNode.parentNode;
-        const thirdInput = getTextOfInput(rowElement, 3);
-        target.setAttribute("disabled", "true");
-        var url = "/test-animation";
-
-        var data = {
-            an: thirdInput,
-        };
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text();
-            })
-            .then(function (data) {
-                console.log(data);
-                target.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                target.removeAttribute('disabled')
-                console.log(error);
-                showAlert(error);
-            });
-    }
+    animatorTableBody.addEventListener("click", function (event) {
+        var target = event.target;
+        if (target.classList.contains("animation-insert-row-btn")) {
+            animatorInsertRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animation-delete-row-btn")) {
+            animatorDeleteRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animation-add-row-btn")) {
+            animatorAddRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animation-test-row-btn")) {
+            animatorTestAnimation(target)
+        }
+    });
 
     function getTextOfInput(rowElement, elNum) {
         const inputElements = rowElement.querySelectorAll('input');
@@ -1885,6 +1867,7 @@
         var inputValue = convertTimeCodeToSeconds(event.target.value)
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
     }
+
 
     function createAnimationsDataRow(rowData, rowIndex) {
         var row = document.createElement("tr");
@@ -1933,16 +1916,52 @@
         actionCell.style.paddingTop = "0px";  // Adjust top padding
         actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
 
-        var testButton = createTestButton();
+        var testButton = createAnimationTestButton();
         actionCell.appendChild(testButton);
 
-        var insertButton = createInsertButton();
+        var insertButton = createAnimationInsertButton();
         actionCell.appendChild(insertButton);
 
-        var addButton = createAddButton();
+        var addButton = createAnimationAddButton();
         actionCell.appendChild(addButton);
 
-        var deleteButton = createDeleteButton();
+        var deleteButton = createAnimationDeleteButton();
+        actionCell.appendChild(deleteButton);
+
+        row.appendChild(actionCell);
+
+        return row;
+    }
+
+    function createAnimatorDataRow(rowData, rowIndex) {
+        var row = document.createElement("tr");
+
+        var anCell = createEditableCell(rowData[0], "50px");
+        anCell.addEventListener('click', function (event) {
+            animationCellClicked(event);
+        });
+        row.appendChild(anCell);
+
+        var anCell = createEditableCell(rowData[1], "600px");
+        anCell.addEventListener('click', function (event) {
+            animationCellClicked(event);
+        });
+        row.appendChild(anCell);
+
+        var actionCell = document.createElement("td");
+        actionCell.style.paddingTop = "0px";  // Adjust top padding
+        actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
+
+        var testButton = createAnimatorTestButton();
+        actionCell.appendChild(testButton);
+
+        var insertButton = createAnimationInsertButton();
+        actionCell.appendChild(insertButton);
+
+        var addButton = createAnimationAddButton();
+        actionCell.appendChild(addButton);
+
+        var deleteButton = createAnimationDeleteButton();
         actionCell.appendChild(deleteButton);
 
         row.appendChild(actionCell);
@@ -1968,57 +1987,168 @@
         return cell;
     }
 
-    function createTestButton() {
+    function createAnimationTestButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary test-row-btn";
+        button.className = "mui-btn mui-btn--primary animation-test-row-btn";
         button.innerHTML = 'Tst';
         return button;
     }
 
-    function createDeleteButton() {
+    function createAnimationDeleteButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary delete-row-btn";
+        button.className = "mui-btn mui-btn--primary animation-delete-row-btn";
         button.innerHTML = 'Del';
         return button;
     }
 
-    function createInsertButton() {
+    function createAnimationInsertButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary insert-row-btn";
+        button.className = "mui-btn mui-btn--primary animation-insert-row-btn";
         button.innerHTML = 'Ins';
         return button;
     }
 
-    function createAddButton() {
+    function createAnimationAddButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary add-row-btn";
+        button.className = "mui-btn mui-btn--primary animation-add-row-btn";
         button.innerHTML = 'Add';
         return button;
     }
 
-    function deleteRow(row) {
+    function createAnimatorTestButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animation-test-row-btn";
+        button.innerHTML = 'Tst';
+        return button;
+    }
+
+    function createAnimatorDeleteButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animation-delete-row-btn";
+        button.innerHTML = 'Del';
+        return button;
+    }
+
+    function createAnimatorInsertButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animation-insert-row-btn";
+        button.innerHTML = 'Ins';
+        return button;
+    }
+
+    function createAnimatorAddButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animation-add-row-btn";
+        button.innerHTML = 'Add';
+        return button;
+    }
+
+    function animationDeleteRow(row) {
         row.parentNode.removeChild(row);
         copyAndResetTable();
     }
 
-    function addRow(row) {
+    function animationAddRow(row) {
         var newRow = createAnimationsDataRow("|");
-        animationsTableBody.insertBefore(newRow, row.nextSibling);
+        animationTableBody.insertBefore(newRow, row.nextSibling);
         copyAndResetTable();
     }
 
-    function insertRow(row) {
+    function animationInsertRow(row) {
         var newRow = createAnimationsDataRow("|");
-        animationsTableBody.insertBefore(newRow, row);
+        animatorTableBody.insertBefore(newRow, row);
         copyAndResetTable();
+    }
+
+    function animationTestAnimation(target) {
+        const rowElement = target.parentNode.parentNode;
+        const thirdInput = getTextOfInput(rowElement, 3);
+        target.setAttribute("disabled", "true");
+        var url = "/test-animation";
+
+        var data = {
+            an: thirdInput,
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                console.log(data);
+                target.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                target.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function animatorDeleteRow(row) {
+        row.parentNode.removeChild(row);
+        copyAndResetTable();
+    }
+
+    function animatorAddRow(row) {
+        var newRow = createAnimatorDataRow("");
+        animatorTableBody.insertBefore(newRow, row.nextSibling);
+        copyAndResetTable();
+    }
+
+    function animatorInsertRow(row) {
+        var newRow = createAnimatorDataRow("");
+        animatorTableBody.insertBefore(newRow, row);
+        copyAndResetTable();
+    }
+
+    function animatorTestAnimation(target) {
+        const rowElement = target.parentNode.parentNode;
+        const secondInput = getTextOfInput(rowElement, 2);
+        target.setAttribute("disabled", "true");
+        var url = "/test-animation";
+
+        var data = {
+            an: secondInput,
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                console.log(data);
+                target.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                target.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
     }
 
     function copyAndResetTable() {
-        var rows = Array.from(animationsTableBody.querySelectorAll("tr"));
+        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -2043,7 +2173,7 @@
 
     function saveAnimationData(file_name, get_changes) {
         saveAnimationButton.setAttribute("disabled", "true");
-        var rows = Array.from(animationsTableBody.querySelectorAll("tr"));
+        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {

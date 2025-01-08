@@ -1752,7 +1752,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def save_animator_data_post(self, rq_d):
-        f_n = animators_folder  + "test_" + rq_d["fn"]
+        f_n = animators_folder + rq_d["fn"]
         files.write_json_file(f_n, rq_d)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1806,7 +1806,22 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def create_animator_post(self, rq_d):
         global data
         f_n = animators_folder + rq_d["fn"] + ".json"
-        files.write_json_file(f_n, ["0.0|", "1.0|"])
+        an_data = {
+            "fn": f_n,
+            "device": "accessory",
+            "id": 1,
+            "table_data": [
+                [
+                    "AUX1",
+                    ""
+                ],
+                [
+                    "AUX2",
+                    ""
+                ]
+            ]
+        }
+        files.write_json_file(f_n, an_data)
         upd_media()
         gc_col("created animator")
         self.send_response(200)
@@ -3532,7 +3547,6 @@ st_mch.add(AddSnds())
 st_mch.add(VolumeLevelAdjustment())
 st_mch.add(WebOpt())
 st_mch.add(IntermissionSettings())
-
 
 time.sleep(0.05)
 aud_en.value = True
