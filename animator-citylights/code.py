@@ -345,9 +345,6 @@ for animator_file in animator_files["animators"]:
     cfg_animator = files.read_json_file(animators_folder + animator_file)
     animator_configs.append(cfg_animator)
 
-# {'fn': 'drive in.json', 'device': 'accessory', 'id': '2', 'table_data': [[...], [...], [...], [...]]}
-# [['1', 'API_animator-drive-in.local:8083_animation_{"an":"movies/sandy.mp4"}', None], ['2', 'API_animator-drive-in.local:8083_animation_{"an":"movies/summer nights.mp4"}', None], ['3', 'API_animator-drive-in.local:8083_update-volume_{"action": "volume50"}', None], ['STOP', 'API_animator-drive-in.local:8083_stop_{"an": ""}', None]]
-
 cont_run = False
 ts_mode = False
 lst_opt = ''
@@ -1175,9 +1172,9 @@ def read_from_serial(ser):
                     # print(f"Word 3: {binary_word3}\n")
                     response = get_command_object(
                         binary_word1, binary_word2, binary_word3)
-                    process_command(response)
+                    response = process_command(response)
                     print(response["system"], response["module"],
-                          response["address"], response["command"], response["data"])
+                          response["address"], response["command"], response["data"], response["button"])
                     ser.read(ser.in_waiting)
 
                     # Reconstruct the command bytes
@@ -1280,158 +1277,103 @@ def what_data(binary_word3):
 def scale_number(num, exponent):
     return int((num if num >= 0 else -(-num)) ** exponent)
 
+def process_command_animator_config(response):
+    # animator_configs
+    # {'fn': 'drive in.json', 'device': 'accessory', 'id': '2', 'table_data': [[...], [...], [...], [...]]}
+    # [['1', 'API_animator-drive-in.local:8083_animation_{"an":"movies/sandy.mp4"}', None], ['2', 'API_animator-drive-in.local:8083_animation_{"an":"movies/summer nights.mp4"}', None], ['3', 'API_animator-drive-in.local:8083_update-volume_{"action": "volume50"}', None], ['STOP', 'API_animator-drive-in.local:8083_stop_{"an": ""}', None]]
+    print("dude")
+
+speak_commands = True
 
 def process_command(response):
-    global override_switch_state
-    if response["module"] == "accessory":
-        if response["command"] == "extended" and response["data"] == "01011":
-            play_mix(code_folder + "mvc/accessory.wav")
-            play_mix(code_folder + "mvc/set_to_id.wav")
+    response["button"] = ""
+    if response["module"] == "accessory" or response["module"] == "engine":
+        if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
+            play_mix(code_folder + "mvc/" + response["module"] + ".wav")
             spk_str(str(response["address"]), False)
+        if response["command"] == "extended" and response["data"] == "01011":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + response["module"] + ".wav")
+                play_mix(code_folder + "mvc/set_to_id.wav")
+                spk_str(str(response["address"]), False)
+            response["button"] = "SET"
         elif response["command"] == "relative":
-            # play_mix(code_folder + "mvc/accessory.wav")
-            # spk_str(str(response["address"]), False)
             binary_number = response["data"][1:5]
-            # decimal_number = scale_number(5-int(binary_number, 2), 2)
             decimal_number = int(binary_number, 2)
-            # text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
             if decimal_number > 5:
                 decimal_number = scale_number(decimal_number-5, 2)
                 print("throttle up :" + str(decimal_number))
-                # play_mix(code_folder + "mvc/trottle_up.wav")
+                if speak_commands:
+                    play_mix(code_folder + "mvc/trottle_up.wav")
+                    text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
             else:
                 decimal_number = scale_number(5-decimal_number, 2)
                 print("throttle down :" + str(decimal_number))
-                # play_mix(code_folder + "mvc/trottle_down.wav")
+                if speak_commands:
+                    play_mix(code_folder + "mvc/trottle_down.wav")
+                    text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
         elif response["command"] == "action" and response["data"] == "00001":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("direction", tmp_wav_file_name, 2)
+            if speak_commands:
+                text_to_wav_file("direction", tmp_wav_file_name, 2)
         elif response["command"] == "action" and response["data"] == "11100":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("horn", tmp_wav_file_name, 2)
+            if speak_commands:
+                text_to_wav_file("horn", tmp_wav_file_name, 2)
+            response["button"] = "HORN"
         elif response["command"] == "action" and response["data"] == "11101":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("bell", tmp_wav_file_name, 2)
+            if speak_commands:
+                text_to_wav_file("bell", tmp_wav_file_name, 2)
+            response["button"] = "BELL"
         elif response["command"] == "action" and response["data"] == "00100":
-            # play_mix(code_folder + "mvc/accessory.wav")
-            # spk_str(str(response["address"]), False)
-            # text_to_wav_file("boost", tmp_wav_file_name, 2)
-            override_switch_state["switch_value"] = "right"
-            time.sleep(1)
+            if speak_commands:
+                text_to_wav_file("boost", tmp_wav_file_name, 2)
+            response["button"] = "BOOST"
         elif response["command"] == "action" and response["data"] == "00111":
-            # play_mix(code_folder + "mvc/accessory.wav")
-            # spk_str(str(response["address"]), False)
-            # text_to_wav_file("brake", tmp_wav_file_name, 2)
-            override_switch_state["switch_value"] = "four"
-            time.sleep(1)
+            if speak_commands:
+                text_to_wav_file("brake", tmp_wav_file_name, 2)
+            response["button"] = "BRAKE"
         elif response["command"] == "action" and response["data"] == "00101":
-            # play_mix(code_folder + "mvc/accessory.wav")
-            # spk_str(str(response["address"]), False)
-            # text_to_wav_file("front coupler", tmp_wav_file_name, 2)
-            override_switch_state["switch_value"] = "left"
-            time.sleep(1)
+            if speak_commands:
+                text_to_wav_file("front coupler", tmp_wav_file_name, 2)
+            response["button"] = "FCOUPLER"
         elif response["command"] == "action" and response["data"] == "00110":
-            # play_mix(code_folder + "mvc/accessory.wav")
-            # spk_str(str(response["address"]), False)
-            # text_to_wav_file("rear coupler", tmp_wav_file_name, 2)
-            override_switch_state["switch_value"] = "three"
-            time.sleep(1)
+            if speak_commands:
+                text_to_wav_file("rear coupler", tmp_wav_file_name, 2)
+            response["button"] = "RCOUPLER"
         elif response["command"] == "action" and response["data"] == "01001":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("aux 1", tmp_wav_file_name, 2)
+            if speak_commands:
+                text_to_wav_file("aux 1", tmp_wav_file_name, 2)
+            response["button"] = "AUX1"
         elif response["command"] == "action" and response["data"] == "01101":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("aux 2", tmp_wav_file_name, 2)
+            if speak_commands:
+                text_to_wav_file("aux 2", tmp_wav_file_name, 2)
+            response["button"] = "AUX2"
         elif response["command"] == "action" and response["data"][0:1] == "1":
-            play_mix(code_folder + "mvc/accessory.wav")
-            spk_str(str(response["address"]), False)
-            play_mix(code_folder + "mvc/numeric_button.wav")
             binary_number = response["data"][1:5]
             decimal_number = int(binary_number, 2)
-            spk_str(str(decimal_number), False)
-
-    if response["module"] == "engine":
-        if response["command"] == "extended" and response["data"] == "01011":
-            play_mix(code_folder + "mvc/engine.wav")
-            play_mix(code_folder + "mvc/set_to_id.wav")
-            spk_str(str(response["address"]), False)
-        elif response["command"] == "relative":
-            # play_mix(code_folder + "mvc/engine.wav")
-            # spk_str(str(response["address"]), False)
-            binary_number = response["data"][1:5]
-            # decimal_number = scale_number(5-int(binary_number, 2), 2)
-            decimal_number = int(binary_number, 2)
-            # text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
-            if decimal_number > 5:
-                decimal_number = scale_number(decimal_number-5, 2)
-                print("throttle up :" + str(decimal_number))
-                # play_mix(code_folder + "mvc/trottle_up.wav")
-            else:
-                decimal_number = scale_number(5-decimal_number, 2)
-                print("throttle down :" + str(decimal_number))
-                # play_mix(code_folder + "mvc/trottle_down.wav")
-        elif response["command"] == "action" and response["data"] == "00001":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("direction", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "11100":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("horn", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "11101":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("bell", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "00100":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("boost", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "00111":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("brake", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "00101":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("front coupler", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "00110":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("rear coupler", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "01001":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("aux 1", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "01101":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("aux 2", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"][0:1] == "1":
-            play_mix(code_folder + "mvc/engine.wav")
-            spk_str(str(response["address"]), False)
-            play_mix(code_folder + "mvc/numeric_button.wav")
-            binary_number = response["data"][1:5]
-            decimal_number = int(binary_number, 2)
-            spk_str(str(decimal_number), False)
+            if speak_commands:
+                play_mix(code_folder + "mvc/numeric_button.wav")
+                spk_str(str(decimal_number), False)
+            response["button"] = str(decimal_number)
 
     if response["module"] == "switch":
+        if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
+            play_mix(code_folder + "mvc/switch.wav")
+            spk_str(str(response["address"]), False)
         if response["command"] == "extended" and response["data"] == "01011":
-            play_mix(code_folder + "mvc/switch.wav")
-            play_mix(code_folder + "mvc/set_to_id.wav")
-            spk_str(str(response["address"]), False)
+            if speak_commands:
+                play_mix(code_folder + "mvc/switch.wav")
+                play_mix(code_folder + "mvc/set_to_id.wav")
+                spk_str(str(response["address"]), False)
+            response["button"] = "SET"
         elif response["command"] == "action" and response["data"][0:5] == "00000":
-            play_mix(code_folder + "mvc/switch.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("throw through", tmp_wav_file_name, 2)
+            if speak_commands:
+                text_to_wav_file("throw through", tmp_wav_file_name, 2)
+            response["button"] = "THROUGH"
         elif response["command"] == "action" and response["data"][0:5] == "11111":
-            play_mix(code_folder + "mvc/switch.wav")
-            spk_str(str(response["address"]), False)
-            text_to_wav_file("throw out", tmp_wav_file_name, 2)
+            if speak_commands:
+                text_to_wav_file("throw out", tmp_wav_file_name, 2)
+            response["button"] = "OUT"
+    return response
 
 
 ################################################################################
@@ -2930,25 +2872,13 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
+            
             elif seg[:3] == 'USB':
                 get_usb_ports()
-            # MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)
-            # elif seg[0] == 'M':
-            #     stop_all_media()
-            #     if seg[1] == "P":
-            #         f_nm = pylst_folder + "plylst_" + seg[2:]
-            #     else:
-            #         f_nm = media_folder + seg[2:]
-            #     if seg[1] == "W" or seg[1] == "M":
-            #         play_mix_media(f_nm, False)
-            #     if seg[1] == "A":
-            #         f_nm = seg[2:]
-            #         res = an(f_nm)
-            #         if res == "STOP":
-            #             return "STOP"
-            #     if seg[1] == "W":
-            #         wait_snd()
-            # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
+            elif seg[:2] == 'SW':
+                segs_split = seg.split("_")
+                override_switch_state["switch_value"] = segs_split[1]
+                time.sleep(1)
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][2:])-1
