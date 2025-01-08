@@ -47,6 +47,14 @@
             Use this web app to control and setup your Animator - City Lights
             product. Have fun animating.
         </p>
+        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            data-url="/mode">Left</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            data-url="/mode">Right</button>
+        <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            data-url="/mode">Three</button>
+        <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            data-url="/mode">Four</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -437,6 +445,8 @@
             <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
             <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
             <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
+            <div>USB connect to base3 usb port</div>
+            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
             <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
@@ -473,6 +483,12 @@
         </div>
         <div class="mui-tabs__pane" id="animators">
             <h2>Animator setup:</h2>
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="tmccVoiceCheckbox" data-url="/set-tmcc-voice-enabled">
+                    Enable command voice
+                </label>
+            </div>
             <p>
                 Animators can be controlled using Lionel Legacy/Tmcc remotes. Add Animators below.
             </p>
@@ -487,6 +503,8 @@
                 Animator</button>
             <div id="animatorContainer"></div>
             <h2>Animator settings:</h2>
+            <div>USB connect to base3 usb port</div>
+            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
             <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
@@ -679,6 +697,26 @@
             .then(function (data) {
                 lifx_enabled = (data === 'true'); // Convert to Boolean
                 setLifxCheckboxState(lifx_enabled)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getTmccVoiceEnabled() {
+        fetch('/get-tmcc-voice-enabled', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                tmcc_voice_enabled = (data === 'true'); // Convert to Boolean
+                setTmccVoiceCheckboxState(tmcc_voice_enabled)
             })
             .catch(function (error) {
                 console.log(error);
@@ -2463,7 +2501,6 @@
         programmaticChange = false;
     }
 
-
     // Combined event listener for checkbox change
     lifxCheckbox.addEventListener('change', function () {
         // Skip fetch request if this is a programmatic change
@@ -2494,6 +2531,48 @@
             .catch(error => {
                 console.log(error);
                 lifxCheckbox.removeAttribute('disabled');
+            });
+    });
+
+    var tmccVoiceCheckbox = document.getElementById("tmccVoiceCheckbox");
+
+    // Function to change checkbox state programmatically
+    function setTmccVoiceCheckboxState(newState) {
+        programmaticChange = true;
+        tmccVoiceCheckbox.checked = newState;
+        programmaticChange = false;
+    }
+
+    // Combined event listener for checkbox change
+    tmccVoiceCheckbox.addEventListener('change', function () {
+        // Skip fetch request if this is a programmatic change
+        if (programmaticChange) return;
+
+        const url = this.getAttribute('data-url');
+        const isChecked = this.checked;
+
+        toggleLifxDiv()
+
+        const data = {
+            enabled: isChecked
+        };
+
+        tmccVoiceCheckbox.setAttribute('disabled', 'true');
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Response:', data);
+                tmccVoiceCheckbox.removeAttribute('disabled');
+            })
+            .catch(error => {
+                console.log(error);
+                tmccVoiceCheckbox.removeAttribute('disabled');
             });
     });
 

@@ -1180,7 +1180,7 @@ def read_from_serial(ser):
                     print(command)
                     if command:
                         set_hdw(command[1],1)
-
+                        time.sleep(1)
                     ser.read(ser.in_waiting)
 
                     # Reconstruct the command bytes
@@ -1302,10 +1302,9 @@ def process_command_animator_config(response):
     return None  # If no match is found
 
 
-speak_commands = True
-
-
 def process_command(response):
+    global cfg
+    speak_commands = cfg["tmcc_voice_enabled"]
     response["button"] = ""
     if response["device"] == "accessory" or response["device"] == "engine":
         if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
@@ -1627,10 +1626,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.update_volume_post(post_data_obj)
         elif self.path == "/set-lifx-enabled":
             self.set_lifx_enabled(post_data_obj)
+        elif self.path == "/set-tmcc-voice-enabled":
+            self.set_tmcc_voice_enabled(post_data_obj)
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
+        elif self.path == "/get-tmcc-voice-enabled":
+            self.get_tmcc_voice_enabled(post_data_obj) 
         elif self.path == "/get-scripts":
             self.get_scripts_post(post_data_obj)
         elif self.path == "/create-animator":
@@ -1862,6 +1865,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg["intermission"] = rq_d_split[1]
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/all_changes_complete.wav")
+        elif rq_d["an"] == "left":
+            override_switch_state["switch_value"] = "left"
+        elif rq_d["an"] == "right":
+            override_switch_state["switch_value"] = "right"
+        elif rq_d["an"] == "three":
+            override_switch_state["switch_value"] = "three"
+        elif rq_d["an"] == "four":
+            override_switch_state["switch_value"] = "four"
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1979,6 +1990,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
+    def set_tmcc_voice_enabled(self, rq_d):
+        global cfg
+        cfg["tmcc_voice_enabled"] = rq_d["enabled"]
+        files.write_json_file(code_folder + "cfg.json", cfg)
+        response = cfg["tmcc_voice_enabled"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
     def get_volume_post(self, rq_d):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1988,6 +2010,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_lifx_enabled(self, rq_d):
         response = cfg["lifx_enabled"]
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_tmcc_voice_enabled(self, rq_d):
+        response = cfg["tmcc_voice_enabled"]
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2892,13 +2922,13 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-
+            # USB connect to base3 usb port
             elif seg[:3] == 'USB':
                 get_usb_ports()
+            # lights SW_XXXX = Switch XXXX (right,left,three,four)  
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 override_switch_state["switch_value"] = segs_split[1]
-                time.sleep(1)
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][2:])-1
