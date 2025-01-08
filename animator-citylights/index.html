@@ -496,11 +496,14 @@
             <div id="animatorContainer"></div>
             <h2>Animator settings:</h2>
             <div class="mui-textfield">
-                <input class="input" id="animatorName" type="text" disabled>
+                <input class="input" id="animatorName" type="text" disabled style="width: 200px; padding: 5px; margin: 5px;">
+                <input type="text" id="animatorType" placeholder="Enter Device Type"
+                    style="width: 200px; padding: 5px; margin: 5px;" />
+                <input type="text" id="animatorId" placeholder="Enter Id"
+                    style="width: 200px; padding: 5px; margin: 5px;" />
             </div>
             <div>
                 <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save Animator</button>
-                <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <table id="animatorTable" class="mui-table">
                     <thead>
                         <tr>
@@ -726,6 +729,8 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animatorName.value = animation
+                        animatorType.value = myData["device"]
+                        animatorId.value = myData["id"]
                         populateAnimatorTable(myData["table_data"])
                         button.removeAttribute('disabled')
                     })
@@ -2259,8 +2264,8 @@
         // Create an object with the data to be sent in the request
         var data = {
             fn: file_name,
-            device: "accessory",
-            id: 1,
+            device: animatorType.value,
+            id: animatorId.value,
             table_data: buttonMappingTable
         };
 
