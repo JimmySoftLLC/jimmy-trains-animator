@@ -1180,7 +1180,7 @@ def read_from_serial(ser):
                     print(command)
                     if command:
                         set_hdw(command[1],1)
-                        time.sleep(1)
+                    time.sleep(1)
                     ser.read(ser.in_waiting)
 
                     # Reconstruct the command bytes
