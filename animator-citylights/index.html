@@ -556,6 +556,7 @@
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
+        getLocalIp()
         getWebSiteUrl()
         getVolume()
         getAnimators()
@@ -659,6 +660,27 @@
             .then(function (data) {
                 websiteUrl.value = data; // Set the value of the input field with the received data
                 makeSocketConnection(data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    local_ip = ""
+
+    function getLocalIp() {
+        fetch('/get-local-ip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                local_ip = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);

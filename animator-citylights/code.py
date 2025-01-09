@@ -1099,7 +1099,7 @@ class ApiClient:
 
     def post(self, endpoint, data=None):
         """Perform a POST request."""
-        response = requests.post(f"{self.base_url}/{endpoint}", json=data)
+        response = requests.post(f"{self.base_url}/{endpoint}", json=data, timeout=5)
         return self.handle_response(response)
 
     def put(self, endpoint, data=None):
@@ -1654,6 +1654,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
             self.test_animation_post(post_data_obj)
+        elif self.path == "/get-local-ip":
+            self.get_local_ip(post_data_obj)
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
@@ -1663,6 +1665,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "Set hardware: " + rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_local_ip(self, rq_d):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = local_ip
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
