@@ -948,6 +948,7 @@ def set_light_color(light_n, r, g, b):
         # Set color for a specific light
         devices[light_n].set_color(rgb_to_hsbk(r, g, b), 0, True)
 
+
 def set_light_power(light_n, off_on):
     if light_n == -1:
         if off_on == "ON":
@@ -1086,7 +1087,8 @@ class ApiClient:
 
     def post(self, endpoint, data=None):
         """Perform a POST request."""
-        response = requests.post(f"{self.base_url}/{endpoint}", json=data)
+        response = requests.post(
+            f"{self.base_url}/{endpoint}", json=data, timeout=5)
         return self.handle_response(response)
 
     def put(self, endpoint, data=None):
@@ -1104,16 +1106,19 @@ class ApiClient:
         if response.status_code == 200:
             return response.json()  # or response.text for raw text
         else:
-            response.raise_for_status()  # Raise an error for bad responses
+            response.raise_for_status()  # Raise an error for bd responses
 
 
 def send_animator_post(url, endpoint, new_data):
-    new_url = "http://" + url
-    new_data = json.loads(new_data)
-
-    api_client = ApiClient(new_url)
-    created_data = api_client.post(endpoint, data=new_data)
-    print("POST response:", created_data)
+    try:
+        new_url = "http://" + url
+        new_data_loads = json.loads(new_data)
+        api_client = ApiClient(new_url)
+        created_data = api_client.post(endpoint, data=new_data_loads)
+        print("POST response:", created_data)
+        return created_data
+    except Exception as e:
+        print(f"Comms issue: {e}")
 
 
 ################################################################################
@@ -1373,20 +1378,19 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def test_animation_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        set_hdw(rq_d["an"], 3)
+        response = set_hdw(rq_d["an"], 3)
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        self.send_header("Content-type", "application/json")
         self.end_headers()
-        response = "Set hardware: " + rq_d["an"]
-        self.wfile.write(response.encode('utf-8'))
+        self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
     def get_local_ip(self, rq_d):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
         response = local_ip
-        self.wfile.write(response.encode('utf-8'))
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
     def stop_post(self, rq_d):
@@ -1724,7 +1728,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
         exit_set_hdw = False
-        command = "LN0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        command = "LN0_" + str(rgb_value[0]) + "_" + \
+            str(rgb_value[1]) + "_" + str(rgb_value[2])
         add_command_to_ts(command)
         set_hdw(command, 0)
         response = rgb_value
@@ -1739,7 +1744,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_scene = rq_d["an"]
         rgb_value = cfg["scene_changes"][current_scene]
         exit_set_hdw = False
-        command = "LX0_" + str(rgb_value[0]) + "_" + str(rgb_value[1]) + "_" + str(rgb_value[2])
+        command = "LX0_" + str(rgb_value[0]) + "_" + \
+            str(rgb_value[1]) + "_" + str(rgb_value[2])
         add_command_to_ts(command)
         set_hdw(command, 0)
         response = rgb_value
@@ -1949,7 +1955,7 @@ print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    log_to_linear = int(interpolate(volume_0_1,log_values,linear_values)*100)
+    log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
     mix.set_volume(volume_0_1*0.7)
     mix_media.set_volume(volume_0_1*0.7)
     media_player.audio_set_volume(log_to_linear)
@@ -2514,7 +2520,7 @@ def add_command_to_ts(command):
         return
     t_elsp_formatted = "{:.3f}".format(t_elsp)
     t_s.append(t_elsp_formatted + "|" + command)
-    files.log_item(t_elsp_formatted + "|" + command)    
+    files.log_item(t_elsp_formatted + "|" + command)
 
 
 def an_ts(f_nm):
@@ -2713,7 +2719,9 @@ def set_hdw(cmd, dur):
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = seg.split("_")
-                send_animator_post(seg_split[1], seg_split[2], seg_split[3])
+                response = send_animator_post(
+                    seg_split[1], seg_split[2], seg_split[3])
+                return response
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")

@@ -1127,6 +1127,7 @@ def send_animator_post(url, endpoint, new_data):
         api_client = ApiClient(new_url)
         created_data = api_client.post(endpoint, data=new_data_loads)
         print("POST response:", created_data)
+        return created_data
     except Exception as e:
         print(f"Comms issue: {e}")
 
@@ -1152,6 +1153,7 @@ def send_data(ser, data):
 
 
 def read_from_serial(ser):
+    global exit_set_hdw
     while True:
         try:
             if ser.in_waiting >= 3:  # Check if at least 3 bytes are available to read
@@ -1179,6 +1181,7 @@ def read_from_serial(ser):
                     command = process_command_animator_config(response)
                     print(command)
                     if command:
+                        exit_set_hdw = False
                         set_hdw(command[1],1)
                     time.sleep(1)
                     ser.read(ser.in_waiting)
@@ -1660,20 +1663,19 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def test_animation_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        set_hdw(rq_d["an"], 3)
+        response = set_hdw(rq_d["an"], 3)
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        self.send_header("Content-type", "application/json")
         self.end_headers()
-        response = "Set hardware: " + rq_d["an"]
-        self.wfile.write(response.encode('utf-8'))
+        self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
     def get_local_ip(self, rq_d):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
         response = local_ip
-        self.wfile.write(response.encode('utf-8'))
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
     def stop_post(self, rq_d):
@@ -3032,7 +3034,8 @@ def set_hdw(cmd, dur):
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = seg.split("_")
-                send_animator_post(seg_split[1], seg_split[2], seg_split[3])
+                response = send_animator_post(seg_split[1], seg_split[2], seg_split[3])
+                return response
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
