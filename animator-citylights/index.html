@@ -529,49 +529,50 @@
             <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
             <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
                 data_object}</div>
-            <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object i.e. {"an":data_object}</div>
+            <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object
+                i.e. {"an":data_object}</div>
             <div>E = End script</div>
             <h2>Animator settings:</h2>
             <form class="mui-form">
                 <div class="mui-textfield">
                     <label>Animator Name:</label>
                     <input class="input" id="animatorName" type="text" disabled
-                        style="width: 200px; padding: 5px; margin: 5px;">
+                        style="width: 300px; padding: 5px; margin: 5px;">
                 </div>
                 <div class="mui-textfield">
                     <label>Device Type:</label>
                     <input type="text" id="animatorDevice" placeholder="Enter Device Type"
-                        style="width: 200px; padding: 5px; margin: 5px;">
+                        style="width: 300px; padding: 5px; margin: 5px;">
                 </div>
                 <div class="mui-textfield">
                     <label>Address:</label>
                     <input type="text" id="animatorAddress" placeholder="Enter Address"
-                        style="width: 200px; padding: 5px; margin: 5px;">
+                        style="width: 300px; padding: 5px; margin: 5px;">
                 </div>
                 <div class="mui-textfield">
                     <label>Base url:</label>
                     <input type="text" id="animatorBaseUrl" placeholder="Enter Base Url"
-                        style="width: 200px; padding: 5px; margin: 5px;">
+                        style="width: 300px; padding: 5px; margin: 5px;">
                 </div>
                 <div class="mui-textfield">
                     <label>IP Address:</label>
                     <input class="input" id="animatorIpAddress" type="text" disabled
-                        style="width: 200px; padding: 5px; margin: 5px;">
+                        style="width: 300px; padding: 5px; margin: 5px;">
                 </div>
             </form>
             <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
-            <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP Address
-                Animator</button>
-            <table id="animatorTable" class="mui-table">
-                <thead>
-                    <tr>
-                        <th>Button</th>
-                        <th>Commands</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+                <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP Address
+                    Animator</button>
+                <table id="animatorTable" class="mui-table">
+                    <thead>
+                        <tr>
+                            <th>Button</th>
+                            <th>Commands</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
         </div>
     </div>
 </body>
@@ -1845,10 +1846,50 @@
     });
 
     getAnimatorIpAddressButton.addEventListener("click", function () {
-        getAnimatorIpAddress(animatorIpAddress.value, false);
+        getAnimatorIpAddress(animatorBaseUrl.value);
     });
 
-    
+
+    function getAnimatorIpAddress(baseUrl) {
+        const thirdInput = "API_" + baseUrl + "_get-local-ip_{}"
+
+        var url = "/test-animation";
+
+        var data = {
+            an: thirdInput,
+        };
+
+        portPartSplit = baseUrl.split(":")
+
+        port = ""
+
+        if (portPartSplit.length ==2) {
+            port = ":" + portPartSplit[1]
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                data = data.replace(/^"|"$/g, '');
+                animatorIpAddress.value = data + port
+                target.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                target.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+
     function stopAnimation() {
         stopButton.setAttribute("disabled", "true");
 
