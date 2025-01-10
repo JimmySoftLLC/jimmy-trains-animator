@@ -1178,11 +1178,11 @@ def read_from_serial(ser):
                     response = process_command(response)
                     # print(response["system"], response["device"],
                     #       response["address"], response["command"], response["data"], response["button"])
-                    command = process_command_animator_config(response)
-                    print(command)
+                    command, item = process_command_animator_config(response)
+                    print(command, item)
                     if command:
                         exit_set_hdw = False
-                        set_hdw(command[1],1)
+                        set_hdw(command[1],1,item["animatorIpAddress"])
                     time.sleep(1)
                     ser.read(ser.in_waiting)
 
@@ -1301,7 +1301,7 @@ def process_command_animator_config(response):
         if item["device"] == response["device"] and item["address"] == response["address"]:
             for row in item['table_data']:
                 if row[0] == response["button"]:
-                    return row  # Return the matched row
+                    return row, item  # Return the matched row
     return None  # If no match is found
 
 
@@ -2919,7 +2919,7 @@ def rnd_prob(random_value):
     return False
 
 
-def set_hdw(cmd, dur):
+def set_hdw(cmd, dur, url=""):
     global sp, br, running_mode, exit_set_hdw
 
     if cmd == "":
@@ -3034,8 +3034,13 @@ def set_hdw(cmd, dur):
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = seg.split("_")
-                response = send_animator_post(seg_split[1], seg_split[2], seg_split[3])
-                return response
+                if len(seg_split) == 3:
+                    response = send_animator_post(url, seg_split[1], seg_split[2])
+                    return response
+                elif len(seg_split) == 4:
+                    response = send_animator_post(seg_split[1], seg_split[2], seg_split[3])
+                    return response
+
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
