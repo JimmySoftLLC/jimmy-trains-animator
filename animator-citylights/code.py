@@ -1663,7 +1663,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def test_animation_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        response = set_hdw(rq_d["an"], 3)
+        response = set_hdw(rq_d["an"], 3,rq_d["ip"])
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
