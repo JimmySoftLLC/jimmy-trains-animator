@@ -244,7 +244,7 @@ def restart_pi():
 
 
 def restart_pi_timer():
-    play_mix(code_folder + "mvc/restarting_animator_city_lights.wav")
+    play_mix(code_folder + "mvc/restarting_animator_base3.wav")
     delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
@@ -2107,19 +2107,6 @@ def set_hdw(cmd, dur, url):
                 light_n = int(segs_split[0][2:])-1
                 power = segs_split[1]
                 set_light_power(light_n, power)
-            # ZRAND = Random rainbow, fire, or color change
-            elif seg[0:] == 'ZRAND':
-                random_effect(1, 3, dur)
-            # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
-            elif seg[:2] == 'ZR':
-                v = float(seg[2:])
-                rbow(v, dur)
-            # ZFIRE = Fire
-            elif seg[0:] == 'ZFIRE':
-                random_effect(3, 3, dur)
-            # ZCOLCH = Color change
-            elif seg[0:] == 'ZCOLCH':
-                random_effect(2, 2, dur)
             # ZL_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments
             elif seg[:2] == 'ZL':
                 segs_split = seg[3:].split("_")
