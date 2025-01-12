@@ -241,7 +241,9 @@ def gc_col(collection_point):
     print("Point " + collection_point +
           " Available memory: {} bytes".format(start_mem))
 
-
+# to make this work you must add permission to the visudo file
+# sudo visudo
+# citylights ALL=(ALL) NOPASSWD: /sbin/reboot
 def restart_pi():
     os.system('sudo reboot')
 

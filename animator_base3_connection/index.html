@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - City Lights</title>
+    <title>Animator - Base3</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=Animator-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
@@ -42,22 +42,18 @@
 <body>
     <div id="modalEl"></div>
     <div class="mui-container">
-        <h1>Animator - City Lights</h1>
+        <h1>Animator - Base3</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your Animator - City Lights
+            Use this web app to control and setup your Animator - Base3
             product. Have fun animating.
         </p>
         <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
             data-url="/mode">Left</button>
         <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
             data-url="/mode">Right</button>
-        <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-            data-url="/mode">Three</button>
-        <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-            data-url="/mode">Four</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
-                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
+                <a data-mui-toggle="tab" data-mui-controls="animators">Animator Devices</a>
             </li>
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="lighting">lights</a>
@@ -65,220 +61,101 @@
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
             </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
-            </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="animators">Animator Devices</a>
-            </li>
         </ul>
-        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
-            <h2>Random play:</h2>
-            <div id="topicButtonContainer"></div>
-            <h2>Current Media Queue</h2>
-            <div id="currentMedia"></div>
-            <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-            <h2>Media:</h2>
-            <div id="mediaContainer"></div>
-            <h2>Intermission between movies:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0" data-url="/mode"
-                    type="button">
-                    Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.33" data-url="/mode"
-                    type="button">
-                    Infrequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.66" data-url="/mode"
-                    type="button">
-                    Frequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_1" data-url="/mode"
-                    type="button">
-                    Always
-                </button>
+        <div class="mui-tabs__pane mui--is-active" id="animators">
+            <h2>Animator setup:</h2>
+            <p>Follow these steps to setup animators to be controlled by Lionel Legacy/TMCC remotes:</p>
+            <ol>
+                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
+                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
+                    corresponding buttons to duplicate, rename, or delete it.</li>
+            </ol>
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="tmccVoiceCheckbox" data-url="/set-tmcc-voice-enabled">
+                    Enable command voice
+                </label>
             </div>
-            <h2>Animation settings:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
-                    type="button">
-                    Continuous Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
-                    type="button">
-                    Continuous Mode Off
-                </button>
+            <button class="mui-btn mui-btn--primary" onclick="createAnimatorDialog()">Create
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimatorDialog()">Duplicate
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete
+                Animator</button>
+            <h2>Animators:</h2>
+            <div id="animatorContainer"></div>
+            <h2>Animator commands:</h2>
+            <div>USB connect to base3 usb port</div>
+            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
+            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
+            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
+            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
+            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
+                between
+                transitions in decimal seconds
             </div>
-            <h2>Instructions on how to add your own media:</h2>
-            <p>
-                Media goes in folders you create in the media folder in your home directory. Name these folders with
-                logical names related to what is in them. For
-                example Christmas music could go in a folder named Holiday.
-            </p>
-            <h2>Animation timing:</h2>
-            <p>
-                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
-                left button to start your animation. Once the media starts press the right button for each point
-                that you want an animation timestamp. Time your button presses to key moments in the media. Continue
-                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
-                animation script will be ready to add animations to.
-            </p>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
-                    type="button">
-                    Timestamp Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
-                    data-url="/mode" type="button">
-                    Timestamp Mode Off
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_on" data-url="/mode"
-                    type="button">
-                    Terminal Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_off" data-url="/mode"
-                    type="button">
-                    Terminal Mode Off
-                </button>
-            </div>
-
-            <div class="mui-textfield">
-                <h2>Upload a File</h1>
-                    <form id="uploadForm" enctype="multipart/form-data">
-                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
-                        <input type="file" id="fileInput" name="file" style="display: none;" required>
-                    </form>
-                    <div id="progressContainer">
-                        <div id="progressBar">0%</div>
-                    </div>
-                    <p id="status"></p>
-            </div>
+            <div>ZRAND = Random rainbow, fire, or color change</div>
+            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+            <div>ZFIRE = Fire</div>
+            <div>ZCOLCH = Color change</div>
+            <div>ZJ = Joke</div>
+            <div id="neoInstructionsContainer"></div>
+            <div id="sceneInstructionsContainer"></div>
+            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
+            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                data_object}</div>
+            <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object
+                i.e. {"an":data_object}</div>
+            <div>E = End script</div>
+            <h2>Animator settings:</h2>
+            <form class="mui-form">
+                <div class="mui-textfield">
+                    <label>Animator Name:</label>
+                    <input class="input" id="animatorName" type="text" disabled
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>Device Type:</label>
+                    <input type="text" id="animatorDevice" placeholder="Enter Device Type"
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>Address:</label>
+                    <input type="text" id="animatorAddress" placeholder="Enter Address"
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>Base url:</label>
+                    <input type="text" id="animatorBaseUrl" placeholder="Enter Base Url"
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>IP Address:</label>
+                    <input class="input" id="animatorIpAddress" type="text" disabled
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+            </form>
+            <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
+                <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP Address
+                    Animator</button>
+                <table id="animatorTable" class="mui-table">
+                    <thead>
+                        <tr>
+                            <th>Button</th>
+                            <th>Commands</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
-            <h2>Setup light string:</h2>
-            <div class="mui-textfield">
-                <p>
-                    Enter your light string in the order which each component is connected together by pressing neo-6,
-                    cane-4...
-                    When finished press "Save".
-                </p>
-                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
-                    data-url="/update-light-string">
-                    Save
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
-                    data-url="/update-light-string">
-                    Clear
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
-                    data-url="/update-light-string">
-                    Set to defaults
-                </button>
-            </div>
-            <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
-                    data-url="/update-light-string">
-                    projector-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
-                    data-url="/update-light-string">
-                    concession-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
-                    data-url="/update-light-string">
-                    sign-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
-                    data-url="/update-light-string">
-                    cane-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
-                    data-url="/update-light-string">
-                    grandtree-21
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neo-6"
-                    data-url="/update-light-string">
-                    neo-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
-                    data-url="/update-light-string">
-                    bolt-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-2"
-                    data-url="/update-light-string">
-                    bolt-2
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-3"
-                    data-url="/update-light-string">
-                    bolt-3
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-4"
-                    data-url="/update-light-string">
-                    bolt-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bar-10"
-                    data-url="/update-light-string">
-                    bar-10
-                </button>
-            </div>
-            <h2>Test neopixel lights:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
-                    type="button">
-                    Red
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
-                    type="button">
-                    Green
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
-                    type="button">
-                    Blue
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
-                    type="button">
-                    White
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN0" data-url="/lights"
-                    type="button">
-                    Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN20" data-url="/lights"
-                    type="button">
-                    20
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN40" data-url="/lights"
-                    type="button">
-                    40
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN60" data-url="/lights"
-                    type="button">
-                    60
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN80" data-url="/lights"
-                    type="button">
-                    80
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN100" data-url="/lights"
-                    type="button">
-                    100
-                </button>
-            </div>
-            <h2>Neo pixel colors:</h2>
-            <div id="neoButtonContainer"></div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_neo_to_defaults"
-                    data-url="/defaults" type="button">
-                    Reset neo pixel colors to defaults
-                </button>
-            </div>
-            <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
             <div class="mui-checkbox">
                 <label>
                     <input type="checkbox" id="lifxCheckbox" data-url="/set-lifx-enabled">
@@ -428,152 +305,6 @@
                 Reset to defaults
             </button>
         </div>
-        <div class="mui-tabs__pane" id="tables">
-            <h2>Animation scripts:</h2>
-            <p>
-                Animation scripts run the animation. To load the script press the button for the sound track you want to
-                modify.
-                Modify the script as needed and press save to save the script.
-            </p>
-            <h2>Media:</h2>
-            <div id="mediaScriptContainer"></div>
-            <h2>Animation script table:</h2>
-            <div class="mui-textfield">
-                <input class="input" id="animationName" type="text" disabled>
-            </div>
-            <button id="saveAnimationButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
-            <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-            <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-            <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
-            <div>USB connect to base3 usb port</div>
-            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
-            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
-            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
-            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
-            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
-                between
-                transitions in decimal seconds
-            </div>
-            <div>ZRAND = Random rainbow, fire, or color change</div>
-            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-            <div>ZFIRE = Fire</div>
-            <div>ZCOLCH = Color change</div>
-            <div>ZJ = Joke</div>
-            <div id="neoInstructionsContainer"></div>
-            <div id="sceneInstructionsContainer"></div>
-            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
-            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
-                data_object}</div>
-            <div>E = End script</div>
-            <table id="animationsTable" class="mui-table">
-                <thead>
-                    <tr>
-                        <th>TimeStamp</th>
-                        <th>TimeCode</th>
-                        <th>Animation</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        <div class="mui-tabs__pane" id="animators">
-            <h2>Animator setup:</h2>
-            <p>Follow these steps to setup animators to be controlled by Lionel Legacy/TMCC remotes:</p>
-            <ol>
-                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
-                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
-                    corresponding buttons to duplicate, rename, or delete it.</li>
-            </ol>
-            <div class="mui-checkbox">
-                <label>
-                    <input type="checkbox" id="tmccVoiceCheckbox" data-url="/set-tmcc-voice-enabled">
-                    Enable command voice
-                </label>
-            </div>
-            <button class="mui-btn mui-btn--primary" onclick="createAnimatorDialog()">Create
-                Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimatorDialog()">Duplicate
-                Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename
-                Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete
-                Animator</button>
-            <h2>Animators:</h2>
-            <div id="animatorContainer"></div>
-            <h2>Animator commands:</h2>
-            <div>USB connect to base3 usb port</div>
-            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
-            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
-            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
-            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
-            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
-                between
-                transitions in decimal seconds
-            </div>
-            <div>ZRAND = Random rainbow, fire, or color change</div>
-            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-            <div>ZFIRE = Fire</div>
-            <div>ZCOLCH = Color change</div>
-            <div>ZJ = Joke</div>
-            <div id="neoInstructionsContainer"></div>
-            <div id="sceneInstructionsContainer"></div>
-            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
-            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
-                data_object}</div>
-            <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object
-                i.e. {"an":data_object}</div>
-            <div>E = End script</div>
-            <h2>Animator settings:</h2>
-            <form class="mui-form">
-                <div class="mui-textfield">
-                    <label>Animator Name:</label>
-                    <input class="input" id="animatorName" type="text" disabled
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>Device Type:</label>
-                    <input type="text" id="animatorDevice" placeholder="Enter Device Type"
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>Address:</label>
-                    <input type="text" id="animatorAddress" placeholder="Enter Address"
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>Base url:</label>
-                    <input type="text" id="animatorBaseUrl" placeholder="Enter Base Url"
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>IP Address:</label>
-                    <input class="input" id="animatorIpAddress" type="text" disabled
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-            </form>
-            <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
-                <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP Address
-                    Animator</button>
-                <table id="animatorTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>Button</th>
-                            <th>Commands</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-        </div>
     </div>
 </body>
 
@@ -586,31 +317,10 @@
         getWebSiteUrl()
         getVolume()
         getAnimators()
-        getLightString()
-        getMedia()
         getSceneChanges()
-        getNeoChanges()
         getLifxEnabled()
         getTmccVoiceEnabled()
     });
-
-    function getLightString() {
-        fetch('/get-light-string', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                lightString.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-            })
-    };
 
     function getMedia() {
         fetch('/get-all-media', {
@@ -685,7 +395,6 @@
             })
             .then(function (data) {
                 websiteUrl.value = data; // Set the value of the input field with the received data
-                makeSocketConnection(data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -844,256 +553,6 @@
             animatorContainer.appendChild(button);
         });
     }
-
-    function setMediaButtons(my_data) {
-        // Clear the existing buttons (if needed)
-        const topicButtonContainer = document.getElementById("topicButtonContainer");
-        topicButtonContainer.innerHTML = '';
-
-        // Clear the existing buttons (if needed)
-        const mediaContainer = document.getElementById("mediaContainer");
-        mediaContainer.innerHTML = '';
-
-        // Loop through each folder (topic) in my_data
-        Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('pictures') || topic.includes('random_config') || topic.includes('animator')) {
-                return; // Skip this topic
-            }
-            // Create and add a button for the folder (topic)
-            const topicButton = document.createElement("button");
-            topicButton.textContent = topic;
-            topicButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-            topicButton.setAttribute("data-value", "random_" + topic);
-            topicButton.setAttribute("data-url", "/animation");
-            topicButton.setAttribute("type", "button");
-            topicButton.addEventListener('click', function () {
-                var url = topicButton.getAttribute('data-url');
-                var animation = topicButton.getAttribute('data-value');
-                var redirectUrl = topicButton.getAttribute('data-redirect');
-
-                // Create an object with the data to be sent in the request
-                var data = {
-                    an: animation,
-                };
-
-                topicButton.setAttribute('disabled', 'true');
-
-                // Make a POST request using fetch
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                })
-                    .then(function (response) {
-                        // Handle the response from the server
-                        if (redirectUrl) {
-                            window.location.href = redirectUrl;
-                        } else {
-                            topicButton.removeAttribute('disabled');
-                        }
-                    })
-                    .catch(function (error) {
-                        topicButton.removeAttribute('disabled');
-                        console.log(error);
-                        showAlert(error);
-                    });
-            });
-
-            // Append the topic button to the topic button container
-            topicButtonContainer.appendChild(topicButton);
-
-            if (topic.includes('random_config') || topic.includes('all') || topic.includes('play lists')) {
-                return; // Skip adding files
-            }
-
-            // Create and add a title for the folder (topic)
-            const title = document.createElement("h2");
-            title.textContent = topic + " :";
-            mediaContainer.appendChild(title);
-
-            // Get the array of files for this topic
-            const files = my_data[topic];
-
-            // Loop through each file in the topic and create a button for it
-            files.forEach((file) => {
-                const fileButton = document.createElement("button");
-                fileButton.textContent = file.replace("customers_owned_music_", "");
-                fileButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                fileButton.setAttribute("data-value", topic + "/" + file);
-                fileButton.setAttribute("data-url", "/animation");
-                fileButton.setAttribute("type", "button");
-                fileButton.addEventListener('click', function () {
-                    var url = fileButton.getAttribute('data-url');
-                    var animation = fileButton.getAttribute('data-value');
-                    var redirectUrl = fileButton.getAttribute('data-redirect');
-
-                    // Create an object with the data to be sent in the request
-                    var data = {
-                        an: animation,
-                    };
-
-                    fileButton.setAttribute('disabled', 'true');
-
-                    // Make a POST request using fetch
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data),
-                    })
-                        .then(function (response) {
-                            // Handle the response from the server
-                            if (redirectUrl) {
-                                window.location.href = redirectUrl;
-                            } else {
-                                fileButton.removeAttribute('disabled');
-                            }
-                        })
-                        .catch(function (error) {
-                            fileButton.removeAttribute('disabled');
-                            console.log(error);
-                            showAlert(error);
-                        });
-                });
-
-                // Append the file button to the file button container
-                mediaContainer.appendChild(fileButton);
-            });
-        });
-    }
-
-    function setMediaScriptButtons(my_data) {
-        // Clear the existing buttons (if needed)
-        const mediaScriptContainer = document.getElementById("mediaScriptContainer");
-        mediaScriptContainer.innerHTML = '';
-
-        // Loop through each folder (topic) in my_data
-        Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('pictures') || topic.includes('random') || topic.includes('play lists') || topic.includes('all')) {
-                return; // Skip this topic
-            }
-            // Create and add a title for the folder (topic)
-            const title = document.createElement("h2");
-            title.textContent = topic + " :";
-            mediaScriptContainer.appendChild(title);
-
-            // Get the array of files for this topic
-            const files = my_data[topic];
-
-            // Loop through each file in the topic and create a button for it
-            files.forEach((file) => {
-                const button = document.createElement("button");
-                button.textContent = file.replace("customers_owned_music_", "");
-                button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                button.setAttribute("data-value", topic + "/" + file);
-                button.setAttribute("data-url", "/get-animation");
-                button.setAttribute("type", "button");
-                button.addEventListener('click', function () {
-                    var url = button.getAttribute('data-url');
-                    var animation = button.getAttribute('data-value');
-                    var redirectUrl = button.getAttribute('data-redirect');
-
-                    // Create an object with the data to be sent in the request
-                    var data = {
-                        an: animation,
-                    };
-
-                    button.setAttribute('disabled', 'true');
-
-                    // Make a POST request using fetch
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data),
-                    })
-                        .then(function (response) {
-                            return response.text(); // assuming the response is plain text
-                        })
-                        .then(function (data) {
-                            myData = JSON.parse(data); // Set the value of the input field with the received data
-                            animationName.value = animation;
-                            populateAnimationsTable(myData);
-                            button.removeAttribute('disabled');
-                        })
-                        .catch(function (error) {
-                            button.removeAttribute('disabled');
-                            console.log(error);
-                            showAlert(error);
-                        });
-                });
-                // Append the button under the current folder title
-                mediaScriptContainer.appendChild(button);
-            });
-        });
-    }
-
-
-    function setNeoChangeButtons(my_data) {
-        // Clear the existing buttons (if needed)
-        const neoButtonContainer = document.getElementById("neoButtonContainer");
-        neoButtonContainer.innerHTML = '';
-
-        // Clear the existing buttons (if needed)
-        const neoInstructionsContainer = document.getElementById("neoInstructionsContainer");
-        neoInstructionsContainer.innerHTML = '';
-
-        instructions = ""
-
-        // Loop through neo in my_data
-        Object.keys(my_data).forEach((neo) => {
-            // Create and add a button for the neo and add to the instructions string
-            instructions += neo + ", "
-            const neoButton = document.createElement("button");
-            neoButton.textContent = neo;
-            neoButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-            neoButton.setAttribute("data-value", neo);
-            neoButton.setAttribute("data-url", "/lights-neo");
-            neoButton.setAttribute("type", "button");
-            neoButton.addEventListener('click', function () {
-                var url = neoButton.getAttribute('data-url');
-                var animation = neoButton.getAttribute('data-value');
-                var redirectUrl = neoButton.getAttribute('data-redirect');
-
-                // Create an object with the data to be sent in the request
-                var data = {
-                    an: animation,
-                };
-
-                neoButton.setAttribute('disabled', 'true');
-
-                // Make a POST request using fetch
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        colorPickerNeo.value = rgbToHex(data[0], data[1], data[2]);
-                        neoButton.removeAttribute('disabled');
-                    })
-                    .catch(error => {
-                        neoButton.removeAttribute('disabled');
-                        console.error('Error fetching default color:', error);
-                    });
-            });
-
-            // Append the topic button to the topic button container
-            neoButtonContainer.appendChild(neoButton);
-        });
-
-        instructions = instructions.slice(0, -2);
-
-        neoInstructionsContainer.innerHTML = 'ZN_S_E_T_I = Neopixel scene change S start E end using(' + instructions + '), time, increments';
-    }
-
 
     function setSceneChangeButtons(my_data) {
         // Clear the existing buttons (if needed)
@@ -1826,20 +1285,9 @@
     }
 
     // Table component
-    var saveAnimationButton = document.getElementById("saveAnimationButton");
     var saveAnimatorButton = document.getElementById("saveAnimatorButton");
-    var stopButton = document.getElementById("stopButton");
     var getAnimatorIpAddressButton = document.getElementById("getAnimatorIpAddressButton");
-    var animationTableBody = document.querySelector("#animationsTable tbody");
     var animatorTableBody = document.querySelector("#animatorTable tbody");
-
-    stopButton.addEventListener("click", function () {
-        stopAnimation();
-    });
-
-    saveAnimationButton.addEventListener("click", function () {
-        saveAnimationData(animationName.value, false);
-    });
 
     saveAnimatorButton.addEventListener("click", function () {
         saveAnimatorData(animatorName.value, false);
@@ -1848,7 +1296,6 @@
     getAnimatorIpAddressButton.addEventListener("click", function () {
         getAnimatorIpAddress(animatorBaseUrl.value);
     });
-
 
     function getAnimatorIpAddress(baseUrl) {
         const thirdInput = "API_" + baseUrl + "_get-local-ip_{}"
@@ -1889,34 +1336,6 @@
             });
     }
 
-
-    function stopAnimation() {
-        stopButton.setAttribute("disabled", "true");
-
-        var data = {
-            an: animationName.value,
-        };
-
-        fetch("/stop", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                console.log("file deleted")
-                stopButton.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                console.log(error);
-                stopButton.removeAttribute('disabled')
-            });
-    }
-
     function deleteAnimator() {
         var data = {
             fn: animatorName.value,
@@ -1944,17 +1363,6 @@
             });
     }
 
-    function populateAnimationsTable(data) {
-        // Clear existing table rows
-        animationTableBody.innerHTML = "";
-
-        // Populate table with new data
-        data.forEach(function (rowData, index) {
-            var row = createAnimationsDataRow(rowData, index);
-            animationTableBody.appendChild(row);
-        });
-    }
-
     function populateAnimatorTable(data) {
         // Clear existing table rows
         animatorTableBody.innerHTML = "";
@@ -1965,19 +1373,6 @@
             animatorTableBody.appendChild(row);
         });
     }
-
-    animationTableBody.addEventListener("click", function (event) {
-        var target = event.target;
-        if (target.classList.contains("animation-insert-row-btn")) {
-            animationInsertRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-delete-row-btn")) {
-            animationDeleteRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-add-row-btn")) {
-            animationAddRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-test-row-btn")) {
-            animationTestAnimation(target)
-        }
-    });
 
     animatorTableBody.addEventListener("click", function (event) {
         var target = event.target;
@@ -2006,82 +1401,6 @@
         if (inputElements.length >= elNum) {
             inputElements[elNum - 1].value = textVal;
         }
-    }
-
-
-    function timeSecondsCellChanged(event) {
-        var inputValue = convertSecondsToTimeCode(event.target.value);
-        setTextOfInput(event.target.parentNode.parentNode.parentNode, 2, inputValue);
-    }
-
-    function timeCodeCellChanged(event) {
-        var inputValue = convertTimeCodeToSeconds(event.target.value)
-        setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
-    }
-
-
-    function createAnimationsDataRow(rowData, rowIndex) {
-        var row = document.createElement("tr");
-        myRowDataSplit = rowData.split("|")
-
-        if (myRowDataSplit[0]) {
-            var tsCell = createEditableCell(myRowDataSplit[0], "80px");
-            tsCell.addEventListener('keydown', function (event) {
-                if (event.keyCode === 13) {
-                    timeSecondsCellChanged(event);
-                }
-            });
-        } else {
-            var tsCell = createEditableCell("", "80px");
-        }
-        row.appendChild(tsCell);
-
-        if (myRowDataSplit[0]) {
-            var timeCode = convertSecondsToTimeCode(myRowDataSplit[0])
-            var tcCell = createEditableCell(timeCode, "110px");
-            tcCell.addEventListener('keydown', function (event) {
-                if (event.keyCode === 13) {
-                    timeCodeCellChanged(event);
-                }
-            });
-
-        } else {
-            var tcCell = createEditableCell("", "110px");
-        }
-        row.appendChild(tcCell);
-
-        if (myRowDataSplit[1]) {
-            var anCell = createEditableCell(myRowDataSplit[1], "500px");
-            anCell.addEventListener('click', function (event) {
-                animationCellClicked(event);
-            });
-        } else {
-            var anCell = createEditableCell("", "500px");
-            anCell.addEventListener('click', function (event) {
-                animationCellClicked(event);
-            });
-        }
-        row.appendChild(anCell);
-
-        var actionCell = document.createElement("td");
-        actionCell.style.paddingTop = "0px";  // Adjust top padding
-        actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
-
-        var testButton = createAnimationTestButton();
-        actionCell.appendChild(testButton);
-
-        var insertButton = createAnimationInsertButton();
-        actionCell.appendChild(insertButton);
-
-        var addButton = createAnimationAddButton();
-        actionCell.appendChild(addButton);
-
-        var deleteButton = createAnimationDeleteButton();
-        actionCell.appendChild(deleteButton);
-
-        row.appendChild(actionCell);
-
-        return row;
     }
 
     function createAnimatorDataRow(rowData, rowIndex) {
@@ -2138,38 +1457,6 @@
         return cell;
     }
 
-    function createAnimationTestButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-test-row-btn";
-        button.innerHTML = 'Tst';
-        return button;
-    }
-
-    function createAnimationDeleteButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-delete-row-btn";
-        button.innerHTML = 'Del';
-        return button;
-    }
-
-    function createAnimationInsertButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-insert-row-btn";
-        button.innerHTML = 'Ins';
-        return button;
-    }
-
-    function createAnimationAddButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-add-row-btn";
-        button.innerHTML = 'Add';
-        return button;
-    }
-
     function createAnimatorTestButton() {
         var button = document.createElement("button");
         button.type = "button";
@@ -2200,54 +1487,6 @@
         button.className = "mui-btn mui-btn--primary animator-add-row-btn";
         button.innerHTML = 'Add';
         return button;
-    }
-
-    function animationDeleteRow(row) {
-        row.parentNode.removeChild(row);
-        copyAndResetTable();
-    }
-
-    function animationAddRow(row) {
-        var newRow = createAnimationsDataRow("|");
-        animationTableBody.insertBefore(newRow, row.nextSibling);
-        copyAndResetTable();
-    }
-
-    function animationInsertRow(row) {
-        var newRow = createAnimationsDataRow("|");
-        animatorTableBody.insertBefore(newRow, row);
-        copyAndResetTable();
-    }
-
-    function animationTestAnimation(target) {
-        const rowElement = target.parentNode.parentNode;
-        const thirdInput = getTextOfInput(rowElement, 3);
-        target.setAttribute("disabled", "true");
-        var url = "/test-animation";
-
-        var data = {
-            an: thirdInput,
-        };
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text();
-            })
-            .then(function (data) {
-                console.log(data);
-                target.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                target.removeAttribute('disabled')
-                console.log(error);
-                showAlert(error);
-            });
     }
 
     function animatorDeleteRow(row) {
@@ -2321,7 +1560,6 @@
 
         populateAnimationsTable(combinedData)
     }
-
 
     function saveAnimationData(file_name, get_changes) {
         saveAnimationButton.setAttribute("disabled", "true");
@@ -2437,40 +1675,6 @@
             });
     }
 
-    // Function to convert DaVinci Resolve timestamp to seconds
-    function convertTimeCodeToSeconds(timestamp) {
-        var parts = timestamp.split(':');
-        var hours = parseInt(parts[0]);
-        var minutes = parseInt(parts[1]);
-        var seconds = parseInt(parts[2]);
-        var frames = parseInt(parts[3]);
-
-        hours -= 1
-
-        var totalSeconds = hours * 3600 + minutes * 60 + seconds + frames / 24;
-
-        if (!totalSeconds) totalSeconds = 0;
-
-        return totalSeconds.toFixed(1);
-    }
-
-    // Function to convert seconds to DaVinci Resolve timestamp
-    function convertSecondsToTimeCode(seconds) {
-        var hours = Math.floor(seconds / 3600) + 1;
-        seconds %= 3600;
-        var minutes = Math.floor(seconds / 60);
-        seconds %= 60;
-        var frames = Math.round((seconds - Math.floor(seconds)) * 24);
-
-        if (!seconds) {
-            hours = 1
-            minutes = 0
-            frames = 0
-        }
-
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
-    }
-
     const colorPickerLifx = document.getElementById('colorPickerLifx');
     colorPickerLifx.addEventListener('input', function () {
         const color = colorPickerLifx.value;
@@ -2481,61 +1685,6 @@
             sendRGBValues("lifx", rgb.r, rgb.g, rgb.b);
         }
     });
-
-    const colorPickerNeo = document.getElementById('colorPickerNeo');
-    colorPickerNeo.addEventListener('input', function () {
-        const color = colorPickerNeo.value;
-        const rgb = hexToRgb(color);
-        // Send RGB values to the server only if no request is in progress
-        if (!isRequestInProgress) {
-            isRequestInProgress = true;
-            sendRGBValues("neo", rgb.r, rgb.g, rgb.b);
-        }
-    });
-
-    // Add click event listener to file input button
-    document.getElementById('fileInput').addEventListener('change', function () {
-        if (this.files.length > 0) {
-            document.getElementById('status').innerText = '';
-            const percentComplete = (event.loaded / event.total) * 100;
-            const progressBar = document.getElementById('progressBar');
-            progressBar.style.width = percentComplete + '%';
-            progressBar.innerText = percentComplete.toFixed(2) + '%';
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/upload', true);
-
-            xhr.upload.onprogress = function (event) {
-                if (event.lengthComputable) {
-                    const percentComplete = (event.loaded / event.total) * 100;
-                    const progressBar = document.getElementById('progressBar');
-                    progressBar.style.width = percentComplete + '%';
-                    progressBar.innerText = percentComplete.toFixed(2) + '%';
-                }
-            };
-
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    document.getElementById('status').innerText = 'File uploaded successfully!';
-                    document.getElementById('progressBar').style.backgroundColor = '#4caf50';
-                } else {
-                    document.getElementById('status').innerText = 'File upload failed!';
-                    document.getElementById('progressBar').style.backgroundColor = '#f44336';
-                }
-            };
-
-            xhr.onerror = function () {
-                document.getElementById('status').innerText = 'File upload failed!';
-                document.getElementById('progressBar').style.backgroundColor = '#f44336';
-            };
-
-            xhr.send(formData);
-        }
-    })
 
     function hexToRgb(hex) {
         hex = hex.replace(/^#/, '');
@@ -2674,54 +1823,6 @@
                 tmccVoiceCheckbox.removeAttribute('disabled');
             });
     });
-
-    function makeSocketConnection(webSiteUrl) {
-        const cfg = {
-            "HOST_NAME": webSiteUrl
-        };
-
-        const server_str = `${cfg["HOST_NAME"]}.local`; // Adjust as needed
-        const websocketUrl = `ws://${server_str}:8001`; // Ensure this matches your server setup
-
-        const queueList = document.getElementById('queueList');
-        const socket = new WebSocket(websocketUrl);
-
-        const currentMedia = document.getElementById('currentMedia');
-
-        socket.onopen = function (event) {
-            console.log('WebSocket connection established.');
-        };
-
-        socket.onmessage = function (event) {
-            const data = JSON.parse(event.data);
-            // console.log("Received data:", data);  // Log received data for debugging
-            currentMedia.innerHTML = '';
-            const pElement = document.createElement('p');
-            pElement.textContent = "Playing: " + data.current_media_playing;
-            currentMedia.appendChild(pElement);
-            updateQueue(data.commands);
-        };
-
-        socket.onerror = function (error) {
-            console.error('WebSocket error:', error);
-        };
-
-        socket.onclose = function (event) {
-            console.log('WebSocket connection closed:', event);
-        };
-
-        function updateQueue(commands) {
-            // Clear the current list
-            queueList.innerHTML = '';
-            // Populate the list with new queue items
-            commands.forEach(command => {
-                const listItem = document.createElement('li');
-                listItem.className = 'MuiListItem-root MuiListItem-gutters MuiListItem-button';
-                listItem.textContent = command; // Assuming each command is a string
-                queueList.appendChild(listItem);
-            });
-        }
-    }
 
 </script>
 
