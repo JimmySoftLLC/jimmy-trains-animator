@@ -1299,7 +1299,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             override_switch_state["switch_value"] = "left"
         elif rq_d["an"] == "right":
             override_switch_state["switch_value"] = "right"
-        elif rq_d["an"] == "rightheld":
+        elif rq_d["an"] == "right_held":
             override_switch_state["switch_value"] = "right_held"
         elif rq_d["an"] == "three":
             override_switch_state["switch_value"] = "three"
@@ -1973,7 +1973,12 @@ def set_hdw(cmd, dur, url):
             # lights SW_XXXX = Switch XXXX (right,left,three,four)
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
-                override_switch_state["switch_value"] = segs_split[1]
+                if segs_split[1] == "leftheld":
+                    override_switch_state["switch_value"] = "left_held"
+                if segs_split[1] == "rightheld":
+                    override_switch_state["switch_value"] = "right_held"
+                else:
+                    override_switch_state["switch_value"] = segs_split[1]
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")
