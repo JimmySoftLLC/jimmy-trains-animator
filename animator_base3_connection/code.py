@@ -905,47 +905,47 @@ def process_command(response):
                 print("throttle up :" + str(decimal_number))
                 if speak_commands:
                     play_mix(code_folder + "mvc/trottle_up.wav")
-                    text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
+                    spk_str(str(decimal_number), False)
             else:
                 decimal_number = scale_number(5-decimal_number, 2)
                 print("throttle down :" + str(decimal_number))
                 if speak_commands:
                     play_mix(code_folder + "mvc/trottle_down.wav")
-                    text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
+                    spk_str(str(decimal_number), False)
         elif response["command"] == "action" and response["data"] == "00001":
             if speak_commands:
-                text_to_wav_file("direction", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/direction.wav")
         elif response["command"] == "action" and response["data"] == "11100":
             if speak_commands:
-                text_to_wav_file("horn", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/horn.wav")
             response["button"] = "HORN"
         elif response["command"] == "action" and response["data"] == "11101":
             if speak_commands:
-                text_to_wav_file("bell", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/bell.wav")
             response["button"] = "BELL"
         elif response["command"] == "action" and response["data"] == "00100":
             if speak_commands:
-                text_to_wav_file("boost", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/boost.wav")
             response["button"] = "BOOST"
         elif response["command"] == "action" and response["data"] == "00111":
             if speak_commands:
-                text_to_wav_file("brake", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/brake.wav")
             response["button"] = "BRAKE"
         elif response["command"] == "action" and response["data"] == "00101":
             if speak_commands:
-                text_to_wav_file("front coupler", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/front_coupler.wav")
             response["button"] = "FCOUPLER"
         elif response["command"] == "action" and response["data"] == "00110":
             if speak_commands:
-                text_to_wav_file("rear coupler", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/rear_coupler.wav")
             response["button"] = "RCOUPLER"
         elif response["command"] == "action" and response["data"] == "01001":
             if speak_commands:
-                text_to_wav_file("aux 1", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/aux_1.wav")
             response["button"] = "AUX1"
         elif response["command"] == "action" and response["data"] == "01101":
             if speak_commands:
-                text_to_wav_file("aux 2", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/aux_2.wav")
             response["button"] = "AUX2"
         elif response["command"] == "action" and response["data"][0:1] == "1":
             binary_number = response["data"][1:5]
@@ -967,11 +967,11 @@ def process_command(response):
             response["button"] = "SET"
         elif response["command"] == "action" and response["data"][0:5] == "00000":
             if speak_commands:
-                text_to_wav_file("throw through", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/through.wav")
             response["button"] = "THROUGH"
         elif response["command"] == "action" and response["data"][0:5] == "11111":
             if speak_commands:
-                text_to_wav_file("throw out", tmp_wav_file_name, 2)
+                play_mix(code_folder + "mvc/out.wav")
             response["button"] = "OUT"
     return response
 
@@ -1860,8 +1860,8 @@ def no_trk():
 def spk_web():
     play_mix(code_folder + "mvc/animator_available_on_network.wav")
     play_mix(code_folder + "mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-city-lights":
-        play_mix(code_folder + "mvc/animator_dash_city_dash_lights.wav")
+    if cfg["HOST_NAME"] == "animator-base3":
+        play_mix(code_folder + "mvc/animator_dash_base3.wav")
         play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
@@ -2470,7 +2470,7 @@ if connect_to_base_3 == True:
     ports = list_serial_ports()
     if target_port in ports:
         serial_connection = open_serial_connection(target_port)
-        text_to_wav_file("Connected to " + target_port, tmp_wav_file_name, 2)
+        play_mix(code_folder + "mvc/connected_to_base3.wav")
 
         # Start a thread to continuously read from the serial port
         read_thread = threading.Thread(
