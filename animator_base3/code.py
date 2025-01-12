@@ -146,7 +146,6 @@ def get_home_path(subpath=""):
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 animators_folder = get_home_path() + "media/animator/animators/"
-snd_opt_folder = code_folder + "snd_opt/"
 current_scene = ""
 connect_to_base_3 = True
 tmp_wav_file_name = code_folder + "tmp.wav"
@@ -237,8 +236,6 @@ def gc_col(collection_point):
 # to make this work you must add permission to the visudo file
 # sudo visudo
 # base3 ALL=(ALL) NOPASSWD: /sbin/reboot
-
-
 def restart_pi():
     os.system('sudo reboot')
 
@@ -307,27 +304,10 @@ web_m = cfg_web["web_menu"]
 cfg_vol = files.read_json_file(code_folder + "mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
 
-cfg_intermission_settings = files.read_json_file(
-    code_folder + "mvc/intermission_settings.json")
-intermission_settings = cfg_intermission_settings["intermission_settings"]
-
-cfg_add_song = files.read_json_file(
-    code_folder + "mvc/add_sounds_animate.json")
-add_snd = cfg_add_song["add_sounds_animate"]
-
-
-cont_run = False
-ts_mode = False
-lst_opt = ''
-running_mode = ""
 is_gtts_reachable = False
-terminal_window_during_playback = False
-mix_is_paused = False
+
 exit_set_hdw = False
 local_ip = ""
-t_s = []
-t_elsp = 0.0
-
 
 ################################################################################
 # Setup io hardware
@@ -361,93 +341,6 @@ four_sw = Debouncer(switch_io_4)
 pygame.mixer.init()
 mix = pygame.mixer.Channel(0)
 mix_media = pygame.mixer.Channel(1)
-
-
-################################################################################
-# Terminal to observe timestamp during playback
-
-terminal_process = None
-
-
-def hide_terminal():
-    # Check for Linux platform
-    if sys.platform.startswith('linux'):
-        try:
-            # Use xdotool to find the terminal running 'code.py'
-            window_ids = subprocess.check_output(
-                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
-
-            if window_ids:
-                for window_id in window_ids:
-                    # Minimize (hide) the terminal window
-                    subprocess.run(['xdotool', 'windowminimize', window_id])
-                    print("Terminal window minimized and hidden.")
-            else:
-                print("Terminal window running 'code.py' not found.")
-        except Exception as e:
-            print(f"Error hiding terminal: {e}")
-    else:
-        print("Unsupported platform.")
-
-
-def open_terminal():
-    # Check for Linux platform
-    if sys.platform.startswith('linux'):
-        try:
-            # Use xdotool to find the terminal running 'code.py'
-            window_ids = subprocess.check_output(
-                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
-
-            if window_ids:
-                for window_id in window_ids:
-                    # Unhide and bring the terminal window to the front
-                    # Unhide window
-                    subprocess.run(['xdotool', 'windowmap', window_id])
-                    # Focus window
-                    subprocess.run(
-                        ['xdotool', 'windowactivate', '--sync', window_id])
-
-                    # Resize and move the terminal as required
-                    subprocess.run(
-                        ['xdotool', 'windowmove', window_id, '0', '0'])
-                    subprocess.run(
-                        ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
-                    print("Terminal window unhidden, moved, and resized.")
-            else:
-                print("Terminal window running 'code.py' not found.")
-            return True
-        except Exception as e:
-            print(f"Error opening terminal: {e}")
-            return None
-    else:
-        print("Unsupported platform.")
-        return None
-
-
-def move_vlc_window():
-    attempts = 4
-    for attempt in range(attempts):
-        try:
-            # Find the VLC window by name
-            window_id = subprocess.check_output(
-                ['xdotool', 'search', '--name', 'VLC']).strip().decode('utf-8')
-            if window_id:
-                # Move the window to (100, 100) and resize to 800x600
-                subprocess.run(['xdotool', 'windowmove', window_id,
-                               '0', str(cfg["vertical_resolution"]/2)])
-                subprocess.run(
-                    ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
-                print("VLC window moved and resized.")
-                break  # Exit the loop if successful
-            else:
-                print("VLC window not found.")
-        except Exception as e:
-            print(f"Error moving VLC window: {e}")
-
-        if attempt < attempts - 1:  # Only wait if not the last attempt
-            print("Retrying...")
-            time.sleep(1)  # Wait for 1 second before retrying
-
 
 ################################################################################
 # Setup lifx lights
@@ -1223,7 +1116,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
 
     def get_animator_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg, ts_mode
         if (f_exists(animators_folder + rq_d["an"]) == True):
             f_n = animators_folder + rq_d["an"]
             self.handle_serve_file_name(f_n)
@@ -1270,32 +1163,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def mode_post(self, rq_d):
         print(rq_d)
-        global cfg, cont_run, ts_mode, terminal_window_during_playback
-        if rq_d["an"] == "cont_mode_on":
-            play_mix(code_folder + "mvc/continuous_mode_activated.wav")
-            cont_run = True
-        elif rq_d["an"] == "cont_mode_off":
-            play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
-            cont_run = False
-        elif rq_d["an"] == "timestamp_mode_on":
-            play_mix(code_folder + "mvc/timestamp_mode_on.wav")
-            play_mix(code_folder + "mvc/timestamp_instructions.wav")
-            ts_mode = True
-        elif rq_d["an"] == "timestamp_mode_off":
-            play_mix(code_folder + "mvc/timestamp_mode_off.wav")
-            ts_mode = False
-        elif rq_d["an"] == "terminal_mode_on":
-            play_mix(code_folder + "mvc/terminal_mode_on.wav")
-            terminal_window_during_playback = True
-        elif rq_d["an"] == "terminal_mode_off":
-            play_mix(code_folder + "mvc/terminal_mode_off.wav")
-            terminal_window_during_playback = False
-        elif "intermission_" in rq_d["an"]:
-            rq_d_split = rq_d["an"].split("_")
-            cfg["intermission"] = rq_d_split[1]
-            files.write_json_file(code_folder + "cfg.json", cfg)
-            play_mix(code_folder + "mvc/all_changes_complete.wav")
-        elif rq_d["an"] == "left":
+        global cfg
+        if rq_d["an"] == "left":
             override_switch_state["switch_value"] = "left"
         elif rq_d["an"] == "right":
             override_switch_state["switch_value"] = "right"
@@ -1309,18 +1178,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "application/json")
         self.end_headers()
         response = {"mode processed": rq_d["an"]}
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode
-        cfg["option_selected"] = rq_d["an"]
-        add_command(cfg["option_selected"])
-        files.write_json_file(code_folder + "cfg.json", cfg)
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        response = {"Animation added to queue: ": cfg["option_selected"]}
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
@@ -1351,13 +1208,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["an"]
-        self.wfile.write(response.encode('utf-8'))
-
-    def get_light_string_post(self, rq_d):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = cfg["light_string"]
         self.wfile.write(response.encode('utf-8'))
 
     def get_scene_changes_post(self, rq_d):
@@ -1559,12 +1409,10 @@ def clear_command_queue():
 
 def stop_all_commands():
     """Stop all commands and clear the queue."""
-    global running_mode, cont_run, exit_set_hdw
+    global exit_set_hdw
     clear_command_queue()
-    running_mode = ""
     exit_set_hdw = True
     mix.stop()
-    cont_run = False
     print("Processing stopped and command queue cleared.")
 
 
@@ -1898,42 +1746,6 @@ def generate_wav_from_filename(file_name):
     adjusted_audio.export(wav_file, format="wav")
     print(f"Wav for {file_name} generated and volume adjusted.")
 
-def check_switches(stop_event):
-    global cont_run, running_mode, mix_is_paused, exit_set_hdw, override_switch_state
-    while not stop_event.is_set():  # Check the stop event
-        switch_state = utilities.switch_state_four_switches(
-            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left" and cfg["can_cancel"]:
-            stop_event.set()  # Signal to stop the thread
-        elif switch_state == "left_held" and cfg["can_cancel"]:
-            stop_event.set()  # Signal to stop the thread
-            clear_command_queue()
-            if cont_run:
-                cont_run = False
-                play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
-        elif switch_state == "right" and cfg["can_cancel"]:
-            if running_mode == "mix":
-                if mix_is_paused:
-                    mix_media.unpause()
-                    mix_is_paused = False
-                else:
-                    mix_media.pause()
-                    mix_is_paused = True
-        elif switch_state == "three":
-            print("sw three fell")
-            ch_vol("lower")
-        elif switch_state == "four":
-            print("sw four fell")
-            ch_vol("raise")
-        upd_vol(0.05)
-
-
-def run_check_switches_thread():
-    stop_event = threading.Event()  # Create a stop event
-    check_thread = threading.Thread(target=check_switches, args=(stop_event,))
-    check_thread.start()
-    return check_thread, stop_event
-
 
 ###################################################################################
 # Hardware commands
@@ -1953,7 +1765,7 @@ def rnd_prob(random_value):
 
 
 def set_hdw(cmd, dur, url):
-    global sp, br, running_mode, exit_set_hdw
+    global sp, br, exit_set_hdw
 
     if cmd == "":
         return "NOCMDS"
@@ -2001,14 +1813,6 @@ def set_hdw(cmd, dur, url):
             # ZJ = Joke
             elif seg[:2] == 'ZJ':
                 get_random_joke()
-            # image IXXX/XXX XXX/XXXX(folder/filename)
-            elif seg[0] == 'I':
-                f_nm = media_folder + seg[1:]
-                change_wallpaper(f_nm)
-            # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
-            if seg[0] == 'Q':
-                file_nm = seg[1:]
-                add_command(file_nm)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = seg.split("_")
@@ -2020,10 +1824,6 @@ def set_hdw(cmd, dur, url):
                     response = send_animator_post(
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
-
-            # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
-            elif seg[0] == 'C':
-                print("not implemented")
     except Exception as e:
         files.log_item(e)
 
@@ -2093,25 +1893,23 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, running_mode, override_switch_state
-        if running_mode != "time_stamp_mode":
-            process_commands()
-            switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
-            if switch_state == "left" or cont_run:
-                add_command(cfg["option_selected"])
-                time.sleep(.5)
-            elif switch_state == "right":
-                mch.go_to('main_menu')
-                time.sleep(.5)
-            elif switch_state == "three":
-                print("sw three fell")
-                ch_vol("lower")
-                time.sleep(.5)
-            elif switch_state == "four":
-                print("sw four fell")
-                ch_vol("raise")
-                time.sleep(.5)
+        global  override_switch_state
+        switch_state = utilities.switch_state_four_switches(
+            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
+            add_command(cfg["option_selected"])
+            time.sleep(.5)
+        elif switch_state == "right":
+            mch.go_to('main_menu')
+            time.sleep(.5)
+        elif switch_state == "three":
+            print("sw three fell")
+            ch_vol("lower")
+            time.sleep(.5)
+        elif switch_state == "four":
+            print("sw four fell")
+            ch_vol("raise")
+            time.sleep(.5)
         time.sleep(0.05)
 
 
