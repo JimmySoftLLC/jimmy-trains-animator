@@ -51,7 +51,7 @@
             data-url="/mode">Left</button>
         <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
             data-url="/mode">Right</button>
-        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right_held"
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="rightheld"
             data-url="/mode">Right Held</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
@@ -90,7 +90,7 @@
             <div id="animatorContainer"></div>
             <h2>Animator commands:</h2>
             <div>USB connect to base3 usb port</div>
-            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
+            <div>SW_XXXX = Switch XXXX (left,right,three,four,leftheld,rightheld)</div>
             <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
@@ -773,17 +773,6 @@
         this.value = validatedValue;
     });
 
-    // Global variables to store number of rows and data
-    var globalPasteTableNumRows = 0;
-    var globalPasteTable = [];
-    var globalRowIndex = 0; // Index for data
-
-    function animatorCellClicked(event) {
-        var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
-        globalRowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
-        console.log("Row Index:", globalRowIndex);
-    }
-
     function editPasteTableDialog() {
         var modalEl = document.getElementById("modalEl");
         removeChildNodes(modalEl);
@@ -1068,6 +1057,9 @@
 
         if (filenameInput) {
             saveAnimatorData(filenameInput + ".json", true);
+            updateAnimators()
+            var modalEl = document.getElementById("modalEl")
+            mui.overlay('off', modalEl)
         } else {
             errorMessage.textContent = 'Please enter a filename.';
         }
@@ -1253,6 +1245,9 @@
 
     saveAnimatorButton.addEventListener("click", function () {
         saveAnimatorData(animatorName.value, false);
+        updateAnimators()
+        var modalEl = document.getElementById("modalEl")
+        mui.overlay('off', modalEl)
     });
 
     getAnimatorIpAddressButton.addEventListener("click", function () {
@@ -1369,15 +1364,9 @@
         var row = document.createElement("tr");
 
         var anCell = createEditableCell(rowData[0], "50px");
-        anCell.addEventListener('click', function (event) {
-            animatorCellClicked(event);
-        });
         row.appendChild(anCell);
 
         var anCell = createEditableCell(rowData[1], "600px");
-        anCell.addEventListener('click', function (event) {
-            AnimatorCellClicked(event);
-        });
         row.appendChild(anCell);
 
         var actionCell = document.createElement("td");
@@ -1453,19 +1442,16 @@
 
     function animatorDeleteRow(row) {
         row.parentNode.removeChild(row);
-        copyAndResetTable();
     }
 
     function animatorAddRow(row) {
         var newRow = createAnimatorDataRow("");
         animatorTableBody.insertBefore(newRow, row.nextSibling);
-        copyAndResetTable();
     }
 
     function animatorInsertRow(row) {
         var newRow = createAnimatorDataRow("");
         animatorTableBody.insertBefore(newRow, row);
-        copyAndResetTable();
     }
 
     function animatorTestAnimation(target) {

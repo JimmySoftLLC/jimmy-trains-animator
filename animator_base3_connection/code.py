@@ -282,38 +282,11 @@ def get_media_files(folder_to_search, extensions):
 
 
 def upd_media():
-    global media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission, animator_files, animator_configs
-
-    extensions = ['.wav', '.mp4']  # List of extensions to filter by
-    media_files = get_media_files(media_folder, extensions)
-
-    # gets folders in the random_config directory, currently only all and play lists, the folders are empty
-    rand_files = get_media_files(media_folder + "random_config/", extensions)
-    media_files.update(rand_files)  # add rand_files to media_files dictionary
-    # print("All media: " + str(media_files))
+    global animator_files, animator_configs
 
     extensions = ['.json']  # List of extensions to filter by
     animator_files = get_media_files(media_folder + "animator/", extensions)
     # print("Animators: " + str(animator_files))
-
-    media_list_all = []
-    for topic, my_files in media_files.items():
-        media_list_all.extend(
-            [f"{topic}/{my_file}" for my_file in my_files])
-
-    media_list_all_no_intermission = []
-    for topic, my_files in media_files.items():
-        if "intermission" not in topic.lower():  # Ignore topics with 'intermission'
-            media_list_all_no_intermission.extend(
-                [f"{topic}/{my_file}" for my_file in my_files])
-    # print(str(rand_files.keys))
-
-    menu_snd_opt = []
-
-    for myKey in media_files:
-        if myKey != "random_config" and myKey != "pictures":
-            menu_snd_opt.append("random_" + myKey + ".wav")
-    # print("Menu sound tracks: " + str(menu_snd_opt))
 
     animator_configs = []
     for animator_file in animator_files["animators"]:
@@ -1149,12 +1122,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.mode_post(post_data_obj)
         elif self.path == "/defaults":
             self.defaults_post(post_data_obj)
-        elif self.path == "/get-all-media":
-            self.get_all_media_post(post_data_obj)
         elif self.path == "/speaker":
             self.speaker_post(post_data_obj)
-        elif self.path == "/get-light-string":
-            self.get_light_string_post(post_data_obj)
         elif self.path == "/get-scene-changes":
             self.get_scene_changes_post(post_data_obj)
         elif self.path == "/update-host-name":
@@ -1171,8 +1140,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_host_name_post(post_data_obj)
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
-        elif self.path == "/update-volume":
-            self.update_volume_post(post_data_obj)
         elif self.path == "/set-lifx-enabled":
             self.set_lifx_enabled(post_data_obj)
         elif self.path == "/set-tmcc-voice-enabled":
@@ -1187,14 +1154,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_scripts_post(post_data_obj)
         elif self.path == "/create-animator":
             self.create_animator_post(post_data_obj)
-        elif self.path == "/get-animation":
-            self.get_animation_post(post_data_obj)
         elif self.path == "/get-animator":
             self.get_animator_post(post_data_obj)
         elif self.path == "/delete-animator":
             self.delete_animator_post(post_data_obj)
-        elif self.path == "/save-animation-data":
-            self.save_animation_data_post(post_data_obj)
         elif self.path == "/save-animator-data":
             self.save_animator_data_post(post_data_obj)
         elif self.path == "/rename-animator":
@@ -1239,47 +1202,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     data = []
 
-    def save_animation_data_post(self, rq_d):
-        global data
-        try:
-            if rq_d[0] == 0:
-                data = []
-            data.extend(rq_d[2])
-            if rq_d[0] == rq_d[1]:
-                f_n = ""
-                an = rq_d[3].split("_")
-                if "plylst" == an[0]:
-                    snd_f = rq_d[3].replace("plylst_", "")
-                    snd_f = snd_f.replace(".mp4", "")
-                    snd_f = snd_f.replace(".wav", "")
-                    f_n = animators_folder + \
-                        snd_f + ".json"
-                else:
-                    snd_f = rq_d[3].replace(".mp4", "")
-                    snd_f = snd_f.replace(".wav", "")
-                    f_n = media_folder + snd_f + ".json"
-                files.write_json_file(f_n, data)
-                upd_media()
-                data = []
-        except:
-            data = []
-            self.send_response(500)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            response = "out of memory"
-            self.wfile.write(response.encode('utf-8'))
-            print("Response sent:", response)
-            return
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "success"
-        self.wfile.write(response.encode('utf-8'))
-        print("Response sent:", response)
-
     def save_animator_data_post(self, rq_d):
         f_n = animators_folder + rq_d["fn"]
         files.write_json_file(f_n, rq_d)
+        upd_media()
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1295,20 +1221,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = rq_d["fn"] + " animator file deleted"
         self.wfile.write(response.encode('utf-8'))
-
-    def get_animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode
-        snd_f = rq_d["an"]
-        snd_f = snd_f.replace(".mp4", "")
-        snd_f = snd_f.replace(".wav", "")
-        if (f_exists(media_folder + snd_f + ".json") == True):
-            f_n = media_folder + snd_f + ".json"
-            self.handle_serve_file_name(f_n)
-            return
-        else:
-            f_n = code_folder + "t_s_def/timestamp mode.json"
-            self.handle_serve_file_name(f_n)
-            return
 
     def get_animator_post(self, rq_d):
         global cfg, cont_run, ts_mode
@@ -1387,7 +1299,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             override_switch_state["switch_value"] = "left"
         elif rq_d["an"] == "right":
             override_switch_state["switch_value"] = "right"
-        elif rq_d["an"] == "right_held":
+        elif rq_d["an"] == "rightheld":
             override_switch_state["switch_value"] = "right_held"
         elif rq_d["an"] == "three":
             override_switch_state["switch_value"] = "three"
@@ -1525,15 +1437,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_tmcc_voice_enabled(self, rq_d):
         response = cfg["tmcc_voice_enabled"]
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def get_all_media_post(self, rq_d):
-        upd_media()
-        response = media_files
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1995,28 +1898,6 @@ def generate_wav_from_filename(file_name):
     adjusted_audio.export(wav_file, format="wav")
     print(f"Wav for {file_name} generated and volume adjusted.")
 
-
-def update_folder_name_wavs():
-    if web == False:
-        return False
-    if is_gtts_reachable == False:
-        return
-
-    # Get all files in the folder
-    files = os.listdir(snd_opt_folder)
-
-    wav_files = {f for f in files if f.endswith('.wav')}
-
-    # Generate wavs for valid files
-    for my_file in menu_snd_opt:
-        generate_wav_from_filename(my_file)
-
-    # Delete orphaned wav files (those without a corresponding key in menu_snd_opt)
-    for wav_file in wav_files:
-        if f"{os.path.splitext(wav_file)[0]}.wav" not in menu_snd_opt:
-            os.remove(os.path.join(snd_opt_folder, wav_file))
-            print(f"Deleted orphaned wav: {wav_file}")
-
 def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw, override_switch_state
     while not stop_event.is_set():  # Check the stop event
@@ -2268,47 +2149,6 @@ class Main(Ste):
                 play_mix(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
-
-class Snds(Ste):
-
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
-
-    @property
-    def name(self):
-        return 'choose_sounds'
-
-    def enter(self, mch):
-        files.log_item('Choose sounds menu')
-        play_mix(code_folder + "mvc/sound_selection_menu.wav")
-        l_r_but()
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        global override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
-            try:
-                play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
-            except Exception as e:
-                files.log_item(e)
-                spk_sng_num(str(self.i+1))
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(menu_snd_opt)-1:
-                self.i = 0
-        if switch_state == "right":
-            cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
-            files.write_json_file(code_folder + "cfg.json", cfg)
-            play_mix(code_folder + "mvc/option_selected.wav", "rb")
-            mch.go_to('base_state')
-
-
 class VolumeLevelAdjustment(Ste):
 
     def __init__(self):
@@ -2402,7 +2242,6 @@ class WebOpt(Ste):
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-st_mch.add(Snds())
 st_mch.add(VolumeLevelAdjustment())
 st_mch.add(WebOpt())
 
@@ -2430,8 +2269,6 @@ if (web):
 discover_lights()
 
 is_gtts_reachable = check_gtts_status()
-
-update_folder_name_wavs()
 
 if (web):
     spk_web()
