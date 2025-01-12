@@ -1387,6 +1387,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             override_switch_state["switch_value"] = "left"
         elif rq_d["an"] == "right":
             override_switch_state["switch_value"] = "right"
+        elif rq_d["an"] == "right_held":
+            override_switch_state["switch_value"] = "right_held"
         elif rq_d["an"] == "three":
             override_switch_state["switch_value"] = "three"
         elif rq_d["an"] == "four":
