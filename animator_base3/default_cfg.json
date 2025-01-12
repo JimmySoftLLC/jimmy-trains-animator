@@ -1,9 +1,6 @@
 {
-  "can_cancel": true,
-  "volume_pot": false,
   "volume": "60",
   "serve_webpage": true,
-  "show_webpage": true,
   "HOST_NAME": "base3",
   "lifx_enabled": false,
   "scene_changes": {
