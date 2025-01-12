@@ -1981,13 +1981,13 @@
 
     animatorTableBody.addEventListener("click", function (event) {
         var target = event.target;
-        if (target.classList.contains("animation-insert-row-btn")) {
+        if (target.classList.contains("animator-insert-row-btn")) {
             animatorInsertRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-delete-row-btn")) {
+        } else if (target.classList.contains("animator-delete-row-btn")) {
             animatorDeleteRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-add-row-btn")) {
+        } else if (target.classList.contains("animator-add-row-btn")) {
             animatorAddRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-test-row-btn")) {
+        } else if (target.classList.contains("animator-test-row-btn")) {
             animatorTestAnimation(target)
         }
     });
@@ -2173,7 +2173,7 @@
     function createAnimatorTestButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-test-row-btn";
+        button.className = "mui-btn mui-btn--primary animator-test-row-btn";
         button.innerHTML = 'Tst';
         return button;
     }
@@ -2181,7 +2181,7 @@
     function createAnimatorDeleteButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-delete-row-btn";
+        button.className = "mui-btn mui-btn--primary animator-delete-row-btn";
         button.innerHTML = 'Del';
         return button;
     }
@@ -2189,7 +2189,7 @@
     function createAnimatorInsertButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-insert-row-btn";
+        button.className = "mui-btn mui-btn--primary animator-insert-row-btn";
         button.innerHTML = 'Ins';
         return button;
     }
@@ -2197,7 +2197,7 @@
     function createAnimatorAddButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-add-row-btn";
+        button.className = "mui-btn mui-btn--primary animator-add-row-btn";
         button.innerHTML = 'Add';
         return button;
     }
@@ -2227,7 +2227,6 @@
 
         var data = {
             an: thirdInput,
-            ip: ""
         };
 
         fetch(url, {

@@ -1302,7 +1302,7 @@ def process_command_animator_config(response):
             for row in item['table_data']:
                 if row[0] == response["button"]:
                     return row, item  # Return the matched row
-    return None  # If no match is found
+    return None, None  # If no match is found
 
 
 def process_command(response):
@@ -1663,7 +1663,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def test_animation_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        response = set_hdw(rq_d["an"], 3,rq_d["ip"])
+        url = rq_d.get("ip", "")  # Replace "default_value" with whatever you want
+        response = set_hdw(rq_d["an"], 3, url)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2049,7 +2050,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         global exit_set_hdw
         exit_set_hdw = False
         add_command_to_ts(rq_d["an"])
-        set_hdw(rq_d["an"], 1)
+        set_hdw(rq_d["an"], 1, "")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -2064,7 +2065,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         command = "LN0_" + str(rgb_value[0]) + "_" + \
             str(rgb_value[1]) + "_" + str(rgb_value[2])
         add_command_to_ts(command)
-        set_hdw(command, 0)
+        set_hdw(command, 0, "")
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -2080,7 +2081,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         command = "LX0_" + str(rgb_value[0]) + "_" + \
             str(rgb_value[1]) + "_" + str(rgb_value[2])
         add_command_to_ts(command)
-        set_hdw(command, 0)
+        set_hdw(command, 0, "")
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -2095,7 +2096,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             command = "LX0_" + str(rq_d["r"]) + "_" + \
                 str(rq_d["g"]) + "_" + str(rq_d["b"])
             add_command_to_ts(command)
-            set_hdw(command, 0)
+            set_hdw(command, 0, "")
             if current_scene != "":
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
@@ -2103,7 +2104,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             command = "LN0_" + str(rq_d["r"]) + "_" + \
                 str(rq_d["g"]) + "_" + str(rq_d["b"])
             add_command_to_ts(command)
-            set_hdw(command, 0)
+            set_hdw(command, 0, "")
             if current_neo != "":
                 cfg["neo_changes"][current_neo] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
@@ -2793,7 +2794,7 @@ def an_light(f_nm):
                 str(t_elaspsed) + " TS: " + \
                 ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
             files.log_item(log_this)
-            resp = set_hdw(ft1[1], dur)
+            resp = set_hdw(ft1[1], dur, "")
             if resp == "STOP":
                 result = an_done_reset(resp)
                 return result
@@ -2919,7 +2920,7 @@ def rnd_prob(random_value):
     return False
 
 
-def set_hdw(cmd, dur, url=""):
+def set_hdw(cmd, dur, url):
     global sp, br, running_mode, exit_set_hdw
 
     if cmd == "":
