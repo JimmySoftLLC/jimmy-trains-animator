@@ -776,47 +776,7 @@
     var globalPasteTable = [];
     var globalRowIndex = 0; // Index for data
 
-    function pasteRowsAndResetTable() {
-        var pasteIndex = 0;
-
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var data = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null;
-                return cellValue;
-            });
-            return values;
-        });
-
-        console.log(globalPasteTable);
-        console.log(data);
-
-        // First mutate the data
-        while (globalRowIndex < data.length && pasteIndex < globalPasteTable.length) {
-            // Replace data[globalRowIndex][2] with the item from globalPasteTable
-            data[globalRowIndex][2] = globalPasteTable[pasteIndex];
-            globalRowIndex++; // Move to the next row in data
-            pasteIndex++; // Move to the next item in globalPasteTable
-        }
-
-        // Now combine the data into combinedData
-        const combinedData = data.map(function (row) {
-            var secondsConverted = convertTimeCodeToSeconds(row[1]);
-            return secondsConverted + "|" + (row[2] || ""); // Ensure a fallback in case row[2] is undefined
-        });
-
-        console.log(combinedData);
-
-        // Populate the table with the combined data
-        populateAnimationsTable(combinedData);
-    }
-
-
-
-    function animationCellClicked(event) {
+    function animatorCellClicked(event) {
         var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
         globalRowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
         console.log("Row Index:", globalRowIndex);
@@ -1216,7 +1176,7 @@
 
         var message = document.createElement('div');
         message.className = "mui-textfield"
-        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        message.textContent = "Are you sure your want to delete " + animatorName.value + " this is irreversible.";
         form.appendChild(message);
 
         var saveBtn = document.createElement('button');
@@ -1408,13 +1368,13 @@
 
         var anCell = createEditableCell(rowData[0], "50px");
         anCell.addEventListener('click', function (event) {
-            animationCellClicked(event);
+            animatorCellClicked(event);
         });
         row.appendChild(anCell);
 
         var anCell = createEditableCell(rowData[1], "600px");
         anCell.addEventListener('click', function (event) {
-            animationCellClicked(event);
+            AnimatorCellClicked(event);
         });
         row.appendChild(anCell);
 
@@ -1425,13 +1385,13 @@
         var testButton = createAnimatorTestButton();
         actionCell.appendChild(testButton);
 
-        var insertButton = createAnimationInsertButton();
+        var insertButton = createAnimatorInsertButton();
         actionCell.appendChild(insertButton);
 
-        var addButton = createAnimationAddButton();
+        var addButton = createAnimatorAddButton();
         actionCell.appendChild(addButton);
 
-        var deleteButton = createAnimationDeleteButton();
+        var deleteButton = createAnimatorDeleteButton();
         actionCell.appendChild(deleteButton);
 
         row.appendChild(actionCell);
@@ -1538,100 +1498,6 @@
             });
     }
 
-    function copyAndResetTable() {
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var data = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
-                return cellValue;
-            });
-            return values;
-        });
-
-        combinedData = []
-
-        for (let i = 0; i < data.length; i++) {
-            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
-            combinedData.push(secondsConverted + "|" + data[i][2])
-        }
-
-        populateAnimationsTable(combinedData)
-    }
-
-    function saveAnimationData(file_name, get_changes) {
-        saveAnimationButton.setAttribute("disabled", "true");
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var data = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
-                return cellValue;
-            });
-            return values;
-        });
-
-        combinedData = []
-
-        for (let i = 0; i < data.length; i++) {
-            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
-            combinedData.push(secondsConverted + "|" + data[i][2])
-        }
-
-        const blockSize = 5;
-        const totalBlocks = Math.ceil(combinedData.length / blockSize);
-
-        // Function to send each block sequentially
-        function sendBlockSequentially(index) {
-            if (index >= totalBlocks) {
-                if (get_changes == true) {
-                    updateAnimators()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                }
-                // All blocks have been sent, enable the button
-                saveAnimationButton.removeAttribute('disabled');
-                return;
-            }
-
-            const startIdx = index * blockSize;
-            const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
-            const block = combinedData.slice(startIdx, endIdx);
-            let myObject = [index, totalBlocks - 1, block]
-            if (index == totalBlocks - 1) {
-                myObject = [index, totalBlocks - 1, block, file_name]
-            }
-
-            // Send data to the server
-            fetch("/save-animation-data", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(myObject)
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error("Error saving data. Please try again.");
-                    }
-                    // Send the next block sequentially
-                    sendBlockSequentially(index + 1);
-                })
-                .catch(function (error) {
-                    saveAnimationButton.removeAttribute('disabled');
-                    console.log(error);
-                    showAlert(error);
-                });
-        }
-
-        // Start sending blocks sequentially
-        sendBlockSequentially(0);
-    }
-
     function saveAnimatorData(file_name) {
         saveAnimatorButton.setAttribute("disabled", "true");
         var rows = Array.from(animatorTableBody.querySelectorAll("tr"));
@@ -1725,7 +1591,7 @@
             })
             .catch(error => {
                 console.error('Error:', error)
-                isRequestInProgress = false; // Reset the flag in case of save-animation-data error
+                isRequestInProgress = false; // Reset the flag in case of save-Animator-data error
             });
     }
 
