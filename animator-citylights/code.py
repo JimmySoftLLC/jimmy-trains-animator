@@ -1302,7 +1302,7 @@ def process_command_animator_config(response):
             for row in item['table_data']:
                 if row[0] == response["button"]:
                     return row, item  # Return the matched row
-    return None  # If no match is found
+    return None, None  # If no match is found
 
 
 def process_command(response):
