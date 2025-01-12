@@ -102,13 +102,10 @@ from zeroconf import ServiceInfo, Zeroconf
 import json
 import os
 import gc
-import vlc
 import board
 import digitalio
 from adafruit_debouncer import Debouncer
-import neopixel_spi
 from rainbowio import colorwheel
-import pwmio
 from adafruit_motor import servo
 import pygame
 import gc
@@ -127,8 +124,7 @@ import signal
 import copy
 from pydub import AudioSegment
 import sys
-import asyncio
-import websockets
+
 import pyautogui
 import serial
 import serial.tools.list_ports
@@ -151,10 +147,7 @@ code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 animators_folder = get_home_path() + "media/animator/animators/"
 snd_opt_folder = code_folder + "snd_opt/"
-current_media_playing = ""
 current_scene = ""
-current_neo = ""
-is_midori_running = False
 connect_to_base_3 = True
 tmp_wav_file_name = code_folder + "tmp.wav"
 override_switch_state = {}
@@ -244,6 +237,8 @@ def gc_col(collection_point):
 # to make this work you must add permission to the visudo file
 # sudo visudo
 # base3 ALL=(ALL) NOPASSWD: /sbin/reboot
+
+
 def restart_pi():
     os.system('sudo reboot')
 
@@ -482,413 +477,6 @@ def move_vlc_window():
 
 
 ################################################################################
-# Setup video hardware
-
-# create vlc media player object for playing video, music etc
-vlc_instance = vlc.Instance('--aout=alsa')
-media_player = vlc.MediaPlayer(vlc_instance)
-
-
-def play_movie_file(movie_filename):
-    # Load media
-    media = vlc_instance.media_new(movie_filename)
-    media_player.set_media(media)
-
-    media_player.set_fullscreen(not terminal_window_during_playback)
-
-    # Play the video
-    media_player.play()
-
-    while not media_player.is_playing():
-        time.sleep(.05)
-
-
-def pause_movie():
-    media_player.pause()
-
-
-def play_movie():
-    media_player.play()
-
-
-def media_player_state():
-    state = media_player.get_state()
-    if state == vlc.State.Playing:
-        return "Playing"
-    elif state == vlc.State.Paused:
-        return "Paused"
-    elif state == vlc.State.Stopped:
-        return "Stopped"
-    elif state == vlc.State.Ended:
-        return "Ended"
-    else:
-        return "Other state"
-
-
-################################################################################
-# Setup servo hardware
-s_1_pwm = pwmio.PWMOut(board.D23, duty_cycle=2 ** 15, frequency=50)  # D23
-s_2_pwm = pwmio.PWMOut(board.D24, duty_cycle=2 ** 15, frequency=50)  # D24
-s_3_pwm = pwmio.PWMOut(board.D25, duty_cycle=2 ** 15, frequency=50)  # D25
-s_4_pwm = pwmio.PWMOut(board.D6, duty_cycle=2 ** 15, frequency=50)  # D6
-s_5_pwm = pwmio.PWMOut(board.D13, duty_cycle=2 ** 15, frequency=50)  # D13
-s_6_pwm = pwmio.PWMOut(board.D12, duty_cycle=2 ** 15, frequency=50)  # D12
-s_7_pwm = pwmio.PWMOut(board.D16, duty_cycle=2 ** 15, frequency=50)  # D16
-s_8_pwm = pwmio.PWMOut(board.D20, duty_cycle=2 ** 15, frequency=50)  # D20
-
-s_1 = servo.Servo(s_1_pwm)
-s_2 = servo.Servo(s_2_pwm)
-s_3 = servo.Servo(s_3_pwm)
-s_4 = servo.Servo(s_4_pwm)
-s_5 = servo.Servo(s_5_pwm)
-s_6 = servo.Servo(s_6_pwm)
-s_7 = servo.Servo(s_7_pwm)
-s_8 = servo.Servo(s_8_pwm)
-
-p_arr = [90, 90, 90, 90, 90, 90]
-
-s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
-
-
-def m_servo(n, p):
-    global p_arr
-    if p < 0:
-        p = 0
-    if p > 180:
-        p = 180
-    s_arr[n].angle = p
-    p_arr[n][n] = p
-
-
-################################################################################
-# Create an ordered dictionary to preserve the order of insertion
-neo_changes = OrderedDict(cfg["neo_changes"])
-
-# Get the ordered list of keys
-ordered_neo_changes_keys = list(neo_changes.keys())
-
-trees = []
-canes = []
-ornmnts = []
-stars = []
-brnchs = []
-cane_s = []
-cane_e = []
-
-bars = []
-bolts = []
-noods = []
-neos = []
-
-bar_arr = []
-bolt_arr = []
-neo_arr = []
-
-n_px = 0
-led = neopixel_spi.NeoPixel_SPI(
-    board.SPI(), n_px, brightness=1.0, auto_write=False)
-
-
-def bld_tree(p):
-    i = []
-    for t in trees:
-        for ledi in t:
-            si = ledi
-            break
-        if p == "ornaments":
-            for ledi in range(0, 7):
-                i.append(ledi+si)
-        if p == "star":
-            for ledi in range(7, 14):
-                i.append(ledi+si)
-        if p == "branches":
-            for ledi in range(14, 21):
-                i.append(ledi+si)
-    return i
-
-
-def bld_cane(p):
-    i = []
-    for c in canes:
-        for led_i in c:
-            si = led_i
-            break
-        if p == "end":
-            for led_i in range(0, 2):
-                i.append(led_i+si)
-        if p == "start":
-            for led_i in range(2, 4):
-                i.append(led_i+si)
-    return i
-
-
-def bld_bar():
-    i = []
-    for b in bars:
-        for l in b:
-            si = l
-            break
-        for l in range(0, 10):
-            i.append(l+si)
-    return i
-
-
-def bld_bolt():
-    i = []
-    for b in bolts:
-        for l in b:
-            si = l
-            break
-        if len(b) == 4:
-            for l in range(0, 4):
-                i.append(l+si)
-        if len(b) == 1:
-            for l in range(0, 1):
-                i.append(l+si)
-    return i
-
-
-def bld_neo():
-    i = []
-    for n in neos:
-        for l in n:
-            si = l
-            break
-        for l in range(0, 6):
-            i.append(l+si)
-    return i
-
-
-def show_l():
-    led.show()
-    time.sleep(.05)
-    led.fill((0, 0, 0))
-    led.show()
-
-
-def l_tst():
-    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
-
-    # Christmas items
-    ornmnts = bld_tree("ornaments")
-    stars = bld_tree("star")
-    brnchs = bld_tree("branches")
-    cane_s = bld_cane("start")
-    cane_e = bld_cane("end")
-
-    # Lightning items
-    bar_arr = bld_bar()
-    bolt_arr = bld_bolt()
-
-    # Neo items
-    neo_arr = bld_neo()
-
-    # cane test
-    cnt = 0
-    for i in cane_s:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 1:
-            show_l()
-            cnt = 0
-    for i in cane_e:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 1:
-            show_l()
-            cnt = 0
-
-    # tree test
-    cnt = 0
-    for i in ornmnts:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-    for i in stars:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-    for i in brnchs:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-
-    # bar test
-    for b in bars:
-        for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # bolt test
-    for b in bolts:
-        for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # nood test
-    for n in noods:
-        led[n[0]] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # neo test
-    for n in neos:
-        for i in n:
-            led[i] = (0, 50, 0)
-            time.sleep(.3)
-            led.show()
-            led[i] = (50, 0, 0)
-            time.sleep(.3)
-            led.show()
-            led[i] = (0, 0, 50)
-            time.sleep(.3)
-            led.show()
-            time.sleep(.3)
-            led.fill((0, 0, 0))
-            led.show()
-
-
-def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, n_px, led
-    trees = []
-    canes = []
-    bars = []
-    bolts = []
-    noods = []
-    neos = []
-
-    n_px = 0
-
-    els = cfg["light_string"].split(',')
-
-    for el in els:
-        p = el.split('-')
-        if len(p) == 2:
-            typ, qty = p
-            qty = int(qty)
-            if typ == 'grandtree':
-                s = list(range(n_px, n_px + qty))
-                trees.append(s)
-                n_px += qty
-            elif typ == 'cane':
-                s = list(range(n_px, n_px + qty))
-                canes.append(s)
-                n_px += qty
-            if typ == 'bar':
-                s = list(range(n_px, n_px + qty))
-                bars.append(s)
-                n_px += qty
-            elif typ == 'bolt' and qty < 4:
-                s = [n_px, qty]
-                noods.append(s)
-                n_px += 1
-            elif typ == 'bolt' and qty == 4:
-                s = list(range(n_px, n_px + qty))
-                bolts.append(s)
-                n_px += qty
-            if typ == 'neo':
-                if qty == 6:
-                    neoqty = 2
-                if qty == 12:
-                    neoqty = 4
-                s = list(range(n_px, n_px + neoqty))
-                neos.append(s)
-                n_px += neoqty
-
-    print("Number of pixels total: ", n_px)
-    led = None
-    led = neopixel_spi.NeoPixel_SPI(
-        board.SPI(), n_px, brightness=1.0, auto_write=False)
-    led.auto_write = False
-    led.brightness = 1.0
-    l_tst()
-
-
-upd_l_str()
-
-# Neo pixel / neo 6 module methods
-
-br = 0
-
-
-def is_neo(number, nested_array):
-    return any(number in sublist for sublist in nested_array)
-
-
-def set_neo_to(light_n, r, g, b):
-    if light_n == -1:
-        for i in range(n_px):  # in range(n_px)
-            if is_neo(i, neos):
-                led[i] = (g, r, b)
-            else:
-                led[i] = (r, g, b)
-    else:
-        if is_neo(light_n, neos):
-            led[light_n] = (g, r, b)
-        else:
-            led[light_n] = (r, g, b)
-    led.show()
-
-
-def get_neo_ids():
-    matches = []
-    for num in range(n_px + 1):
-        if any(num == sublist[0] for sublist in neos):
-            matches.append(num)
-    return matches
-
-
-def set_neo_module_to(mod_n, ind, v):
-    cur = []
-    neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
-    if mod_n == 0:
-        for i in neo_ids:
-            led[i] = (v, v, v)
-            led[i+1] = (v, v, v)
-    elif ind == 0:
-        led[neo_ids[mod_n-1]] = (v, v, v)
-        led[neo_ids[mod_n-1]+1] = (v, v, v)
-    elif ind < 4:
-        ind -= 1
-        if ind == 0:
-            ind = 1
-        elif ind == 1:
-            ind = 0
-        cur = list(led[neo_ids[mod_n-1]])
-        cur[ind] = v
-        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n-1]])
-    else:
-        ind -= 1
-        if ind == 3:
-            ind = 4
-        elif ind == 4:
-            ind = 3
-        cur = list(led[neo_ids[mod_n-1]+1])
-        cur[ind-3] = v
-        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
-    led.show()
-
-
-gc_col("Neopixels setup")
-
-
-################################################################################
 # Setup lifx lights
 
 # Create an ordered dictionary to preserve the order of insertion
@@ -1009,9 +597,6 @@ def interpolate(type, start_key: str, end_key: str):
         if type == "lifx":
             start_index = ordered_scene_changes_keys.index(start_key)
             end_index = ordered_scene_changes_keys.index(end_key)
-        elif type == "neo":
-            start_index = ordered_neo_changes_keys.index(start_key)
-            end_index = ordered_neo_changes_keys.index(end_key)
 
     except ValueError:
         raise ValueError("Invalid key provided.")
@@ -1025,23 +610,12 @@ def interpolate(type, start_key: str, end_key: str):
             # Ensure inclusion of end_index
             interpolated_values.append(
                 cfg["scene_changes"][ordered_scene_changes_keys[end_index]])
-        elif type == "neo":
-            interpolated_values = [cfg["neo_changes"][key]
-                                   # end_index is exclusive
-                                   for key in ordered_neo_changes_keys[start_index:end_index:-1]]
-            # Ensure inclusion of end_index
-            interpolated_values.append(
-                cfg["neo_changes"][ordered_neo_changes_keys[end_index]])
     else:
         # Forward interpolation
         if type == "lifx":
             interpolated_values = [cfg["scene_changes"][key]
                                    # end_index is inclusive
                                    for key in ordered_scene_changes_keys[start_index:end_index + 1]]
-        elif type == "neo":
-            interpolated_values = [cfg["neo_changes"][key]
-                                   # end_index is inclusive
-                                   for key in ordered_neo_changes_keys[start_index:end_index + 1]]
 
     return interpolated_values
 
@@ -1080,8 +654,6 @@ def cycle_rgb_values(type, rgb_values, transition_time=2, steps=100):
             # Use threading to set color for all lights at once
             if type == "lifx":
                 set_light_color(-1, color[0], color[1], color[2])
-            elif type == "neo":
-                set_neo_to(-1, color[0], color[1], color[2])
             print(f"Setting color to {color}")
             # Adjust sleep time for smooth transitions
             time.sleep(transition_time / steps)
@@ -1101,7 +673,8 @@ class ApiClient:
 
     def post(self, endpoint, data=None):
         """Perform a POST request."""
-        response = requests.post(f"{self.base_url}/{endpoint}", json=data, timeout=5)
+        response = requests.post(
+            f"{self.base_url}/{endpoint}", json=data, timeout=5)
         return self.handle_response(response)
 
     def put(self, endpoint, data=None):
@@ -1184,7 +757,7 @@ def read_from_serial(ser):
                     print(command, item)
                     if command:
                         exit_set_hdw = False
-                        set_hdw(command[1],1,item["animatorIpAddress"])
+                        set_hdw(command[1], 1, item["animatorIpAddress"])
                     time.sleep(1)
                     ser.read(ser.in_waiting)
 
@@ -1223,13 +796,16 @@ def get_command_object(binary_word1, binary_word2, binary_word3):
         command = binary_word2[0:2]
         if command == "01":  # Switch command
             response["device"] = "switch"
-            response["address"] = str(what_address(binary_word2, binary_word3, 7))
+            response["address"] = str(
+                what_address(binary_word2, binary_word3, 7))
         elif command == "00":  # Engine command
             response["device"] = "engine"
-            response["address"] = str(what_address(binary_word2, binary_word3, 7))
+            response["address"] = str(
+                what_address(binary_word2, binary_word3, 7))
         elif command == "10":  # Accessory command
             response["device"] = "accessory"
-            response["address"] = str(what_address(binary_word2, binary_word3, 7))
+            response["address"] = str(
+                what_address(binary_word2, binary_word3, 7))
         elif command == "11":  # Route, train or group command
             command = binary_word2[0:4]
             if command == "1101":  # Route command
@@ -1451,32 +1027,6 @@ def get_local_ip():
     return ip
 
 
-def close_midori():
-    global is_midori_running
-    if cfg["show_webpage"] == False:
-        return
-    try:
-        subprocess.run(['pkill', 'midori'], check=True)
-        is_midori_running = False
-        print("Midori closed successfully.")
-    except subprocess.CalledProcessError:
-        print("Midori was not running.")
-
-
-def open_midori():
-    global is_midori_running
-    if cfg["show_webpage"] == False or is_midori_running:
-        return
-    try:
-        midori_url = "http://" + local_ip + ":" + str(PORT) + "/"
-        command = "midori -e Fullscreen " + midori_url
-        subprocess.Popen(command, shell=True)
-        is_midori_running = True
-        print("Midori launched.")
-    except Exception as e:
-        print(f"Failed to start Midori: {e}")
-
-
 ################################################################################
 # Setup routes
 
@@ -1607,18 +1157,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_light_string_post(post_data_obj)
         elif self.path == "/get-scene-changes":
             self.get_scene_changes_post(post_data_obj)
-        elif self.path == "/get-neo-changes":
-            self.get_neo_changes_post(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
-        elif self.path == "/update-light-string":
-            self.update_light_string_post(post_data_obj)
         elif self.path == "/lights":
             self.lights_lifx_post(post_data_obj)
         elif self.path == "/lights-scene":
             self.lights_scene_post(post_data_obj)
-        elif self.path == "/lights-neo":
-            self.lights_neo_post(post_data_obj)
         elif self.path == "/set-item-lights":
             self.set_item_lights(post_data_obj)
         elif self.path == "/update-host-name":
@@ -1638,7 +1182,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
         elif self.path == "/get-tmcc-voice-enabled":
-            self.get_tmcc_voice_enabled(post_data_obj) 
+            self.get_tmcc_voice_enabled(post_data_obj)
         elif self.path == "/get-scripts":
             self.get_scripts_post(post_data_obj)
         elif self.path == "/create-animator":
@@ -1655,8 +1199,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.save_animator_data_post(post_data_obj)
         elif self.path == "/rename-animator":
             self.rename_animator_post(post_data_obj)
-        elif self.path == "/stop":
-            self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
             self.test_animation_post(post_data_obj)
         elif self.path == "/get-local-ip":
@@ -1665,7 +1207,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def test_animation_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        url = rq_d.get("ip", "")  # Replace "default_value" with whatever you want
+        # Replace "default_value" with whatever you want
+        url = rq_d.get("ip", "")
         response = set_hdw(rq_d["an"], 3, url)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1679,15 +1222,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def stop_post(self, rq_d):
-        rst_an()
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "rst an"
-        self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
     def rename_animator_post(self, rq_d):
@@ -1822,37 +1356,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = "created " + rq_d["fn"] + " animator"
         self.wfile.write(response.encode('utf-8'))
 
-    def update_light_string_post(self, rq_d):
-        global cfg
-        if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
-            cfg["light_string"] = rq_d["text"]
-            print("action: " +
-                  rq_d["action"] + " data: " + cfg["light_string"])
-            files.write_json_file(code_folder + "cfg.json", cfg)
-            upd_l_str()
-            play_mix(code_folder + "mvc/all_changes_complete.wav")
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            response = cfg["light_string"]
-            self.wfile.write(response.encode('utf-8'))
-            return
-        if cfg["light_string"] == "":
-            cfg["light_string"] = rq_d["text"]
-        else:
-            cfg["light_string"] = cfg["light_string"] + \
-                "," + rq_d["text"]
-        print("action: " + rq_d["action"] +
-              " data: " + cfg["light_string"])
-        files.write_json_file(code_folder + "cfg.json", cfg)
-        upd_l_str()
-        play_mix(code_folder + "mvc/all_changes_complete.wav")
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = cfg["light_string"]
-        self.wfile.write(response.encode('utf-8'))
-
     def mode_post(self, rq_d):
         print(rq_d)
         global cfg, cont_run, ts_mode, terminal_window_during_playback
@@ -1919,11 +1422,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/all_changes_complete.wav")
             st_mch.go_to('base_state')
-        elif rq_d["an"] == "reset_neo_to_defaults":
-            cfg["neo_changes"] = copy.deepcopy(default_cfg["neo_changes"])
-            files.write_json_file(code_folder + "cfg.json", cfg)
-            play_mix(code_folder + "mvc/all_changes_complete.wav")
-            st_mch.go_to('base_state')
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1950,14 +1448,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_scene_changes_post(self, rq_d):
         response = cfg["scene_changes"]
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def get_neo_changes_post(self, rq_d):
-        response = cfg["neo_changes"]
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2051,29 +1541,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def lights_lifx_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        add_command_to_ts(rq_d["an"])
         set_hdw(rq_d["an"], 1, "")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["an"]
         self.wfile.write(response.encode('utf-8'))
-
-    def lights_neo_post(self, rq_d):
-        global current_neo, exit_set_hdw
-        current_neo = rq_d["an"]
-        rgb_value = cfg["neo_changes"][current_neo]
-        exit_set_hdw = False
-        command = "LN0_" + str(rgb_value[0]) + "_" + \
-            str(rgb_value[1]) + "_" + str(rgb_value[2])
-        add_command_to_ts(command)
-        set_hdw(command, 0, "")
-        response = rgb_value
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
 
     def lights_scene_post(self, rq_d):
         global current_scene, exit_set_hdw
@@ -2082,7 +1555,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         exit_set_hdw = False
         command = "LX0_" + str(rgb_value[0]) + "_" + \
             str(rgb_value[1]) + "_" + str(rgb_value[2])
-        add_command_to_ts(command)
         set_hdw(command, 0, "")
         response = rgb_value
         self.send_response(200)
@@ -2092,23 +1564,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def set_item_lights(self, rq_d):
-        global current_neo, current_scene, exit_set_hdw
+        global current_scene, exit_set_hdw
         exit_set_hdw = False
         if rq_d["item"] == "lifx":
             command = "LX0_" + str(rq_d["r"]) + "_" + \
                 str(rq_d["g"]) + "_" + str(rq_d["b"])
-            add_command_to_ts(command)
             set_hdw(command, 0, "")
             if current_scene != "":
                 cfg["scene_changes"][current_scene] = [
-                    rq_d["r"], rq_d["g"], rq_d["b"]]
-        elif rq_d["item"] == "neo":
-            command = "LN0_" + str(rq_d["r"]) + "_" + \
-                str(rq_d["g"]) + "_" + str(rq_d["b"])
-            add_command_to_ts(command)
-            set_hdw(command, 0, "")
-            if current_neo != "":
-                cfg["neo_changes"][current_neo] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
         files.write_json_file(code_folder + "cfg.json", cfg)
         response = rq_d
@@ -2154,35 +1617,6 @@ if web:
 
         mdns_info = get_mdns_info()
 
-        async def command_queue_handler(websocket, path):
-            global current_media_playing
-            print("WebSocket connection established")
-            try:
-                while True:
-                    if command_queue:
-                        commands = list(command_queue)
-                        response = {
-                            'commands': commands,
-                            'current_media_playing': current_media_playing
-                        }
-                        await websocket.send(json.dumps(response))
-                    else:
-                        response = {
-                            'commands': [],
-                            'current_media_playing': current_media_playing
-                        }
-                        await websocket.send(json.dumps(response))
-
-                    await asyncio.sleep(1)
-            except Exception as e:
-                print(f"Error in command_queue_handler: {e}")  # Log any errors
-            finally:
-                print("WebSocket connection closed")
-
-        async def websocket_server():
-            async with websockets.serve(command_queue_handler, "0.0.0.0", QUEUE_PORT):
-                print(f"WebSocket server running on port {QUEUE_PORT}")
-                await asyncio.Future()  # Run forever
     else:
         web = False
 
@@ -2210,7 +1644,6 @@ def process_commands():
     while command_queue:
         command = command_queue.popleft()  # Retrieve from the front
         print(f"Processing command: {command}")
-        an(command)
 
 
 def clear_command_queue():
@@ -2226,9 +1659,7 @@ def stop_all_commands():
     running_mode = ""
     exit_set_hdw = True
     mix.stop()
-    media_player.stop()
     cont_run = False
-    rst_an()
     print("Processing stopped and command queue cleared.")
 
 
@@ -2294,7 +1725,6 @@ def upd_vol(seconds):
     log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
     mix.set_volume(volume_0_1*0.7)
     mix_media.set_volume(volume_0_1*0.7)
-    media_player.audio_set_volume(log_to_linear)
     time.sleep(seconds)
 
 
@@ -2357,7 +1787,7 @@ def play_mix_media(file_name):
 
 
 def wait_snd():
-    while mix_media.get_busy() or media_player.is_playing():
+    while mix_media.get_busy():
         exit_early()
     print("done playing")
 
@@ -2365,8 +1795,7 @@ def wait_snd():
 def stop_all_media():
     mix.stop()
     mix_media.stop()
-    media_player.stop()
-    while mix.get_busy() or mix_media.get_busy() or media_player.is_playing():
+    while mix.get_busy() or mix_media.get_busy():
         pass
 
 
@@ -2586,24 +2015,6 @@ def update_folder_name_wavs():
             os.remove(os.path.join(snd_opt_folder, wav_file))
             print(f"Deleted orphaned wav: {wav_file}")
 
-
-################################################################################
-# Animation methods
-
-def logo_when_idle():
-    time_counter = 0
-
-    while True:
-        if not running_mode:
-            time_counter += 1
-            if time_counter == 2:
-                open_midori()
-                change_wallpaper(media_folder + 'pictures/logo.jpg')
-        else:
-            time_counter = 0
-        time.sleep(1)
-
-
 def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw, override_switch_state
     while not stop_event.is_set():  # Check the stop event
@@ -2611,21 +2022,14 @@ def check_switches(stop_event):
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
-            rst_an()
         elif switch_state == "left_held" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             clear_command_queue()
-            rst_an()
             if cont_run:
                 cont_run = False
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
         elif switch_state == "right" and cfg["can_cancel"]:
-            if running_mode == "media_player":
-                if media_player.is_playing():
-                    media_player.pause()
-                else:
-                    media_player.play()
-            elif running_mode == "mix":
+            if running_mode == "mix":
                 if mix_is_paused:
                     mix_media.unpause()
                     mix_is_paused = False
@@ -2648,266 +2052,9 @@ def run_check_switches_thread():
     return check_thread, stop_event
 
 
-def rst_an(file_name=media_folder + 'pictures/black.jpg'):
-    global current_media_playing, exit_set_hdw
-    exit_set_hdw = True
-    stop_all_media()
-    hide_terminal()
-    led.brightness = 1.0
-    led.fill((0, 0, 0))
-    led.show()
-    change_wallpaper(file_name)
-    time.sleep(0.5)
-    l_sw.update()
-    r_sw.update()
-    three_sw.update()
-    four_sw.update()
-    current_media_playing = ""
+###################################################################################
+# Hardware commands
 
-
-def an(f_nm):
-    global cfg, lst_opt, running_mode
-    print("Filename: " + f_nm)
-    try:
-        cur_opt = return_file_to_use(f_nm)
-        if ts_mode:
-            an_ts(cur_opt)
-            gc_col("animation cleanup")
-        else:
-            if not "intermission/" in cur_opt:
-                insert_intermission_start_of_queue()
-            result = an_light(cur_opt)
-            gc_col("animation cleanup")
-            return result
-    except Exception as e:
-        files.log_item(e)
-        no_trk()
-        cfg["option_selected"] = "random_all"
-        return
-    gc_col("Animation complete.")
-
-
-def return_file_to_use(f_nm):
-    global cfg, lst_opt, running_mode
-    cur_opt = f_nm
-    if f_nm == "random_all":
-        h_i = len(media_list_all_no_intermission) - 1
-        cur_opt = media_list_all_no_intermission[random.randint(
-            0, h_i)]
-        while lst_opt == cur_opt and len(media_list_all_no_intermission) > 1:
-            cur_opt = media_list_all_no_intermission[random.randint(
-                0, h_i)]
-        lst_opt = cur_opt
-        print("Random sound option: " + f_nm)
-        print("Sound file: " + cur_opt)
-    elif "random_" in f_nm:
-        folder_name = f_nm.split("_")
-        filtered_list = [
-            item for item in media_list_all if item.startswith(folder_name[1] + "/")]
-        h_i = len(filtered_list) - 1
-        cur_opt = filtered_list[random.randint(
-            0, h_i)]
-        while lst_opt == cur_opt and len(filtered_list) > 1:
-            cur_opt = filtered_list[random.randint(
-                0, h_i)]
-        lst_opt = cur_opt
-        print("Random sound option: " + f_nm)
-        print("Sound file: " + cur_opt)
-    return cur_opt
-
-
-def an_light(f_nm):
-    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
-    exit_set_hdw = False
-    current_media_playing = f_nm
-    plylst_f = "plylst_" in f_nm
-    is_video = ".mp4" in f_nm
-    json_fn = f_nm.replace(".mp4", "")
-    json_fn = json_fn.replace(".wav", "")
-
-    flsh_t = []
-
-    if plylst_f:
-        f_nm = f_nm.replace("plylst_", "")
-        if (f_exists(animators_folder + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(animators_folder + f_nm + ".json")
-        else:
-            flsh_t.append("0.0|")
-            flsh_t.append("5000.0|")
-            files.write_json_file(animators_folder + f_nm + ".json", flsh_t)
-    else:
-        if (f_exists(media_folder + json_fn + ".json") == True):
-            flsh_t = files.read_json_file(media_folder + json_fn + ".json")
-        else:
-            flsh_t.append("0.0|")
-            flsh_t.append("5000.0|")
-            files.write_json_file(media_folder + json_fn + ".json", flsh_t)
-
-    flsh_i = 0
-
-    ft1 = []
-    ft2 = []
-
-    # add end command to time stamps to stop video when timestamps run out
-    ft_last = flsh_t[len(flsh_t)-1].split("|")
-    tm_last = float(ft_last[0]) + 1
-    flsh_t.append(str(tm_last) + "|E")
-    flsh_t.append(str(tm_last + 1) + "|E")
-
-    check_thread, stop_event = run_check_switches_thread()
-
-    if not plylst_f:
-        media0 = media_folder + f_nm
-        if terminal_window_during_playback:
-            terminal_process = open_terminal()
-        if is_video:
-            running_mode = "media_player"
-            play_movie_file(media0)
-        else:
-            running_mode = "mix"
-            change_wallpaper(media0)
-            play_mix_media(media0)
-            mix_is_paused = False
-            close_midori()
-    else:
-        running_mode = "play_list"
-
-    srt_t = time.monotonic()
-
-    window_moved = False
-
-    while True:
-        t_past = time.monotonic()-srt_t
-        if is_video and terminal_window_during_playback and not window_moved and t_past > 0.5:
-            move_vlc_window()
-            window_moved = True
-        if flsh_i < len(flsh_t)-1:
-            ft1 = flsh_t[flsh_i].split("|")
-            ft2 = flsh_t[flsh_i+1].split("|")
-            dur = float(ft2[0]) - float(ft1[0]) - 0.25
-        else:
-            dur = 0.25
-        if dur < 0:
-            dur = 0
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            t_elaspsed = "{:.3f}".format(t_past)
-            duration = "{:.3f}".format(dur)
-            log_this = "TE: " + \
-                str(t_elaspsed) + " TS: " + \
-                ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
-            files.log_item(log_this)
-            resp = set_hdw(ft1[1], dur, "")
-            if resp == "STOP":
-                result = an_done_reset(resp)
-                return result
-            flsh_i += 1
-
-        media_player_state_now = media_player_state()
-        if plylst_f:
-            if flsh_i > len(flsh_t)-1:
-                stop_event.set()  # Signal the thread to stop
-                check_thread.join()  # Wait for the thread to finish
-                change_wallpaper(media_folder + 'pictures/black.jpg')
-                hide_terminal()
-                led.brightness = 1.0
-                led.fill((0, 0, 0))
-                led.show()
-                current_media_playing = ""
-                running_mode = ""
-                return "DONE"
-        else:
-            if not mix_media.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
-                stop_event.set()  # Signal the thread to stop
-                check_thread.join()  # Wait for the thread to finish
-                result = an_done_reset("DONE")
-                return result
-            elif flsh_i > len(flsh_t)-1:
-                stop_event.set()  # Signal the thread to stop
-                check_thread.join()  # Wait for the thread to finish
-                result = an_done_reset("DONE")
-                return result
-        time.sleep(.05)
-
-
-def an_done_reset(return_value):
-    global running_mode
-    rst_an()
-    time.sleep(0.05)
-    running_mode = ""
-    return return_value
-
-
-def insert_intermission_start_of_queue():
-    if rnd_prob(float(cfg["intermission"])):
-        add_command("random_intermission", True)
-
-
-def add_command_to_ts(command):
-    global ts_mode, t_s, t_elsp
-    if not ts_mode:
-        return
-    t_elsp_formatted = "{:.3f}".format(t_elsp)
-    t_s.append(t_elsp_formatted + "|" + command)
-    files.log_item(t_elsp_formatted + "|" + command)
-
-
-def an_ts(f_nm):
-    global t_s, t_elsp, terminal_process, terminal_window_during_playback, ts_mode, running_mode
-    print("time stamp mode")
-    running_mode == "time_stamp_mode"
-
-    is_video = ".mp4" in f_nm
-    json_fn = f_nm.replace(".mp4", "")
-    json_fn = json_fn.replace(".wav", "")
-
-    t_s = []
-
-    t_s.append("0.0|")
-
-    media0 = media_folder + f_nm
-
-    previous_terminal_mode = terminal_window_during_playback
-    terminal_window_during_playback = True
-
-    if terminal_window_during_playback:
-        terminal_process = open_terminal()
-    if is_video:
-        play_movie_file(media0)
-    else:
-        play_mix_media(media0)
-
-    startTime = time.perf_counter()
-    time.sleep(.1)
-
-    window_moved = False
-
-    while True:
-        t_elsp = time.perf_counter()-startTime
-        r_sw.update()
-        if r_sw.fell:
-            add_command_to_ts("")
-        if not mix_media.get_busy() and not media_player.is_playing():
-            add_command_to_ts("")
-            led.fill((0, 0, 0))
-            led.show()
-            files.write_json_file(
-                media_folder + json_fn + ".json", t_s)
-            break
-        if is_video and terminal_window_during_playback and not window_moved and t_elsp > 0.5:
-            move_vlc_window()
-            window_moved = True
-
-    terminal_window_during_playback = previous_terminal_mode
-    ts_mode = False
-    rst_an()
-    play_mix(code_folder + "mvc/timestamp_saved.wav")
-    play_mix(code_folder + "mvc/timestamp_mode_off.wav")
-    play_mix(code_folder + "mvc/animations_are_now_active.wav")
-    running_mode = ""
-
-
-###############
-# Animation helpers
 
 def rnd_prob(random_value):
     print("Using random value: " + str(random_value))
@@ -2940,17 +2087,10 @@ def set_hdw(cmd, dur, url):
             # USB connect to base3 usb port
             elif seg[:3] == 'USB':
                 get_usb_ports()
-            # lights SW_XXXX = Switch XXXX (right,left,three,four)  
+            # lights SW_XXXX = Switch XXXX (right,left,three,four)
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 override_switch_state["switch_value"] = segs_split[1]
-            elif seg[:2] == 'LN':
-                segs_split = seg.split("_")
-                light_n = int(segs_split[0][2:])-1
-                r = int(segs_split[1])
-                g = int(segs_split[2])
-                b = int(segs_split[3])
-                set_neo_to(light_n, r, g, b)
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")
@@ -2965,32 +2105,6 @@ def set_hdw(cmd, dur, url):
                 light_n = int(segs_split[0][2:])-1
                 power = segs_split[1]
                 set_light_power(light_n, power)
-            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            elif seg[0] == 'N':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_module_to(mod_n, index, v)
-            # brightness BXXX = Brightness XXX 000 to 100
-            elif seg[0:2] == 'BN':
-                br = int(seg[2:])
-                led.brightness = float(br/100)
-                led.show()
-            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
-            elif seg[0] == 'F':
-                segs_split = seg.split("_")
-                v = int(segs_split[0][1:])
-                s = float(segs_split[1])
-                while not br == v:
-                    if br < v:
-                        br += 1
-                        led.brightness = float(br/100)
-                    else:
-                        br -= 1
-                        led.brightness = float(br/100)
-                    led.show()
-                    time.sleep(s)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 random_effect(1, 3, dur)
@@ -3009,11 +2123,6 @@ def set_hdw(cmd, dur, url):
                 segs_split = seg[3:].split("_")
                 scene_change("lifx", segs_split[0], segs_split[1],
                              float(segs_split[2]), int(segs_split[3]))
-            # ZN_S_E_T_I = Scene change S start E end using (red,green,....), time, increments
-            elif seg[:2] == 'ZN':
-                segs_split = seg[3:].split("_")
-                scene_change("neo", segs_split[0], segs_split[1],
-                             float(segs_split[2]), int(segs_split[3]))
             # ZJ = Joke
             elif seg[:2] == 'ZJ':
                 get_random_joke()
@@ -3021,15 +2130,6 @@ def set_hdw(cmd, dur, url):
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
                 change_wallpaper(f_nm)
-            # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-            if seg[0] == 'S':  # servos S
-                num = int(seg[1])
-                v = int(seg[2:])
-                if num == 0:
-                    for i in range(6):
-                        s_arr[i].angle = v
-                else:
-                    s_arr[num-1].angle = int(v)
             # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
             if seg[0] == 'Q':
                 file_nm = seg[1:]
@@ -3038,10 +2138,12 @@ def set_hdw(cmd, dur, url):
             if seg[:3] == 'API':
                 seg_split = seg.split("_")
                 if len(seg_split) == 3:
-                    response = send_animator_post(url, seg_split[1], seg_split[2])
+                    response = send_animator_post(
+                        url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
-                    response = send_animator_post(seg_split[1], seg_split[2], seg_split[3])
+                    response = send_animator_post(
+                        seg_split[1], seg_split[2], seg_split[3])
                     return response
 
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
@@ -3050,144 +2152,8 @@ def set_hdw(cmd, dur, url):
     except Exception as e:
         files.log_item(e)
 
-##############################
-# Led color effects
-
-
-def random_effect(il, ih, d):
-    i = random.randint(il, ih)
-    if i == 1:
-        rbow(.005, d)
-    elif i == 2:
-        multi_color()
-        time.sleep(d)
-    elif i == 3:
-        fire(d)
-
-
-def rbow(spd, dur):
-    global exit_set_hdw
-    st = time.monotonic()
-    te = time.monotonic()-st
-    while te < dur:
-        for j in range(0, 255, 1):
-            if exit_set_hdw:
-                return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
-            led.show()
-            time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
-        for j in reversed(range(0, 255, 1)):
-            if exit_set_hdw:
-                return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
-            led.show()
-            time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
-
-
-def fire(dur):
-    global exit_set_hdw
-    st = time.monotonic()
-
-    firei = []
-
-    firei.extend(ornmnts)
-    firei.extend(cane_s)
-    firei.extend(cane_e)
-
-    stari = []
-    stari.extend(stars)
-
-    for i in stari:
-        led[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend((brnchs))
-
-    for i in brnchsi:
-        led[i] = (50, 50, 50)
-
-    r = random.randint(0, 255)
-    g = random.randint(0, 255)
-    b = random.randint(0, 255)
-
-    # Flicker, based on our initial RGB values
-    while True:
-        for i in firei:
-            if exit_set_hdw:
-                return
-            f = random.randint(0, 110)
-            r1 = bnd(r-f, 0, 255)
-            g1 = bnd(g-f, 0, 255)
-            b1 = bnd(b-f, 0, 255)
-            led[i] = (r1, g1, b1)
-            led.show()
-        time.sleep(random.uniform(0.05, 0.1))
-        te = time.monotonic()-st
-        if te > dur:
-            return
-
-
-def multi_color():
-    for i in range(0, n_px):
-        if not running_mode:
-            return
-        r = random.randint(128, 255)
-        g = random.randint(128, 255)
-        b = random.randint(128, 255)
-        c = random.randint(0, 2)
-        if c == 0:
-            r1 = r
-            g1 = 0
-            b1 = 0
-        elif c == 1:
-            r1 = 0
-            g1 = g
-            b1 = 0
-        elif c == 2:
-            r1 = 0
-            g1 = 0
-            b1 = b
-        led[i] = (r1, g1, b1)
-
-    stari = []
-    stari.extend(stars)
-
-    for i in stari:
-        led[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend((brnchs))
-
-    for i in brnchsi:
-        led[i] = (7, 163, 30)
-
-    canei = []
-    canei.extend(cane_e)
-    for i in canei:
-        led[i] = (255, 255, 255)
-    led.show()
-
-
-def bnd(c, l, u):
-    if (c < l):
-        c = l
-    if (c > u):
-        c = u
-    return c
-
 ################################################################################
 # State Machine
-
 
 class StMch(object):
 
@@ -3257,15 +2223,7 @@ class BseSt(Ste):
             process_commands()
             switch_state = utilities.switch_state_four_switches(
                 l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
-            if switch_state == "left_held":
-                if cont_run:
-                    cont_run = False
-                    play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
-                else:
-                    cont_run = True
-                    play_mix(code_folder + "mvc/continuous_mode_activated.wav")
-                time.sleep(.5)
-            elif switch_state == "left" or cont_run:
+            if switch_state == "left" or cont_run:
                 add_command(cfg["option_selected"])
                 time.sleep(.5)
             elif switch_state == "right":
@@ -3313,16 +2271,10 @@ class Main(Ste):
                 self.i = 0
         if switch_state == "right":
             sel_mnu = main_m[self.sel_i]
-            if sel_mnu == "choose_sounds":
-                mch.go_to('choose_sounds')
-            elif sel_mnu == "add_sounds_animate":
-                mch.go_to('add_sounds_animate')
-            elif sel_mnu == "web_options":
+            if sel_mnu == "web_options":
                 mch.go_to('web_options')
             elif sel_mnu == "volume_level_adjustment":
                 mch.go_to('volume_level_adjustment')
-            elif sel_mnu == "intermission_settings":
-                mch.go_to('intermission_settings')
             else:
                 play_mix(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
@@ -3366,107 +2318,6 @@ class Snds(Ste):
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/option_selected.wav", "rb")
             mch.go_to('base_state')
-
-
-class IntermissionSettings(Ste):
-
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
-
-    @property
-    def name(self):
-        return 'intermission_settings'
-
-    def enter(self, mch):
-        files.log_item('Intermission settings')
-        play_mix(code_folder + "mvc/intermission_settings_menu.wav")
-        l_r_but()
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        global cfg, override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
-            play_mix(
-                code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(intermission_settings)-1:
-                self.i = 0
-        if switch_state == "right":
-            sel_mnu = intermission_settings[self.sel_i]
-            if sel_mnu == "intermission_off":
-                cfg["intermission"] = "0"
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_mix(code_folder + "mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "intermission_infreq":
-                cfg["intermission"] = "0.33"
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_mix(code_folder + "mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "intermission_freq":
-                cfg["intermission"] = "0.66"
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_mix(code_folder + "mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "intermission_always":
-                cfg["intermission"] = "1"
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                play_mix(code_folder + "mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
-
-
-class AddSnds(Ste):
-
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
-
-    @property
-    def name(self):
-        return 'add_sounds_animate'
-
-    def enter(self, mch):
-        files.log_item('Add sounds animate')
-        play_mix(code_folder + "mvc/add_sounds_animate.wav")
-        l_r_but()
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        global ts_mode, override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
-            play_mix(
-                code_folder + "mvc/" + add_snd[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(add_snd)-1:
-                self.i = 0
-        if switch_state == "right":
-            sel_mnu = add_snd[self.sel_i]
-            if sel_mnu == "hear_instructions":
-                play_mix(code_folder + "mvc/drive_in_media_instructions.wav")
-            elif sel_mnu == "timestamp_mode_on":
-                ts_mode = True
-                play_mix(code_folder + "mvc/timestamp_mode_on.wav")
-                play_mix(code_folder + "mvc/timestamp_instructions.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "timestamp_mode_off":
-                ts_mode = False
-                play_mix(code_folder + "mvc/timestamp_mode_off.wav")
-            else:
-                play_mix(code_folder + "mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
 
 
 class VolumeLevelAdjustment(Ste):
@@ -3563,10 +2414,8 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
-st_mch.add(AddSnds())
 st_mch.add(VolumeLevelAdjustment())
 st_mch.add(WebOpt())
-st_mch.add(IntermissionSettings())
 
 time.sleep(0.05)
 aud_en.value = True
@@ -3596,13 +2445,6 @@ is_gtts_reachable = check_gtts_status()
 update_folder_name_wavs()
 
 if (web):
-    # Start the WebSocket server in a separate thread
-    websocket_thread = threading.Thread(
-        target=lambda: asyncio.run(websocket_server()))
-    websocket_thread.daemon = True
-    websocket_thread.start()
-    close_midori()
-    open_midori()
     spk_web()
 
 st_mch.go_to('base_state')
@@ -3620,11 +2462,6 @@ def run_state_machine():
 state_machine_thread = threading.Thread(target=run_state_machine)
 state_machine_thread.daemon = True
 state_machine_thread.start()
-
-# Start the logo_when_idle in a separate thread
-logo_when_idle_thread = threading.Thread(target=logo_when_idle)
-logo_when_idle_thread.daemon = True
-logo_when_idle_thread.start()
 
 if connect_to_base_3 == True:
     target_port = "/dev/ttyUSB0"
@@ -3647,7 +2484,6 @@ def stop_program():
         zeroconf.unregister_service(mdns_info)
         zeroconf.close()
         httpd.shutdown()
-    rst_an(media_folder + 'pictures/logo.jpg')
     serial_connection.close()
     quit()
 
