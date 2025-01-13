@@ -16,3 +16,11 @@ halt,
 low momentum,
 medium momentum,
 high momentum,
+
+setup network ssid and password using an usb drive
+
+insert the usb drive with the ssid and password you want to use
+
+connected to base 3
+
+not connected to base 3

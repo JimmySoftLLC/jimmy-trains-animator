@@ -90,10 +90,8 @@
 # sudo apt install ffmpeg
 # pip install pydub
 
-
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Tuple
 import http.server
 import socket
 import socketserver
@@ -105,8 +103,6 @@ import gc
 import board
 import digitalio
 from adafruit_debouncer import Debouncer
-from rainbowio import colorwheel
-from adafruit_motor import servo
 import pygame
 import gc
 import files
@@ -115,7 +111,7 @@ import psutil
 import random
 from gtts import gTTS
 import requests
-from lifxlan import BLUE, CYAN, GREEN, LifxLAN, ORANGE, PINK, PURPLE, RED, YELLOW
+from lifxlan import LifxLAN
 import subprocess
 import time
 import netifaces
@@ -123,7 +119,6 @@ from collections import OrderedDict, deque
 import signal
 import copy
 from pydub import AudioSegment
-import sys
 
 import pyautogui
 import serial
@@ -250,6 +245,57 @@ def restart_pi_timer():
 gc_col("Imports gc, files")
 
 ################################################################################
+# ssid and password setup
+
+# Function to mount the USB drive (assumes automatic mounting to /media/pi)
+def get_usb_path():
+    media_path = "/media/base3/"
+    usb_path = None
+    for root, dirs, files in os.walk(media_path):
+        if 'wifi_config.txt' in files:
+            usb_path = os.path.join(root, 'wifi_config.txt')
+            break
+    return usb_path
+
+# Function to read the SSID and PASSWORD from the file
+def read_wifi_credentials(file_path):
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+    ssid = None
+    password = None
+    for line in lines:
+        if line.startswith('SSID='):
+            ssid = line.strip().split('=')[1]
+        elif line.startswith('PASSWORD='):
+            password = line.strip().split('=')[1]
+    return ssid, password
+
+def connect_wifi(ssid, password):
+    # Run nmcli added a connection to the connection manager list,
+    # this public connection can be edited by the user later if needed.
+    subprocess.call(['sudo', 'nmcli', 'connection', 'add', 'type', 'wifi',
+        'con-name', ssid,'ifname', 'wlan0', 'ssid', ssid,
+        'wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', password])
+
+# Update ssid password using usb drive
+def update_ssid_password_from_usb():
+    print("Looking for USB with Wi-Fi configuration...")
+    while True:
+        usb_path = get_usb_path()
+        if usb_path:
+            print(f"Found USB with Wi-Fi config at: {usb_path}")
+            ssid, password = read_wifi_credentials(usb_path)
+            print("Using SSID: " + ssid + " and password: " + password)
+            if ssid:
+                print(f"Setting up Wi-Fi connection with SSID: {ssid}")
+                connect_wifi(ssid, password)
+                break
+        else:
+            print("Waiting for USB to be inserted...")
+            time.sleep(5)  # Check every 5 seconds for the USB
+
+
+################################################################################
 # config variables
 
 cfg = files.read_json_file(code_folder + "cfg.json")
@@ -293,7 +339,7 @@ def upd_media():
 
 upd_media()
 
-web = cfg["serve_webpage"]
+web = True # This device only works if it is connected to the wifi network so no config setting for this.
 
 cfg_main = files.read_json_file(code_folder + "mvc/main_menu.json")
 main_m = cfg_main["main_menu"]
@@ -1717,36 +1763,6 @@ def text_to_wav_file(text, file_name, timeout_duration):
         is_gtts_reachable = False
 
 
-def generate_wav_from_filename(file_name):
-    if is_gtts_reachable == False:
-        return
-    text_to_speak = file_name.replace("_", " ")
-    text_to_speak = text_to_speak.replace(".wav", "")
-
-    wav_file = os.path.join(
-        snd_opt_folder, f"{os.path.splitext(file_name)[0]}.wav")
-
-    # If wav file already exists, skip
-    if os.path.exists(wav_file):
-        print(f"Wav for {file_name} already exists. Skipping...")
-        return
-
-    # Generate speech from text
-    tts = gTTS(text=text_to_speak, lang='en')
-    tts.save(code_folder + "temp.mp3")
-
-    # Load the audio file with pydub
-    audio = AudioSegment.from_file(code_folder + "temp.mp3")
-
-    # Adjust the volume
-    volume_change = -5  # Decrease volume by 5db
-    adjusted_audio = audio + volume_change
-
-    # Save the adjusted audio
-    adjusted_audio.export(wav_file, format="wav")
-    print(f"Wav for {file_name} generated and volume adjusted.")
-
-
 ###################################################################################
 # Hardware commands
 
@@ -2019,22 +2035,19 @@ class WebOpt(Ste):
                 self.i = 0
         if switch_state == "right":
             selected_menu_item = web_m[self.sel_i]
-            if selected_menu_item == "web_on":
-                cfg["serve_webpage"] = True
-                opt_sel()
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                restart_pi_timer()
-            elif selected_menu_item == "web_off":
-                cfg["serve_webpage"] = False
-                opt_sel()
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                restart_pi_timer()
-            elif selected_menu_item == "hear_url":
+            if selected_menu_item == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
+                sel_web()
+            if selected_menu_item == "hear_ip":
+                spk_str(local_ip, True)
                 sel_web()
             elif selected_menu_item == "hear_instr_web":
                 play_mix(code_folder + "mvc/hear_instr_web_drive_in.wav")
                 sel_web()
+            elif selected_menu_item == "update_ssid_password_from_usb":
+                play_mix(code_folder + "mvc/update_ssid_password_from_usb.wav")
+                update_ssid_password_from_usb()
+                restart_pi_timer()
             else:
                 mch.go_to('base_state')
 
@@ -2125,3 +2138,4 @@ while True:
 
 
 # type: ignore
+
