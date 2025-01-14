@@ -657,19 +657,27 @@ def read_from_serial(ser):
                     # print("Received 0: " + str(received_data[0]))
                     # print("Received 1: " + str(received_data[1]))
                     # print("Received 2: " + str(received_data[2]))
-                    # print(f"Word 1: {binary_word1}")
-                    # print(f"Word 2: {binary_word2}")
-                    # print(f"Word 3: {binary_word3}\n")
+                    print(f"Word 1: {binary_word1}")
+                    print(f"Word 2: {binary_word2}")
+                    print(f"Word 3: {binary_word3}\n")
                     response = get_command_object(
                         binary_word1, binary_word2, binary_word3)
                     response = process_command(response)
                     # print(response["system"], response["device"],
                     #       response["address"], response["command"], response["data"], response["button"])
-                    command, item = process_command_animator_config(response)
-                    print(command, item)
-                    if command:
-                        exit_set_hdw = False
-                        set_hdw(command[1], 1, item["animatorIpAddress"])
+
+                    commands = process_command_animator_config(response)
+
+                    # Check if there are any matches
+                    if commands:
+                        for command, item in commands:
+                            print(command, item)  # Print each matched row and item
+                            if command:
+                                exit_set_hdw = False
+                                set_hdw(command[1], 1, item["animatorIpAddress"])
+                    else:
+                        print("No matches found")
+
                     time.sleep(1)
                     ser.read(ser.in_waiting)
 
@@ -704,7 +712,11 @@ def get_command_object(binary_word1, binary_word2, binary_word3):
     print(binary_word1)
     response = {}
     response["system"] = what_system(binary_word1)
-    if response["system"] == "tmcc":
+    if binary_word2 == "11111111" and binary_word2 == "11111111":
+        response["system"] = "halt"
+        response["device"] = "halt"
+        response["address"] = "0000"
+    elif response["system"] == "tmcc":
         command = binary_word2[0:2]
         if command == "01":  # Switch command
             response["device"] = "switch"
@@ -787,12 +799,14 @@ def process_command_animator_config(response):
     # "data": "01001",
     # "button": "AUX1"
     # }
+    matches = []  # Initialize an empty list to store matches
+
     for item in animator_configs:
-        if item["device"] == response["device"] and item["address"] == response["address"]:
+        if item["device"] == response["device"] and item["address"] == response["address"] or response["device"] == "halt":
             for row in item['table_data']:
                 if row[0] == response["button"]:
-                    return row, item  # Return the matched row
-    return None, None  # If no match is found
+                    matches.append((row, item))  # Append the matched row and item to the list
+    return matches  # Return all matches
 
 
 def process_command(response):
@@ -809,6 +823,24 @@ def process_command(response):
                 play_mix(code_folder + "mvc/set_to_id.wav")
                 spk_str(str(response["address"]), False)
             response["button"] = "SET"
+        elif response["command"] == "extended" and response["data"] == "01000":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
+                spk_str(str(response["address"]), False)
+                play_mix(code_folder + "mvc/low_momentum.wav")
+            response["button"] = "LOWM"
+        elif response["command"] == "extended" and response["data"] == "01001":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
+                spk_str(str(response["address"]), False)
+                play_mix(code_folder + "mvc/medium_momentum.wav")
+            response["button"] = "MEDM"
+        elif response["command"] == "extended" and response["data"] == "01010":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
+                spk_str(str(response["address"]), False)
+                play_mix(code_folder + "mvc/high_momentum.wav")
+            response["button"] = "HIGHM"    
         elif response["command"] == "relative":
             binary_number = response["data"][1:5]
             decimal_number = int(binary_number, 2)
@@ -885,6 +917,11 @@ def process_command(response):
             if speak_commands:
                 play_mix(code_folder + "mvc/out.wav")
             response["button"] = "OUT"
+    
+    if response["device"] == "halt":
+            if speak_commands:
+                play_mix(code_folder + "mvc/halt.wav")
+            response["button"] = "HALT"
     return response
 
 
