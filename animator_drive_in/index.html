@@ -47,6 +47,14 @@
             Use this web app to control and setup your animator - Drive in
             product. Have fun animating.
         </p>
+        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            data-url="/mode">Left</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            data-url="/mode">Right</button>
+        <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            data-url="/mode">Three</button>
+        <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            data-url="/mode">Four</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -646,7 +654,7 @@
             });
     }
 
-    
+
     local_ip = ""
 
     function getLocalIp() {

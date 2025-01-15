@@ -2414,7 +2414,6 @@ def spk_sng_num(song_number):
 
 
 def no_trk():
-    global override_switch_state
     play_mix(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
         switch_state = utilities.switch_state(
@@ -2940,7 +2939,7 @@ def set_hdw(cmd, dur, url):
             # USB connect to base3 usb port
             elif seg[:3] == 'USB':
                 get_usb_ports()
-            # lights SW_XXXX = Switch XXXX (right,left,three,four)  
+            # switch SW_XXXX = Switch XXXX (right,left,three,four)  
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 override_switch_state["switch_value"] = segs_split[1]

@@ -153,6 +153,8 @@ current_media_playing = ""
 current_scene = ""
 current_neo = ""
 is_midori_running = False
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -1573,6 +1575,14 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg["intermission"] = rq_d_split[1]
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/all_changes_complete.wav")
+        elif rq_d["an"] == "left":
+            override_switch_state["switch_value"] = "left"
+        elif rq_d["an"] == "right":
+            override_switch_state["switch_value"] = "right"
+        elif rq_d["an"] == "three":
+            override_switch_state["switch_value"] = "three"
+        elif rq_d["an"] == "four":
+            override_switch_state["switch_value"] = "four"
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2037,8 +2047,9 @@ def stop_all_media():
 
 
 def exit_early():
-    l_sw.update()
-    if l_sw.fell:
+    switch_state = utilities.switch_state(
+        l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+    if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
 
@@ -2081,11 +2092,11 @@ def spk_sng_num(song_number):
 def no_trk():
     play_mix(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             break
-        if r_sw.fell:
+        if switch_state == "right":
             play_mix(code_folder + "mvc/create_sound_track_files.wav")
             break
 
@@ -2272,7 +2283,7 @@ def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
-            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             rst_an()
@@ -2611,22 +2622,10 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)
-            # elif seg[0] == 'M':
-            #     stop_all_media()
-            #     if seg[1] == "P":
-            #         f_nm = pylst_folder + "plylst_" + seg[2:]
-            #     else:
-            #         f_nm = media_folder + seg[2:]
-            #     if seg[1] == "W" or seg[1] == "M":
-            #         play_mix_media(f_nm, False)
-            #     if seg[1] == "A":
-            #         f_nm = seg[2:]
-            #         res = an(f_nm)
-            #         if res == "STOP":
-            #             return "STOP"
-            #     if seg[1] == "W":
-            #         wait_snd()
+            # switch SW_XXXX = Switch XXXX (right,left,three,four)  
+            elif seg[:2] == 'SW':
+                segs_split = seg.split("_")
+                override_switch_state["switch_value"] = segs_split[1]
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
@@ -2932,11 +2931,11 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, running_mode
+        global cont_run, running_mode, override_switch_state
         if running_mode != "time_stamp_mode":
             process_commands()
             switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
@@ -2982,15 +2981,16 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(code_folder + "mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
@@ -3027,9 +3027,10 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             try:
                 play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
             except Exception as e:
@@ -3039,7 +3040,7 @@ class Snds(Ste):
             self.i += 1
             if self.i > len(menu_snd_opt)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/option_selected.wav", "rb")
@@ -3066,17 +3067,17 @@ class IntermissionSettings(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global cfg, override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(intermission_settings)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_mnu = intermission_settings[self.sel_i]
             if sel_mnu == "intermission_off":
                 cfg["intermission"] = "0"
@@ -3120,17 +3121,17 @@ class AddSnds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global ts_mode
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global ts_mode, override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(add_snd)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
                 play_mix(code_folder + "mvc/drive_in_media_instructions.wav")
@@ -3166,10 +3167,11 @@ class VolumeLevelAdjustment(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global override_switch_state
         done = False
         while not done:
             switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0)
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left":
                 ch_vol("lower")
             elif switch_state == "right":
@@ -3202,16 +3204,16 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global cfg, override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(code_folder + "mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             selected_menu_item = web_m[self.sel_i]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
