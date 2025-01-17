@@ -119,7 +119,7 @@ from collections import OrderedDict, deque
 import signal
 import copy
 from pydub import AudioSegment
-
+import re
 import pyautogui
 import serial
 import serial.tools.list_ports
@@ -1868,31 +1868,41 @@ def set_hdw(cmd, dur, url):
                 get_random_joke()
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
-                seg_split = split_string(seg)   
+                seg_split = split_string(seg)
+                print (seg_split)
                 if len(seg_split) == 3:
+                    print ("three params")       
                     response = send_animator_post(
                         url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
+                    print ("four params")
                     response = send_animator_post(
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
+                return ""
     except Exception as e:
         files.log_item(e)
 
 def split_string(seg):
-    # Split by underscores
+    # Find the object (everything inside curly braces)
+    match = re.search(r'(_\{.*\})', seg)
+    
+    if match:
+        # Remove the last underscore and the object part from the string
+        object_part = match.group(0)
+        seg = seg.replace(object_part, '')
+    else:
+        object_part = ''  # If no object is found, set it to empty
+    
+    # Now split the remaining part by underscores
     parts = seg.split('_')
     
-    # Check if there is an object part starting with '{'
-    for i in range(len(parts)):
-        if '{' in parts[i]:
-            # Join everything after the first two parts back into the third part
-            parts[i:] = ['_'.join(parts[i:])]
-            break
-            
-    # Return the first two parts and the rest as the third part
-    return parts[:3]
+    # Add the object back as the last part
+    parts.append(object_part.strip('_'))  # Remove leading underscore from object
+    
+    return parts
+
 
 
 ################################################################################
