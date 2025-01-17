@@ -1868,7 +1868,7 @@ def set_hdw(cmd, dur, url):
                 get_random_joke()
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
-                seg_split = seg.split("_")
+                seg_split = split_string(seg)   
                 if len(seg_split) == 3:
                     response = send_animator_post(
                         url, seg_split[1], seg_split[2])
@@ -1879,6 +1879,21 @@ def set_hdw(cmd, dur, url):
                     return response
     except Exception as e:
         files.log_item(e)
+
+def split_string(seg):
+    # Split by underscores
+    parts = seg.split('_')
+    
+    # Check if there is an object part starting with '{'
+    for i in range(len(parts)):
+        if '{' in parts[i]:
+            # Join everything after the first two parts back into the third part
+            parts[i:] = ['_'.join(parts[i:])]
+            break
+            
+    # Return the first two parts and the rest as the third part
+    return parts[:3]
+
 
 ################################################################################
 # State Machine
