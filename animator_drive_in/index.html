@@ -442,10 +442,19 @@
                 Valid volume levels are from 1 to 100
             </p>
 
-            <h2>Animator web page name:</h2>
+            <h2>Animator web page name and ip address:</h2>
 
             <div class="mui-textfield">
-                <input class="input" id="websiteUrl" type="text" placeholder="Enter website name">
+                <label>Base url:</label>
+                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div class="mui-textfield">
+                <label>IP Address:</label>
+                <input class="input" id="settingsIpAddress" type="text" disabled
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div>
                 <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
                     data-url="/update-host-name">
                     Change
@@ -455,7 +464,7 @@
             <p>
                 Use alphanumerics and dashes only. All names are automatically
                 appended with .local:8083. So your website url will be something like
-                "website-name.local:8083"
+                "website-name.local:8083 and the ip address will be xx.xx.xx.xx:8083."
             </p>
 
             <h2>Utilities:</h2>
@@ -645,7 +654,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
                 makeSocketConnection(data)
             })
             .catch(function (error) {
@@ -669,6 +678,8 @@
             })
             .then(function (data) {
                 local_ip = data; // Set the value of the input field with the received data
+                data = data.replace(/^"|"$/g, '');
+                settingsIpAddress.value = data
             })
             .catch(function (error) {
                 console.log(error);
@@ -1264,8 +1275,8 @@
     // Add click event listener to website submit button
     var websiteSubmitButton = document.getElementById('websiteSubmitButton');
     websiteSubmitButton.addEventListener('click', function () {
-        var websiteUrl = document.getElementById('websiteUrl');
-        var websiteUrlText = websiteUrl.value;
+        var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
+        var websiteUrlText = settingsWebsiteUrl.value;
         var url = this.getAttribute('data-url');
 
         var data = {
@@ -1285,7 +1296,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
                 websiteSubmitButton.removeAttribute('disabled')
             })
             .catch(function (error) {
@@ -1295,7 +1306,7 @@
     });
 
     // Restrict input to letters, numbers, and hyphens only
-    websiteUrl.addEventListener('input', function () {
+    settingsWebsiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
     });
@@ -2392,9 +2403,9 @@
             });
     });
 
-    function makeSocketConnection(webSiteUrl) {
+    function makeSocketConnection(settingsWebsiteUrl) {
         const cfg = {
-            "HOST_NAME": webSiteUrl
+            "HOST_NAME": settingsWebsiteUrl
         };
 
         const server_str = `${cfg["HOST_NAME"]}.local`; // Adjust as needed
