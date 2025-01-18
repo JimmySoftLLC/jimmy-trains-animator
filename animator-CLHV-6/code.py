@@ -55,10 +55,13 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 
-num_px = 2
+num_px = 10
 
-#15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP17, num_px)
+#15 on demo 17 tiny 10 on large, GP11 on clhv-6
+led = neopixel.NeoPixel(board.GP11, num_px)
+
+led.fill((255, 255, 255))
+led.show()
 
 gc_col("Neopixels setup")
 
@@ -79,6 +82,8 @@ if (web):
     # default for manufacturing and shows
     WIFI_SSID = "jimmytrainsguest"
     WIFI_PASSWORD = ""
+
+    local_ip = ""
 
     try:
         env = files.read_json_file("env.json")
@@ -102,7 +107,8 @@ if (web):
             service_type="_http", protocol="_tcp", port=80)
 
         # files.log_items IP address to REPL
-        files.log_item("IP is" + str(wifi.radio.ipv4_address))
+        local_ip = str(wifi.radio.ipv4_address)
+        files.log_item("IP is" + local_ip)
         files.log_item("Connected")
 
         # set up server
@@ -151,25 +157,16 @@ if (web):
                 files.write_json_file("cfg.json", cfg)
             return Response(request, "Utility: " + rq_d["an"])
 
-        @server.route("/mode", [POST])
-        def btn(request: Request):
-            global cfg, cont_run, ts_mode
-            rq_d = request.json()
-            if rq_d["an"] == "cont_mode_on":
-                cont_run = True
-            elif rq_d["an"] == "cont_mode_off":
-                cont_run = False
-            elif rq_d["an"] == "timestamp_mode_on":
-                ts_mode = True
-            elif rq_d["an"] == "timestamp_mode_off":
-                ts_mode = False
-            return Response(request, "Utility: " + rq_d["an"])
-
         @server.route("/lights", [POST])
         def btn(request: Request):
-            rq_d = request.json()
-            set_hdw_async(rq_d["an"])
-            return Response(request, "Utility: " + "Utility: set lights")
+            """Handle lights route synchronously but process async operation in background."""
+            try:
+                rq_d = request.json()  # Parse the incoming JSON
+                asyncio.create_task(set_hdw_async(rq_d["an"]))  # Schedule the async task
+                return Response(request, "Utility: set lights successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.", status=500)
         
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
@@ -183,8 +180,12 @@ if (web):
         @server.route("/get-host-name", [POST])
         def btn(request: Request):
             return Response(request, cfg["HOST_NAME"])
+        
+        @server.route("/get-local-ip", [POST])
+        def btn(request: Request):
+            return Response(request, local_ip)
 
-        @server.route("/get-built-in-sound-tracks", [POST])
+        @server.route("/get-animations", [POST])
         def btn(request: Request):
             sounds = []
             sounds.extend(animations)
@@ -193,11 +194,15 @@ if (web):
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
-            rq_d = request.json()
-            print(rq_d["an"])
-            gc_col("Save Data.")
-            set_hdw_async(rq_d["an"])
-            return Response(request, "success")
+            try:
+                rq_d = request.json()
+                print(rq_d["an"])
+                gc_col("Save Data.")
+                asyncio.create_task(set_hdw_async(rq_d["an"]))  # Schedule the async task
+                return Response(request, "Test animation successfully")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error test animation.", status=500)
 
         @server.route("/get-animation", [POST])
         def btn(request: Request):
@@ -364,7 +369,6 @@ async def an_light_async(f_nm):
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
-
 async def set_hdw_async(input_string):
     """Async hardware control for NeoPixel lights."""
     global sp, br
@@ -449,3 +453,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
