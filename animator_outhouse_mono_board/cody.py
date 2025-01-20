@@ -143,6 +143,9 @@ reset_roof = True
 
 local_ip = ""
 
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
+
 gc_col("config setup")
 
 ################################################################################
@@ -676,27 +679,15 @@ def cal_pos(s, mov_typ):
     done = False
     while not done:
         s.angle = cfg[mov_typ]
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            cal_l_but(
-                s, mov_typ, sign, min, max)
-        if r_sw.fell:
-            btn_chk = True
-            number_cycles = 0
-            while btn_chk:
-                upd_vol(.1)
-                r_sw.update()
-                number_cycles += 1
-                if number_cycles > 30:
-                    wrt_cal()
-                    btn_chk = False
-                    done = True
-                if r_sw.rose:
-                    btn_chk = False
-            if not done:
-                cal_r_but(
-                    s, mov_typ, sign, min, max)
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
+            cal_l_but(s, mov_typ, sign, min, max)
+        elif switch_state == "right":
+            cal_r_but(s, mov_typ, sign, min, max)
+        elif switch_state == "right_held":
+            wrt_cal()
+            done = True
     if mov_typ == "door_close_position" or mov_typ == "door_open_position":
         global d_lst_p
         d_lst_p = cfg[mov_typ]
@@ -1096,20 +1087,20 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global cont_run, fig_web
-        sw = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 3.0)
-        if sw == "left_held":
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left_held":
             if cont_run:
                 cont_run = False
                 ply_a_0("/mvc/continuous_mode_deactivated.mp3")
             else:
                 cont_run = True
                 ply_a_0("/mvc/continuous_mode_activated.mp3")
-        elif sw == "left" or cont_run:
+        elif switch_state == "left" or cont_run:
             an()
-        elif sw == "right" and not fig_web:
+        elif switch_state == "right" and not fig_web:
             mch.go_to('main_menu')
-        elif sw == "right" and fig_web:
+        elif switch_state == "right" and fig_web:
             fig_web = False
             mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("cfg.json", cfg)
@@ -1137,15 +1128,15 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             ply_a_0("/mvc/" + main_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_i = main_m[self.sel_i]
             if sel_i == "dialog_options":
                 mch.go_to('dialog_options')
@@ -1161,13 +1152,13 @@ class Main(Ste):
                 ply_a_0("/mvc/volume_adjustment_menu.mp3")
                 done = False
                 while not done:
-                    sw = utilities.switch_state(
-                        l_sw, r_sw, upd_vol, 3.0)
-                    if sw == "left":
+                    switch_state = utilities.switch_state(
+                            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                    if switch_state == "left":
                         ch_vol("lower")
-                    elif sw == "right":
+                    elif switch_state == "right":
                         ch_vol("raise")
-                    elif sw == "right_held":
+                    elif switch_state == "right_held":
                         files.write_json_file("cfg.json", cfg)
                         ply_a_0("/mvc/all_changes_complete.mp3")
                         done = True
@@ -1201,15 +1192,15 @@ class MoveRD(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             ply_a_0("/mvc/" + mov_r_d[s.i] + ".mp3")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(mov_r_d)-1:
                 s.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_i = mov_r_d[s.sel_i]
             if sel_i == "move_door_open_position":
                 mov_d_s(cfg["door_open_position"], 0.01)
@@ -1244,16 +1235,16 @@ class AdjRD(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             ply_a_0(
                 "/mvc/" + adj_r_d[s.i] + ".mp3")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(adj_r_d)-1:
                 s.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_i = adj_r_d[s.sel_i]
             if sel_i == "adjust_door_open_position":
                 mov_d_s(cfg["door_open_position"], 0.01)
@@ -1300,9 +1291,9 @@ class WebOpt(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1313,7 +1304,7 @@ class WebOpt(Ste):
                 s.i += 1
                 if s.i > len(web_m)-1:
                     s.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_i = web_m[s.sel_i]
             if sel_i == "web_on":
                 cfg["serve_webpage"] = True
@@ -1355,9 +1346,9 @@ class Dlg_Opt(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if  switch_state == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1369,7 +1360,7 @@ class Dlg_Opt(Ste):
                 s.i += 1
                 if s.i > len(dlg_opt)-1:
                     s.i = 0
-        if r_sw.fell:
+        if  switch_state == "right":
             opts = dlg_opt[s.sel_i].split(" ")
             if opts[0] == "exp":
                 cfg["explosions_freq"] = int(opts[1])
@@ -1407,16 +1398,16 @@ class InsFig(Ste):
 
     def upd(self, mch):
         global cfg, fig_web
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if  switch_state == "left":
             ply_a_0(
                 "/mvc/" + inst_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(inst_m)-1:
                 self.i = 0
-        if r_sw.fell:
+        if  switch_state == "right":
             sel_i = inst_m[self.sel_i]
             cfg["figure"] = sel_i
             ins_f(True)
