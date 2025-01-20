@@ -1390,12 +1390,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def get_local_ip(self, rq_d):
-        response = local_ip
         self.send_response(200)
-        self.send_header("Content-type", "application/json")
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
+        response = local_ip
+        self.wfile.write(response.encode('utf-8'))
 
     def stop_post(self, rq_d):
         rst_an()

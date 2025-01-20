@@ -389,7 +389,7 @@
         fetch('/get-host-name', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain',
             },
         })
             .then(function (response) {
@@ -410,7 +410,7 @@
         fetch('/get-local-ip', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain',
             },
         })
             .then(function (response) {
@@ -429,7 +429,7 @@
         fetch('/get-volume', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain',
             },
         })
             .then(function (response) {
@@ -1256,6 +1256,7 @@
 
     function getAnimatorIpAddress(baseUrl) {
         const thirdInput = "API_" + baseUrl + "_get-local-ip_{}"
+        getAnimatorIpAddressButton.setAttribute("disabled", "true");
 
         var url = "/test-animation";
 
@@ -1274,7 +1275,7 @@
         fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain',
             },
             body: JSON.stringify(data),
         })
@@ -1284,10 +1285,10 @@
             .then(function (data) {
                 data = data.replace(/^"|"$/g, '');
                 animatorIpAddress.value = data + port
-                target.removeAttribute('disabled')
+                getAnimatorIpAddressButton.removeAttribute('disabled')
             })
             .catch(function (error) {
-                target.removeAttribute('disabled')
+                getAnimatorIpAddressButton.removeAttribute('disabled')
                 console.log(error);
                 showAlert(error);
             });

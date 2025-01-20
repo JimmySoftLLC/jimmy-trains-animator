@@ -602,7 +602,12 @@ class ApiClient:
     def handle_response(self, response):
         """Handle the HTTP response."""
         if response.status_code == 200:
-            return response.json()  # or response.text for raw text
+            try:
+                # Try to parse the response as JSON
+                return response.json()
+            except ValueError:
+                # If JSON parsing fails, treat it as plain text
+                return response.text
         else:
             response.raise_for_status()  # Raise an error for bad responses
 
@@ -1156,12 +1161,11 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def get_local_ip(self, rq_d):
-        response = local_ip
         self.send_response(200)
-        self.send_header("Content-type", "application/json")
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
+        response = local_ip
+        self.wfile.write(response.encode('utf-8'))
 
     def rename_animator_post(self, rq_d):
         global data
