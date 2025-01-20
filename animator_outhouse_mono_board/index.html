@@ -124,14 +124,6 @@
     </div>
     <div class="mui-tabs__pane" id="settings" style="padding-top:0.5rem;">
       <h2>Volume:</h2>
-      <!-- <button class="mui-btn mui-btn--primary animator-outhouse" data-value="volume_pot_on" data-url="/utilities"
-        type="button">
-        Volume Pot On
-      </button>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="volume_pot_off" data-url="/utilities"
-        type="button">
-        Volume Pot Off
-      </button> -->
       <div class="mui-textfield">
         <input class="input" id="volume" type="number" disabled>
         <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
@@ -187,19 +179,30 @@
         Valid volume levels are from 1 to 100
       </p>
 
-      <h2>Animator web page name:</h2>
+
+      <h2>Animator web page name and ip address:</h2>
 
       <div class="mui-textfield">
-        <input class="input" animator-outhouse" id="webSiteName" type="text" placeholder="Enter website name">
-        <button id="submitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-host-name">
-          Change
-        </button>
+          <label>Base url:</label>
+          <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+              style="width: 300px; padding: 5px; margin: 5px;">
+      </div>
+      <div class="mui-textfield">
+          <label>IP Address:</label>
+          <input class="input" id="settingsIpAddress" type="text" disabled
+              style="width: 300px; padding: 5px; margin: 5px;">
+      </div>
+      <div>
+          <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
+              data-url="/update-host-name">
+              Change
+          </button>
       </div>
 
       <p>
-        Use alphanumerics and dashes only. All names are automatically
-        appended with .local. So your website url will be something like
-        "website-name.local"
+          Use alphanumerics and dashes only. All names are automatically
+          appended with .local. So your website url will be something like
+          "website-name.local and the ip address will be xx.xx.xx.xx."
       </p>
 
       <h2>Utilities:</h2>
@@ -243,21 +246,21 @@
   }
 
 
-  var submitButton = document.getElementById('submitButton');
+  var websiteSubmitButton = document.getElementById('websiteSubmitButton');
   var volumeSubmitButton = document.getElementById('volumeSubmitButton');
 
   // Get all buttons with the 'animator-outhouse' class
   var buttons = document.querySelectorAll('.animator-outhouse');
 
-  submitButton.addEventListener('click', function () {
-    var webSiteName = document.getElementById('webSiteName');
+  websiteSubmitButton.addEventListener('click', function () {
+    var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
     var url = this.getAttribute('data-url');
 
     var data = {
-      text: webSiteName.value,
+      text: settingsWebsiteUrl.value,
     };
 
-    submitButton.setAttribute('disabled', 'true')
+    websiteSubmitButton.setAttribute('disabled', 'true')
 
     fetch(url, {
       method: 'POST',
@@ -270,12 +273,12 @@
         return response.text(); // assuming the response is plain text
       })
       .then(function (data) {
-        webSiteName.value = data; // Set the value of the input field with the received data
-        submitButton.removeAttribute('disabled')
+        settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
+        websiteSubmitButton.removeAttribute('disabled')
       })
       .catch(function (error) {
         console.log(error);
-        submitButton.removeAttribute('disabled')
+        websiteSubmitButton.removeAttribute('disabled')
       });
   });
 
@@ -359,7 +362,7 @@
         return response.text(); // assuming the response is plain text
       })
       .then(function (data) {
-        webSiteName.value = data; // Set the value of the input field with the received data
+        settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
       })
       .catch(function (error) {
         console.log(error);
@@ -381,10 +384,29 @@
       .catch(function (error) {
         console.log(error);
       });
+
+      fetch('/get-local-ip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                local_ip = data; // Set the value of the input field with the received data
+                data = data.replace(/^"|"$/g, '');
+                settingsIpAddress.value = data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
   });
 
   // Restrict input to letters, numbers, and hyphens only
-  webSiteName.addEventListener('input', function () {
+  settingsWebsiteUrl.addEventListener('input', function () {
     var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
     this.value = validatedValue;
   });

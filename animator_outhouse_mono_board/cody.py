@@ -141,6 +141,8 @@ cont_run = False
 fig_web = False
 reset_roof = True
 
+local_ip = ""
+
 gc_col("config setup")
 
 ################################################################################
@@ -204,9 +206,11 @@ if (web):
         mdns.hostname = cfg["HOST_NAME"]
         mdns.advertise_service(
             service_type="_http", protocol="_tcp", port=80)
+        
+        local_ip = str(wifi.radio.ipv4_address)
 
         # files.log_items IP address to REPL
-        files.log_item("IP is" + str(wifi.radio.ipv4_address))
+        files.log_item("IP is" + local_ip)
         files.log_item("Connected")
 
         # set up server
@@ -300,6 +304,10 @@ if (web):
         @server.route("/get-host-name", [POST])
         def buttonpress(req: Request):
             return Response(req, cfg["HOST_NAME"])
+        
+        @server.route("/get-local-ip", [POST])
+        def buttonpress(req: Request):
+            return Response(req, local_ip)
 
         @server.route("/update-volume", [POST])
         def buttonpress(req: Request):
