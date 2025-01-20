@@ -246,7 +246,6 @@ if (web):
         @server.route("/animation", [POST])
         def buttonpress(req: Request):
             global cfg
-            global cont_run
             req_d = req.json()
             if "RUN" == req_d["an"]:
                 an()
@@ -264,12 +263,6 @@ if (web):
                 set_cfg("explosions_freq", 2)
             elif "EXP3" == req_d["an"]:
                 set_cfg("explosions_freq", 3)
-            elif "cont_mode_on" == req_d["an"]:
-                cont_run = True
-                ply_a_0("/mvc/continuous_mode_activated.mp3")
-            elif "cont_mode_off" == req_d["an"]:
-                cont_run = False
-                ply_a_0("/mvc/continuous_mode_deactivated.mp3")
             return Response(req, "Success")
 
         @server.route("/utilities", [POST])
@@ -322,6 +315,28 @@ if (web):
         @server.route("/get-volume", [POST])
         def buttonpress(req: Request):
             return Response(req, cfg["volume"])
+        
+        @server.route("/mode", [POST])
+        def buttonpress(req: Request):
+            global cfg, cont_run
+            req_d = req.json()
+            if req_d["an"] == "left":
+                override_switch_state["switch_value"] = "left"
+            elif req_d["an"] == "right":
+                override_switch_state["switch_value"] = "right"
+            elif req_d["an"] == "right_held":
+                override_switch_state["switch_value"] = "right_held"
+            elif req_d["an"] == "three":
+                override_switch_state["switch_value"] = "three"
+            elif req_d["an"] == "four":
+                override_switch_state["switch_value"] = "four"
+            elif "cont_mode_on" == req_d["an"]:
+                cont_run = True
+                ply_a_0("/mvc/continuous_mode_activated.mp3")
+            elif "cont_mode_off" == req_d["an"]:
+                cont_run = False
+                ply_a_0("/mvc/continuous_mode_deactivated.mp3")
+            return Response(req, "Mode set")
 
         @server.route("/roof", [POST])
         def buttonpress(req: Request):

@@ -1839,15 +1839,15 @@ def set_hdw(cmd, dur, url):
             # USB connect to base3 usb port
             elif seg[:3] == 'USB':
                 get_usb_ports()
-            # lights SW_XXXX = Switch XXXX (right,left,three,four)
+            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)  
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
-                if segs_split[1] == "leftheld":
-                    override_switch_state["switch_value"] = "left_held"
-                if segs_split[1] == "rightheld":
-                    override_switch_state["switch_value"] = "right_held"
-                else:
+                if len(segs_split) == 2:
                     override_switch_state["switch_value"] = segs_split[1]
+                elif len(segs_split) == 3:
+                    override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
+                else 
+                    override_switch_state["switch_value"] = "none"
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")

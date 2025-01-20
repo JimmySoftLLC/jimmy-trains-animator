@@ -1574,10 +1574,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg["intermission"] = rq_d_split[1]
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/all_changes_complete.wav")
-        elif rq_d["an"] == "left":
+        if rq_d["an"] == "left":
             override_switch_state["switch_value"] = "left"
         elif rq_d["an"] == "right":
             override_switch_state["switch_value"] = "right"
+        elif rq_d["an"] == "right_held":
+            override_switch_state["switch_value"] = "right_held"
         elif rq_d["an"] == "three":
             override_switch_state["switch_value"] = "three"
         elif rq_d["an"] == "four":
@@ -2621,10 +2623,15 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # switch SW_XXXX = Switch XXXX (right,left,three,four)  
+            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)  
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
-                override_switch_state["switch_value"] = segs_split[1]
+                if len(segs_split) == 2:
+                    override_switch_state["switch_value"] = segs_split[1]
+                elif len(segs_split) == 3:
+                    override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
+                else 
+                    override_switch_state["switch_value"] = "none"
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
