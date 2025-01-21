@@ -864,6 +864,7 @@ def process_command(response):
         elif response["command"] == "action" and response["data"] == "00001":
             if speak_commands:
                 play_mix(code_folder + "mvc/direction.wav")
+            response["button"] = "DIR"
         elif response["command"] == "action" and response["data"] == "11100":
             if speak_commands:
                 play_mix(code_folder + "mvc/horn.wav")
@@ -1846,7 +1847,7 @@ def set_hdw(cmd, dur, url):
                     override_switch_state["switch_value"] = segs_split[1]
                 elif len(segs_split) == 3:
                     override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
-                else 
+                else:
                     override_switch_state["switch_value"] = "none"
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':

@@ -2948,7 +2948,7 @@ def set_hdw(cmd, dur, url):
                     override_switch_state["switch_value"] = segs_split[1]
                 elif len(segs_split) == 3:
                     override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
-                else 
+                else: 
                     override_switch_state["switch_value"] = "none"
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")

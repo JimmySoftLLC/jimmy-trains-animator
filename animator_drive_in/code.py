@@ -2630,7 +2630,7 @@ def set_hdw(cmd, dur):
                     override_switch_state["switch_value"] = segs_split[1]
                 elif len(segs_split) == 3:
                     override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
-                else 
+                else: 
                     override_switch_state["switch_value"] = "none"
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
