@@ -16,6 +16,12 @@
       Use this web app to control and calibrate your animator - outhouse
       product. Have fun animating.
     </p>
+    <button id="leftButton" class="mui-btn mui-btn--primary animator-outhouse" type="button" data-value="left"
+      data-url="/mode">Left</button>
+    <button id="rightButton" class="mui-btn mui-btn--primary animator-outhouse" type="button" data-value="right"
+      data-url="/mode">Right</button>
+    <button id="rightButton" class="mui-btn mui-btn--primary animator-outhouse" type="button" data-value="right_held"
+      data-url="/mode">Right Held</button>
     <ul class="mui-tabs__bar">
       <li class="mui--is-active">
         <a data-mui-toggle="tab" data-mui-controls="animations">Animation Settings</a>
@@ -37,35 +43,30 @@
       </button>
       <button class="mui-btn mui-btn--primary animator-outhouse disabled" data-value="PG" data-url="/animation"
         type="button">
-        P G 
+        P G
       </button>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="C" data-url="/animation"
-        type="button">
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="C" data-url="/animation" type="button">
         Customer tracks
       </button>
       <h2>Explosion frequency:</h2>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP0" data-url="/animation"
-        type="button">
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP0" data-url="/animation" type="button">
         None
       </button>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP1" data-url="/animation"
-        type="button">
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP1" data-url="/animation" type="button">
         Low
       </button>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP2"
-        data-url="/animation" type="button">
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP2" data-url="/animation" type="button">
         Medium
       </button>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP3" data-url="/animation"
-        type="button">
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="EXP3" data-url="/animation" type="button">
         Always
       </button>
       <h2>Other:</h2>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="cont_mode_on" data-url="/animation"
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="cont_mode_on" data-url="/mode"
         type="button">
         Continuous Mode On
       </button>
-      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="cont_mode_off" data-url="/animation"
+      <button class="mui-btn mui-btn--primary animator-outhouse" data-value="cont_mode_off" data-url="/mode"
         type="button">
         Continuous Mode Off
       </button>
@@ -83,8 +84,8 @@
         <div>
           <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_open_more" data-url="/roof"
             type="button">Open more</button>
-          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_close_more"
-            data-url="/roof" type="button">Close more</button>
+          <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_close_more" data-url="/roof"
+            type="button">Close more</button>
         </div>
         <div>
           <button class="mui-btn mui-btn--primary animator-outhouse" data-value="roof_cal_saved" data-url="/roof"
@@ -183,26 +184,25 @@
       <h2>Animator web page name and ip address:</h2>
 
       <div class="mui-textfield">
-          <label>Base url:</label>
-          <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
-              style="width: 300px; padding: 5px; margin: 5px;">
+        <label>Base url:</label>
+        <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+          style="width: 300px; padding: 5px; margin: 5px;">
       </div>
       <div class="mui-textfield">
-          <label>IP Address:</label>
-          <input class="input" id="settingsIpAddress" type="text" disabled
-              style="width: 300px; padding: 5px; margin: 5px;">
+        <label>IP Address:</label>
+        <input class="input" id="settingsIpAddress" type="text" disabled
+          style="width: 300px; padding: 5px; margin: 5px;">
       </div>
       <div>
-          <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
-              data-url="/update-host-name">
-              Change
-          </button>
+        <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-host-name">
+          Change
+        </button>
       </div>
 
       <p>
-          Use alphanumerics and dashes only. All names are automatically
-          appended with .local. So your website url will be something like
-          "website-name.local and the ip address will be xx.xx.xx.xx."
+        Use alphanumerics and dashes only. All names are automatically
+        appended with .local. So your website url will be something like
+        "website-name.local and the ip address will be xx.xx.xx.xx."
       </p>
 
       <h2>Utilities:</h2>
@@ -220,15 +220,15 @@
 
 <script>
   function showAlert(message) {
-      var alertModal = document.createElement('div');
-      alertModal.className = 'mui-container';
-      alertModal.style.width = '400px';
-      alertModal.style.margin = '100px auto'; // Center horizontally with top margin
-      alertModal.style.backgroundColor = '#fff';
-      alertModal.style.borderRadius = '5px';
-      alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+    var alertModal = document.createElement('div');
+    alertModal.className = 'mui-container';
+    alertModal.style.width = '400px';
+    alertModal.style.margin = '100px auto'; // Center horizontally with top margin
+    alertModal.style.backgroundColor = '#fff';
+    alertModal.style.borderRadius = '5px';
+    alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
 
-      alertModal.innerHTML = `
+    alertModal.innerHTML = `
           <div class="mui-form" style="padding: 20px;">
               <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
               <div style="margin: 10px 0; font-size: 1em; color: #333;">
@@ -237,12 +237,12 @@
               <button class="mui-btn mui-btn--primary" onclick="closeAlert()" style="margin-top: 15px;">OK</button>
           </div>`;
 
-      mui.overlay('on', alertModal);
+    mui.overlay('on', alertModal);
   }
 
 
   function closeAlert() {
-      mui.overlay('off');
+    mui.overlay('off');
   }
 
 
@@ -292,7 +292,7 @@
       data = {
         action: action
       }
-                                                                                                      
+
       button.setAttribute('disabled', 'true')
       fetch(url, {
         method: 'POST',
@@ -314,7 +314,7 @@
         });
     });
   });
-  
+
   // Get all buttons with the 'animator-install-figure' class
   // Add click event listener to each button
   var installFigureButtons = document.querySelectorAll('.animator-install-figure');
@@ -347,7 +347,7 @@
         });
     });
   });
-  
+
 
   // Load initial data
   document.addEventListener('DOMContentLoaded', function () {
@@ -385,24 +385,24 @@
         console.log(error);
       });
 
-      fetch('/get-local-ip', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                local_ip = data; // Set the value of the input field with the received data
-                data = data.replace(/^"|"$/g, '');
-                settingsIpAddress.value = data
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
+    fetch('/get-local-ip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        local_ip = data; // Set the value of the input field with the received data
+        data = data.replace(/^"|"$/g, '');
+        settingsIpAddress.value = data
+      })
+      .catch(function (error) {
+        console.log(error);
+        showAlert(error);
+      });
   });
 
   // Restrict input to letters, numbers, and hyphens only

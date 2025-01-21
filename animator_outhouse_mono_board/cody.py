@@ -981,9 +981,8 @@ def rst_an(rest_roof):
     mov_d(cfg["door_closed_position"])
     mov_g_s(cfg["guy_down_position"]-10, 0.001, False)
     time.sleep(.2)
-    if rest_roof:
-        mov_r_s(cfg["roof_closed_position"]+20, .001)
-        mov_r_s(cfg["roof_closed_position"], .05)
+    mov_type = "roof_closed_position"
+    mov_r_s(cfg[mov_type], 0.01)
 
 
 def an():
