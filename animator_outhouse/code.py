@@ -367,10 +367,10 @@ if (web):
                 override_switch_state["switch_value"] = "four"
             elif "cont_mode_on" == req_d["an"]:
                 cont_run = True
-                ply_a_0("/mvc/continuous_mode_activated.wav")
+                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif "cont_mode_off" == req_d["an"]:
                 cont_run = False
-                ply_a_0("/mvc/continuous_mode_deactivated.wav")
+                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(req, "Mode set")
 
         @server.route("/roof", [POST])
@@ -1310,7 +1310,7 @@ class VolSet(Ste):
     def __init__(s):
         s.i = 0
         s.sel_i = 0
-        s.in_volume_adj_mode = False
+        s.vol_adj_mode = False
 
     @property
     def name(s):
@@ -1320,7 +1320,7 @@ class VolSet(Ste):
         files.log_item('Set Web Options')
         ply_a_0("/sd/mvc/volume_settings_menu.wav")
         l_r_but()
-        s.in_volume_adj_mode = False
+        s.vol_adj_mode = False
         Ste.enter(s, mch)
 
     def exit(s, mch):
@@ -1329,34 +1329,34 @@ class VolSet(Ste):
     def upd(s, mch):
         switch_state = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left" and not s.in_volume_adj_mode:
+        if switch_state == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
                 s.i = 0
-        elif s.sel_i == "volume_level_adjustment" and not s.in_volume_adj_mode:
+        if vol_set[s.sel_i]== "volume_level_adjustment" and not s.vol_adj_mode:
             if switch_state == "right":
-                s.in_volume_adj_mode = True
-            ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
-        elif switch_state == "left" and s.in_volume_adj_mode:
+                s.vol_adj_mode = True
+                ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
+        elif switch_state == "left" and s.vol_adj_mode:
                 ch_vol("lower")
-        elif switch_state == "right" and s.in_volume_adj_mode:
+        elif switch_state == "right" and s.vol_adj_mode:
                 ch_vol("raise")
-        elif switch_state == "right_held" and s.in_volume_adj_mode:
+        elif switch_state == "right_held" and s.vol_adj_mode:
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
-            s.in_volume_adj_mode = False
+            s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1)
-        elif s.sel_i == "volume_pot_off":
+        if switch_state == "right" and vol_set[s.sel_i] == "volume_pot_off":
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
-        elif s.sel_i == "volume_pot_on":
+        if switch_state == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1540,4 +1540,5 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
 
