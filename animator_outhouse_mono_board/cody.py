@@ -394,14 +394,7 @@ if (web):
         def buttonpress(req: Request):
             global cfg, instal_fig
             req_d = req.json()
-            if req_d["action"] != "right":
-                ins_f(req_d["action"])
-            if req_d["action"] == "right":
-                instal_fig = False
-                mov_g_s(cfg["guy_down_position"], 0.01, False)
-                files.write_json_file("cfg.json", cfg)
-                ply_a_0("/mvc/all_changes_complete.mp3")
-                st_mch.go_to('base_state')
+            ins_f(req_d["action"])
             return Response(req, cfg["figure"])
 
     except Exception as e:
@@ -1156,22 +1149,7 @@ class Main(Ste):
             elif sel_i == "web_options":
                 mch.go_to('web_options')
             elif sel_i == "volume_level_adjustment":
-                ply_a_0("/mvc/volume_adjustment_menu.mp3")
-                done = False
-                while not done:
-                    switch_state = utilities.switch_state(
-                            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-                    if switch_state == "left":
-                        ch_vol("lower")
-                    elif switch_state == "right":
-                        ch_vol("raise")
-                    elif switch_state == "right_held":
-                        files.write_json_file("cfg.json", cfg)
-                        ply_a_0("/mvc/all_changes_complete.mp3")
-                        done = True
-                        mch.go_to('base_state')
-                    upd_vol(0.1)
-                    pass
+               mch.go_to('volume_settings')
             elif sel_i == "install_figure":
                 mch.go_to('install_figure')
             else:
@@ -1276,6 +1254,38 @@ class AdjRD(Ste):
             else:
                 ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
+
+
+class VolSet(Ste):
+
+    def __init__(s):
+        s.i = 0
+        s.sel_i = 0
+
+    @property
+    def name(s):
+        return 'volume_settings'
+
+    def enter(s, mch):
+        files.log_item('Set Web Options')
+        ply_a_0("/mvc/volume_adjustment_menu.mp3")
+        Ste.enter(s, mch)
+
+    def exit(s, mch):
+        Ste.exit(s, mch)
+
+    def upd(s, mch):
+        switch_state = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
+            ch_vol("lower")
+        elif switch_state == "right":
+            ch_vol("raise")
+        elif switch_state == "right_held":
+            files.write_json_file("cfg.json", cfg)
+            ply_a_0("/mvc/all_changes_complete.mp3")
+            mch.go_to('base_state')
+        upd_vol(0.1)
 
 
 class WebOpt(Ste):
@@ -1431,6 +1441,8 @@ st_mch.add(AdjRD())
 st_mch.add(MoveRD())
 st_mch.add(WebOpt())
 st_mch.add(InsFig())
+st_mch.add(VolSet())
+
 
 upd_vol(.1)
 aud_en.value = True
