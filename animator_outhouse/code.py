@@ -74,6 +74,7 @@ aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 
 # Setup sdCard
 aud_en.value = True
+
 sck = board.GP2
 si = board.GP3
 so = board.GP4
@@ -172,8 +173,13 @@ cfg_inst_m = files.read_json_file("/sd/mvc/install_menu.json")
 inst_m = cfg_inst_m["install_menu"]
 
 cont_run = False
-fig_web = False
+instal_fig = False
 reset_roof = True
+
+local_ip = ""
+
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
 
 gc_col("config setup")
 
@@ -238,14 +244,17 @@ if (web):
         mdns.hostname = cfg["HOST_NAME"]
         mdns.advertise_service(
             service_type="_http", protocol="_tcp", port=80)
+        
+        local_ip = str(wifi.radio.ipv4_address)
 
         # files.log_items IP address to REPL
-        files.log_item("IP is" + str(wifi.radio.ipv4_address))
+        files.log_item("IP is" + local_ip)
         files.log_item("Connected")
 
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
+        server.port = 80  # Explicitly set port to 80
 
         gc_col("wifi server")
 
@@ -290,12 +299,6 @@ if (web):
                 set_cfg("explosions_freq", 2)
             elif "EXP3" == req_d["an"]:
                 set_cfg("explosions_freq", 3)
-            elif "cont_mode_on" == req_d["an"]:
-                cont_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" == req_d["an"]:
-                cont_run = False
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(req, "Success")
 
         @server.route("/utilities", [POST])
@@ -333,6 +336,10 @@ if (web):
         @server.route("/get-host-name", [POST])
         def buttonpress(req: Request):
             return Response(req, cfg["HOST_NAME"])
+        
+        @server.route("/get-local-ip", [POST])
+        def buttonpress(req: Request):
+            return Response(req, local_ip)
 
         @server.route("/update-volume", [POST])
         def buttonpress(req: Request):
@@ -344,6 +351,28 @@ if (web):
         @server.route("/get-volume", [POST])
         def buttonpress(req: Request):
             return Response(req, cfg["volume"])
+        
+        @server.route("/mode", [POST])
+        def buttonpress(req: Request):
+            global cfg, cont_run
+            req_d = req.json()
+            if req_d["an"] == "left":
+                override_switch_state["switch_value"] = "left"
+            elif req_d["an"] == "right":
+                override_switch_state["switch_value"] = "right"
+            elif req_d["an"] == "right_held":
+                override_switch_state["switch_value"] = "right_held"
+            elif req_d["an"] == "three":
+                override_switch_state["switch_value"] = "three"
+            elif req_d["an"] == "four":
+                override_switch_state["switch_value"] = "four"
+            elif "cont_mode_on" == req_d["an"]:
+                cont_run = True
+                ply_a_0("/mvc/continuous_mode_activated.mp3")
+            elif "cont_mode_off" == req_d["an"]:
+                cont_run = False
+                ply_a_0("/mvc/continuous_mode_deactivated.mp3")
+            return Response(req, "Mode set")
 
         @server.route("/roof", [POST])
         def buttonpress(req: Request):
@@ -397,21 +426,11 @@ if (web):
                 st_mch.go_to('base_state')
                 return Response(req, "Tree " + door_movement_type + " cal saved.")
             
-
         @server.route("/install-figure", [POST])
         def buttonpress(req: Request):
-            global cfg, fig_web
+            global cfg, instal_fig
             req_d = req.json()
-            if req_d["action"] != "right":
-                cfg["figure"] = req_d["action"]
-                ins_f(False)
-                fig_web = True
-            if req_d["action"] == "right":
-                fig_web = False
-                mov_g_s(cfg["guy_down_position"], 0.01, False)
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                st_mch.go_to('base_state')
+            ins_f(req_d["action"])
             return Response(req, cfg["figure"])
 
     except Exception as e:
@@ -1026,20 +1045,14 @@ def bnds(my_color, lower, upper):
     return my_color
 
 
-def ins_f(wait_but):
-    global fig_web
+def ins_f(fig_type):
+    global instal_fig
     mov_r_s(cfg["roof_open_position"], 0.01)
     mov_d_s(cfg["door_open_position"], 0.01)
-    mov_g_s(cfg["guy_up_position"], 0.01, False)
+    mov_g_s(0, 0.01, False)
     ply_a_0("/sd/mvc/install_figure_instructions.wav")
-    while wait_but:
-        r_sw.update()
-        if r_sw.fell:
-            fig_web = False
-            mov_g_s(cfg["guy_down_position"], 0.01, False)
-            files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_0("/sd/mvc/all_changes_complete.wav")
-            break
+    cfg["figure"] = fig_type
+    instal_fig = True
 
 ################################################################################
 # State Machine
@@ -1113,7 +1126,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, fig_web
+        global cont_run, instal_fig
         sw = utilities.switch_state(
             l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
@@ -1125,10 +1138,10 @@ class BseSt(Ste):
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif sw == "left" or cont_run:
             an()
-        elif sw == "right" and not fig_web:
+        elif sw == "right" and not instal_fig:
             mch.go_to('main_menu')
-        elif sw == "right" and fig_web:
-            fig_web = False
+        elif sw == "right" and instal_fig:
+            instal_fig = False
             mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1466,7 +1479,6 @@ class InsFig(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg, fig_web
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
@@ -1477,9 +1489,7 @@ class InsFig(Ste):
             if self.i > len(inst_m)-1:
                 self.i = 0
         if r_sw.fell:
-            sel_i = inst_m[self.sel_i]
-            cfg["figure"] = sel_i
-            ins_f(True)
+            ins_f(inst_m[self.sel_i])
             mch.go_to('base_state')
 
 
