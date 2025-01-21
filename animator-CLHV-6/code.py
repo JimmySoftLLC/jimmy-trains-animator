@@ -8,7 +8,6 @@ import time
 import gc
 import files
 import os
-import asyncio
 import gc
 
 
