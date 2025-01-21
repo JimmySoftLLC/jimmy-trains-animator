@@ -138,7 +138,7 @@ cfg_inst_m = files.read_json_file("/mvc/install_menu.json")
 inst_m = cfg_inst_m["install_menu"]
 
 cont_run = False
-fig_web = False
+instal_fig = False
 reset_roof = True
 
 local_ip = ""
@@ -392,14 +392,12 @@ if (web):
 
         @server.route("/install-figure", [POST])
         def buttonpress(req: Request):
-            global cfg, fig_web
+            global cfg, instal_fig
             req_d = req.json()
             if req_d["action"] != "right":
-                cfg["figure"] = req_d["action"]
-                ins_f(False)
-                fig_web = True
+                ins_f(req_d["action"])
             if req_d["action"] == "right":
-                fig_web = False
+                instal_fig = False
                 mov_g_s(cfg["guy_down_position"], 0.01, False)
                 files.write_json_file("cfg.json", cfg)
                 ply_a_0("/mvc/all_changes_complete.mp3")
@@ -1014,20 +1012,14 @@ def bnds(my_color, lower, upper):
     return my_color
 
 
-def ins_f(wait_but):
-    global fig_web
+def ins_f(fig_type):
+    global instal_fig
     mov_r_s(cfg["roof_open_position"], 0.01)
     mov_d_s(cfg["door_open_position"], 0.01)
     mov_g_s(0, 0.01, False)
     ply_a_0("/mvc/install_figure_instructions.mp3")
-    while wait_but:
-        r_sw.update()
-        if r_sw.fell:
-            fig_web = False
-            mov_g_s(cfg["guy_down_position"], 0.01, False)
-            files.write_json_file("cfg.json", cfg)
-            ply_a_0("/mvc/all_changes_complete.mp3")
-            break
+    cfg["figure"] = fig_type
+    instal_fig = True
 
 ################################################################################
 # State Machine
@@ -1088,12 +1080,13 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        # set servos to starting position
-        mov_g_s(cfg["guy_down_position"], 0.01, False)
-        mov_d_s(cfg["door_closed_position"], 0.01)
-        mov_r_s(cfg["roof_closed_position"], 0.01)
+        if not instal_fig:
+            # set servos to starting position
+            mov_g_s(cfg["guy_down_position"], 0.01, False)
+            mov_d_s(cfg["door_closed_position"], 0.01)
+            mov_r_s(cfg["roof_closed_position"], 0.01)
 
-        ply_a_0("/mvc/animations_are_now_active.mp3")
+            ply_a_0("/mvc/animations_are_now_active.mp3")
         files.log_item("Entered base Ste")
         Ste.enter(self, mch)
 
@@ -1101,22 +1094,22 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, fig_web
+        global cont_run, instal_fig
         switch_state = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left_held":
+        if switch_state == "left_held" and not instal_fig:
             if cont_run:
                 cont_run = False
                 ply_a_0("/mvc/continuous_mode_deactivated.mp3")
             else:
                 cont_run = True
                 ply_a_0("/mvc/continuous_mode_activated.mp3")
-        elif switch_state == "left" or cont_run:
+        elif (switch_state == "left" or cont_run) and not instal_fig:
             an()
-        elif switch_state == "right" and not fig_web:
+        elif switch_state == "right" and not instal_fig:
             mch.go_to('main_menu')
-        elif switch_state == "right" and fig_web:
-            fig_web = False
+        elif switch_state == "right" and instal_fig:
+            instal_fig = False
             mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("cfg.json", cfg)
             ply_a_0("/mvc/all_changes_complete.mp3")
@@ -1412,7 +1405,6 @@ class InsFig(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg, fig_web
         switch_state = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if  switch_state == "left":
@@ -1423,9 +1415,7 @@ class InsFig(Ste):
             if self.i > len(inst_m)-1:
                 self.i = 0
         if  switch_state == "right":
-            sel_i = inst_m[self.sel_i]
-            cfg["figure"] = sel_i
-            ins_f(True)
+            ins_f(inst_m[self.sel_i])
             mch.go_to('base_state')
 
 
