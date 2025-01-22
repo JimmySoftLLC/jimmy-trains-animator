@@ -698,44 +698,6 @@ def write_calibrations_to_config_file():
     ply_a_0("/sd/mvc/all_changes_complete.wav")
     global config
     files.write_json_file("/sd/cfg.json",config)
-    
-def calibratePosition(servo, movement_type):  
-    if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
-        min_servo_pos = feller_min
-        max_servo_pos = feller_max
-        sign = 1
-    else:
-        min_servo_pos = tree_min
-        max_servo_pos = tree_max
-        sign = -1
-    calibrations_complete = False
-    while not calibrations_complete:
-        servo.angle = config[movement_type]
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
-        if r_sw.fell:
-            button_check = True
-            number_cycles = 0  
-            while button_check:
-                sleepAndUpdateVolume(.1)
-                r_sw.update()
-                number_cycles += 1
-                if number_cycles > 30:
-                    write_calibrations_to_config_file()
-                    button_check = False
-                    calibrations_complete = True 
-                if r_sw.rose:
-                    button_check = False           
-            if not calibrations_complete:
-                calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
-    if movement_type == "feller_rest_pos" or movement_type == "feller_chop_pos" :
-        global feller_last_pos
-        feller_last_pos = config[movement_type]
-    else:
-        global tree_last_pos
-        tree_last_pos = config[movement_type]
 
 def moveFellerToPositionGently (new_position, speed):
     global feller_last_pos
@@ -1112,6 +1074,9 @@ class AdjustFellerAndTree(State):
     def __init__(self):
         self.menuIndex = 0
         self.selectedMenuIndex = 0
+        self.calibrations_active = False
+        self.movement_type = ""
+        self.servo = {}
 
     @property
     def name(self):
@@ -1121,44 +1086,73 @@ class AdjustFellerAndTree(State):
         files.log_item('Adjust feller and tree menu')
         ply_a_0("/sd/mvc/adjust_feller_and_tree_menu.wav")
         left_right_mouse_button()
+        self.calibrations_active = False
+        self.movement_type = ""
+        self.servo = {}
         State.enter(self, mch)
 
     def exit(self, mch):
         State.exit(self, mch)
 
     def update(self, mch):
+        global feller_last_pos, tree_last_pos
         switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        if switch_state == "left" and not self.calibrations_active:
             ply_a_0("/sd/mvc/" + adjust_feller_and_tree[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
             if self.menuIndex > len(adjust_feller_and_tree)-1:
                 self.menuIndex = 0
-        if switch_state == "right":
+        elif switch_state == "right" and not self.calibrations_active:
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
                     moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
                     fellerCalAnnouncement()
-                    calibratePosition(feller_servo, "feller_rest_pos")
-                    mch.go_to_state('base_state')
+                    self.servo = feller_servo
+                    self.movement_type = "feller_rest_pos"
+                    self.calibrations_active = True
                 elif selected_menu_item == "move_feller_to_chop_position":
                     moveFellerToPositionGently(config["feller_chop_pos"], 0.01)
                     fellerCalAnnouncement()
-                    calibratePosition(feller_servo, "feller_chop_pos")
-                    mch.go_to_state('base_state')
+                    self.servo = feller_servo
+                    self.movement_type = "feller_chop_pos"
+                    self.calibrations_active = True
                 elif selected_menu_item == "move_tree_to_upright_position":
                     moveTreeToPositionGently(config["tree_up_pos"], 0.01)
                     treeCalAnnouncement()
-                    calibratePosition(tree_servo, "tree_up_pos")
-                    mch.go_to_state('base_state')
+                    self.servo = tree_servo
+                    self.movement_type = "tree_up_pos"
+                    self.calibrations_active = True
                 elif selected_menu_item == "move_tree_to_fallen_position":
                     moveTreeToPositionGently(config["tree_down_pos"], 0.01)
                     treeCalAnnouncement()
-                    calibratePosition(tree_servo, "tree_down_pos")
-                    mch.go_to_state('base_state')
+                    self.servo = tree_servo
+                    self.movement_type = "tree_down_pos"
+                    self.calibrations_active = True
                 else:
                     ply_a_0("/sd/mvc/all_changes_complete.wav")
-                    mch.go_to_state('base_state')
+        elif self.calibrations_active:
+            if self.movement_type == "feller_rest_pos" or self.movement_type == "feller_chop_pos" :
+                min_servo_pos = feller_min
+                max_servo_pos = feller_max
+                sign = 1
+            else:
+                min_servo_pos = tree_min
+                max_servo_pos = tree_max
+                sign = -1
+            self.servo.angle = config[self.movement_type]
+            if switch_state == "left":
+                calibrationLeftButtonPressed(self.servo, self.movement_type, sign, min_servo_pos, max_servo_pos)
+            if switch_state == "right":
+                calibrationRightButtonPressed(self.servo, self.movement_type, sign, min_servo_pos, max_servo_pos)
+            if self.movement_type == "feller_rest_pos" or self.movement_type == "feller_chop_pos" :             
+                feller_last_pos = config[self.movement_type]
+            else:
+                tree_last_pos = config[self.movement_type]
+            if switch_state == "right_held":
+                write_calibrations_to_config_file()
+                mch.go_to_state('base_state')
+
 
 class SetDialogOptions(State):
 
@@ -1412,4 +1406,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
