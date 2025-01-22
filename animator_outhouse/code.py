@@ -167,7 +167,7 @@ cfg_web = files.read_json_file("/sd/mvc/web_menu.json")
 web_m = cfg_web["web_menu"]
 
 cfd_vol = files.read_json_file("/sd/mvc/volume_settings.json")
-vol_set = cfd_vol["volume_settings"]
+v_set = cfd_vol["volume_settings"]
 
 cfg_inst_m = files.read_json_file("/sd/mvc/install_menu.json")
 inst_m = cfg_inst_m["install_menu"]
@@ -723,13 +723,13 @@ def cal_pos(s, mov_typ):
         sign = -1
     done = False
     while not done:
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        if sw == "left":
             cal_l_but(s, mov_typ, sign, min, max)
-        elif switch_state == "right":
+        elif sw == "right":
             cal_r_but(s, mov_typ, sign, min, max)
-        elif switch_state == "right_held":
+        elif sw == "right_held":
             wrt_cal()
             done = True
     if mov_typ == "door_close_position" or mov_typ == "door_open_position":
@@ -1136,20 +1136,20 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global cont_run, instal_fig
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left_held" and not instal_fig:
+        if sw == "left_held" and not instal_fig:
             if cont_run:
                 cont_run = False
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif (switch_state == "left" or cont_run) and not instal_fig:
+        elif (sw == "left" or cont_run) and not instal_fig:
             an()
-        elif switch_state == "right" and not instal_fig:
+        elif sw == "right" and not instal_fig:
             mch.go_to('main_menu')
-        elif switch_state == "right" and instal_fig:
+        elif sw == "right" and instal_fig:
             instal_fig = False
             mov_g_s(cfg["guy_down_position"], 0.01, False)
             files.write_json_file("/sd/cfg.json", cfg)
@@ -1177,15 +1177,15 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        if sw == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
-        if switch_state == "right":
+        if sw == "right":
             sel_i = main_m[self.sel_i]
             if sel_i == "dialog_options":
                 mch.go_to('dialog_options')
@@ -1226,15 +1226,15 @@ class MoveRD(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        if sw == "left":
             ply_a_0("/sd/mvc/" + mov_r_d[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(mov_r_d)-1:
                 s.i = 0
-        if switch_state == "right":
+        if sw == "right":
             sel_i = mov_r_d[s.sel_i]
             if sel_i == "move_door_open_position":
                 mov_d_s(cfg["door_open_position"], 0.01)
@@ -1269,16 +1269,16 @@ class AdjRD(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        if sw == "left":
             ply_a_0(
                 "/sd/mvc/" + adj_r_d[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(adj_r_d)-1:
                 s.i = 0
-        if switch_state == "right":
+        if sw == "right":
             sel_i = adj_r_d[s.sel_i]
             if sel_i == "adjust_door_open_position":
                 mov_d_s(cfg["door_open_position"], 0.01)
@@ -1327,36 +1327,36 @@ class VolSet(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left" and not s.vol_adj_mode:
-            ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
+        if sw == "left" and not s.vol_adj_mode:
+            ply_a_0("/sd/mvc/" + v_set[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
-            if s.i > len(vol_set)-1:
+            if s.i > len(v_set)-1:
                 s.i = 0
-        if vol_set[s.sel_i]== "volume_level_adjustment" and not s.vol_adj_mode:
-            if switch_state == "right":
+        if v_set[s.sel_i]== "volume_level_adjustment" and not s.vol_adj_mode:
+            if sw == "right":
                 s.vol_adj_mode = True
                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
-        elif switch_state == "left" and s.vol_adj_mode:
+        elif sw == "left" and s.vol_adj_mode:
                 ch_vol("lower")
-        elif switch_state == "right" and s.vol_adj_mode:
+        elif sw == "right" and s.vol_adj_mode:
                 ch_vol("raise")
-        elif switch_state == "right_held" and s.vol_adj_mode:
+        elif sw == "right_held" and s.vol_adj_mode:
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1)
-        if switch_state == "right" and vol_set[s.sel_i] == "volume_pot_off":
+        if sw == "right" and v_set[s.sel_i] == "volume_pot_off":
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
-        if switch_state == "right" and vol_set[s.sel_i] == "volume_pot_on":
+        if sw == "right" and v_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1383,9 +1383,9 @@ class WebOpt(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        if sw == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1396,7 +1396,7 @@ class WebOpt(Ste):
                 s.i += 1
                 if s.i > len(web_m)-1:
                     s.i = 0
-        if switch_state == "right":
+        if sw == "right":
             sel_i = web_m[s.sel_i]
             if sel_i == "web_on":
                 cfg["serve_webpage"] = True
@@ -1438,9 +1438,9 @@ class Dlg_Opt(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if  switch_state == "left":
+        if  sw == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1452,7 +1452,7 @@ class Dlg_Opt(Ste):
                 s.i += 1
                 if s.i > len(dlg_opt)-1:
                     s.i = 0
-        if  switch_state == "right":
+        if  sw == "right":
             opts = dlg_opt[s.sel_i].split(" ")
             if opts[0] == "exp":
                 cfg["explosions_freq"] = int(opts[1])
@@ -1485,16 +1485,16 @@ class InsFig(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        switch_state = utilities.switch_state(
+        sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if  switch_state == "left":
+        if  sw == "left":
             ply_a_0(
                 "/sd/mvc/" + inst_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(inst_m)-1:
                 self.i = 0
-        if  switch_state == "right":
+        if  sw == "right":
             ins_f(inst_m[self.sel_i])
             mch.go_to('base_state')
 
