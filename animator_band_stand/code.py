@@ -332,9 +332,8 @@ if (web):
         @server.route("/lights", [POST])
         def btn(request: Request):
             rq_d = request.json()
-            set_hdw(rq_d["an"],0)
+            set_hdw(rq_d["an"])
             return Response(request, "Utility: " + "Utility: set lights")
-
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
             global cfg
@@ -377,7 +376,7 @@ if (web):
             rq_d = request.json()
             print(rq_d["an"])
             gc_col("Save Data.")
-            set_hdw(rq_d["an"],0)
+            set_hdw(rq_d["an"])
             return Response(request, "success")
 
         @server.route("/get-animation", [POST])
@@ -705,11 +704,8 @@ def an(f_nm):
         return
     gc_col("Animation complete.")
 
-def an_light(f_nm):
-    loop.create_task(async_an_light(f_nm))
-    loop.run_forever()
 
-async def async_an_light(f_nm):
+def an_light(f_nm):
     global ts_mode
 
     cust_f = "customers_owned_music_" in f_nm
@@ -774,9 +770,9 @@ async def async_an_light(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                loop.create_task(set_hdw_async("L0" + str(lgt) + ",S0" + str(pos),dur))           
+                set_hdw("L0" + str(lgt) + ",S0" + str(pos))
             else:
-                loop.create_task(set_hdw_async(ft1[1],dur))
+                set_hdw(ft1[1])
             flsh_i += 1
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
@@ -786,6 +782,7 @@ async def async_an_light(f_nm):
             led.show()
             return
         upd_vol(.1)
+
 
 def an_ts(f_nm):
     print("time stamp mode")
@@ -838,7 +835,12 @@ sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
 
-async def set_hdw_async(input_string, dur):
+def set_hdw(input_string):
+    loop.create_task(set_hdw_async(input_string))
+    loop.run_forever()
+
+
+async def set_hdw_async(input_string):
     global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
@@ -856,7 +858,7 @@ async def set_hdw_async(input_string, dur):
             led[0] = (sp[1], sp[0], sp[2])
             led[1] = (sp[4], sp[3], sp[5])
             led.show()
-        if seg[0] == 'S':  # servos S
+        if seg[0] == 'S':  # servos
             num = int(seg[1])
             v = int(seg[2:])
             if num == 0:
@@ -877,27 +879,6 @@ async def set_hdw_async(input_string, dur):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
-        if seg[0] == "C": #cycle motors
-            ts = time.monotonic()
-            cyc = True
-            while cyc:
-                for v in range(90, 100, 1):
-                    for i in range(6):
-                        s_arr[i].angle = v
-                    upd_vol_async(.1)
-                    els =  time.monotonic()-ts
-                    if dur < els: break
-                for v in range(100, 90, -1):
-                    for i in range(6):
-                        s_arr[i].angle = v
-                    upd_vol_async(.1)
-                    els =  time.monotonic()-ts
-                    if dur < els: break
-                    
-                
-
-        
-        
 
 ################################################################################
 # State Machine
@@ -1254,6 +1235,7 @@ aud_en.value = True
 
 upd_vol(.1)
 
+
 if (web):
     files.log_item("starting server...")
     try:
@@ -1266,13 +1248,12 @@ if (web):
         rst()
 
 #  set all servos to 90
-set_hdw_async("S090",0)
+set_hdw("S090")
 upd_vol(.5)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
-
 
 while True:
     st_mch.upd()
@@ -1284,5 +1265,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
-
