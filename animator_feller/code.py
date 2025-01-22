@@ -74,12 +74,12 @@ SWITCH_2_PIN = board.GP7 #S2 on animator board
 switch_io_1 = digitalio.DigitalInOut(SWITCH_1_PIN)
 switch_io_1.direction = digitalio.Direction.INPUT
 switch_io_1.pull = digitalio.Pull.UP
-left_switch = Debouncer(switch_io_1)
+l_sw = Debouncer(switch_io_1)
 
 switch_io_2 = digitalio.DigitalInOut(SWITCH_2_PIN)
 switch_io_2.direction = digitalio.Direction.INPUT
 switch_io_2.pull = digitalio.Pull.UP
-right_switch = Debouncer(switch_io_2)
+r_sw = Debouncer(switch_io_2)
 
 # setup audio on the i2s bus, the animator uses the MAX98357A
 # the animator can have one or two MAX98357As. one for mono two for stereo
@@ -127,8 +127,8 @@ except:
         pass
     cardInserted = False
     while not cardInserted:
-        left_switch.update()
-        if left_switch.fell:
+        l_sw.update()
+        if l_sw.fell:
             try:
                 sdcard = sdcardio.SDCard(spi, cs)
                 vfs = storage.VfsFat(sdcard)
@@ -302,7 +302,7 @@ if (serve_webpage):
         def buttonpress(request: Request):
             global config
             global cont_run
-            req_d = req.json()
+            req_d = request.json()
             if "random" == req_d["an"]: 
                 config["option_selected"] = "random"
                 animate_feller()
@@ -342,12 +342,6 @@ if (serve_webpage):
             elif "happy_birthday" == req_d["an"]: 
                 config["option_selected"] = "happy_birthday"
                 animate_feller()
-            elif "cont_mode_on" == req_d["an"]: 
-                cont_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" == req_d["an"]: 
-                cont_run = False
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(request, "Animation " + config["option_selected"] + " started.")
         
         @server.route("/feller", [POST])        
@@ -628,8 +622,8 @@ def stop_audio_0():
 
 def shortCircuitDialog():
     sleepAndUpdateVolume(0.02)
-    left_switch.update()
-    if left_switch.fell:
+    l_sw.update()
+    if l_sw.fell:
         mixer.voice[0].stop()
 
 def left_right_mouse_button():
@@ -717,22 +711,22 @@ def calibratePosition(servo, movement_type):
     calibrations_complete = False
     while not calibrations_complete:
         servo.angle = config[movement_type]
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
             calibrationLeftButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
-        if right_switch.fell:
+        if r_sw.fell:
             button_check = True
             number_cycles = 0  
             while button_check:
                 sleepAndUpdateVolume(.1)
-                right_switch.update()
+                r_sw.update()
                 number_cycles += 1
                 if number_cycles > 30:
                     write_calibrations_to_config_file()
                     button_check = False
                     calibrations_complete = True 
-                if right_switch.rose:
+                if r_sw.rose:
                     button_check = False           
             if not calibrations_complete:
                 calibrationRightButtonPressed(servo, movement_type, sign, min_servo_pos, max_servo_pos)
@@ -786,7 +780,7 @@ def feller_talking_movement():
     speak_rotation = 7
     speak_cadence = 0.2
     while mixer.voice[0].playing:
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
+        switch_state = utilities.switch_state(l_sw, r_sw, sleepAndUpdateVolume, 0.5)
         if switch_state == "left_held":
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -803,7 +797,7 @@ def tree_talking_movement():
     speak_rotation = 2
     speak_cadence = 0.2
     while mixer.voice[0].playing:
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
+        switch_state = utilities.switch_state(l_sw, r_sw, sleepAndUpdateVolume, 0.5)
         if switch_state == "left_held":
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -824,7 +818,7 @@ def play_sound(sound_files, folder):
     mixer.voice[0].play( wave0, loop=False )
     while mixer.voice[0].playing :
         sleepAndUpdateVolume(0.1)
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
+        switch_state = utilities.switch_state(l_sw, r_sw, sleepAndUpdateVolume, 0.5)
         if switch_state == "left_held":
             mixer.voice[0].stop()
             while mixer.voice[0].playing:
@@ -923,7 +917,7 @@ def animate_feller():
         left_pos = config["tree_up_pos"]
         right_pos = config["tree_up_pos"] - 8
         while mixer.voice[0].playing :
-            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
+            switch_state = utilities.switch_state(l_sw, r_sw, sleepAndUpdateVolume, 0.5)
             if switch_state == "left_held":
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -946,7 +940,7 @@ def animate_feller():
             wave0 = audiocore.WaveFile(open(soundFile, "rb"))
             mixer.voice[0].play( wave0, loop=False )
             tree_talking_movement()
-            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
+            switch_state = utilities.switch_state(l_sw, r_sw, sleepAndUpdateVolume, 0.5)
             if switch_state == "left_held":
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -959,7 +953,7 @@ def animate_feller():
                 break
     else:
         while mixer.voice[0].playing:
-            switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 0.5)
+            switch_state = utilities.switch_state(l_sw, r_sw, sleepAndUpdateVolume, 0.5)
             if switch_state == "left_held":
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -1058,7 +1052,7 @@ class BaseState(State):
 
     def update(self, mch):
         global cont_run
-        switch_state = utilities.switch_state(left_switch, right_switch, sleepAndUpdateVolume, 3.0)
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left_held":
             if cont_run:
                 cont_run = False
@@ -1092,15 +1086,14 @@ class MoveFellerAndTree(State):
         State.exit(self, mch)
 
     def update(self, mch):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             ply_a_0("/sd/mvc/" + move_feller_and_tree[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
             if self.menuIndex > len(move_feller_and_tree)-1:
                 self.menuIndex = 0
-        if right_switch.fell:
+        if switch_state == "right":
             selected_menu_item = move_feller_and_tree[self.selectedMenuIndex]
             if selected_menu_item == "move_feller_to_rest_position":
                 moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
@@ -1134,15 +1127,14 @@ class AdjustFellerAndTree(State):
         State.exit(self, mch)
 
     def update(self, mch):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             ply_a_0("/sd/mvc/" + adjust_feller_and_tree[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
             if self.menuIndex > len(adjust_feller_and_tree)-1:
                 self.menuIndex = 0
-        if right_switch.fell:
+        if switch_state == "right":
                 selected_menu_item = adjust_feller_and_tree[self.selectedMenuIndex]
                 if selected_menu_item == "move_feller_to_rest_position":
                     moveFellerToPositionGently(config["feller_rest_pos"], 0.01)
@@ -1187,15 +1179,14 @@ class SetDialogOptions(State):
         State.exit(self, mch)
 
     def update(self, mch):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             ply_a_0("/sd/mvc/" + dialog_selection_menu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
             if self.menuIndex > len(dialog_selection_menu)-1:
                 self.menuIndex = 0
-        if right_switch.fell:
+        if switch_state == "right":
             selected_menu_item = dialog_selection_menu[self.selectedMenuIndex]
             if selected_menu_item == "opening_dialog_on":
                 config["opening_dialog"] = True
@@ -1237,9 +1228,8 @@ class WebOptions(State):
         State.exit(self, mch)
 
     def update(self, mch):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -1250,7 +1240,7 @@ class WebOptions(State):
                 self.menuIndex +=1
                 if self.menuIndex > len(web_menu)-1:
                     self.menuIndex = 0
-        if right_switch.fell:
+        if switch_state == "right":
                 selected_menu_item = web_menu[self.selectedMenuIndex]
                 if selected_menu_item == "web_on":
                     config["serve_webpage"] = True
@@ -1291,9 +1281,8 @@ class ChooseSounds(State):
         State.exit(self, mch)
 
     def update(self, mch):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             if mixer.voice[0].playing:
                 mixer.voice[0].stop()
                 while mixer.voice[0].playing:
@@ -1304,7 +1293,7 @@ class ChooseSounds(State):
                 self.menuIndex +=1
                 if self.menuIndex > len(feller_sound_options)-1:
                     self.menuIndex = 0
-        if right_switch.fell:
+        if switch_state == "right":
             config["option_selected"] = feller_sound_options[self.selectedMenuIndex]
             files.log_item ("Selected index: " + str(self.selectedMenuIndex) + " Saved option: " + config["option_selected"])
             files.write_json_file("/sd/cfg.json",config)
@@ -1331,15 +1320,14 @@ class MainMenu(State):
         State.exit(self, mch)
 
     def update(self, mch):
-        left_switch.update()
-        right_switch.update()
-        if left_switch.fell:
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             ply_a_0("/sd/mvc/" + main_menu[self.menuIndex] + ".wav")
             self.selectedMenuIndex = self.menuIndex
             self.menuIndex +=1
             if self.menuIndex > len(main_menu)-1:
                 self.menuIndex = 0
-        if right_switch.fell:
+        if switch_state == "right":
             selected_menu_item = main_menu[self.selectedMenuIndex]
             if selected_menu_item == "choose_sounds":
                 mch.go_to_state('choose_sounds')
@@ -1424,3 +1412,4 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
+
