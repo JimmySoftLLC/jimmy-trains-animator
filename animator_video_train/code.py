@@ -153,6 +153,8 @@ current_media_playing = ""
 current_scene = ""
 current_neo = ""
 is_midori_running = False
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -235,7 +237,9 @@ def gc_col(collection_point):
     print("Point " + collection_point +
           " Available memory: {} bytes".format(start_mem))
 
-
+# to make this work you must add permission to the visudo file
+# sudo visudo
+# drivein ALL=(ALL) NOPASSWD: /sbin/reboot
 def restart_pi():
     os.system('sudo reboot')
 
@@ -343,6 +347,9 @@ terminal_window_during_playback = False
 mix_is_paused = False
 exit_set_hdw = False
 local_ip = ""
+t_s = []
+t_elsp = 0.0
+
 
 ################################################################################
 # Setup io hardware
@@ -905,13 +912,13 @@ def discover_lights():
 
     print(f"Discovered {device_count} device(s).")
 
-    lifx.set_power_all_lights("on")
+    # lifx.set_power_all_lights("on")
 
     # Iterate over each discovered device and control it
     # for device in devices:
     #     try:
     #         # print(f"Found device: {device.get_label()}")
-    #         device.set_color(rgb_to_hsbk(50, 50, 50))  # Set initial color
+    #         device.set_color(rgb_to_hsbk(50, 50, 50), 0, True))  # Set initial color
     #         device.set_power("on")
     #     except Exception as e:
     #         print(f"Error setting color for {device.get_label()}: {e}")
@@ -921,7 +928,7 @@ def set_light_color_threaded(device, r, g, b):
     """Function to set the light color, executed in a thread."""
     try:
         # Set color instantly
-        device.set_color(rgb_to_hsbk(r, g, b), duration=0)
+        device.set_color(rgb_to_hsbk(r, g, b), 0, True)
         print(f"Setting color for {device.get_label()} to RGB({r}, {g}, {b})")
     except Exception as e:
         print(f"Error setting color for {device.get_label()}: {e}")
@@ -941,12 +948,24 @@ def set_light_color(light_n, r, g, b):
         return
     """Set color for a specific light or all lights."""
     if light_n == -1:
-        # Set color for all lights in parallel
-        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b))
+        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b), 0, True)
         # set_all_lights_parallel(r, g, b)
     else:
         # Set color for a specific light
-        devices[light_n].set_color(rgb_to_hsbk(r, g, b))
+        devices[light_n].set_color(rgb_to_hsbk(r, g, b), 0, True)
+
+
+def set_light_power(light_n, off_on):
+    if light_n == -1:
+        if off_on == "ON":
+            lifx.set_power_all_lights("on", 0, True)
+        else:
+            lifx.set_power_all_lights("off", 0, True)
+    else:
+        if off_on == "ON":
+            devices[light_n].set_power("on", 0, True)
+        else:
+            devices[light_n].set_power("off", 0, True)
 
 
 ################################################################################
@@ -1074,7 +1093,8 @@ class ApiClient:
 
     def post(self, endpoint, data=None):
         """Perform a POST request."""
-        response = requests.post(f"{self.base_url}/{endpoint}", json=data)
+        response = requests.post(
+            f"{self.base_url}/{endpoint}", json=data, timeout=5)
         return self.handle_response(response)
 
     def put(self, endpoint, data=None):
@@ -1090,18 +1110,25 @@ class ApiClient:
     def handle_response(self, response):
         """Handle the HTTP response."""
         if response.status_code == 200:
-            return response.json()  # or response.text for raw text
+            try:
+                # Try to parse the response as JSON
+                return response.json()
+            except ValueError:
+                # If JSON parsing fails, treat it as plain text
+                return response.text
         else:
             response.raise_for_status()  # Raise an error for bad responses
 
-
 def send_animator_post(url, endpoint, new_data):
-    new_url = "http://" + url
-    new_data = json.loads(new_data)
-
-    api_client = ApiClient(new_url)
-    created_data = api_client.post(endpoint, data=new_data)
-    print("POST response:", created_data)
+    try:
+        new_url = "http://" + url
+        new_data_loads = json.loads(new_data)
+        api_client = ApiClient(new_url)
+        created_data = api_client.post(endpoint, data=new_data_loads)
+        print("POST response:", created_data)
+        return created_data
+    except Exception as e:
+        print(f"Comms issue: {e}")
 
 
 ################################################################################
@@ -1318,7 +1345,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == "/update-light-string":
             self.update_light_string_post(post_data_obj)
         elif self.path == "/lights":
-            self.lights_post(post_data_obj)
+            self.lights_lifx_post(post_data_obj)
         elif self.path == "/lights-scene":
             self.lights_scene_post(post_data_obj)
         elif self.path == "/lights-neo":
@@ -1355,17 +1382,25 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
             self.test_animation_post(post_data_obj)
+        elif self.path == "/get-local-ip":
+            self.get_local_ip(post_data_obj)
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        set_hdw(rq_d["an"], 3)
+        response = set_hdw(rq_d["an"], 3)
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_local_ip(self, rq_d):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = "Set hardware: " + rq_d["an"]
+        response = local_ip
         self.wfile.write(response.encode('utf-8'))
-        print("Response sent:", response)
 
     def stop_post(self, rq_d):
         rst_an()
@@ -1545,6 +1580,16 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg["intermission"] = rq_d_split[1]
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/all_changes_complete.wav")
+        if rq_d["an"] == "left":
+            override_switch_state["switch_value"] = "left"
+        elif rq_d["an"] == "right":
+            override_switch_state["switch_value"] = "right"
+        elif rq_d["an"] == "right_held":
+            override_switch_state["switch_value"] = "right_held"
+        elif rq_d["an"] == "three":
+            override_switch_state["switch_value"] = "three"
+        elif rq_d["an"] == "four":
+            override_switch_state["switch_value"] = "four"
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1686,9 +1731,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def lights_post(self, rq_d):
+    def lights_lifx_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
+        add_command_to_ts(rq_d["an"])
         set_hdw(rq_d["an"], 1)
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1701,8 +1747,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
         exit_set_hdw = False
-        set_hdw("LN0_" + str(rgb_value[0]) + "_" +
-                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        command = "LN0_" + str(rgb_value[0]) + "_" + \
+            str(rgb_value[1]) + "_" + str(rgb_value[2])
+        add_command_to_ts(command)
+        set_hdw(command, 0)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1715,8 +1763,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         current_scene = rq_d["an"]
         rgb_value = cfg["scene_changes"][current_scene]
         exit_set_hdw = False
-        set_hdw("LX0_" + str(rgb_value[0]) + "_" +
-                str(rgb_value[1]) + "_" + str(rgb_value[2]), 0)
+        command = "LX0_" + str(rgb_value[0]) + "_" + \
+            str(rgb_value[1]) + "_" + str(rgb_value[2])
+        add_command_to_ts(command)
+        set_hdw(command, 0)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1725,17 +1775,21 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def set_item_lights(self, rq_d):
-        global current_neo, current_scene,exit_set_hdw
+        global current_neo, current_scene, exit_set_hdw
         exit_set_hdw = False
         if rq_d["item"] == "lifx":
-            set_hdw("LX0_" + str(rq_d["r"]) + "_" +
-                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            command = "LX0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw(command, 0)
             if current_scene != "":
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
         elif rq_d["item"] == "neo":
-            set_hdw("LN0_" + str(rq_d["r"]) + "_" +
-                    str(rq_d["g"]) + "_" + str(rq_d["b"]), 0)
+            command = "LN0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw(command, 0)
             if current_neo != "":
                 cfg["neo_changes"][current_neo] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
@@ -1746,7 +1800,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
-
 
 
 if web:
@@ -2001,8 +2054,9 @@ def stop_all_media():
 
 
 def exit_early():
-    l_sw.update()
-    if l_sw.fell:
+    switch_state = utilities.switch_state(
+        l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+    if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
 
@@ -2045,11 +2099,11 @@ def spk_sng_num(song_number):
 def no_trk():
     play_mix(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             break
-        if r_sw.fell:
+        if switch_state == "right":
             play_mix(code_folder + "mvc/create_sound_track_files.wav")
             break
 
@@ -2224,7 +2278,7 @@ def logo_when_idle():
     while True:
         if not running_mode:
             time_counter += 1
-            if time_counter == 3:
+            if time_counter == 2:
                 open_midori()
                 change_wallpaper(media_folder + 'pictures/logo.jpg')
         else:
@@ -2236,7 +2290,7 @@ def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
-            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             rst_an()
@@ -2428,8 +2482,8 @@ def an_light(f_nm):
         if dur < 0:
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            t_elaspsed = "{:.1f}".format(t_past)
-            duration = "{:.1f}".format(dur)
+            t_elaspsed = "{:.3f}".format(t_past)
+            duration = "{:.3f}".format(dur)
             log_this = "TE: " + \
                 str(t_elaspsed) + " TS: " + \
                 ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
@@ -2480,10 +2534,18 @@ def insert_intermission_start_of_queue():
         add_command("random_intermission", True)
 
 
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
+
+
 def an_ts(f_nm):
-    global terminal_process, terminal_window_during_playback
+    global t_s, t_elsp, terminal_process, terminal_window_during_playback, ts_mode, running_mode
     print("time stamp mode")
-    global ts_mode, running_mode
     running_mode == "time_stamp_mode"
 
     is_video = ".mp4" in f_nm
@@ -2512,19 +2574,18 @@ def an_ts(f_nm):
     window_moved = False
 
     while True:
-        t_elsp = round(time.perf_counter()-startTime, 1)
+        t_elsp = time.perf_counter()-startTime
         r_sw.update()
         if r_sw.fell:
-            t_s.append(str(t_elsp) + "|")
-            files.log_item(t_elsp)
+            add_command_to_ts("")
         if not mix_media.get_busy() and not media_player.is_playing():
-            t_s.append(str(t_elsp) + "|")
+            add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
                 media_folder + json_fn + ".json", t_s)
             break
-        if is_video and terminal_window_during_playback and not window_moved and t_elsp > 3.5:
+        if is_video and terminal_window_during_playback and not window_moved and t_elsp > 0.5:
             move_vlc_window()
             window_moved = True
 
@@ -2568,22 +2629,15 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list), XXX/XXX (folder/filename)
-            # elif seg[0] == 'M':
-            #     stop_all_media()
-            #     if seg[1] == "P":
-            #         f_nm = pylst_folder + "plylst_" + seg[2:]
-            #     else:
-            #         f_nm = media_folder + seg[2:]
-            #     if seg[1] == "W" or seg[1] == "M":
-            #         play_mix_media(f_nm, False)
-            #     if seg[1] == "A":
-            #         f_nm = seg[2:]
-            #         res = an(f_nm)
-            #         if res == "STOP":
-            #             return "STOP"
-            #     if seg[1] == "W":
-            #         wait_snd()
+            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)  
+            elif seg[:2] == 'SW':
+                segs_split = seg.split("_")
+                if len(segs_split) == 2:
+                    override_switch_state["switch_value"] = segs_split[1]
+                elif len(segs_split) == 3:
+                    override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
+                else: 
+                    override_switch_state["switch_value"] = "none"
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
@@ -2600,6 +2654,12 @@ def set_hdw(cmd, dur):
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_light_color(light_n, r, g, b)
+            # lights LPZZZ_YYY = Lifx lights ZZZ (0 All, 1 to 999) YYY power ON or OFF
+            elif seg[:2] == 'LP':
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][2:])-1
+                power = segs_split[1]
+                set_light_power(light_n, power)
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
@@ -2671,13 +2731,43 @@ def set_hdw(cmd, dur):
                 add_command(file_nm)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
-                seg_split = seg.split("_")
-                send_animator_post(seg_split[1], seg_split[2], seg_split[3])
+                seg_split = split_string(seg)
+                print (seg_split)
+                if len(seg_split) == 3:
+                    print ("three params")       
+                    response = send_animator_post(
+                        url, seg_split[1], seg_split[2])
+                    return response
+                elif len(seg_split) == 4:
+                    print ("four params")
+                    response = send_animator_post(
+                        seg_split[1], seg_split[2], seg_split[3])
+                    return response
+                return ""
             # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
             elif seg[0] == 'C':
                 print("not implemented")
     except Exception as e:
         files.log_item(e)
+
+def split_string(seg):
+    # Find the object (everything inside curly braces)
+    match = re.search(r'(_\{.*\})', seg)
+    
+    if match:
+        # Remove the last underscore and the object part from the string
+        object_part = match.group(0)
+        seg = seg.replace(object_part, '')
+    else:
+        object_part = ''  # If no object is found, set it to empty
+    
+    # Now split the remaining part by underscores
+    parts = seg.split('_')
+    
+    # Add the object back as the last part
+    parts.append(object_part.strip('_'))  # Remove leading underscore from object
+    
+    return parts
 
 ##############################
 # Led color effects
@@ -2881,11 +2971,11 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, running_mode
+        global cont_run, running_mode, override_switch_state
         if running_mode != "time_stamp_mode":
             process_commands()
             switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0)
+                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
@@ -2931,15 +3021,16 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(code_folder + "mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
@@ -2976,9 +3067,10 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             try:
                 play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
             except Exception as e:
@@ -2988,7 +3080,7 @@ class Snds(Ste):
             self.i += 1
             if self.i > len(menu_snd_opt)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
             files.write_json_file(code_folder + "cfg.json", cfg)
             play_mix(code_folder + "mvc/option_selected.wav", "rb")
@@ -3015,17 +3107,17 @@ class IntermissionSettings(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global cfg, override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(intermission_settings)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_mnu = intermission_settings[self.sel_i]
             if sel_mnu == "intermission_off":
                 cfg["intermission"] = "0"
@@ -3069,17 +3161,17 @@ class AddSnds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global ts_mode
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global ts_mode, override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(add_snd)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
                 play_mix(code_folder + "mvc/drive_in_media_instructions.wav")
@@ -3115,10 +3207,11 @@ class VolumeLevelAdjustment(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global override_switch_state
         done = False
         while not done:
             switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0)
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left":
                 ch_vol("lower")
             elif switch_state == "right":
@@ -3151,16 +3244,16 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cfg
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        global cfg, override_switch_state
+        switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state == "left":
             play_mix(code_folder + "mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
                 self.i = 0
-        if r_sw.fell:
+        if switch_state == "right":
             selected_menu_item = web_m[self.sel_i]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True

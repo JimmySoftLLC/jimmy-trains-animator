@@ -47,6 +47,14 @@
             Use this web app to control and setup your Animator - Video train
             product. Have fun animating.
         </p>
+        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            data-url="/mode">Left</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            data-url="/mode">Right</button>
+        <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            data-url="/mode">Three</button>
+        <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            data-url="/mode">Four</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -149,47 +157,6 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
-            <!-- <h2>Platform positions:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
-                    type="button">
-                    All 0
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S090" data-url="/lights"
-                    type="button">
-                    All 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S0180" data-url="/lights"
-                    type="button">
-                    All 180
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
-                    type="button">
-                    Servo 1 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
-                    type="button">
-                    Servo 2 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
-                    type="button">
-                    Servo 3 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S490" data-url="/lights"
-                    type="button">
-                    Servo 4 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S590" data-url="/lights"
-                    type="button">
-                    Servo 5 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S690" data-url="/lights"
-                    type="button">
-                    Servo 6 90
-                </button>
-            </div> -->
             <h2>Setup light string:</h2>
             <div class="mui-textfield">
                 <p>
@@ -338,29 +305,31 @@
                     </button>
                 </div>
                 <div>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX0" data-url="/lights"
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_OFF" data-url="/lights"
                         type="button">
-                        Off
+                        All Off
                     </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX20" data-url="/lights"
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_ON" data-url="/lights"
                         type="button">
-                        20
+                        All On
                     </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX40" data-url="/lights"
+                </div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP1_ON" data-url="/lights"
                         type="button">
-                        40
+                        1 On
                     </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX60" data-url="/lights"
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP2_ON" data-url="/lights"
                         type="button">
-                        60
+                        2 On
                     </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX80" data-url="/lights"
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP3_ON" data-url="/lights"
                         type="button">
-                        80
+                        3 On
                     </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="BX100" data-url="/lights"
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP4_ON" data-url="/lights"
                         type="button">
-                        100
+                        4 On
                     </button>
                 </div>
                 <h2>Scene colors:</h2>
@@ -432,10 +401,19 @@
                 Valid volume levels are from 1 to 100
             </p>
 
-            <h2>Animator web page name:</h2>
+            <h2>Animator web page name and ip address:</h2>
 
             <div class="mui-textfield">
-                <input class="input" id="websiteUrl" type="text" placeholder="Enter website name">
+                <label>Base url:</label>
+                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div class="mui-textfield">
+                <label>IP Address:</label>
+                <input class="input" id="settingsIpAddress" type="text" disabled
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div>
                 <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
                     data-url="/update-host-name">
                     Change
@@ -445,7 +423,7 @@
             <p>
                 Use alphanumerics and dashes only. All names are automatically
                 appended with .local:8083. So your website url will be something like
-                "website-name.local:8083"
+                "website-name.local:8083 and the ip address will be xx.xx.xx.xx:8083."
             </p>
 
             <h2>Utilities:</h2>
@@ -484,9 +462,13 @@
                 <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
                 <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
                 <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-                <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-                <div>BXXX = Brightness (Neopixel lights/Neo 6 modules) XXX 000 to 100</div>
-                <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time between
+                <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
+                <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
+                </div>
+                <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
+                <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
+                <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
+                    between
                     transitions in decimal seconds
                 </div>
                 <!-- <div>MAXXX/XXXX = Play Media, A (M play music, W play music wait, A play animation, P play list),
@@ -538,6 +520,7 @@
         getSceneChanges()
         getNeoChanges()
         getLifxEnabled()
+        getLocalIp()
     });
 
     function getLightString() {
@@ -630,8 +613,32 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
                 makeSocketConnection(data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+
+    local_ip = ""
+
+    function getLocalIp() {
+        fetch('/get-local-ip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                local_ip = data; // Set the value of the input field with the received data
+                data = data.replace(/^"|"$/g, '');
+                settingsIpAddress.value = data
             })
             .catch(function (error) {
                 console.log(error);
@@ -1227,8 +1234,8 @@
     // Add click event listener to website submit button
     var websiteSubmitButton = document.getElementById('websiteSubmitButton');
     websiteSubmitButton.addEventListener('click', function () {
-        var websiteUrl = document.getElementById('websiteUrl');
-        var websiteUrlText = websiteUrl.value;
+        var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
+        var websiteUrlText = settingsWebsiteUrl.value;
         var url = this.getAttribute('data-url');
 
         var data = {
@@ -1248,7 +1255,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
                 websiteSubmitButton.removeAttribute('disabled')
             })
             .catch(function (error) {
@@ -1258,7 +1265,7 @@
     });
 
     // Restrict input to letters, numbers, and hyphens only
-    websiteUrl.addEventListener('input', function () {
+    settingsWebsiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
     });
@@ -2355,9 +2362,9 @@
             });
     });
 
-    function makeSocketConnection(webSiteUrl) {
+    function makeSocketConnection(settingsWebsiteUrl) {
         const cfg = {
-            "HOST_NAME": webSiteUrl
+            "HOST_NAME": settingsWebsiteUrl
         };
 
         const server_str = `${cfg["HOST_NAME"]}.local`; // Adjust as needed
