@@ -16,6 +16,12 @@
       Use this web app to control and calibrate your animator - feller
       product. Have fun animating.
     </p>
+    <button id="leftButton" class="mui-btn mui-btn--primary animator-feller" type="button" data-value="left"
+      data-url="/mode">Left</button>
+    <button id="rightButton" class="mui-btn mui-btn--primary animator-feller" type="button" data-value="right"
+      data-url="/mode">Right</button>
+    <button id="rightButton" class="mui-btn mui-btn--primary animator-feller" type="button" data-value="right_held"
+      data-url="/mode">Right Held</button>
     <ul class="mui-tabs__bar">
       <li class="mui--is-active">
         <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -76,14 +82,16 @@
         type="button">
         Happy Birthday
       </button>
-      <button class="mui-btn mui-btn--primary animator-feller" data-value="cont_mode_on" data-url="/animation"
-        type="button">
-        Continuous Mode On
-      </button>
-      <button class="mui-btn mui-btn--primary animator-feller" data-value="cont_mode_off" data-url="/animation"
-        type="button">
-        Continuous Mode Off
-      </button>
+      <div>
+        <button class="mui-btn mui-btn--primary animator-feller" data-value="cont_mode_on" data-url="/mode"
+          type="button">
+          Continuous Mode On
+        </button>
+        <button class="mui-btn mui-btn--primary animator-feller" data-value="cont_mode_off" data-url="/mode"
+          type="button">
+          Continuous Mode Off
+        </button>
+      </div>
     </div>
     <div class="mui-tabs__pane" id="adjustments" style="padding-top:0.5rem;">
       <p">Use the buttons below to adjust the feller and tree. Press the position you want to calibrate
@@ -231,11 +239,20 @@
         Valid max chops are min chops to 20
       </p>
 
-      <h2>Animator web page name:</h2>
+      <h2>Animator web page name and ip address:</h2>
 
       <div class="mui-textfield">
-        <input class="input" animator-feller" id="webSiteName" type="text" placeholder="Enter website name">
-        <button id="submitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-host-name">
+        <label>Base url:</label>
+        <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+          style="width: 300px; padding: 5px; margin: 5px;">
+      </div>
+      <div class="mui-textfield">
+        <label>IP Address:</label>
+        <input class="input" id="settingsIpAddress" type="text" disabled
+          style="width: 300px; padding: 5px; margin: 5px;">
+      </div>
+      <div>
+        <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button" data-url="/update-host-name">
           Change
         </button>
       </div>
@@ -243,7 +260,7 @@
       <p>
         Use alphanumerics and dashes only. All names are automatically
         appended with .local. So your website url will be something like
-        "website-name.local"
+        "website-name.local and the ip address will be xx.xx.xx.xx."
       </p>
 
       <h2>Utilities:</h2>
@@ -260,7 +277,7 @@
 </body>
 
 <script>
-  var submitButton = document.getElementById('submitButton');
+  var websiteSubmitButton = document.getElementById('websiteSubmitButton');
   var volumeSubmitButton = document.getElementById('volumeSubmitButton');
   var minChopsSubmitButton = document.getElementById('minChopsSubmitButton');
   var maxChopsSubmitButton = document.getElementById('maxChopsSubmitButton');
@@ -268,15 +285,15 @@
   // Get all buttons with the 'animator-feller' class
   var buttons = document.querySelectorAll('.animator-feller');
 
-  submitButton.addEventListener('click', function () {
-    var webSiteName = document.getElementById('webSiteName');
+  websiteSubmitButton.addEventListener('click', function () {
+    var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
     var url = this.getAttribute('data-url');
 
     var data = {
-      text: webSiteName.value,
+      text: settingsWebsiteUrl.value,
     };
 
-    submitButton.setAttribute('disabled', 'true')
+    websiteSubmitButton.setAttribute('disabled', 'true')
 
     fetch(url, {
       method: 'POST',
@@ -289,12 +306,12 @@
         return response.text(); // assuming the response is plain text
       })
       .then(function (data) {
-        webSiteName.value = data; // Set the value of the input field with the received data
-        submitButton.removeAttribute('disabled')
+        settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
+        websiteSubmitButton.removeAttribute('disabled')
       })
       .catch(function (error) {
         console.log(error);
-        submitButton.removeAttribute('disabled')
+        websiteSubmitButton.removeAttribute('disabled')
       });
   });
 
@@ -404,7 +421,7 @@
         return response.text(); // assuming the response is plain text
       })
       .then(function (data) {
-        webSiteName.value = data; // Set the value of the input field with the received data
+        settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
       })
       .catch(function (error) {
         console.log(error);
@@ -425,6 +442,26 @@
       })
       .catch(function (error) {
         console.log(error);
+      });
+
+    // get local ip
+    fetch('/get-local-ip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(function (response) {
+        return response.text(); // assuming the response is plain text
+      })
+      .then(function (data) {
+        local_ip = data; // Set the value of the input field with the received data
+        data = data.replace(/^"|"$/g, '');
+        settingsIpAddress.value = data
+      })
+      .catch(function (error) {
+        console.log(error);
+        showAlert(error);
       });
 
     // get min chops
@@ -463,7 +500,7 @@
   });
 
   // Restrict input to letters, numbers, and hyphens only
-  webSiteName.addEventListener('input', function () {
+  settingsWebsiteUrl.addEventListener('input', function () {
     var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
     this.value = validatedValue;
   });
@@ -478,7 +515,7 @@
 
       // Create an object with the data to be sent in the request
       var data = {
-        animation: animation,
+        an: animation,
       };
 
       // Make a POST request using fetch
