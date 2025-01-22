@@ -373,8 +373,10 @@ if (web):
         mdns.hostname = cfg["HOST_NAME"]
         mdns.advertise_service(service_type="_http", protocol="_tcp", port=80)
 
+        local_ip = str(wifi.radio.ipv4_address)
+
         # files.log_items IP address to REPL
-        files.log_item("IP is" + str(wifi.radio.ipv4_address))
+        files.log_item("IP is" + local_ip)
         files.log_item("Connected")
 
         # set up server
@@ -442,7 +444,7 @@ if (web):
         def btn(req: Request):
             global cfg, c_run, ts_mode
             command_sent = ""
-            rq_d = req.json()
+            req_d = req.json()
             if req_d["an"] == "left":
                 override_switch_state["switch_value"] = "left"
             elif req_d["an"] == "right":
@@ -508,6 +510,10 @@ if (web):
         @server.route("/get-host-name", [POST])
         def btn(req: Request):
             return Response(req, cfg["HOST_NAME"])
+        
+        @server.route("/get-local-ip", [POST])
+        def buttonpress(req: Request):
+            return Response(req, local_ip)
 
         @server.route("/update-volume", [POST])
         def btn(req: Request):
