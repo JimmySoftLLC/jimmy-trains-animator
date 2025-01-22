@@ -58,9 +58,14 @@ audio_enable.value = False
 # also get the programmed values for position which is stored on the sdCard
 feller_pwm = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
 tree_pwm = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
-
 feller_servo = servo.Servo(feller_pwm)
 tree_servo = servo.Servo(tree_pwm)
+
+# this code is only for shows comment it out for production units
+feller_pwm_ho = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
+tree_pwm_ho = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
+feller_servo_ho = servo.Servo(feller_pwm_ho)
+tree_servo_ho = servo.Servo(tree_pwm_ho)
 
 # Setup the switches, there are two the Left and Right or Black and Red
 SWITCH_1_PIN = board.GP6 #S1 on animator board
@@ -164,6 +169,7 @@ def returnMaxChops(min_chops, max_chops):
 
 # get the calibration settings from various json files which are stored on the sdCard
 config = files.read_json_file("/sd/cfg.json")
+tree_ho_offset = -15
 
 tree_last_pos = config["tree_up_pos"]
 tree_min = 60
@@ -728,6 +734,7 @@ def moveFellerServo (servo_pos):
     if servo_pos < feller_min: servo_pos = feller_min
     if servo_pos > feller_max: servo_pos = feller_max
     feller_servo.angle = servo_pos
+    feller_servo_ho.angle = servo_pos
     global feller_last_pos
     feller_last_pos = servo_pos
 
@@ -735,6 +742,7 @@ def moveTreeServo (servo_pos):
     if servo_pos < tree_min: servo_pos = tree_min
     if servo_pos > tree_max: servo_pos = tree_max
     tree_servo.angle = servo_pos
+    tree_servo_ho.angle = servo_pos + tree_ho_offset
     global tree_last_pos
     tree_last_pos = servo_pos
 
@@ -754,8 +762,10 @@ def feller_talking_movement():
                 pass
             return
         feller_servo.angle = speak_rotation + config["feller_rest_pos"]
+        feller_servo_ho.angle = speak_rotation + config["feller_rest_pos"]
         sleepAndUpdateVolume(speak_cadence)
         feller_servo.angle = config["feller_rest_pos"]
+        feller_servo_ho.angle = config["feller_rest_pos"]
         sleepAndUpdateVolume(speak_cadence)
 
 def tree_talking_movement():
@@ -769,8 +779,10 @@ def tree_talking_movement():
                 pass
             return
         tree_servo.angle = config["tree_up_pos"]
+        tree_servo_ho.angle = config["tree_up_pos"] + tree_ho_offset
         sleepAndUpdateVolume(speak_cadence)
         tree_servo.angle = config["tree_up_pos"] - speak_rotation
+        tree_servo_ho.angle = config["tree_up_pos"] - speak_rotation + tree_ho_offset
         sleepAndUpdateVolume(speak_cadence)
 
 def play_sound(sound_files, folder):
@@ -1378,4 +1390,3 @@ while True:
         except Exception as e:
             files.log_item(e)
             continue
-
