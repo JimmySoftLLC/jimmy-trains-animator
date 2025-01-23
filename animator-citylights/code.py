@@ -155,7 +155,6 @@ current_media_playing = ""
 current_scene = ""
 current_neo = ""
 is_midori_running = False
-connect_to_base_3 = True
 tmp_wav_file_name = code_folder + "tmp.wav"
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
@@ -1088,8 +1087,6 @@ def cycle_rgb_values(type, rgb_values, transition_time=2, steps=100):
 
 ################################################################################
 # Requests
-
-
 class ApiClient:
     def __init__(self, base_url):
         self.base_url = base_url
@@ -1101,7 +1098,8 @@ class ApiClient:
 
     def post(self, endpoint, data=None):
         """Perform a POST request."""
-        response = requests.post(f"{self.base_url}/{endpoint}", json=data, timeout=5)
+        response = requests.post(
+            f"{self.base_url}/{endpoint}", json=data, timeout=5)
         return self.handle_response(response)
 
     def put(self, endpoint, data=None):
@@ -1117,7 +1115,12 @@ class ApiClient:
     def handle_response(self, response):
         """Handle the HTTP response."""
         if response.status_code == 200:
-            return response.json()  # or response.text for raw text
+            try:
+                # Try to parse the response as JSON
+                return response.json()
+            except ValueError:
+                # If JSON parsing fails, treat it as plain text
+                return response.text
         else:
             response.raise_for_status()  # Raise an error for bad responses
 
@@ -1132,272 +1135,6 @@ def send_animator_post(url, endpoint, new_data):
         return created_data
     except Exception as e:
         print(f"Comms issue: {e}")
-
-
-################################################################################
-# Setup serial communication and Legacy/TMCC
-
-
-def list_serial_ports():
-    ports = list(serial.tools.list_ports.comports())
-    available_ports = [port.device for port in ports]
-    return available_ports
-
-
-def open_serial_connection(port, baud_rate=115200):
-    ser = serial.Serial(port, baud_rate, timeout=1)
-    return ser
-
-
-def send_data(ser, data):
-    hex_data = bytes.fromhex(data)
-    ser.write(hex_data)
-
-
-def read_from_serial(ser):
-    global exit_set_hdw
-    while True:
-        try:
-            if ser.in_waiting >= 3:  # Check if at least 3 bytes are available to read
-                received_data = ser.read(3)
-                if len(received_data) == 3:
-                    word1, word2, word3 = received_data[0], received_data[1], received_data[2]
-
-                    # Convert words to binary strings
-                    binary_word1 = f'{word1:0>8b}'
-                    binary_word2 = f'{word2:0>8b}'
-                    binary_word3 = f'{word3:0>8b}'
-
-                    # print("Received command: " + str(received_data))
-                    # print("Received 0: " + str(received_data[0]))
-                    # print("Received 1: " + str(received_data[1]))
-                    # print("Received 2: " + str(received_data[2]))
-                    # print(f"Word 1: {binary_word1}")
-                    # print(f"Word 2: {binary_word2}")
-                    # print(f"Word 3: {binary_word3}\n")
-                    response = get_command_object(
-                        binary_word1, binary_word2, binary_word3)
-                    response = process_command(response)
-                    # print(response["system"], response["device"],
-                    #       response["address"], response["command"], response["data"], response["button"])
-                    command, item = process_command_animator_config(response)
-                    print(command, item)
-                    if command:
-                        exit_set_hdw = False
-                        set_hdw(command[1],1,item["animatorIpAddress"])
-                    time.sleep(1)
-                    ser.read(ser.in_waiting)
-
-                    # Reconstruct the command bytes
-                    # reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
-                    # reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
-                    # reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
-
-                    # Construct the command to send back
-                    # reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
-                    # print("Reconstructed command: " + str(reconstructed_command))
-                    # Echo back the received command
-                    # ser.write(reconstructed_command)  # Echo back the received command
-                else:
-                    # Invalid command format, discard the data
-                    ser.read(ser.in_waiting)
-        except Exception as e:
-            print(f"Comms issue: {e}")
-
-
-def get_usb_ports():
-    ports = list_serial_ports()
-    print("Available serial ports:", ports)
-    text_to_wav_file("Available serial ports are", tmp_wav_file_name, 2)
-    for port in ports:
-        text_to_wav_file(port, tmp_wav_file_name, 2)
-
-# Command decoding and processing functions
-
-
-def get_command_object(binary_word1, binary_word2, binary_word3):
-    print(binary_word1)
-    response = {}
-    response["system"] = what_system(binary_word1)
-    if response["system"] == "tmcc":
-        command = binary_word2[0:2]
-        if command == "01":  # Switch command
-            response["device"] = "switch"
-            response["address"] = str(what_address(binary_word2, binary_word3, 7))
-        elif command == "00":  # Engine command
-            response["device"] = "engine"
-            response["address"] = str(what_address(binary_word2, binary_word3, 7))
-        elif command == "10":  # Accessory command
-            response["device"] = "accessory"
-            response["address"] = str(what_address(binary_word2, binary_word3, 7))
-        elif command == "11":  # Route, train or group command
-            command = binary_word2[0:4]
-            if command == "1101":  # Route command
-                response["device"] = "route"
-            else:
-                command = binary_word2[0:5]
-                if command == "11001":  # Train command
-                    response["device"] = "train"
-                elif command == "11000":  # Group command
-                    response["device"] = "group"
-        response["command"] = what_command(binary_word3)
-        response["data"] = what_data(binary_word3)
-    return response
-
-
-def what_system(binary_word1):
-    # 0xFE for TMCC1 commands
-    # 0xF8 for Legacy Engine commands
-    # 0xF9 for Legacy Train commands
-    # 0xFB for Parameter commands
-    command = binary_word1
-    if command == "11111110":
-        return "tmcc"
-    elif command == "11111000":
-        return "legacy_engine"
-    elif command == "11111001":
-        return "legacy_train"
-    elif command == "11111011":
-        return "parameter"
-
-
-def what_command(binary_word3):
-    command = binary_word3[1:3]
-    if command == "00":
-        return "action"
-    elif command == "01":
-        return "extended"
-    elif command == "10":
-        return "relative"
-    elif command == "11":
-        return "absolute"
-
-
-def what_address(binary_word2, binary_word3, number_bits):
-    whole_word = binary_word2 + binary_word3
-    start = 9 - number_bits
-    end = start + number_bits
-    binary_number = whole_word[start:end]
-    return int(binary_number, 2)
-
-
-def what_data(binary_word3):
-    return binary_word3[3:8]
-
-
-def scale_number(num, exponent):
-    return int((num if num >= 0 else -(-num)) ** exponent)
-
-
-def process_command_animator_config(response):
-    global animator_configs
-    # response = {
-    # "system": "tmcc",
-    # "device": "engine",
-    # "address": 1,
-    # "command": "action",
-    # "data": "01001",
-    # "button": "AUX1"
-    # }
-    for item in animator_configs:
-        if item["device"] == response["device"] and item["address"] == response["address"]:
-            for row in item['table_data']:
-                if row[0] == response["button"]:
-                    return row, item  # Return the matched row
-    return None, None  # If no match is found
-
-
-def process_command(response):
-    global cfg
-    speak_commands = cfg["tmcc_voice_enabled"]
-    response["button"] = ""
-    if response["device"] == "accessory" or response["device"] == "engine":
-        if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
-            play_mix(code_folder + "mvc/" + response["device"] + ".wav")
-            spk_str(str(response["address"]), False)
-        if response["command"] == "extended" and response["data"] == "01011":
-            if speak_commands:
-                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
-                play_mix(code_folder + "mvc/set_to_id.wav")
-                spk_str(str(response["address"]), False)
-            response["button"] = "SET"
-        elif response["command"] == "relative":
-            binary_number = response["data"][1:5]
-            decimal_number = int(binary_number, 2)
-            if decimal_number > 5:
-                decimal_number = scale_number(decimal_number-5, 2)
-                print("throttle up :" + str(decimal_number))
-                if speak_commands:
-                    play_mix(code_folder + "mvc/trottle_up.wav")
-                    text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
-            else:
-                decimal_number = scale_number(5-decimal_number, 2)
-                print("throttle down :" + str(decimal_number))
-                if speak_commands:
-                    play_mix(code_folder + "mvc/trottle_down.wav")
-                    text_to_wav_file(str(decimal_number), tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "00001":
-            if speak_commands:
-                text_to_wav_file("direction", tmp_wav_file_name, 2)
-        elif response["command"] == "action" and response["data"] == "11100":
-            if speak_commands:
-                text_to_wav_file("horn", tmp_wav_file_name, 2)
-            response["button"] = "HORN"
-        elif response["command"] == "action" and response["data"] == "11101":
-            if speak_commands:
-                text_to_wav_file("bell", tmp_wav_file_name, 2)
-            response["button"] = "BELL"
-        elif response["command"] == "action" and response["data"] == "00100":
-            if speak_commands:
-                text_to_wav_file("boost", tmp_wav_file_name, 2)
-            response["button"] = "BOOST"
-        elif response["command"] == "action" and response["data"] == "00111":
-            if speak_commands:
-                text_to_wav_file("brake", tmp_wav_file_name, 2)
-            response["button"] = "BRAKE"
-        elif response["command"] == "action" and response["data"] == "00101":
-            if speak_commands:
-                text_to_wav_file("front coupler", tmp_wav_file_name, 2)
-            response["button"] = "FCOUPLER"
-        elif response["command"] == "action" and response["data"] == "00110":
-            if speak_commands:
-                text_to_wav_file("rear coupler", tmp_wav_file_name, 2)
-            response["button"] = "RCOUPLER"
-        elif response["command"] == "action" and response["data"] == "01001":
-            if speak_commands:
-                text_to_wav_file("aux 1", tmp_wav_file_name, 2)
-            response["button"] = "AUX1"
-        elif response["command"] == "action" and response["data"] == "01101":
-            if speak_commands:
-                text_to_wav_file("aux 2", tmp_wav_file_name, 2)
-            response["button"] = "AUX2"
-        elif response["command"] == "action" and response["data"][0:1] == "1":
-            binary_number = response["data"][1:5]
-            decimal_number = int(binary_number, 2)
-            if speak_commands:
-                play_mix(code_folder + "mvc/numeric_button.wav")
-                spk_str(str(decimal_number), False)
-            response["button"] = str(decimal_number)
-
-    if response["device"] == "switch":
-        if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
-            play_mix(code_folder + "mvc/switch.wav")
-            spk_str(str(response["address"]), False)
-        if response["command"] == "extended" and response["data"] == "01011":
-            if speak_commands:
-                play_mix(code_folder + "mvc/switch.wav")
-                play_mix(code_folder + "mvc/set_to_id.wav")
-                spk_str(str(response["address"]), False)
-            response["button"] = "SET"
-        elif response["command"] == "action" and response["data"][0:5] == "00000":
-            if speak_commands:
-                text_to_wav_file("throw through", tmp_wav_file_name, 2)
-            response["button"] = "THROUGH"
-        elif response["command"] == "action" and response["data"][0:5] == "11111":
-            if speak_commands:
-                text_to_wav_file("throw out", tmp_wav_file_name, 2)
-            response["button"] = "OUT"
-    return response
 
 
 ################################################################################
@@ -2929,7 +2666,10 @@ def set_hdw(cmd, dur, url):
     if cmd == "":
         return "NOCMDS"
 
-    segs = cmd.split(",")
+    if "API_" in cmd:
+        segs = [cmd]
+    else:
+        segs = cmd.split(",")
 
     try:
         for seg in segs:
@@ -3042,19 +2782,47 @@ def set_hdw(cmd, dur, url):
                 add_command(file_nm)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
-                seg_split = seg.split("_")
+                seg_split = split_string(seg)
+                print (seg_split)
                 if len(seg_split) == 3:
-                    response = send_animator_post(url, seg_split[1], seg_split[2])
+                    print ("three params")       
+                    response = send_animator_post(
+                        url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
-                    response = send_animator_post(seg_split[1], seg_split[2], seg_split[3])
+                    print ("four params")
+                    response = send_animator_post(
+                        seg_split[1], seg_split[2], seg_split[3])
                     return response
-
-            # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
-            elif seg[0] == 'C':
-                print("not implemented")
+                return ""
     except Exception as e:
         files.log_item(e)
+
+    def split_string(seg):
+        # Find the position of the first '_{' and the last '}'
+        start_idx = seg.find('_{')
+        end_idx = seg.find('}', start_idx)
+        
+        if start_idx != -1 and end_idx != -1:
+            # Extract the object part including the curly braces
+            object_part = seg[start_idx:end_idx+1]
+            
+            # Remove the object part from the string
+            seg = seg[:start_idx] + seg[end_idx+1:]
+            
+            # Remove the leading underscore from the object part
+            object_part = object_part[1:]  # Strip the first character '_'
+        else:
+            object_part = ''  # If no object is found, set it to empty
+        
+        # Now split the remaining part by underscores
+        parts = seg.split('_')
+        
+        # Add the object part as the last item
+        if object_part:
+            parts.append(object_part)
+        
+        return parts
 
 ##############################
 # Led color effects
@@ -3632,19 +3400,6 @@ logo_when_idle_thread = threading.Thread(target=logo_when_idle)
 logo_when_idle_thread.daemon = True
 logo_when_idle_thread.start()
 
-if connect_to_base_3 == True:
-    target_port = "/dev/ttyUSB0"
-    ports = list_serial_ports()
-    if target_port in ports:
-        serial_connection = open_serial_connection(target_port)
-        text_to_wav_file("Connected to " + target_port, tmp_wav_file_name, 2)
-
-        # Start a thread to continuously read from the serial port
-        read_thread = threading.Thread(
-            target=read_from_serial, args=(serial_connection,))
-        read_thread.daemon = True
-        read_thread.start()
-
 
 def stop_program():
     stop_all_commands()
@@ -3654,7 +3409,6 @@ def stop_program():
         zeroconf.close()
         httpd.shutdown()
     rst_an(media_folder + 'pictures/logo.jpg')
-    serial_connection.close()
     quit()
 
 
