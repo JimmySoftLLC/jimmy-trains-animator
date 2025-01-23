@@ -119,7 +119,6 @@ from collections import OrderedDict, deque
 import signal
 import copy
 from pydub import AudioSegment
-import re
 import pyautogui
 import serial
 import serial.tools.list_ports
@@ -1827,8 +1826,11 @@ def set_hdw(cmd, dur, url):
 
     if cmd == "":
         return "NOCMDS"
-
-    segs = cmd.split(",")
+    
+    if "API_" in cmd:
+        segs = [cmd]
+    else:
+        segs = cmd.split(",")
 
     try:
         for seg in segs:
@@ -1890,21 +1892,28 @@ def set_hdw(cmd, dur, url):
         files.log_item(e)
 
 def split_string(seg):
-    # Find the object (everything inside curly braces)
-    match = re.search(r'(_\{.*\})', seg)
+    # Find the position of the first '_{' and the last '}'
+    start_idx = seg.find('_{')
+    end_idx = seg.find('}', start_idx)
     
-    if match:
-        # Remove the last underscore and the object part from the string
-        object_part = match.group(0)
-        seg = seg.replace(object_part, '')
+    if start_idx != -1 and end_idx != -1:
+        # Extract the object part including the curly braces
+        object_part = seg[start_idx:end_idx+1]
+        
+        # Remove the object part from the string
+        seg = seg[:start_idx] + seg[end_idx+1:]
+        
+        # Remove the leading underscore from the object part
+        object_part = object_part[1:]  # Strip the first character '_'
     else:
         object_part = ''  # If no object is found, set it to empty
     
     # Now split the remaining part by underscores
     parts = seg.split('_')
     
-    # Add the object back as the last part
-    parts.append(object_part.strip('_'))  # Remove leading underscore from object
+    # Add the object part as the last item
+    if object_part:
+        parts.append(object_part)
     
     return parts
 
