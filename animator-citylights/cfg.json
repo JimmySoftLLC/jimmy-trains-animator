@@ -7,7 +7,8 @@
   "show_webpage": true,
   "HOST_NAME": "animator-city-lights",
   "light_string": "bar-10",
-  "lifx_enabled": false,
+  "lifx_enabled": true,
+  "reset_hdw": "LX0_255_255_255,LN0_255_255_255,B100,F0_.006",
   "scene_changes": {
     "noon": [255, 255, 255],
     "afternoon": [255, 223, 186],

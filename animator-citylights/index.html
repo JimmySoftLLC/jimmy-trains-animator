@@ -441,6 +441,18 @@
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
+            <div class="mui-textfield">
+                <label>Reset Hardware string:</label>
+                <input type="text" id="resetHdw" placeholder="Enter hardware string"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div>
+                <button id="setResetHdwButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/set-reset-hdw">
+                    Change
+                </button>
+            </div>
+
             <h2>Media:</h2>
             <div id="mediaScriptContainer"></div>
             <h2>Animation script table:</h2>
@@ -597,7 +609,7 @@
         getSceneChanges()
         getNeoChanges()
         getLifxEnabled()
-        getTmccVoiceEnabled()
+        getResetHdw()
     });
 
     function getLightString() {
@@ -699,6 +711,25 @@
             });
     }
 
+    function getResetHdw() {
+        fetch('/get-reset-hdw', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                resetHdw.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
     local_ip = ""
 
     function getLocalIp() {
@@ -754,26 +785,6 @@
             .then(function (data) {
                 lifx_enabled = (data === 'true'); // Convert to Boolean
                 setLifxCheckboxState(lifx_enabled)
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
-    }
-
-    function getTmccVoiceEnabled() {
-        fetch('/get-tmcc-voice-enabled', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                tmcc_voice_enabled = (data === 'true'); // Convert to Boolean
-                setTmccVoiceCheckboxState(tmcc_voice_enabled)
             })
             .catch(function (error) {
                 console.log(error);
@@ -1311,6 +1322,39 @@
             .catch(function (error) {
                 console.log(error);
                 websiteSubmitButton.removeAttribute('disabled')
+            });
+    });
+
+        // Add click event listener to website submit button
+    var setResetHdwButton = document.getElementById('setResetHdwButton');
+    setResetHdwButton.addEventListener('click', function () {
+        var resetHdw = document.getElementById('resetHdw');
+        var resetHdwText = resetHdw.value;
+        var url = this.getAttribute('data-url');
+
+        var data = {
+            text: resetHdwText,
+        };
+
+        setResetHdwButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                resetHdw.value = data; // Set the value of the input field with the received data
+                setResetHdwButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                setResetHdwButton.removeAttribute('disabled')
             });
     });
 

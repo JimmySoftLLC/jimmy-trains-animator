@@ -1362,6 +1362,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
             self.get_host_name_post(post_data_obj)
+        elif self.path == "/set-reset-hdw":
+            self.set_reset_hdw(post_data_obj)
+        elif self.path == "/get-reset-hdw":
+            self.get_reset_hdw_post(post_data_obj)
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
         elif self.path == "/update-volume":
@@ -1715,11 +1719,28 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = cfg["HOST_NAME"]
         self.wfile.write(response.encode('utf-8'))
 
+    def set_reset_hdw(self, rq_d):
+        global cfg
+        cfg["reset_hdw"] = rq_d["text"]
+        files.write_json_file(code_folder + "cfg.json", cfg)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = cfg["reset_hdw"]
+        self.wfile.write(response.encode('utf-8'))
+
     def get_host_name_post(self, rq_d):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["HOST_NAME"]
+        self.wfile.write(response.encode('utf-8'))
+
+    def get_reset_hdw_post(self, rq_d):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = cfg["reset_hdw"]
         self.wfile.write(response.encode('utf-8'))
 
     def update_volume_post(self, rq_d):
@@ -2394,8 +2415,11 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
-    change_wallpaper(file_name)
     time.sleep(0.5)
+    exit_set_hdw = False
+    set_hdw(cfg["reset_hdw"],0,"")
+    exit_set_hdw = True
+    change_wallpaper(file_name)
     l_sw.update()
     r_sw.update()
     three_sw.update()
@@ -2678,9 +2702,6 @@ def set_hdw(cmd, dur, url):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # USB connect to base3 usb port
-            elif seg[:3] == 'USB':
-                get_usb_ports()
             # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)  
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
