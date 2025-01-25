@@ -441,9 +441,12 @@ async def main():
     # Create asyncio tasks
     tasks = [
         process_commands_task(),
-        server_poll_task(server),
         garbage_collection_task(),
     ]
+
+    if web:
+        tasks.append(server_poll_task(server))
+
     # Run all tasks concurrently
     await asyncio.gather(*tasks)
 
