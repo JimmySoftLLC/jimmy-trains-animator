@@ -54,13 +54,258 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 
-num_px = 10
+trees = []
+canes = []
+ornmnts = []
+stars = []
+brnchs = []
+cane_s = []
+cane_e = []
+
+bars = []
+bolts = []
+noods = []
+neos = []
+
+bar_arr = []
+bolt_arr = []
+neo_arr = []
+
+n_px = 0
 
 #15 on demo 17 tiny 10 on large, GP11 on clhv-6
-led = neopixel.NeoPixel(board.GP11, num_px)
+neo_pixel_pin = board.GP17
 
-led.fill((255, 255, 255))
-led.show()
+led = neopixel.NeoPixel(neo_pixel_pin, n_px)
+
+def bld_tree(p):
+    i = []
+    for t in trees:
+        for ledi in t:
+            si = ledi
+            break
+        if p == "ornaments":
+            for ledi in range(0, 7):
+                i.append(ledi+si)
+        if p == "star":
+            for ledi in range(7, 14):
+                i.append(ledi+si)
+        if p == "branches":
+            for ledi in range(14, 21):
+                i.append(ledi+si)
+    return i
+
+
+def bld_cane(p):
+    i = []
+    for c in canes:
+        for led_i in c:
+            si = led_i
+            break
+        if p == "end":
+            for led_i in range(0, 2):
+                i.append(led_i+si)
+        if p == "start":
+            for led_i in range(2, 4):
+                i.append(led_i+si)
+    return i
+
+
+def bld_bar():
+    i = []
+    for b in bars:
+        for l in b:
+            si = l
+            break
+        for l in range(0, 10):
+            i.append(l+si)
+    return i
+
+
+def bld_bolt():
+    i = []
+    for b in bolts:
+        for l in b:
+            si = l
+            break
+        if len(b) == 4:
+            for l in range(0, 4):
+                i.append(l+si)
+        if len(b) == 1:
+            for l in range(0, 1):
+                i.append(l+si)
+    return i
+
+
+def bld_neo():
+    i = []
+    for n in neos:
+        for l in n:
+            si = l
+            break
+        for l in range(0, 6):
+            i.append(l+si)
+    return i
+
+
+def show_l():
+    led.show()
+    time.sleep(.05)
+    led.fill((0, 0, 0))
+    led.show()
+
+def l_tst():
+    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
+
+    # Christmas items
+    ornmnts = bld_tree("ornaments")
+    stars = bld_tree("star")
+    brnchs = bld_tree("branches")
+    cane_s = bld_cane("start")
+    cane_e = bld_cane("end")
+
+    # Lightning items
+    bar_arr = bld_bar()
+    bolt_arr = bld_bolt()
+
+    # Neo items
+    neo_arr = bld_neo()
+
+    # cane test
+    cnt = 0
+    for i in cane_s:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 1:
+            show_l()
+            cnt = 0
+    for i in cane_e:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 1:
+            show_l()
+            cnt = 0
+
+    # tree test
+    cnt = 0
+    for i in ornmnts:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in stars:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in brnchs:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+
+    # bar test
+    for b in bars:
+        for l in b:
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # bolt test
+    for b in bolts:
+        for l in b:
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # nood test
+    for n in noods:
+        led[n[0]] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # neo test
+    for n in neos:
+        for i in n:
+            led[i] = (0, 50, 0)
+            time.sleep(.3)
+            led.show()
+            led[i] = (50, 0, 0)
+            time.sleep(.3)
+            led.show()
+            led[i] = (0, 0, 50)
+            time.sleep(.3)
+            led.show()
+            time.sleep(.3)
+            led.fill((0, 0, 0))
+            led.show()
+
+
+def upd_l_str():
+    global trees, canes, bars, bolts, noods, neos, n_px, led
+    trees = []
+    canes = []
+    bars = []
+    bolts = []
+    noods = []
+    neos = []
+
+    n_px = 0
+
+    els = cfg["light_string"].split(',')
+
+    for el in els:
+        p = el.split('-')
+        if len(p) == 2:
+            typ, qty = p
+            qty = int(qty)
+            if typ == 'grandtree':
+                s = list(range(n_px, n_px + qty))
+                trees.append(s)
+                n_px += qty
+            elif typ == 'cane':
+                s = list(range(n_px, n_px + qty))
+                canes.append(s)
+                n_px += qty
+            if typ == 'bar':
+                s = list(range(n_px, n_px + qty))
+                bars.append(s)
+                n_px += qty
+            elif typ == 'bolt' and qty < 4:
+                s = [n_px, qty]
+                noods.append(s)
+                n_px += 1
+            elif typ == 'bolt' and qty == 4:
+                s = list(range(n_px, n_px + qty))
+                bolts.append(s)
+                n_px += qty
+            if typ == 'neo':
+                if qty == 6:
+                    neoqty = 2
+                if qty == 12:
+                    neoqty = 4
+                s = list(range(n_px, n_px + neoqty))
+                neos.append(s)
+                n_px += neoqty
+
+    print("Number of pixels total: ", n_px)
+    led.deinit()
+    led = neopixel.NeoPixel(neo_pixel_pin, n_px)
+    led.auto_write = False
+    led.brightness = 1.0
+    l_tst()
+
+
+upd_l_str()
 
 gc_col("Neopixels setup")
 
@@ -166,6 +411,32 @@ if (web):
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.", status=500)
+        
+        @server.route("/update-light-string", [POST])
+        def btn(req: Request):
+            global cfg
+            rq_d = req.json()
+            if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
+                cfg["light_string"] = rq_d["text"]
+                print("action: " +
+                      rq_d["action"] + " data: " + cfg["light_string"])
+                files.write_json_file("/sd/cfg.json", cfg)
+                upd_l_str()
+                return Response(req, cfg["light_string"])
+            if cfg["light_string"] == "":
+                cfg["light_string"] = rq_d["text"]
+            else:
+                cfg["light_string"] = cfg["light_string"] + \
+                    "," + rq_d["text"]
+            print("action: " + rq_d["action"] +
+                  " data: " + cfg["light_string"])
+            files.write_json_file("/sd/cfg.json", cfg)
+            upd_l_str()
+            return Response(req, cfg["light_string"])
+
+        @server.route("/get-light-string", [POST])
+        def btn(req: Request):
+            return Response(req, cfg["light_string"])
         
         @server.route("/update-host-name", [POST])
         def btn(request: Request):

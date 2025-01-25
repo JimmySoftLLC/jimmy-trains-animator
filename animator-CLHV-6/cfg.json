@@ -1,5 +1,6 @@
 {
   "option_selected": "random all",
   "serve_webpage": true,
-  "HOST_NAME": "clhv6-1"
+  "HOST_NAME": "clhv6-1",
+  "light_string": "bar-10"
 }
