@@ -2614,7 +2614,10 @@ def set_hdw(cmd, dur):
     if cmd == "":
         return "NOCMDS"
 
-    segs = cmd.split(",")
+    if "API_" in cmd:
+        segs = [cmd]
+    else:
+        segs = cmd.split(",")
 
     try:
         for seg in segs:
@@ -2725,15 +2728,47 @@ def set_hdw(cmd, dur):
                 add_command(file_nm)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
-                seg_split = seg.split("_")
-                response = send_animator_post(
-                    seg_split[1], seg_split[2], seg_split[3])
-                return response
-            # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
-            elif seg[0] == 'C':
-                print("not implemented")
+                seg_split = split_string(seg)
+                print (seg_split)
+                if len(seg_split) == 3:
+                    print ("three params")       
+                    response = send_animator_post(
+                        url, seg_split[1], seg_split[2])
+                    return response
+                elif len(seg_split) == 4:
+                    print ("four params")
+                    response = send_animator_post(
+                        seg_split[1], seg_split[2], seg_split[3])
+                    return response
+                return ""
     except Exception as e:
         files.log_item(e)
+
+    def split_string(seg):
+        # Find the position of the first '_{' and the last '}'
+        start_idx = seg.find('_{')
+        end_idx = seg.find('}', start_idx)
+        
+        if start_idx != -1 and end_idx != -1:
+            # Extract the object part including the curly braces
+            object_part = seg[start_idx:end_idx+1]
+            
+            # Remove the object part from the string
+            seg = seg[:start_idx] + seg[end_idx+1:]
+            
+            # Remove the leading underscore from the object part
+            object_part = object_part[1:]  # Strip the first character '_'
+        else:
+            object_part = ''  # If no object is found, set it to empty
+        
+        # Now split the remaining part by underscores
+        parts = seg.split('_')
+        
+        # Add the object part as the last item
+        if object_part:
+            parts.append(object_part)
+        
+        return parts
 
 ##############################
 # Led color effects
