@@ -120,14 +120,12 @@
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
             <p>
-                Animation scripts run the animation. To load the script press the button for the sound track you want to
+                Animation scripts run the animation. To load the script press the button for the script you want to
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
-            <h2>Built in sound tracks:</h2>
-            <div id="builtInTracksScriptContainer"></div>
-            <h2>My sound tracks:</h2>
-            <div id="myTracksScriptContainer"></div>
+            <h2>Scripts:</h2>
+            <div id="scriptContainer"></div>
             <h2>Animation script table:</h2>
             <div class="mui-textfield">
                 <input class="input" id="animationName" type="text" disabled>
@@ -176,7 +174,7 @@
                 console.log(error);
             });
 
-        // get built in sound tracks
+        // get scripts
         fetch('/get-animations', {
             method: 'POST',
             headers: {
@@ -188,8 +186,8 @@
             })
             .then(function (data) {
                 my_data = JSON.parse(data)
-                setBuiltInSoundTrackButtons(my_data)
-                setBuiltInSoundTrackScriptButtons(my_data)
+                setRunScriptButtons(my_data)
+                setGetScriptButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -214,7 +212,7 @@
             });
     });
 
-    function setBuiltInSoundTrackButtons(my_data) {
+    function setRunScriptButtons(my_data) {
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
@@ -260,7 +258,7 @@
         });
     }
 
-    function setBuiltInSoundTrackScriptButtons(my_data) {
+    function setGetScriptButtons(my_data) {
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
@@ -303,7 +301,7 @@
                         button.removeAttribute('disabled')
                     });
             });
-            builtInTracksScriptContainer.appendChild(button);
+            scriptContainer.appendChild(button);
         });
     }
 
