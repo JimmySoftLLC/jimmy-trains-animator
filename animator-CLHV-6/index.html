@@ -32,7 +32,73 @@
             <div id="builtInTracksContainer"></div>
         </div>
         <div class="mui-tabs__pane" id="settings">
-            <h2>Platform positions:</h2>
+            <h2>Setup light string:</h2>
+            <div class="mui-textfield">
+                <p>
+                    Enter your light string in the order which each component is connected together by pressing neo-6,
+                    cane-4...
+                    When finished press "Save".
+                </p>
+                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
+                    data-url="/update-light-string">
+                    Save
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
+                    data-url="/update-light-string">
+                    Clear
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
+                    data-url="/update-light-string">
+                    Set to defaults
+                </button>
+            </div>
+            <div class="mui-textfield">
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
+                    data-url="/update-light-string">
+                    projector-1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
+                    data-url="/update-light-string">
+                    concession-6
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
+                    data-url="/update-light-string">
+                    sign-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
+                    data-url="/update-light-string">
+                    cane-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
+                    data-url="/update-light-string">
+                    grandtree-21
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neo-6"
+                    data-url="/update-light-string">
+                    neo-6
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
+                    data-url="/update-light-string">
+                    bolt-1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-2"
+                    data-url="/update-light-string">
+                    bolt-2
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-3"
+                    data-url="/update-light-string">
+                    bolt-3
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-4"
+                    data-url="/update-light-string">
+                    bolt-4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bar-10"
+                    data-url="/update-light-string">
+                    bar-10
+                </button>
+            </div>
             <h2>Test lights:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
@@ -193,7 +259,7 @@
                 console.log(error);
             });
 
-        // get website url
+        // get website ip address
         fetch('/get-local-ip', {
             method: 'POST',
             headers: {
@@ -206,6 +272,23 @@
             .then(function (data) {
                 local_ip = data; // Set the value of the input field with the received data
                 ipAddress.value = local_ip
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get light string
+        fetch('/get-light-string', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lightString.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
@@ -344,6 +427,52 @@
         });
     });
 
+    // Get all buttons with the 'animator-light-update' class
+    // Add click event listener to each button
+    var lightUpdateButtons = document.querySelectorAll('.animator-light-update');
+    lightUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            var data = {}
+            if (action == "save" || action == "clear" || action == "defaults") {
+                var lightStringElement = document.getElementById('lightString');
+                lightStringValue = lightStringElement.value
+                if (action == "defaults") lightStringValue = "bar-10,bolt-1,bar-10,bolt-1,bar-10,bolt-1"
+                if (action == "clear") lightStringValue = ""
+                data = {
+                    text: lightStringValue,
+                    action: action
+                }
+            } else {
+                data = {
+                    text: action,
+                    action: action
+                }
+            }
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    lightString.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    
     // Get all buttons with the 'animator-volume-update' class
     // Add click event listener to each button
     var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');

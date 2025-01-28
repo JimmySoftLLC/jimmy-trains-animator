@@ -74,7 +74,7 @@ neo_arr = []
 n_px = 0
 
 #15 on demo 17 tiny 10 on large, GP11 on clhv-6
-neo_pixel_pin = board.GP17
+neo_pixel_pin = board.GP15
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
@@ -420,7 +420,7 @@ if (web):
                 cfg["light_string"] = rq_d["text"]
                 print("action: " +
                       rq_d["action"] + " data: " + cfg["light_string"])
-                files.write_json_file("/sd/cfg.json", cfg)
+                files.write_json_file("cfg.json", cfg)
                 upd_l_str()
                 return Response(req, cfg["light_string"])
             if cfg["light_string"] == "":
@@ -430,7 +430,7 @@ if (web):
                     "," + rq_d["text"]
             print("action: " + rq_d["action"] +
                   " data: " + cfg["light_string"])
-            files.write_json_file("/sd/cfg.json", cfg)
+            files.write_json_file("cfg.json", cfg)
             upd_l_str()
             return Response(req, cfg["light_string"])
 
