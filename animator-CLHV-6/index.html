@@ -210,7 +210,7 @@
             <div id="animationScriptsContainer"></div>
             <h2>Animation table:</h2>
             <div class="mui-textfield">
-                <input class="input" id="animationName" type="text" disabled>
+                <input class="input" id="animationScriptName" type="text" disabled>
             </div>
             <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
             <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
@@ -544,7 +544,7 @@
         if (filenameInput) {
             console.log('Filename:', filenameInput);
             var data = {
-                fo: AnimationName.value,
+                fo: animationScriptName.value,
                 fn: filenameInput,
             };
 
@@ -592,7 +592,7 @@
 
         var message = document.createElement('div');
         message.className = "mui-textfield"
-        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        message.textContent = "Are you sure your want to delete " + animationScriptName.value + " this is irreversible.";
         form.appendChild(message);
 
         var saveBtn = document.createElement('button');
@@ -619,10 +619,10 @@
 
     function deleteAnimation() {
         var data = {
-            fn: animatorName.value,
+            fn: animationScriptName.value,
         };
 
-        fetch("/delete-animator", {
+        fetch("/delete-animation", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -732,7 +732,7 @@
                     })
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
-                        animationName.value = animation
+                        animationScriptName.value = animation
                         populateTable(myData)
                         button.removeAttribute('disabled')
                     })
@@ -1150,7 +1150,7 @@
             const block = combinedData.slice(startIdx, endIdx);
             let myObject = [index, totalBlocks - 1, block]
             if (index == totalBlocks - 1) {
-                myObject = [index, totalBlocks - 1, block, animationName.value]
+                myObject = [index, totalBlocks - 1, block, animationScriptName.value]
             }
 
             // Send data to the server

@@ -1,3 +1,4 @@
+            
 from rainbowio import colorwheel
 import neopixel
 import asyncio
@@ -444,6 +445,7 @@ if (web):
                 fn = animators_folder + rq_d["fn"] + ".json"
                 os.rename(fo, fn)
                 upd_media()
+                return Response(request, "Renamed animation successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.", status=500)
@@ -453,9 +455,12 @@ if (web):
             try:
                 global data, animators_folder
                 rq_d = request.json()  # Parse the incoming JSON
-                f_n = animators_folder + rq_d["fn"]
+                print(rq_d)
+                f_n = animators_folder + rq_d["fn"] + ".json"
+                print(f_n)
                 os.remove(f_n)
                 upd_media()
+                return Response(request, "Delete animation successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.", status=500)
