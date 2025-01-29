@@ -441,7 +441,7 @@ if (web):
             try:
                 global data, animators_folder
                 rq_d = request.json()  # Parse the incoming JSON
-                fo = animators_folder + rq_d["fo"]
+                fo = animators_folder + rq_d["fo"] + ".json"
                 fn = animators_folder + rq_d["fn"] + ".json"
                 os.rename(fo, fn)
                 upd_media()
