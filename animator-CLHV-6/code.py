@@ -424,10 +424,13 @@ if (web):
             try:
                 global data, animators_folder
                 rq_d = request.json()  # Parse the incoming JSON
+                print(rq_d)
                 f_n = animators_folder + rq_d["fn"] + ".json"
+                print(f_n)
                 an_data = ["0.0|B100,L00255", "1.0|B50,L0255", "2.0|B100,L0255", "3.0|B100,L0255"]
                 files.write_json_file(f_n, an_data)
                 upd_media()
+                return Response(request, "Created animation successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error creating animation.", status=500)
