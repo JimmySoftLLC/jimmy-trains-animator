@@ -10,6 +10,7 @@
 </head>
 
 <body>
+    <div id="modalEl"></div>
     <div class="mui-container">
         <h1>Animator - City Lights CLHV-6</h1>
         <p style="padding-top:0.5rem;">
@@ -185,11 +186,26 @@
         </div>
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
-            <p>
-                Animation scripts run the animation. To load the script press the button for the script you want to
-                modify.
-                Modify the script as needed and press save to save the script.
-            </p>
+            <p>Follow these steps to setup animators to be controlled by Lionel Legacy/TMCC remotes:</p>
+            <ol>
+                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
+                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
+                    corresponding buttons to duplicate, rename, or delete it.</li>
+            </ol>
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="tmccVoiceCheckbox" data-url="/set-tmcc-voice-enabled">
+                    Enable command voice
+                </label>
+            </div>
+            <button class="mui-btn mui-btn--primary" onclick="createAnimatorDialog()">Create
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimatorDialog()">Duplicate
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete
+                Animator</button>
             <h2>Scripts:</h2>
             <div id="scriptContainer"></div>
             <h2>Animation script table:</h2>
@@ -220,6 +236,32 @@
 
 <script>
     local_ip = ""
+
+    function showAlert(message) {
+        var alertModal = document.createElement('div');
+        alertModal.className = 'mui-container';
+        alertModal.style.width = '400px';
+        alertModal.style.margin = '100px auto'; // Center horizontally with top margin
+        alertModal.style.backgroundColor = '#fff';
+        alertModal.style.borderRadius = '5px';
+        alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+
+        alertModal.innerHTML = `
+            <div class="mui-form" style="padding: 20px;">
+                <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
+                <div style="margin: 10px 0; font-size: 1em; color: #333;">
+                    ${message}
+                </div>
+                <button class="mui-btn mui-btn--primary" onclick="closeAlert()" style="margin-top: 15px;">OK</button>
+            </div>`;
+
+        mui.overlay('on', alertModal);
+    }
+
+
+    function closeAlert() {
+        mui.overlay('off');
+    }
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
@@ -294,6 +336,287 @@
                 console.log(error);
             });
     });
+
+    function createAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Create Animator';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', createAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function createAnimator() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fn: filenameInput,
+            };
+
+            fetch("/create-animation", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updateAnimators()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function duplicateAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Duplicate Animator';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', duplicateAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function duplicateAnimator() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            saveAnimatorData(filenameInput + ".json", true);
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function renameAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Rename Animator';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', renameAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function renameAnimator() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fo: animatorName.value,
+                fn: filenameInput,
+            };
+
+            fetch("/rename-animation", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updateAnimators()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function deleteAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Delete Animator';
+        form.appendChild(legend);
+
+        var message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        form.appendChild(message);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Delete';
+        saveBtn.addEventListener('click', deleteAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function updateAnimators() {
+        const myAnimatorDiv = document.getElementById("animatorContainer");
+        removeChildNodes(myAnimatorDiv)
+        getAnimators()
+    }
 
     function setRunScriptButtons(my_data) {
         // Loop through the data and create a button for each item
@@ -472,39 +795,6 @@
         });
     });
 
-    
-    // Get all buttons with the 'animator-volume-update' class
-    // Add click event listener to each button
-    var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
-    volumeUpdateButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            var url = this.getAttribute('data-url');
-            var action = this.getAttribute('data-action');
-            data = {
-                action: action
-            }
-
-            button.setAttribute('disabled', 'true')
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text(); // assuming the response is plain text
-                })
-                .then(function (data) {
-                    volume.value = data; // Set the value of the input field with the received data
-                    button.removeAttribute('disabled')
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    button.removeAttribute('disabled')
-                });
-        });
-    });
 
     // Add click event listener to website submit button
     var websiteSubmitButton = document.getElementById('websiteSubmitButton');
@@ -553,6 +843,22 @@
     saveDataButton.addEventListener("click", function () {
         saveData();
     });
+
+    function updateAnimators() {
+        const myAnimatorDiv = document.getElementById("animatorContainer");
+        removeChildNodes(myAnimatorDiv)
+        getAnimators()
+    }
+
+    function removeChildNodes(myDiv) {
+        // Remove all child nodes
+        while (myDiv.firstChild) {
+            myDiv.removeChild(myDiv.firstChild);
+        }
+        // Remove all event listeners attached to the div
+        const clonedDiv = myDiv.cloneNode(true);
+        myDiv.parentNode.replaceChild(clonedDiv, myDiv);
+    }
 
     function populateTable(data) {
         // Clear existing table rows

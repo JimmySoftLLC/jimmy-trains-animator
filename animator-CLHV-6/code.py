@@ -37,9 +37,9 @@ gc_col("Imports gc, files")
 ################################################################################
 # Sd card config variables
 
-cfg = files.read_json_file("cfg.json")
+animators_folder = "/animations/"
 
-animations = files.return_directory("", "animations", ".json")
+cfg = files.read_json_file("cfg.json")
 
 ts_jsons = files.return_directory(
     "", "t_s_def", ".json")
@@ -50,6 +50,13 @@ cont_run = False
 ts_mode = False
 
 gc_col("config setup")
+
+def upd_media():
+    global animations
+
+    animations = files.return_directory("", "animations", ".json")
+
+upd_media()
 
 ################################################################################
 # Setup neo pixels
@@ -411,7 +418,46 @@ if (web):
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.", status=500)
+            
+        @server.route("/create-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animators_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                f_n = animators_folder + rq_d["fn"] + ".json"
+                an_data = ["0.0|B100,L00255", "1.0|B50,L0255", "2.0|B100,L0255", "3.0|B100,L0255"]
+                files.write_json_file(f_n, an_data)
+                upd_media()
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error creating animation.", status=500)
         
+        @server.route("/rename-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animators_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                fo = animators_folder + rq_d["fo"]
+                fn = animators_folder + rq_d["fn"] + ".json"
+                os.rename(fo, fn)
+                upd_media()
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.", status=500)
+            
+        @server.route("/delete-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animators_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                f_n = animators_folder + rq_d["fn"]
+                os.remove(f_n)
+                upd_media()
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.", status=500)
+            
+
         @server.route("/update-light-string", [POST])
         def btn(req: Request):
             global cfg
