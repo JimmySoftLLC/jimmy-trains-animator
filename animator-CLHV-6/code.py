@@ -841,9 +841,9 @@ async def set_hdw_async(input_string, dur):
                 b = int(segs_split[3])
                 set_neo_to(light_n, r, g, b)
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            elif seg[0] == 'N':
+            elif seg[:2] == 'NM':
                 segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])
+                mod_n = int(segs_split[0][2:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
