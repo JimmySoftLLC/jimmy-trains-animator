@@ -217,7 +217,7 @@
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <table id="dataTable" class="mui-table">
                     <thead>
                         <tr>
@@ -476,16 +476,22 @@
         mui.overlay('on', modalEl);
     }
 
+
     function duplicateAnimation() {
         var filenameInput = document.getElementById('filename').value.trim();
         var errorMessage = document.querySelector('.mui--text-danger');
 
         if (filenameInput) {
-            saveAnimationData(filenameInput + ".json", true);
+            animationScriptName.value = filenameInput;
+            saveAnimationScriptData();
+            updateAnimations()
+            var modalEl = document.getElementById("modalEl")
+            mui.overlay('off', modalEl)
         } else {
             errorMessage.textContent = 'Please enter a filename.';
         }
     }
+
 
     function renameAnimationDialog() {
         var modalEl = document.getElementById("modalEl")
@@ -643,6 +649,7 @@
                 showAlert(error);
             });
     }
+
 
     function updateAnimations() {
         const myAnimationScriptsDiv = document.getElementById("animationScriptsContainer");
@@ -870,12 +877,12 @@
     });
 
     // Table component
-    var saveDataButton = document.getElementById("saveDataButton");
+    var saveAnimationScriptDataButton = document.getElementById("saveAnimationScriptDataButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
 
-    saveDataButton.addEventListener("click", function () {
-        saveData();
+    saveAnimationScriptDataButton.addEventListener("click", function () {
+        saveAnimationScriptData();
     });
 
 
@@ -1113,8 +1120,8 @@
         populateTable(combinedData)
     }
 
-    function saveData() {
-        saveDataButton.setAttribute("disabled", "true");
+    function saveAnimationScriptData() {
+        saveAnimationScriptDataButton.setAttribute("disabled", "true");
         var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
@@ -1141,7 +1148,7 @@
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
                 // All blocks have been sent, enable the button
-                saveDataButton.removeAttribute('disabled');
+                saveAnimationScriptDataButton.removeAttribute('disabled');
                 return;
             }
 
@@ -1171,7 +1178,7 @@
                 .catch(function (error) {
                     alert(error.message);
                     // Enable the button even if an error occurs
-                    saveDataButton.removeAttribute('disabled');
+                    saveAnimationScriptDataButton.removeAttribute('disabled');
                 });
         }
 

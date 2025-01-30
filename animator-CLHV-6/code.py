@@ -568,6 +568,7 @@ if (web):
                     files.write_json_file(f_n, data)
                     data = []
                     gc_col("get data")
+                upd_media()
             except Exception as e:
                 files.log_item(e)
                 data = []
