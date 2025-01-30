@@ -1,4 +1,3 @@
-            
 from rainbowio import colorwheel
 import neopixel
 import asyncio
@@ -49,6 +48,8 @@ web = cfg["serve_webpage"]
 
 cont_run = False
 ts_mode = False
+
+exit_set_hdw_async = False
 
 gc_col("config setup")
 
@@ -522,7 +523,7 @@ if (web):
                 rq_d = request.json()
                 print(rq_d["an"])
                 gc_col("Save Data.")
-                asyncio.create_task(set_hdw_async(rq_d["an"]))  # Schedule the async task
+                asyncio.create_task(set_hdw_async(rq_d["an"], 3))  # Schedule the async task
                 return Response(request, "Test animation successfully")
             except Exception as e:
                 files.log_item(e)  # Log any errors
@@ -609,9 +610,8 @@ def clear_command_queue():
 
 def stop_all_commands():
     """Stop all commands and clear the queue."""
-    global running_mode, cont_run, exit_set_hdw_async
+    global cont_run, exit_set_hdw_async
     clear_command_queue()
-    running_mode = ""
     exit_set_hdw_async = True
     cont_run = False
     print("Processing stopped and command queue cleared.")
@@ -672,9 +672,9 @@ async def an_light_async(f_nm):
             if len(ft1) == 1 or ft1[1] == "":
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                await set_hdw_async(f"L0{lgt},S0{pos}")
+                await set_hdw_async(f"L0{lgt},S0{pos}",dur)
             else:
-                await set_hdw_async(ft1[1])
+                await set_hdw_async(ft1[1],dur)
             flsh_i += 1
             
         # print (flsh_i)
@@ -690,41 +690,258 @@ async def an_light_async(f_nm):
 ##############################
 # animation effects
 
+async def random_effect(il, ih, d):
+    i = random.randint(il, ih)
+    if i == 1:
+        await rbow(.005, d)
+    elif i == 2:
+        multi_color()
+        await asyncio.sleep(d)
+    elif i == 3:
+        await fire(d)
+
+async def rbow(spd, dur):
+    global exit_set_hdw_async
+    st = time.monotonic()
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0, 255, 1):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            await ç(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            await asyncio.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+            
+async def fire(dur):
+    global exit_set_hdw_async
+    st = time.monotonic()
+
+    firei = []
+
+    firei.extend(ornmnts)
+    firei.extend(cane_s)
+    firei.extend(cane_e)
+
+    stari = []
+    stari.extend(stars)
+
+    for i in stari:
+        led[i] = (255, 255, 255)
+
+    brnchsi = []
+    brnchsi.extend((brnchs))
+
+    for i in brnchsi:
+        led[i] = (50, 50, 50)
+
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+
+    # Flicker, based on our initial RGB values
+    while True:
+        for i in firei:
+            if exit_set_hdw_async:
+                return
+            f = random.randint(0, 110)
+            r1 = bnd(r-f, 0, 255)
+            g1 = bnd(g-f, 0, 255)
+            b1 = bnd(b-f, 0, 255)
+            led[i] = (r1, g1, b1)
+            led.show()
+        await asyncio.sleep(random.uniform(0.05, 0.1))
+        te = time.monotonic()-st
+        if te > dur:
+            return
+
+
+def multi_color():
+    for i in range(0, n_px):
+        r = random.randint(128, 255)
+        g = random.randint(128, 255)
+        b = random.randint(128, 255)
+        c = random.randint(0, 2)
+        if c == 0:
+            r1 = r
+            g1 = 0
+            b1 = 0
+        elif c == 1:
+            r1 = 0
+            g1 = g
+            b1 = 0
+        elif c == 2:
+            r1 = 0
+            g1 = 0
+            b1 = b
+        led[i] = (r1, g1, b1)
+
+    stari = []
+    stari.extend(stars)
+
+    for i in stari:
+        led[i] = (255, 255, 255)
+
+    brnchsi = []
+    brnchsi.extend((brnchs))
+
+    for i in brnchsi:
+        led[i] = (7, 163, 30)
+
+    canei = []
+    canei.extend(cane_e)
+    for i in canei:
+        led[i] = (255, 255, 255)
+    led.show()
+
+
+def bnd(c, l, u):
+    if (c < l):
+        c = l
+    if (c > u):
+        c = u
+    return c
+
 
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
-async def set_hdw_async(input_string):
+async def set_hdw_async(input_string, dur):
     """Async hardware control for NeoPixel lights."""
-    global sp, br
+    global sp, br, exit_set_hdw_async
     segs = input_string.split(",")
 
-    for seg in segs:
-        if seg[0] == 'L':  # Lights
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    sp[i] = v
+    try:
+        for seg in segs:
+            if exit_set_hdw_async:
+                return "STOP"
+            f_nm = ""
+            if seg[0] == 'E':  # end an
+                return "STOP"
+            elif seg[:2] == 'LN':
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][2:])-1
+                r = int(segs_split[1])
+                g = int(segs_split[2])
+                b = int(segs_split[3])
+                set_neo_to(light_n, r, g, b)
+            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+            elif seg[0] == 'N':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0][1:])
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_module_to(mod_n, index, v)
+            # brightness BXXX = Brightness XXX 000 to 100
+            elif seg[0:2] == 'BN':
+                br = int(seg[2:])
+                led.brightness = float(br/100)
+                led.show()
+            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+            elif seg[0] == 'F':
+                segs_split = seg.split("_")
+                v = int(segs_split[0][1:])
+                s = float(segs_split[1])
+                while not br == v:
+                    if br < v:
+                        br += 1
+                        led.brightness = float(br/100)
+                    else:
+                        br -= 1
+                        led.brightness = float(br/100)
+                    led.show()
+                    await asyncio.sleep(s)
+            # ZRAND = Random rainbow, fire, or color change
+            elif seg[0:] == 'ZRAND':
+                await random_effect(1, 3, dur)
+            # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+            elif seg[:2] == 'ZR':
+                v = float(seg[2:])
+                await rbow(v, dur)
+            # ZFIRE = Fire
+            elif seg[0:] == 'ZFIRE':
+                await fire(dur)
+            # ZCOLCH = Color change
+            elif seg[0:] == 'ZCOLCH':
+                multi_color()
+                await asyncio.sleep(dur)
+            # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
+            if seg[0] == 'Q':
+                file_nm = seg[1:]
+                add_command(file_nm)
+    except Exception as e:
+            files.log_item(e)
+
+def is_neo(number, nested_array):
+    return any(number in sublist for sublist in nested_array)
+
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):  # in range(n_px)
+            if is_neo(i, neos):
+                led[i] = (g, r, b)
             else:
-                sp[num - 1] = v
-            led[0] = (sp[1], sp[0], sp[2])
-            led[1] = (sp[4], sp[3], sp[5])
-            led.show()
-        elif seg[0] == 'B':  # Brightness
-            br = int(seg[1:])
-            led.brightness = float(br / 100)
-        elif seg[0] == 'F':  # Fade in/out
-            v = int(seg[1:])
-            while br != v:
-                if br < v:
-                    br += 1
-                else:
-                    br -= 1
-                led.brightness = float(br / 100)
-                await asyncio.sleep(0.01)  # Smoothly adjust brightness
+                led[i] = (r, g, b)
+    else:
+        if is_neo(light_n, neos):
+            led[light_n] = (g, r, b)
+        else:
+            led[light_n] = (r, g, b)
+    led.show()
 
+def get_neo_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neos):
+            matches.append(num)
+    return matches    
 
+def set_neo_module_to(mod_n, ind, v):
+    cur = []
+    neo_ids = get_neo_ids()
+    print(mod_n, ind, v, neo_ids)
+    if mod_n == 0:
+        for i in neo_ids:
+            led[i] = (v, v, v)
+            led[i+1] = (v, v, v)
+    elif ind == 0:
+        led[neo_ids[mod_n-1]] = (v, v, v)
+        led[neo_ids[mod_n-1]+1] = (v, v, v)
+    elif ind < 4:
+        ind -= 1
+        if ind == 0:
+            ind = 1
+        elif ind == 1:
+            ind = 0
+        cur = list(led[neo_ids[mod_n-1]])
+        cur[ind] = v
+        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+        print(led[neo_ids[mod_n-1]])
+    else:
+        ind -= 1
+        if ind == 3:
+            ind = 4
+        elif ind == 4:
+            ind = 3
+        cur = list(led[neo_ids[mod_n-1]+1])
+        cur[ind-3] = v
+        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
+    led.show()
 
 if (web):
     files.log_item("starting server...")
@@ -781,4 +998,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 
