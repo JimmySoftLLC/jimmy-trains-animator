@@ -712,7 +712,7 @@ async def rbow(spd, dur):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
-            await ç(spd)
+            await asyncio.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
                 return
