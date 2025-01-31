@@ -192,12 +192,6 @@
                 <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
                     corresponding buttons to duplicate, rename, or delete it.</li>
             </ol>
-            <div class="mui-checkbox">
-                <label>
-                    <input type="checkbox" id="tmccVoiceCheckbox" data-url="/set-tmcc-voice-enabled">
-                    Enable command voice
-                </label>
-            </div>
             <button class="mui-btn mui-btn--primary" onclick="createAnimationDialog()">Create
                 Animation</button>
             <button class="mui-btn mui-btn--primary" onclick="duplicateAnimationDialog()">Duplicate
@@ -225,6 +219,10 @@
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop"
+                    type="button">
+                    Stop
+                </button>
                 <table id="dataTable" class="mui-table">
                     <thead>
                         <tr>

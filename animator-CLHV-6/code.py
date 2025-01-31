@@ -46,9 +46,6 @@ ts_jsons = files.return_directory(
 
 web = cfg["serve_webpage"]
 
-cont_run = False
-ts_mode = False
-
 exit_set_hdw_async = False
 
 gc_col("config setup")
@@ -388,7 +385,7 @@ if (web):
 
         @server.route("/animation", [POST])
         def btn(request: Request):
-            global cfg, cont_run, ts_mode
+            global cfg
             rq_d = request.json()
             cfg["option_selected"] = rq_d["an"]
             add_command(cfg["option_selected"])
@@ -409,9 +406,16 @@ if (web):
                 rst_def()
                 files.write_json_file("cfg.json", cfg)
             return Response(request, "Utility: " + rq_d["an"])
+        
+        @server.route("/stop", [POST])
+        def btn(request: Request):
+            stop_all_commands()
+            return Response(request, "Stopped all commands")
 
         @server.route("/lights", [POST])
         def btn(request: Request):
+            global exit_set_hdw_async
+            exit_set_hdw_async = False
             """Handle lights route synchronously but process async operation in background."""
             try:
                 rq_d = request.json()  # Parse the incoming JSON
@@ -466,7 +470,6 @@ if (web):
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.", status=500)
             
-
         @server.route("/update-light-string", [POST])
         def btn(req: Request):
             global cfg
@@ -519,6 +522,8 @@ if (web):
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
+            global exit_set_hdw_async
+            exit_set_hdw_async = False
             try:
                 rq_d = request.json()
                 print(rq_d["an"])
@@ -531,7 +536,7 @@ if (web):
 
         @server.route("/get-animation", [POST])
         def btn(request: Request):
-            global cfg, cont_run, ts_mode
+            global cfg
             rq_d = request.json()
             snd_f = rq_d["an"]
             if (f_exists("animations/" + snd_f + ".json") == True):
@@ -583,10 +588,14 @@ if (web):
 
 gc_col("web server")
 
+
+################################################################################
 # Command queue
 command_queue = []
 
 def add_command(command, to_start=False):
+    global exit_set_hdw_async
+    exit_set_hdw_async = False
     """Add a command to the queue. If to_start is True, add to the front."""
     if to_start:
         command_queue.insert(0, command)  # Add to the front
@@ -610,10 +619,9 @@ def clear_command_queue():
 
 def stop_all_commands():
     """Stop all commands and clear the queue."""
-    global cont_run, exit_set_hdw_async
+    global exit_set_hdw_async
     clear_command_queue()
     exit_set_hdw_async = True
-    cont_run = False
     print("Processing stopped and command queue cleared.")
 
 
@@ -630,12 +638,8 @@ def rst_def():
 # animations
 
 
-lst_opt = ""
-
-
 async def an_async(f_nm):
     """Run animation lighting as an async task."""
-    global cfg, lst_opt
     print("Filename:", f_nm)
     try:
         await an_light_async(f_nm)
@@ -647,11 +651,16 @@ async def an_async(f_nm):
 
 async def an_light_async(f_nm):
     """Asynchronous animation lighting."""
-    global ts_mode
 
     flsh_t = []
     if f_exists("animations/" + f_nm + ".json"):
         flsh_t = files.read_json_file("animations/" + f_nm + ".json")
+
+    # add end command to time stamps to stop video when timestamps run out
+    ft_last = flsh_t[len(flsh_t)-1].split("|")
+    tm_last = float(ft_last[0]) + .1
+    flsh_t.append(str(tm_last) + "|E")
+    flsh_t.append(str(tm_last + .1) + "|E")
 
     flsh_i = 0
     srt_t = time.monotonic()
@@ -672,9 +681,15 @@ async def an_light_async(f_nm):
             if len(ft1) == 1 or ft1[1] == "":
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                await set_hdw_async(f"L0{lgt},S0{pos}",dur)
+                result = await set_hdw_async(f"L0{lgt},S0{pos}",dur)
+                if result == "STOP":
+                    await asyncio.sleep(0)  # Yield control to other tasks
+                    break
             else:
-                await set_hdw_async(ft1[1],dur)
+                result = await set_hdw_async(ft1[1],dur)
+                if result == "STOP":
+                    await asyncio.sleep(0)  # Yield control to other tasks
+                    break
             flsh_i += 1
             
         # print (flsh_i)
@@ -683,8 +698,8 @@ async def an_light_async(f_nm):
 
         # Exit condition for stopping animation
         if flsh_i >= len(flsh_t)-1:
-            led.fill((0, 0, 0))
-            led.show()
+            # led.fill((0, 0, 0))
+            # led.show()
             break
 
 ##############################
@@ -830,7 +845,6 @@ async def set_hdw_async(input_string, dur):
         for seg in segs:
             if exit_set_hdw_async:
                 return "STOP"
-            f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
             elif seg[:2] == 'LN':
