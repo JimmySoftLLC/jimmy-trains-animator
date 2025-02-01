@@ -524,7 +524,7 @@ def stp_all_cmds():
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
-# Global Methods
+# Misc Methods
 
 
 def rst_def():
@@ -553,6 +553,23 @@ def upd_vol(seconds):
             volume = .5
         mix.voice[0].level = volume
         time.sleep(seconds)
+
+
+async def upd_vol_async(s):
+    if cfg["volume_pot"]:
+        v = a_in.value / 65536
+        mix.voice[0].level = v
+        await asyncio.sleep(s)
+    else:
+        try:
+            v = int(cfg["volume"]) / 100
+        except Exception as e:
+            files.log_item(e)
+            v = .5
+        if v < 0 or v > 1:
+            v = .5
+        mix.voice[0].level = v
+        await asyncio.sleep(s)
 
 
 def ch_vol(action):
@@ -670,24 +687,8 @@ def spk_web():
     ply_a_0("/sd/mvc/in_your_browser.wav")
 
 ################################################################################
-# async methods
+# servo helpers
 
-
-async def upd_vol_async(s):
-    if cfg["volume_pot"]:
-        v = a_in.value / 65536
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
-    else:
-        try:
-            v = int(cfg["volume"]) / 100
-        except Exception as e:
-            files.log_item(e)
-            v = .5
-        if v < 0 or v > 1:
-            v = .5
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
 
 p_arr = [90, 90, 90, 90, 90, 90]
 
@@ -721,7 +722,7 @@ def m_servo(n, p):
     p_arr[n][n] = p
 
 ################################################################################
-# animations
+# Animations
 
 
 lst_opt = ""
