@@ -419,11 +419,11 @@ if (web):
             """Handle lights route synchronously but process async operation in background."""
             try:
                 rq_d = request.json()  # Parse the incoming JSON
-                asyncio.create_task(set_hdw_async(rq_d["an"]))  # Schedule the async task
+                asyncio.create_task(set_hdw_async(rq_d["an"],0))  # Schedule the async task
                 return Response(request, "Utility: set lights successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.", status=500)
+                return Response(request, "Error setting lights.")
             
         @server.route("/create-animation", [POST])
         def btn(request: Request):
@@ -439,7 +439,7 @@ if (web):
                 return Response(request, "Created animation successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
-                return Response(request, "Error creating animation.", status=500)
+                return Response(request, "Error creating animation.")
         
         @server.route("/rename-animation", [POST])
         def btn(request: Request):
@@ -453,7 +453,7 @@ if (web):
                 return Response(request, "Renamed animation successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.", status=500)
+                return Response(request, "Error setting lights.")
             
         @server.route("/delete-animation", [POST])
         def btn(request: Request):
@@ -468,7 +468,7 @@ if (web):
                 return Response(request, "Delete animation successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.", status=500)
+                return Response(request, "Error setting lights.")
             
         @server.route("/update-light-string", [POST])
         def btn(req: Request):
@@ -532,7 +532,7 @@ if (web):
                 return Response(request, "Test animation successfully")
             except Exception as e:
                 files.log_item(e)  # Log any errors
-                return Response(request, "Error test animation.", status=500)
+                return Response(request, "Error test animation.")
 
         @server.route("/get-animation", [POST])
         def btn(request: Request):
