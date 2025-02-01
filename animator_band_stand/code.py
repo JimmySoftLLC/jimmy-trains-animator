@@ -1,6 +1,5 @@
 import utilities
 from adafruit_debouncer import Debouncer
-from rainbowio import colorwheel
 import neopixel
 from analogio import AnalogIn
 import asyncio
@@ -260,15 +259,18 @@ if (web):
 
         @server.route("/")
         def base(request: HTTPRequest):
+            stop_a_0()
             gc_col("Home page.")
             return FileResponse(request, "index.html", "/")
 
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
+            stop_a_0()
             return FileResponse(request, "/sd/mui.min.css", "/")
 
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
+            stop_a_0()
             return FileResponse(request, "/sd/mui.min.js", "/")
 
         @server.route("/animation", [POST])
@@ -277,12 +279,13 @@ if (web):
             rq_d = request.json()
             cfg["option_selected"] = rq_d["an"]
             add_command("AN_" + cfg["option_selected"])
-            files.write_json_file("/sd/cfg.json", cfg)
+            # files.write_json_file("/sd/cfg.json", cfg)
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/defaults", [POST])
         def btn(request: Request):
             global cfg
+            stop_a_0()
             rq_d = request.json()
             if rq_d["an"] == "reset_animation_timing_to_defaults":
                 for ts_fn in ts_jsons:
@@ -317,6 +320,7 @@ if (web):
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif rq_d["an"] == "cont_mode_off":
                 cont_run = False
+                stop_all_commands()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             elif rq_d["an"] == "timestamp_mode_on":
                 ts_mode = True
@@ -330,6 +334,7 @@ if (web):
         @server.route("/speaker", [POST])
         def btn(request: Request):
             global cfg
+            stop_a_0()
             rq_d = request.json()
             if rq_d["an"] == "speaker_test":
                 cmd_snt = "speaker_test"
@@ -348,11 +353,14 @@ if (web):
 
         @server.route("/lights", [POST])
         def btn(request: Request):
+            stop_a_0()
             rq_d = request.json()
             add_command(rq_d["an"])
             return Response(request, "Utility: " + "Utility: set lights")
+        
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
+            stop_a_0()
             global cfg
             rq_d = request.json()
             cfg["HOST_NAME"] = rq_d["an"]
@@ -363,15 +371,18 @@ if (web):
 
         @server.route("/get-host-name", [POST])
         def btn(request: Request):
+            stop_a_0()
             return Response(request, cfg["HOST_NAME"])
         
         @server.route("/get-local-ip", [POST])
         def buttonpress(req: Request):
+            stop_a_0()
             return Response(req, local_ip)
 
         @server.route("/update-volume", [POST])
         def btn(request: Request):
             global cfg
+            # stop_a_0()
             rq_d = request.json()
             ch_vol(rq_d["action"])
             return Response(request, cfg["volume"])
@@ -382,11 +393,13 @@ if (web):
 
         @server.route("/get-customers-sound-tracks", [POST])
         def btn(request: Request):
+            stop_a_0()
             my_string = files.json_stringify(cust_snd_opt)
             return Response(request, my_string)
 
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
+            stop_a_0()
             sounds = []
             sounds.extend(snd_opt)
             my_string = files.json_stringify(sounds)
@@ -394,6 +407,7 @@ if (web):
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
+            stop_a_0()
             rq_d = request.json()
             print(rq_d["an"])
             gc_col("Save Data.")
@@ -403,6 +417,7 @@ if (web):
         @server.route("/get-animation", [POST])
         def btn(request: Request):
             global cfg, cont_run, ts_mode
+            stop_a_0()
             rq_d = request.json()
             snd_f = rq_d["an"]
             if "customers_owned_music_" in snd_f:
@@ -424,6 +439,7 @@ if (web):
 
         @server.route("/delete-file", [POST])
         def btn(request: Request):
+            stop_a_0()
             rq_d = request.json()
             f_n = ""
             if "customers_owned_music_" in rq_d["an"]:
@@ -440,6 +456,8 @@ if (web):
         @server.route("/save-data", [POST])
         def btn(request: Request):
             global data
+            gc_col("prep save data")
+            stop_a_0()
             rq_d = request.json()
             try:
                 if rq_d[0] == 0:
@@ -562,9 +580,10 @@ def ch_vol(action):
         v = 1
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
-    files.write_json_file("/sd/cfg.json", cfg)
-    ply_a_0("/sd/mvc/volume.wav")
-    spk_str(cfg["volume"], False)
+    if not mix.voice[0].playing:
+        files.write_json_file("/sd/cfg.json", cfg)
+        ply_a_0("/sd/mvc/volume.wav")
+        spk_str(cfg["volume"], False)
 
 
 def ply_a_0(file_name):
@@ -831,14 +850,14 @@ async def an_light_async(f_nm):
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-        l_sw.update()
-        if l_sw.fell and cfg["can_cancel"]:
+        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        if switch_state =="left" and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
             return
-        upd_vol(.1)
+        await upd_vol_async(.1)
 
 
 def an_ts(f_nm):
@@ -1012,13 +1031,14 @@ class BseSt(Ste):
         if switch_state == "left_held":
             if cont_run:
                 cont_run = False
+                stop_all_commands()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif switch_state == "left" or cont_run:
+        elif (switch_state == "left" or cont_run) and not mix.voice[0].playing:
             add_command("AN_"+ cfg["option_selected"])
-        elif switch_state == "right":
+        elif switch_state == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
 
 
@@ -1335,8 +1355,9 @@ async def garbage_collection_task():
         await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
 
 async def state_mach_upd_task(st_mch):
-    st_mch.upd()
-    upd_vol(.1)
+    while True:
+        st_mch.upd()
+        await asyncio.sleep(0)
 
 async def main():
     # Create asyncio tasks
@@ -1357,4 +1378,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 
