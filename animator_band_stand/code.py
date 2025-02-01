@@ -778,7 +778,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global ts_mode
+    global ts_mode, cont_run
 
     cust_f = "customers_owned_music_" in f_nm
 
@@ -856,6 +856,13 @@ async def an_light_async(f_nm):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
+        if sw_st == "left_held":
+            mix.voice[0].stop()
+            if cont_run:
+                cont_run = False
+                stp_all_cmds()
+                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
