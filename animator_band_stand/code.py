@@ -276,7 +276,7 @@ if (web):
             global cfg, cont_run, ts_mode
             rq_d = request.json()
             cfg["option_selected"] = rq_d["an"]
-            an(cfg["option_selected"])
+            add_command("AN_" + cfg["option_selected"])
             files.write_json_file("/sd/cfg.json", cfg)
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
@@ -349,7 +349,7 @@ if (web):
         @server.route("/lights", [POST])
         def btn(request: Request):
             rq_d = request.json()
-            set_hdw(rq_d["an"])
+            add_command(rq_d["an"])
             return Response(request, "Utility: " + "Utility: set lights")
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
@@ -397,7 +397,7 @@ if (web):
             rq_d = request.json()
             print(rq_d["an"])
             gc_col("Save Data.")
-            set_hdw(rq_d["an"])
+            add_command(rq_d["an"])
             return Response(request, "success")
 
         @server.route("/get-animation", [POST])
@@ -469,6 +469,41 @@ if (web):
         files.log_item(e)
 
 gc_col("web server")
+
+################################################################################
+# Command queue
+command_queue = []
+
+def add_command(command, to_start=False):
+    global exit_set_hdw_async
+    exit_set_hdw_async = False
+    """Add a command to the queue. If to_start is True, add to the front."""
+    if to_start:
+        command_queue.insert(0, command)  # Add to the front
+        print("Command added to the start:", command)
+    else:
+        command_queue.append(command)  # Add to the end
+        print("Command added to the end:", command)
+
+async def process_commands():
+    """Asynchronous function to process commands in a FIFO order."""
+    while command_queue:
+        command = command_queue.pop(0)  # Retrieve from the front of the queue
+        print("Processing command:", command)
+        await set_hdw_async(command)  # Process each command as an async operation
+        await asyncio.sleep(0)  # Yield control to the event loop
+
+def clear_command_queue():
+    """Clear all commands from the queue."""
+    command_queue.clear()
+    print("Command queue cleared.")
+
+def stop_all_commands():
+    """Stop all commands and clear the queue."""
+    global exit_set_hdw_async
+    clear_command_queue()
+    exit_set_hdw_async = True
+    print("Processing stopped and command queue cleared.")
 
 ################################################################################
 # Global Methods
@@ -618,11 +653,6 @@ def spk_web():
 ################################################################################
 # async methods
 
-
-# Create an event loop
-loop = asyncio.get_event_loop()
-
-
 async def upd_vol_async(s):
     if cfg["volume_pot"]:
         v = a_in.value / 65536
@@ -677,7 +707,7 @@ def m_servo(n, p):
 lst_opt = ""
 
 
-def an(f_nm):
+async def an_async(f_nm):
     global cfg, lst_opt
     print("Filename: " + f_nm)
     cur_opt = f_nm
@@ -716,7 +746,7 @@ def an(f_nm):
             an_ts(cur_opt)
             gc_col("animation cleanup")
         else:
-            an_light(cur_opt)
+            await an_light_async(cur_opt)
             gc_col("animation cleanup")
     except Exception as e:
         files.log_item(e)
@@ -726,7 +756,7 @@ def an(f_nm):
     gc_col("Animation complete.")
 
 
-def an_light(f_nm):
+async def an_light_async(f_nm):
     global ts_mode
 
     cust_f = "customers_owned_music_" in f_nm
@@ -791,9 +821,15 @@ def an_light(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                set_hdw("L0" + str(lgt) + ",S0" + str(pos))
+                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
+                if result == "STOP":
+                    await asyncio.sleep(0)  # Yield control to other tasks
+                    break
             else:
-                set_hdw(ft1[1])
+                result = await set_hdw_async(ft1[1])
+                if result == "STOP":
+                    await asyncio.sleep(0)  # Yield control to other tasks
+                    break
             flsh_i += 1
         l_sw.update()
         if l_sw.fell and cfg["can_cancel"]:
@@ -855,12 +891,6 @@ def an_ts(f_nm):
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
-
-def set_hdw(input_string):
-    loop.create_task(set_hdw_async(input_string))
-    loop.run_forever()
-
-
 async def set_hdw_async(input_string):
     global sp, br
     # Split the input string into segments
@@ -868,7 +898,17 @@ async def set_hdw_async(input_string):
 
     # Process each segment
     for seg in segs:
-        if seg[0] == 'L':  # lights
+        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
+        if seg[0] == 'S':
+            num = int(seg[1])
+            v = int(seg[2:])
+            if num == 0:
+                for i in range(6):
+                    s_arr[i].angle = v
+            else:
+                s_arr[num-1].angle = int(v)
+        # LNXXX = Lights N (0 All, 1-6) XXX 0 to 255
+        elif seg[0] == 'L':  # lights
             num = int(seg[1])
             v = int(seg[2:])
             if num == 0:
@@ -879,18 +919,12 @@ async def set_hdw_async(input_string):
             led[0] = (sp[1], sp[0], sp[2])
             led[1] = (sp[4], sp[3], sp[5])
             led.show()
-        if seg[0] == 'S':  # servos
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    s_arr[i].angle = v
-            else:
-                s_arr[num-1].angle = int(v)
-        if seg[0] == 'B':  # brightness
+        # BXXX = Brightness XXX 0 to 100
+        elif seg[0] == 'B':
             br = int(seg[1:])
             led.brightness = float(br/100)
-        if seg[0] == 'F':  # fade in or out
+        # FXXX = Fade brightness in or out XXX 0 to 100    
+        elif seg[0] == 'F':
             v = int(seg[1:])
             while not br == v:
                 if br < v:
@@ -900,6 +934,10 @@ async def set_hdw_async(input_string):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
+        # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use "customers_owned_music_filename"
+        elif seg[:2] == 'AN':
+            seg_split = seg.split("_")
+            await an_async(seg_split[1])  # Process each command as an async operation
 
 ################################################################################
 # State Machine
@@ -979,7 +1017,7 @@ class BseSt(Ste):
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif switch_state == "left" or cont_run:
-            an(cfg["option_selected"])
+            add_command("AN_"+ cfg["option_selected"])
         elif switch_state == "right":
             mch.go_to('main_menu')
 
@@ -1265,20 +1303,58 @@ if (web):
         rst()
 
 #  set all servos to 90
-set_hdw("S090")
+add_command("S090") # this needs updating
 upd_vol(.5)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
-while True:
-    st_mch.upd()
-    upd_vol(.1)
-    if (web):
+# Main task handling
+async def process_commands_task():
+    """Task to continuously process commands."""
+    while True:
         try:
-            server.poll()
-            gc.collect()
+            await process_commands()  # Async command processing
         except Exception as e:
             files.log_item(e)
-            continue
+        await asyncio.sleep(0)  # Yield control to other tasks
+
+async def server_poll_task(server):
+    """Poll the web server."""
+    while True:
+        try:
+            server.poll()  # Web server polling
+        except Exception as e:
+            files.log_item(e)
+        await asyncio.sleep(0)  # Yield control to other tasks
+
+async def garbage_collection_task():
+    while True:
+        gc.collect()  # Collect garbage
+        await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
+
+async def state_mach_upd_task(st_mch):
+    st_mch.upd()
+    upd_vol(.1)
+
+async def main():
+    # Create asyncio tasks
+    tasks = [
+        process_commands_task(),
+        garbage_collection_task(),
+        state_mach_upd_task(st_mch)
+    ]
+
+    if web:
+        tasks.append(server_poll_task(server))
+
+    # Run all tasks concurrently
+    await asyncio.gather(*tasks)
+
+# Run the asyncio event loop
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    pass
+
