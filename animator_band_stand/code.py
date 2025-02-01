@@ -188,8 +188,8 @@ ts_mode = False
 
 local_ip = ""
 
-override_switch_state = {}
-override_switch_state["switch_value"] = ""
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
 
@@ -198,7 +198,7 @@ gc_col("config setup")
 
 num_px = 2
 
-#15 on demo 17 tiny 10 on large
+# 15 on demo 17 tiny 10 on large
 led = neopixel.NeoPixel(board.GP17, num_px)
 
 gc_col("Neopixels setup")
@@ -241,7 +241,7 @@ if (web):
         mdns.hostname = cfg["HOST_NAME"]
         mdns.advertise_service(
             service_type="_http", protocol="_tcp", port=80)
-        
+
         local_ip = str(wifi.radio.ipv4_address)
 
         # files.log_items IP address to REPL
@@ -278,8 +278,9 @@ if (web):
             global cfg, cont_run, ts_mode
             rq_d = request.json()
             cfg["option_selected"] = rq_d["an"]
-            add_command("AN_" + cfg["option_selected"])
-            # files.write_json_file("/sd/cfg.json", cfg)
+            add_cmd("AN_" + cfg["option_selected"])
+            if not mix.voice[0].playing:
+                files.write_json_file("/sd/cfg.json", cfg)
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
         @server.route("/defaults", [POST])
@@ -306,23 +307,25 @@ if (web):
             global cfg, cont_run, ts_mode
             rq_d = request.json()
             if rq_d["an"] == "left":
-                override_switch_state["switch_value"] = "left"
+                ovrde_sw_st["switch_value"] = "left"
             elif rq_d["an"] == "right":
-                override_switch_state["switch_value"] = "right"
+                ovrde_sw_st["switch_value"] = "right"
             elif rq_d["an"] == "right_held":
-                override_switch_state["switch_value"] = "right_held"
+                ovrde_sw_st["switch_value"] = "right_held"
             elif rq_d["an"] == "three":
-                override_switch_state["switch_value"] = "three"
+                ovrde_sw_st["switch_value"] = "three"
             elif rq_d["an"] == "four":
-                override_switch_state["switch_value"] = "four"
+                ovrde_sw_st["switch_value"] = "four"
             elif rq_d["an"] == "cont_mode_on":
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif rq_d["an"] == "cont_mode_off":
                 cont_run = False
-                stop_all_commands()
+                stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             elif rq_d["an"] == "timestamp_mode_on":
+                cont_run = False
+                stp_all_cmds()
                 ts_mode = True
                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
                 ply_a_0("/sd/mvc/timestamp_instructions.wav")
@@ -337,15 +340,12 @@ if (web):
             stop_a_0()
             rq_d = request.json()
             if rq_d["an"] == "speaker_test":
-                cmd_snt = "speaker_test"
                 ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
             elif rq_d["an"] == "volume_pot_off":
-                cmd_snt = "volume_pot_off"
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
             elif rq_d["an"] == "volume_pot_on":
-                cmd_snt = "volume_pot_on"
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -355,13 +355,13 @@ if (web):
         def btn(request: Request):
             stop_a_0()
             rq_d = request.json()
-            add_command(rq_d["an"])
+            add_cmd(rq_d["an"])
             return Response(request, "Utility: " + "Utility: set lights")
-        
+
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
-            stop_a_0()
             global cfg
+            stop_a_0()
             rq_d = request.json()
             cfg["HOST_NAME"] = rq_d["an"]
             files.write_json_file("/sd/cfg.json", cfg)
@@ -373,7 +373,7 @@ if (web):
         def btn(request: Request):
             stop_a_0()
             return Response(request, cfg["HOST_NAME"])
-        
+
         @server.route("/get-local-ip", [POST])
         def buttonpress(req: Request):
             stop_a_0()
@@ -382,7 +382,6 @@ if (web):
         @server.route("/update-volume", [POST])
         def btn(request: Request):
             global cfg
-            # stop_a_0()
             rq_d = request.json()
             ch_vol(rq_d["action"])
             return Response(request, cfg["volume"])
@@ -411,7 +410,7 @@ if (web):
             rq_d = request.json()
             print(rq_d["an"])
             gc_col("Save Data.")
-            add_command(rq_d["an"])
+            add_cmd(rq_d["an"])
             return Response(request, "success")
 
         @server.route("/get-animation", [POST])
@@ -492,10 +491,10 @@ gc_col("web server")
 # Command queue
 command_queue = []
 
-def add_command(command, to_start=False):
+
+def add_cmd(command, to_start=False):
     global exit_set_hdw_async
     exit_set_hdw_async = False
-    """Add a command to the queue. If to_start is True, add to the front."""
     if to_start:
         command_queue.insert(0, command)  # Add to the front
         print("Command added to the start:", command)
@@ -503,23 +502,24 @@ def add_command(command, to_start=False):
         command_queue.append(command)  # Add to the end
         print("Command added to the end:", command)
 
-async def process_commands():
-    """Asynchronous function to process commands in a FIFO order."""
+
+async def process_cmd():
     while command_queue:
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
-        await set_hdw_async(command)  # Process each command as an async operation
+        # Process each command as an async operation
+        await set_hdw_async(command)
         await asyncio.sleep(0)  # Yield control to the event loop
 
-def clear_command_queue():
-    """Clear all commands from the queue."""
+
+def clr_cmd_queue():
     command_queue.clear()
     print("Command queue cleared.")
 
-def stop_all_commands():
-    """Stop all commands and clear the queue."""
+
+def stp_all_cmds():
     global exit_set_hdw_async
-    clear_command_queue()
+    clr_cmd_queue()
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
 
@@ -671,6 +671,7 @@ def spk_web():
 
 ################################################################################
 # async methods
+
 
 async def upd_vol_async(s):
     if cfg["volume_pot"]:
@@ -836,7 +837,7 @@ async def an_light_async(f_nm):
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item("time elapsed: " + str(t_past) +
-                  " Timestamp: " + ft1[0])
+                           " Timestamp: " + ft1[0])
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
@@ -850,8 +851,9 @@ async def an_light_async(f_nm):
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-        switch_state = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state =="left" and cfg["can_cancel"]:
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
@@ -910,6 +912,7 @@ def an_ts(f_nm):
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
+
 async def set_hdw_async(input_string):
     global sp, br
     # Split the input string into segments
@@ -942,7 +945,7 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'B':
             br = int(seg[1:])
             led.brightness = float(br/100)
-        # FXXX = Fade brightness in or out XXX 0 to 100    
+        # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
             while not br == v:
@@ -956,7 +959,8 @@ async def set_hdw_async(input_string):
         # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use "customers_owned_music_filename"
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
-            await an_async(seg_split[1])  # Process each command as an async operation
+            # Process each command as an async operation
+            await an_async(seg_split[1])
 
 ################################################################################
 # State Machine
@@ -1026,19 +1030,19 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global cont_run
-        switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left_held":
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left_held":
             if cont_run:
                 cont_run = False
-                stop_all_commands()
+                stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif (switch_state == "left" or cont_run) and not mix.voice[0].playing:
-            add_command("AN_"+ cfg["option_selected"])
-        elif switch_state == "right" and not mix.voice[0].playing:
+        elif (sw_st == "left" or cont_run) and not mix.voice[0].playing:
+            add_cmd("AN_" + cfg["option_selected"])
+        elif sw_st == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
 
 
@@ -1062,15 +1066,15 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
-        if switch_state == "right":
+        if sw_st == "right":
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
@@ -1105,9 +1109,9 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1126,7 +1130,7 @@ class Snds(Ste):
                     self.i = 0
                 while mix.voice[0].playing:
                     pass
-        if switch_state == "right":
+        if sw_st == "right":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1163,16 +1167,16 @@ class AddSnds(Ste):
 
     def upd(self, mch):
         global ts_mode
-        switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left":
             ply_a_0(
                 "/sd/mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(add_snd)-1:
                 self.i = 0
-        if switch_state == "right":
+        if sw_st == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
                 ply_a_0("/sd/mvc/create_sound_track_files.wav")
@@ -1211,36 +1215,36 @@ class VolSet(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left" and not s.vol_adj_mode:
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
                 s.i = 0
-        if vol_set[s.sel_i]== "volume_level_adjustment" and not s.vol_adj_mode:
-            if switch_state == "right":
+        if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
+            if sw_st == "right":
                 s.vol_adj_mode = True
                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
-        elif switch_state == "left" and s.vol_adj_mode:
-                ch_vol("lower")
-        elif switch_state == "right" and s.vol_adj_mode:
-                ch_vol("raise")
-        elif switch_state == "right_held" and s.vol_adj_mode:
+        elif sw_st == "left" and s.vol_adj_mode:
+            ch_vol("lower")
+        elif sw_st == "right" and s.vol_adj_mode:
+            ch_vol("raise")
+        elif sw_st == "right_held" and s.vol_adj_mode:
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1)
-        if switch_state == "right" and vol_set[s.sel_i] == "volume_pot_off":
+        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_off":
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
-        if switch_state == "right" and vol_set[s.sel_i] == "volume_pot_on":
+        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1265,15 +1269,15 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
-        if switch_state == "left":
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left":
             ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
                 self.i = 0
-        if switch_state == "right":
+        if sw_st == "right":
             selected_menu_item = web_m[self.sel_i]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True
@@ -1323,7 +1327,7 @@ if (web):
         rst()
 
 #  set all servos to 90
-add_command("S090") # this needs updating
+add_cmd("S090")  # this needs updating
 upd_vol(.5)
 
 st_mch.go_to('base_state')
@@ -1331,16 +1335,19 @@ files.log_item("animator has started...")
 gc_col("animations started.")
 
 # Main task handling
-async def process_commands_task():
+
+
+async def process_cmd_tsk():
     """Task to continuously process commands."""
     while True:
         try:
-            await process_commands()  # Async command processing
+            await process_cmd()  # Async command processing
         except Exception as e:
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
 
-async def server_poll_task(server):
+
+async def server_poll_tsk(server):
     """Poll the web server."""
     while True:
         try:
@@ -1349,26 +1356,22 @@ async def server_poll_task(server):
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
 
-async def garbage_collection_task():
-    while True:
-        gc.collect()  # Collect garbage
-        await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
 
 async def state_mach_upd_task(st_mch):
     while True:
         st_mch.upd()
         await asyncio.sleep(0)
 
+
 async def main():
     # Create asyncio tasks
     tasks = [
-        process_commands_task(),
-        garbage_collection_task(),
+        process_cmd_tsk(),
         state_mach_upd_task(st_mch)
     ]
 
     if web:
-        tasks.append(server_poll_task(server))
+        tasks.append(server_poll_tsk(server))
 
     # Run all tasks concurrently
     await asyncio.gather(*tasks)
@@ -1378,5 +1381,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
-
