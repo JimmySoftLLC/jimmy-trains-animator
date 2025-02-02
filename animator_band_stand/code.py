@@ -538,11 +538,11 @@ def rst_def():
 # Dialog and sound play methods
 
 
-def upd_vol(seconds):
+def upd_vol(s):
     if cfg["volume_pot"]:
         volume = a_in.value / 65536
         mix.voice[0].level = volume
-        time.sleep(seconds)
+        time.sleep(s)
     else:
         try:
             volume = int(cfg["volume"]) / 100
@@ -552,7 +552,7 @@ def upd_vol(seconds):
         if volume < 0 or volume > 1:
             volume = .5
         mix.voice[0].level = volume
-        time.sleep(seconds)
+        time.sleep(s)
 
 
 async def upd_vol_async(s):
