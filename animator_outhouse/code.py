@@ -694,7 +694,7 @@ def no_user_track():
 ################################################################################
 # Servo helpers
 
-async def mov_d_s(n_pos, speed):
+def mov_d_s(n_pos, speed):
     global d_lst_p
     sign = 1
     if d_lst_p > n_pos:
@@ -705,7 +705,7 @@ async def mov_d_s(n_pos, speed):
     mov_d(n_pos)
 
 
-async def mov_r_s(n_pos, spd):
+def mov_r_s(n_pos, spd):
     global r_lst_p
     sign = 1
     if r_lst_p > n_pos:
@@ -715,7 +715,7 @@ async def mov_r_s(n_pos, spd):
         time.sleep(spd)
     mov_r(n_pos)
 
-async def mov_g_s(n_pos, speed, led):
+def mov_g_s(n_pos, speed, led):
     global g_lst_p
     tot_d = abs(g_lst_p - n_pos)
     sign = 1
@@ -958,7 +958,7 @@ async def ply_mtch(fn, srt, end, wait):
 
 async def d_snd(pos):
     await rnd_snd("/sd/sqk", "sqk", 0, 0, False)
-    await mov_d_s(pos, .03)
+    mov_d_s(pos, .03)
     while mix.voice[0].playing:
         pass
 
@@ -1044,7 +1044,7 @@ async def no_exp():
         await rn_music(0, 1, 1)
     elif cfg["figure"] == "alien":
         await d_snd(cfg["door_open_position"])
-        await mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
         await rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
         await alien_tlk()
         led_F[0] = ((0, 0, 0))
@@ -1052,7 +1052,7 @@ async def no_exp():
         await d_snd(cfg["door_closed_position"])
     else:
         await d_snd(cfg["door_open_position"])
-        await mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
         await rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, True)
         led_F[0] = ((0, 0, 0))
         led_F.show()
@@ -1066,11 +1066,11 @@ async def rst_an(rest_roof):
     led_B.fill((0, 0, 0))
     led_B.show()
     mov_d(cfg["door_closed_position"])
-    await mov_g_s(cfg["guy_down_position"]-10, 0.001, False)
+    mov_g_s(cfg["guy_down_position"]-10, 0.001, False)
     await asyncio.sleep(.2)
     if rest_roof:
-        await mov_r_s(cfg["roof_closed_position"]+20, .001)
-        await mov_r_s(cfg["roof_closed_position"], .05)
+        mov_r_s(cfg["roof_closed_position"]+20, .001)
+        mov_r_s(cfg["roof_closed_position"], .05)
 
 
 async def an():
@@ -1515,7 +1515,9 @@ class Dlg_Opt(Ste):
                     s.i = 0
         if sw == "right":
             opts = dlg_opt[s.sel_i].split(" ")
-            if opts[0] == "exp":
+            if opts[0] == "exit_this_menu":
+                print("choose exit this menu")
+            elif opts[0] == "exp":
                 cfg["explosions_freq"] = int(opts[1])
             else:
                 cfg["rating"] = opts[1]
