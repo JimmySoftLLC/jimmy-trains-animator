@@ -286,7 +286,13 @@ if (web):
         def buttonpress(req: Request):
             req_d = req.json()
             if "RUN" == req_d["an"]:
-                an()
+                add_cmd("RUN")
+            elif "RUNG" == req_d["an"]:
+                add_cmd("RUNG")
+            elif "RUNPG" == req_d["an"]:
+                add_cmd("RUNPG")
+            elif "RUNC" == req_d["an"]:
+                add_cmd("RUNC")
             elif "G" == req_d["an"]:
                 set_cfg("rating", "g")
             elif "PG" == req_d["an"]:
@@ -463,8 +469,14 @@ async def process_cmd():
     while command_queue:
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
-        # Process each command as an async operation
-        await set_hdw_async(command)
+        # Process each command as an async operation     
+        if command == "RUNG":
+            cfg["rating"] = "g"
+        elif command == "RUNPG":
+            cfg["rating"] = "pg"
+        elif command == "RUNC":
+            cfg["rating"] = "c"
+        await an()
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -1077,7 +1089,7 @@ def rst_an(rest_roof):
         mov_r_s(cfg["roof_closed_position"], .05)
 
 
-def an():
+async def an():
     global reset_roof
     reset_roof = True
 
@@ -1187,12 +1199,13 @@ class BseSt(Ste):
         if sw == "left_held" and not instal_fig:
             if cont_run:
                 cont_run = False
+                stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif (sw == "left" or cont_run) and not instal_fig:
-            an()
+            add_cmd("RUN")
         elif sw == "right" and not instal_fig:
             mch.go_to('main_menu')
         elif sw == "right" and instal_fig:
