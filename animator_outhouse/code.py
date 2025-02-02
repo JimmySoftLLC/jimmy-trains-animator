@@ -476,6 +476,7 @@ async def process_cmd():
             cfg["rating"] = "pg"
         elif command == "RUNC":
             cfg["rating"] = "c"
+
         await an()
         await asyncio.sleep(0)  # Yield control to the event loop
 
@@ -610,6 +611,12 @@ def exit_early():
     if l_sw.fell:
         mix.voice[0].stop()
 
+async def exit_early_async():
+    await upd_vol_async(0.02)
+    l_sw.update()
+    if l_sw.fell:
+        mix.voice[0].stop()
+
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -687,18 +694,7 @@ def no_user_track():
 ################################################################################
 # Servo helpers
 
-
-def mov_d(pos):
-    if pos < d_min:
-        pos = d_min
-    if pos > d_max:
-        pos = d_max
-    d_s.angle = pos
-    global d_lst_p
-    d_lst_p = pos
-
-
-def mov_d_s(n_pos, speed):
+async def mov_d_s(n_pos, speed):
     global d_lst_p
     sign = 1
     if d_lst_p > n_pos:
@@ -709,17 +705,17 @@ def mov_d_s(n_pos, speed):
     mov_d(n_pos)
 
 
-def mov_g(pos):
-    if pos < g_min:
-        pos = g_min
-    if pos > g_max:
-        pos = g_max
-    g_s.angle = pos
-    global g_lst_p
-    g_lst_p = pos
+async def mov_r_s(n_pos, spd):
+    global r_lst_p
+    sign = 1
+    if r_lst_p > n_pos:
+        sign = - 1
+    for roof_angle in range(r_lst_p, n_pos, sign):
+        mov_r(roof_angle)
+        time.sleep(spd)
+    mov_r(n_pos)
 
-
-def mov_g_s(n_pos, speed, led):
+async def mov_g_s(n_pos, speed, led):
     global g_lst_p
     tot_d = abs(g_lst_p - n_pos)
     sign = 1
@@ -738,6 +734,26 @@ def mov_g_s(n_pos, speed, led):
     mov_g(n_pos)
 
 
+def mov_d(pos):
+    if pos < d_min:
+        pos = d_min
+    if pos > d_max:
+        pos = d_max
+    d_s.angle = pos
+    global d_lst_p
+    d_lst_p = pos
+
+
+def mov_g(pos):
+    if pos < g_min:
+        pos = g_min
+    if pos > g_max:
+        pos = g_max
+    g_s.angle = pos
+    global g_lst_p
+    g_lst_p = pos
+
+
 def mov_r(pos):
     if pos < r_min:
         pos = r_min
@@ -746,17 +762,6 @@ def mov_r(pos):
     r_s.angle = pos
     global r_lst_p
     r_lst_p = pos
-
-
-def mov_r_s(n_pos, spd):
-    global r_lst_p
-    sign = 1
-    if r_lst_p > n_pos:
-        sign = - 1
-    for roof_angle in range(r_lst_p, n_pos, sign):
-        mov_r(roof_angle)
-        time.sleep(spd)
-    mov_r(n_pos)
 
 
 def cal_l_but(s, mov_typ, sign, min, max):
@@ -811,11 +816,12 @@ def cal_pos(s, mov_typ):
         global r_lst_p
         r_lst_p = cfg[mov_typ]
 
+
 ################################################################################
-# animations
+# Animations
 
 
-def fr_asy(r_on, g_on, b_on, spd):
+async def fr_asy(r_on, g_on, b_on, spd):
     led_B.brightness = 1.0
 
     r = random.randint(150, 255)
@@ -832,10 +838,9 @@ def fr_asy(r_on, g_on, b_on, spd):
         led_B[i] = (r1 * r_on, g1 * g_on, b1 * b_on)
     led_B.show()
     exit_early()
-    time.sleep(spd)
 
 
-def alien_tlk():
+async def alien_tlk():
     led_B.brightness = 1.0
 
     r = random.randint(0, 0)
@@ -851,13 +856,13 @@ def alien_tlk():
             b1 = bnds(b-flicker, 0, 255)
             led_B[i] = (r1, g1, b1)
             led_B.show()
-            upd_vol(random.uniform(0.05, 0.1))
+            await upd_vol_async(random.uniform(0.05, 0.1))
         for i in range(0, 3):
             led_B[i] = (0, 0, 0)
         led_B.show()
 
 
-def cyc_g_asy(spd, pos_up, pos_down, r, g, b):
+async def cyc_g_asy(spd, pos_up, pos_down, r, g, b):
     global g_lst_p
     while mix.voice[0].playing:
         exit_early()
@@ -867,17 +872,17 @@ def cyc_g_asy(spd, pos_up, pos_down, r, g, b):
             sign = - 1
         for ang in range(g_lst_p, n_pos, sign*3):
             mov_g(ang)
-            fr_asy(r, g, b, spd)
+            await fr_asy(r, g, b, spd)
         n_pos = pos_down
         sign = 1
         if g_lst_p > n_pos:
             sign = - 1
         for ang in range(g_lst_p, n_pos, sign*3):
             mov_g(ang)
-            fr_asy(r, g, b, spd)
+            await fr_asy(r, g, b, spd)
 
 
-def cyc_r_asy(spd, pos_up, pos_down, r, g, b):
+async def cyc_r_asy(spd, pos_up, pos_down, r, g, b):
     global r_lst_p
     while mix.voice[0].playing:
         exit_early()
@@ -887,17 +892,17 @@ def cyc_r_asy(spd, pos_up, pos_down, r, g, b):
             sign = - 1
         for ang in range(r_lst_p, n_pos, sign):
             mov_r(ang)
-            fr_asy(r, g, b, spd)
+            await fr_asy(r, g, b, spd)
         n_pos = pos_down
         sign = 1
         if r_lst_p > n_pos:
             sign = - 1
         for ang in range(r_lst_p, n_pos, sign):
             mov_r(ang)
-            fr_asy(r, g, b, spd)
+            await fr_asy(r, g, b, spd)
 
 
-def cyc_d_asy(spd, pos_up, pos_down, r, g, b):
+async def cyc_d_asy(spd, pos_up, pos_down, r, g, b):
     global d_lst_p
     while mix.voice[0].playing:
         exit_early()
@@ -907,33 +912,183 @@ def cyc_d_asy(spd, pos_up, pos_down, r, g, b):
             sign = - 3
         for ang in range(d_lst_p, n_pos, sign):
             mov_d(ang)
-            fr_asy(r, g, b, spd)
+            await fr_asy(r, g, b, spd)
         n_pos = pos_down
         sign = 3
         if d_lst_p > n_pos:
             sign = - 3
         for ang in range(d_lst_p, n_pos, sign):
             mov_d(ang)
-            fr_asy(r, g, b, spd)
+            await fr_asy(r, g, b, spd)
 
 
-def rn_exp(r, g, b):
-    cyc_g_asy(0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"], r, g, b)
+async def rn_exp(r, g, b):
+    await cyc_g_asy(0.01, cfg["guy_up_position"]+20, cfg["guy_up_position"], r, g, b)
     while mix.voice[0].playing:
         exit_early()
 
 
-def rn_music(r, g, b):
+async def rn_music(r, g, b):
     led_F[0] = (0, 0, 0)
     led_F.show()
-    cyc_d_asy(0.01, cfg["door_closed_position"]-20,
+    await cyc_d_asy(0.01, cfg["door_closed_position"]-20,
               cfg["door_closed_position"], r, g, b)
     while mix.voice[0].playing:
         exit_early()
 
-################################################################################
-# Animations
+async def ply_mtch(fn, srt, end, wait):
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
+        while mix.voice[0].playing:
+            await upd_vol_async(0.02)
+    print("playing" + fn)
+    w0 = audiocore.WaveFile(open(fn, "rb"))
+    mix.voice[0].play(w0, loop=False)
+    if srt > 0 and end > 0:
+        await asyncio.sleep(srt)
+        led_B[0] = ((255, 0, 0))
+        led_B.show()
+        await asyncio.sleep(end)
+        led_B[0] = ((0, 0, 0))
+        led_B.show()
+    while mix.voice[0].playing and wait:
+        exit_early()
+    print("done playing")
 
+
+async def d_snd(pos):
+    await rnd_snd("/sd/sqk", "sqk", 0, 0, False)
+    await mov_d_s(pos, .03)
+    while mix.voice[0].playing:
+        pass
+
+
+async def sit_d():
+    print("sitting down")
+    mov_g_s(cfg["guy_down_position"]-10, 0.05, False)
+    led_F[0] = ((255, 147, 41))
+    led_F.show()
+    if cfg["figure"] == "alien":
+        await d_snd(cfg["door_open_position"])
+        await rnd_snd("/sd/" + cfg["rating"], "alienent", 0, 0, False)
+        await alien_tlk()
+        await rnd_snd("/sd/" + cfg["rating"], "alienseat", 0, 0, False)
+        await alien_tlk()
+        mov_g_s(cfg["guy_down_position"], 0.05, False)
+        await d_snd(cfg["door_closed_position"])
+        await rnd_snd("/sd/" + cfg["rating"], "alienstr", 0, 0, False)
+        await alien_tlk()
+    elif cfg["figure"] == "music":
+        await d_snd(cfg["door_open_position"])
+        mov_g_s(cfg["guy_down_position"], 0.05, False)
+        await d_snd(cfg["door_closed_position"])
+    else:
+        await d_snd(cfg["door_open_position"])
+        await mtch()
+
+
+async def mtch():
+    mov_g_s(cfg["guy_down_position"], 0.05, False)
+    await d_snd(cfg["door_closed_position"])
+    led_F[0] = ((0, 0, 0))
+    await rnd_snd("/sd/" + cfg["rating"], cfg["figure"], 0, 0, True)
+    await rnd_snd("/sd/match", "fail", .1, .1, True)
+    await rnd_snd("/sd/match", "fail", .1, .1, True)
+    await rnd_snd("/sd/match", "fail", .1, .1, True)
+    await rnd_snd("/sd/match", "lit", .4, .4, True)
+
+
+async def rnd_snd(dir, p_typ, srt, end, wait):
+    snds = get_snds(dir, p_typ)
+    max_i = len(snds) - 1
+    i = random.randint(0, max_i)
+    await ply_mtch(dir + "/" + snds[i] + ".wav", srt, end, wait)
+
+
+async def exp():
+    global reset_roof
+    print("explosion")
+    await rnd_snd("/sd/" + cfg["rating"] + "_exp", cfg["figure"], 0, 0, False)
+    await asyncio.sleep(.1)
+    led_F[0] = (80, 80, 80)
+    if cfg["figure"] != "music":
+        mov_r(cfg["roof_open_position"])
+    if cfg["figure"] == "alien":
+        led_F[0] = (0, 255, 0)
+    led_F.show()
+    if cfg["figure"] == "alien":
+        mov_g_s(cfg["guy_up_position"], .05, True)
+        await rn_exp(0, 0, 1)
+    elif cfg["figure"] == "music":
+        reset_roof = False
+        await rn_music(0, 1, 1)
+    else:
+        mov_g(cfg["guy_up_position"])
+        mov_d(cfg["door_open_position"])
+        for i in range(0, 6):
+            led_B[i] = (255, 0, 0)
+            led_B.show()
+            await asyncio.sleep(.05)
+        await rn_exp(1, 0, 0)
+
+
+async def no_exp():
+    global reset_roof
+    reset_roof = False
+    print("no explosion")
+    await asyncio.sleep(.1)
+    led_F[0] = ((255, 147, 41))
+    led_F.show()
+    if cfg["figure"] == "music":
+        await rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
+        await rn_music(0, 1, 1)
+    elif cfg["figure"] == "alien":
+        await d_snd(cfg["door_open_position"])
+        await mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        await rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
+        await alien_tlk()
+        led_F[0] = ((0, 0, 0))
+        led_F.show()
+        await d_snd(cfg["door_closed_position"])
+    else:
+        await d_snd(cfg["door_open_position"])
+        await mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
+        await rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, True)
+        led_F[0] = ((0, 0, 0))
+        led_F.show()
+        await d_snd(cfg["door_closed_position"])
+
+
+async def rst_an(rest_roof):
+    print("reset")
+    led_F.fill((0, 0, 0))
+    led_F.show()
+    led_B.fill((0, 0, 0))
+    led_B.show()
+    mov_d(cfg["door_closed_position"])
+    await mov_g_s(cfg["guy_down_position"]-10, 0.001, False)
+    await asyncio.sleep(.2)
+    if rest_roof:
+        await mov_r_s(cfg["roof_closed_position"]+20, .001)
+        await mov_r_s(cfg["roof_closed_position"], .05)
+
+
+async def an():
+    global reset_roof
+    reset_roof = True
+
+    await sit_d()
+    run_exp = rnd_prob(cfg["explosions_freq"])
+    if cfg["figure"] == "alien":
+        run_exp = True
+    if run_exp:
+        await exp()
+    else:
+        await no_exp()
+    await rst_an(reset_roof)
+
+################################################################################
+# animation helpers
 
 def rnd_prob(v):
     print(v)
@@ -950,159 +1105,6 @@ def rnd_prob(v):
     elif v == 3:
         return True
     return False
-
-
-def ply_mtch(fn, srt, end, wait):
-    if mix.voice[0].playing:
-        mix.voice[0].stop()
-        while mix.voice[0].playing:
-            upd_vol(0.02)
-    print("playing" + fn)
-    w0 = audiocore.WaveFile(open(fn, "rb"))
-    mix.voice[0].play(w0, loop=False)
-    if srt > 0 and end > 0:
-        time.sleep(srt)
-        led_B[0] = ((255, 0, 0))
-        led_B.show()
-        time.sleep(end)
-        led_B[0] = ((0, 0, 0))
-        led_B.show()
-    while mix.voice[0].playing and wait:
-        exit_early()
-    print("done playing")
-
-
-def d_snd(pos):
-    rnd_snd("/sd/sqk", "sqk", 0, 0, False)
-    mov_d_s(pos, .03)
-    while mix.voice[0].playing:
-        pass
-
-
-def sit_d():
-    print("sitting down")
-    mov_g_s(cfg["guy_down_position"]-10, 0.05, False)
-    led_F[0] = ((255, 147, 41))
-    led_F.show()
-    if cfg["figure"] == "alien":
-        d_snd(cfg["door_open_position"])
-        rnd_snd("/sd/" + cfg["rating"], "alienent", 0, 0, False)
-        alien_tlk()
-        rnd_snd("/sd/" + cfg["rating"], "alienseat", 0, 0, False)
-        alien_tlk()
-        mov_g_s(cfg["guy_down_position"], 0.05, False)
-        d_snd(cfg["door_closed_position"])
-        rnd_snd("/sd/" + cfg["rating"], "alienstr", 0, 0, False)
-        alien_tlk()
-    elif cfg["figure"] == "music":
-        d_snd(cfg["door_open_position"])
-        mov_g_s(cfg["guy_down_position"], 0.05, False)
-        d_snd(cfg["door_closed_position"])
-    else:
-        d_snd(cfg["door_open_position"])
-        mtch()
-
-
-def mtch():
-    mov_g_s(cfg["guy_down_position"], 0.05, False)
-    d_snd(cfg["door_closed_position"])
-    led_F[0] = ((0, 0, 0))
-    rnd_snd("/sd/" + cfg["rating"], cfg["figure"], 0, 0, True)
-    rnd_snd("/sd/match", "fail", .1, .1, True)
-    rnd_snd("/sd/match", "fail", .1, .1, True)
-    rnd_snd("/sd/match", "fail", .1, .1, True)
-    rnd_snd("/sd/match", "lit", .4, .4, True)
-
-
-def rnd_snd(dir, p_typ, srt, end, wait):
-    snds = get_snds(dir, p_typ)
-    max_i = len(snds) - 1
-    i = random.randint(0, max_i)
-    ply_mtch(dir + "/" + snds[i] + ".wav", srt, end, wait)
-
-
-def exp():
-    global reset_roof
-    print("explosion")
-    rnd_snd("/sd/" + cfg["rating"] + "_exp", cfg["figure"], 0, 0, False)
-    time.sleep(.1)
-    led_F[0] = (80, 80, 80)
-    if cfg["figure"] != "music":
-        mov_r(cfg["roof_open_position"])
-    if cfg["figure"] == "alien":
-        led_F[0] = (0, 255, 0)
-    led_F.show()
-    if cfg["figure"] == "alien":
-        mov_g_s(cfg["guy_up_position"], .05, True)
-        rn_exp(0, 0, 1)
-    elif cfg["figure"] == "music":
-        reset_roof = False
-        rn_music(0, 1, 1)
-    else:
-        mov_g(cfg["guy_up_position"])
-        mov_d(cfg["door_open_position"])
-        for i in range(0, 6):
-            led_B[i] = (255, 0, 0)
-            led_B.show()
-            time.sleep(.05)
-        rn_exp(1, 0, 0)
-
-
-def no_exp():
-    global reset_roof
-    reset_roof = False
-    print("no explosion")
-    time.sleep(.1)
-    led_F[0] = ((255, 147, 41))
-    led_F.show()
-    if cfg["figure"] == "music":
-        rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
-        rn_music(0, 1, 1)
-    elif cfg["figure"] == "alien":
-        d_snd(cfg["door_open_position"])
-        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
-        rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, False)
-        alien_tlk()
-        led_F[0] = ((0, 0, 0))
-        led_F.show()
-        d_snd(cfg["door_closed_position"])
-    else:
-        d_snd(cfg["door_open_position"])
-        mov_g_s(cfg["guy_down_position"]-20, 0.001, False)
-        rnd_snd("/sd/" + cfg["rating"] + "_noexp", cfg["figure"], 0, 0, True)
-        led_F[0] = ((0, 0, 0))
-        led_F.show()
-        d_snd(cfg["door_closed_position"])
-
-
-def rst_an(rest_roof):
-    print("reset")
-    led_F.fill((0, 0, 0))
-    led_F.show()
-    led_B.fill((0, 0, 0))
-    led_B.show()
-    mov_d(cfg["door_closed_position"])
-    mov_g_s(cfg["guy_down_position"]-10, 0.001, False)
-    time.sleep(.2)
-    if rest_roof:
-        mov_r_s(cfg["roof_closed_position"]+20, .001)
-        mov_r_s(cfg["roof_closed_position"], .05)
-
-
-async def an():
-    global reset_roof
-    reset_roof = True
-
-    sit_d()
-    run_exp = rnd_prob(cfg["explosions_freq"])
-    if cfg["figure"] == "alien":
-        run_exp = True
-    if run_exp:
-        exp()
-    else:
-        no_exp()
-    rst_an(reset_roof)
-
 
 def bnds(my_color, lower, upper):
     if (my_color < lower):
