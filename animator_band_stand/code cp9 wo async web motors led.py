@@ -47,7 +47,7 @@ gc_col("Imports gc, files")
 # Setup pin for vol
 a_in = AnalogIn(board.A0)
 
-# setup pin for audio enable 22 on tiny 28 on large
+# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
 aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False

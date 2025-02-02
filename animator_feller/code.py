@@ -42,7 +42,7 @@ gc_col("imports")
 # Setup pin for v
 a_in = AnalogIn(board.A0)
 
-# setup pin for audio enable
+# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
 aud_en = digitalio.DigitalInOut(board.GP28)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
@@ -534,8 +534,41 @@ if (web):
 
 gc_col("web server")
 
+################################################################################
+# Command queue
+command_queue = []
 
-gc_col("utilities")
+
+def add_cmd(command, to_start=False):
+    global exit_set_hdw_async
+    exit_set_hdw_async = False
+    if to_start:
+        command_queue.insert(0, command)  # Add to the front
+        print("Command added to the start:", command)
+    else:
+        command_queue.append(command)  # Add to the end
+        print("Command added to the end:", command)
+
+
+async def process_cmd():
+    while command_queue:
+        command = command_queue.pop(0)  # Retrieve from the front of the queue
+        print("Processing command:", command)
+        # Process each command as an async operation
+        #await set_hdw_async(command)
+        await asyncio.sleep(0)  # Yield control to the event loop
+
+
+def clr_cmd_queue():
+    command_queue.clear()
+    print("Command queue cleared.")
+
+
+def stp_all_cmds():
+    global exit_set_hdw_async
+    clr_cmd_queue()
+    exit_set_hdw_async = True
+    print("Processing stopped and command queue cleared.")
 
 ################################################################################
 # Global Methods
@@ -1421,13 +1454,13 @@ gc_col("state mch")
 
 st_mch = StMch()
 st_mch = StMch()
-st_mch.add_state(BseSt())
-st_mch.add_state(Main())
-st_mch.add_state(Snds())
-st_mch.add_state(AdjFellTree())
-st_mch.add_state(MovFellTree())
-st_mch.add_state(DiaOpt())
-st_mch.add_state(WebOpt())
+st_mch.add(BseSt())
+st_mch.add(Main())
+st_mch.add(Snds())
+st_mch.add(AdjFellTree())
+st_mch.add(MovFellTree())
+st_mch.add(DiaOpt())
+st_mch.add(WebOpt())
 
 aud_en.value = True
 
@@ -1457,12 +1490,51 @@ st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
-while True:
-    st_mch.upd()
-    upd_vol(.1)
-    if (web):
+# Main task handling
+
+
+async def process_cmd_tsk():
+    """Task to continuously process commands."""
+    while True:
         try:
-            server.poll()
+            await process_cmd()  # Async command processing
         except Exception as e:
             files.log_item(e)
-            continue
+        await asyncio.sleep(0)  # Yield control to other tasks
+
+
+async def server_poll_tsk(server):
+    """Poll the web server."""
+    while True:
+        try:
+            server.poll()  # Web server polling
+        except Exception as e:
+            files.log_item(e)
+        await asyncio.sleep(0)  # Yield control to other tasks
+
+
+async def state_mach_upd_task(st_mch):
+    while True:
+        st_mch.upd()
+        await asyncio.sleep(0)
+
+
+async def main():
+    # Create asyncio tasks
+    tasks = [
+        process_cmd_tsk(),
+        state_mach_upd_task(st_mch)
+    ]
+
+    if web:
+        tasks.append(server_poll_tsk(server))
+
+    # Run all tasks concurrently
+    await asyncio.gather(*tasks)
+
+# Run the asyncio event loop
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    pass
+
