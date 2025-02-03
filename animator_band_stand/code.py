@@ -259,18 +259,18 @@ if (web):
 
         @server.route("/")
         def base(request: HTTPRequest):
-            stop_a_0()
+            stp_a_0()
             gc_col("Home page.")
             return FileResponse(request, "index.html", "/")
 
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
-            stop_a_0()
+            stp_a_0()
             return FileResponse(request, "/sd/mui.min.css", "/")
 
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
-            stop_a_0()
+            stp_a_0()
             return FileResponse(request, "/sd/mui.min.js", "/")
 
         @server.route("/animation", [POST])
@@ -286,7 +286,7 @@ if (web):
         @server.route("/defaults", [POST])
         def btn(request: Request):
             global cfg
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             if rq_d["an"] == "reset_animation_timing_to_defaults":
                 for ts_fn in ts_jsons:
@@ -337,7 +337,7 @@ if (web):
         @server.route("/speaker", [POST])
         def btn(request: Request):
             global cfg
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             if rq_d["an"] == "speaker_test":
                 ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
@@ -353,7 +353,7 @@ if (web):
 
         @server.route("/lights", [POST])
         def btn(request: Request):
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             add_cmd(rq_d["an"])
             return Response(request, "Utility: " + "Utility: set lights")
@@ -361,7 +361,7 @@ if (web):
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
             global cfg
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             cfg["HOST_NAME"] = rq_d["an"]
             files.write_json_file("/sd/cfg.json", cfg)
@@ -371,12 +371,12 @@ if (web):
 
         @server.route("/get-host-name", [POST])
         def btn(request: Request):
-            stop_a_0()
+            stp_a_0()
             return Response(request, cfg["HOST_NAME"])
 
         @server.route("/get-local-ip", [POST])
         def buttonpress(req: Request):
-            stop_a_0()
+            stp_a_0()
             return Response(req, local_ip)
 
         @server.route("/update-volume", [POST])
@@ -392,13 +392,13 @@ if (web):
 
         @server.route("/get-customers-sound-tracks", [POST])
         def btn(request: Request):
-            stop_a_0()
+            stp_a_0()
             my_string = files.json_stringify(cust_snd_opt)
             return Response(request, my_string)
 
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
-            stop_a_0()
+            stp_a_0()
             sounds = []
             sounds.extend(snd_opt)
             my_string = files.json_stringify(sounds)
@@ -406,7 +406,7 @@ if (web):
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             print(rq_d["an"])
             gc_col("Save Data.")
@@ -416,7 +416,7 @@ if (web):
         @server.route("/get-animation", [POST])
         def btn(request: Request):
             global cfg, cont_run, ts_mode
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             snd_f = rq_d["an"]
             if "customers_owned_music_" in snd_f:
@@ -438,7 +438,7 @@ if (web):
 
         @server.route("/delete-file", [POST])
         def btn(request: Request):
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             f_n = ""
             if "customers_owned_music_" in rq_d["an"]:
@@ -456,7 +456,7 @@ if (web):
         def btn(request: Request):
             global data
             gc_col("prep save data")
-            stop_a_0()
+            stp_a_0()
             rq_d = request.json()
             try:
                 if rq_d[0] == 0:
@@ -608,13 +608,13 @@ def ply_a_0(file_name):
         mix.voice[0].stop()
         while mix.voice[0].playing:
             upd_vol(0.1)
-    wave0 = audiocore.WaveFile(open(file_name, "rb"))
-    mix.voice[0].play(wave0, loop=False)
+    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
 
 
-def stop_a_0():
+def stp_a_0():
     mix.voice[0].stop()
     while mix.voice[0].playing:
         pass
@@ -814,12 +814,12 @@ async def an_light_async(f_nm):
     flsh_i = 0
 
     if cust_f:
-        wave0 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
     else:
-        wave0 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snds/" + f_nm + ".wav", "rb"))
-    mix.voice[0].play(wave0, loop=False)
+    mix.voice[0].play(w0, loop=False)
     srt_t = time.monotonic()
 
     ft1 = []
@@ -881,12 +881,12 @@ def an_ts(f_nm):
     f_nm = f_nm.replace("customers_owned_music_", "")
 
     if cust_f:
-        wave0 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
     else:
-        wave0 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snds/" + f_nm + ".wav", "rb"))
-    mix.voice[0].play(wave0, loop=False)
+    mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
     upd_vol(.1)
@@ -1126,9 +1126,9 @@ class Snds(Ste):
                     pass
             else:
                 try:
-                    wave0 = audiocore.WaveFile(open(
+                    w0 = audiocore.WaveFile(open(
                         "/sd/o_snds/" + menu_snd_opt[self.i] + ".wav", "rb"))
-                    mix.voice[0].play(wave0, loop=False)
+                    mix.voice[0].play(w0, loop=False)
                 except Exception as e:
                     files.log_item(e)
                     spk_sng_num(str(self.i+1))
@@ -1146,9 +1146,9 @@ class Snds(Ste):
             else:
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
                 files.write_json_file("/sd/cfg.json", cfg)
-                wave0 = audiocore.WaveFile(
+                w0 = audiocore.WaveFile(
                     open("/sd/mvc/option_selected.wav", "rb"))
-                mix.voice[0].play(wave0, loop=False)
+                mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
             mch.go_to('base_state')
