@@ -152,6 +152,7 @@ def bndMaxChp(min_chops, max_chops):
 ################################################################################
 # Sd card data Variables
 
+
 cfg = files.read_json_file("/sd/cfg.json")
 t_ho_offset = -15
 
@@ -283,90 +284,54 @@ if (web):
         @server.route("/")
         def base(request: HTTPRequest):
             gc_col("Home page.")
+            stp_all_cmds()
             return FileResponse(request, "index.html", "/")
 
         @server.route("/mui.min.css")
         def base(request: HTTPRequest):
+            stp_all_cmds()
             return FileResponse(request, "/sd/mui.min.css", "/")
 
         @server.route("/mui.min.js")
         def base(request: HTTPRequest):
+            stp_all_cmds()
             return FileResponse(request, "/sd/mui.min.js", "/")
 
         @server.route("/animation", [POST])
         def buttonpress(request: Request):
-            global cfg
-            global cont_run
-            req_d = request.json()
-            if "random" == req_d["an"]:
-                cfg["option_selected"] = "random"
-                an()
-            elif "forth_of_july" == req_d["an"]:
-                cfg["option_selected"] = "forth_of_july"
-                an()
-            elif "christmas" == req_d["an"]:
-                cfg["option_selected"] = "christmas"
-                an()
-            elif "halloween" == req_d["an"]:
-                cfg["option_selected"] = "halloween"
-                an()
-            elif "train" == req_d["an"]:
-                cfg["option_selected"] = "train"
-                an()
-            elif "alien" == req_d["an"]:
-                cfg["option_selected"] = "alien"
-                an()
-            elif "birds_dogs_short_version" == req_d["an"]:
-                cfg["option_selected"] = "birds_dogs_short_version"
-                an()
-            elif "birds_dogs" == req_d["an"]:
-                cfg["option_selected"] = "birds_dogs"
-                an()
-            elif "just_birds" == req_d["an"]:
-                cfg["option_selected"] = "just_birds"
-                an()
-            elif "machines" == req_d["an"]:
-                cfg["option_selected"] = "machines"
-                an()
-            elif "no_sounds" == req_d["an"]:
-                cfg["option_selected"] = "no_sounds"
-                an()
-            elif "owl" == req_d["an"]:
-                cfg["option_selected"] = "owl"
-                an()
-            elif "happy_birthday" == req_d["an"]:
-                cfg["option_selected"] = "happy_birthday"
-                an()
-            return Response(request, "Animation " + cfg["option_selected"] + " started.")
+            rq_d = request.json()
+            add_cmd(rq_d["an"])
+            return Response(request, "Animation " + rq_d["an"] + " started.")
 
         @server.route("/feller", [POST])
         def buttonpress(request: Request):
             global cfg
             global f_mov_typ
-            raw_text = request.raw_request.decode("utf8")
-            if "feller_rest_pos" in raw_text:
+            stp_all_cmds()
+            rq_d = request.json()
+            if rq_d["an"] == "feller_rest_pos":
                 f_mov_typ = "feller_rest_pos"
                 m_f_spd(cfg[f_mov_typ], 0.01)
                 return Response(request, "Moved feller to rest position.")
-            elif "feller_chop_pos" in raw_text:
+            elif rq_d["an"] == "feller_chop_pos":
                 f_mov_typ = "feller_chop_pos"
                 m_f_spd(cfg[f_mov_typ], 0.01)
                 return Response(request, "Moved feller to chop position.")
-            elif "feller_adjust" in raw_text:
+            elif rq_d["an"] == "feller_adjust":
                 f_mov_typ = "feller_rest_pos"
                 m_f_spd(cfg[f_mov_typ], 0.01)
                 return Response(request, "Redirected to feller-adjust page.")
-            elif "feller_home" in raw_text:
+            elif rq_d["an"] == "feller_home":
                 return Response(request, "Redirected to home page.")
-            elif "feller_clockwise" in raw_text:
+            elif rq_d["an"] == "feller_clockwise":
                 cal_l_but(
                     f_s, f_mov_typ, 1, f_min, f_max)
                 return Response(request, "Moved feller clockwise.")
-            elif "feller_counter_clockwise" in raw_text:
+            elif rq_d["an"] == "feller_counter_clockwise":
                 cal_r_but(
                     f_s, f_mov_typ, 1, f_min, f_max)
                 return Response(request, "Moved feller counter clockwise.")
-            elif "feller_cal_saved" in raw_text:
+            elif rq_d["an"] == "feller_cal_saved":
                 wrt_cal()
                 st_mch.go_to('base_state')
                 return Response(request, "Feller " + f_mov_typ + " cal saved.")
@@ -375,30 +340,31 @@ if (web):
         def buttonpress(request: Request):
             global cfg
             global t_mov_typ
-            raw_text = request.raw_request.decode("utf8")
-            if "tree_up_pos" in raw_text:
+            stp_all_cmds()
+            rq_d = request.json()
+            if rq_d["an"] == "tree_up_pos":
                 t_mov_typ = "tree_up_pos"
                 m_t_spd(cfg[t_mov_typ], 0.01)
                 return Response(request, "Moved tree to up position.")
-            elif "tree_down_pos" in raw_text:
+            elif rq_d["an"] == "tree_down_pos":
                 t_mov_typ = "tree_down_pos"
                 m_t_spd(cfg[t_mov_typ], 0.01)
                 return Response(request, "Moved tree to fallen position.")
-            elif "tree_adjust" in raw_text:
+            elif rq_d["an"] == "tree_adjust":
                 t_mov_typ = "tree_up_pos"
                 m_t_spd(cfg[t_mov_typ], 0.01)
                 return Response(request, "Redirected to tree-adjust page.")
-            elif "tree_home" in raw_text:
+            elif rq_d["an"] == "tree_home":
                 return Response(request, "Redirected to home page.")
-            elif "tree_up" in raw_text:
+            elif rq_d["an"] == "tree_up":
                 cal_l_but(
                     t_s, t_mov_typ, -1, t_min, t_max)
                 return Response(request, "Moved tree up.")
-            elif "tree_down" in raw_text:
+            elif rq_d["an"] == "tree_down":
                 cal_r_but(
                     t_s, t_mov_typ, -1, t_min, t_max)
                 return Response(request, "Moved tree down.")
-            elif "tree_cal_saved" in raw_text:
+            elif rq_d["an"] == "tree_cal_saved":
                 wrt_cal()
                 st_mch.go_to('base_state')
                 return Response(request, "Tree " + t_mov_typ + " cal saved.")
@@ -406,17 +372,17 @@ if (web):
         @server.route("/dialog", [POST])
         def buttonpress(request: Request):
             global cfg
-            raw_text = request.raw_request.decode("utf8")
-            if "opening_dialog_on" in raw_text:
+            rq_d = request.json()
+            if "opening_dialog_on":
                 cfg["opening_dialog"] = True
 
-            elif "opening_dialog_off" in raw_text:
+            elif "opening_dialog_off":
                 cfg["opening_dialog"] = False
 
-            elif "feller_advice_on" in raw_text:
+            elif "feller_advice_on":
                 cfg["feller_advice"] = True
 
-            elif "feller_advice_off" in raw_text:
+            elif "feller_advice_off":
                 cfg["feller_advice"] = False
 
             files.write_json_file("/sd/cfg.json", cfg)
@@ -427,18 +393,18 @@ if (web):
         @server.route("/utilities", [POST])
         def buttonpress(request: Request):
             global cfg
-            raw_text = request.raw_request.decode("utf8")
-            if "speaker_test" in raw_text:
+            rq_d = request.json()
+            if rq_d["an"] == "speaker_test":
                 ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif "volume_pot_off" in raw_text:
+            elif rq_d["an"] == "volume_pot_off":
                 cfg["volume_pot"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "volume_pot_on" in raw_text:
+            elif rq_d["an"] == "volume_pot_on":
                 cfg["volume_pot"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif "reset_to_defaults" in raw_text:
+            elif rq_d["an"] == "reset_to_defaults":
                 reset_to_defaults()
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -449,6 +415,7 @@ if (web):
         @server.route("/update-host-name", [POST])
         def buttonpress(request: Request):
             global cfg
+            stp_all_cmds()
             data_object = request.json()
             cfg["HOST_NAME"] = data_object["text"]
             files.write_json_file("/sd/cfg.json", cfg)
@@ -478,21 +445,22 @@ if (web):
         @server.route("/mode", [POST])
         def buttonpress(req: Request):
             global cfg, cont_run
-            req_d = req.json()
-            if req_d["an"] == "left":
+            rq_d = req.json()
+            if rq_d["an"] == "left":
                 ovrde_sw_st["switch_value"] = "left"
-            elif req_d["an"] == "right":
+            elif rq_d["an"] == "right":
                 ovrde_sw_st["switch_value"] = "right"
-            elif req_d["an"] == "right_held":
+            elif rq_d["an"] == "right_held":
                 ovrde_sw_st["switch_value"] = "right_held"
-            elif req_d["an"] == "three":
+            elif rq_d["an"] == "three":
                 ovrde_sw_st["switch_value"] = "three"
-            elif req_d["an"] == "four":
+            elif rq_d["an"] == "four":
                 ovrde_sw_st["switch_value"] = "four"
-            elif "cont_mode_on" == req_d["an"]:
+            elif "cont_mode_on" == rq_d["an"]:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" == req_d["an"]:
+            elif "cont_mode_off" == rq_d["an"]:
+                stp_all_cmds()
                 cont_run = False
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             return Response(req, "Mode set")
@@ -555,7 +523,7 @@ async def process_cmd():
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
         # Process each command as an async operation
-        #await set_hdw_async(command)
+        await an(command)
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -637,6 +605,7 @@ def upd_vol(s):
             volume = .5
         mix.voice[0].level = volume
         time.sleep(s)
+
 
 async def upd_vol_async(s):
     if cfg["volume_pot"]:
@@ -878,9 +847,11 @@ def ply_snd(sound_files, folder):
     gc_col("deinit w0")
 
 
-def an():
+async def an(command):
+    cfg["option_selected"] = command
+    files.write_json_file("/sd/cfg.json", cfg)
 
-    upd_vol(0.05)
+    await upd_vol_async(0.05)
 
     if cfg["opening_dialog"]:
         s_i = random.randint(0, 3)
@@ -922,6 +893,7 @@ def an():
 
     w1 = audiocore.WaveFile(open(snd_f, "rb"))
     while chop_i <= chop_n:
+        await upd_vol_async(0)
         if when_spk == chop_i and not spoken and cfg["feller_advice"]:
             spoken = True
             snd_f = "/sd/feller_dialog/" + \
@@ -958,7 +930,7 @@ def an():
                 mov_f(f_pos)
                 upd_vol(0.02)
     while mix.voice[0].playing:
-        upd_vol(0.1)
+        await upd_vol_async(0.1)
     mix.voice[0].play(w1, loop=False)
     # 180 - 0 degrees, 5 degrees at a time.
     for t_pos in range(cfg["tree_up_pos"], cfg["tree_down_pos"], -5):
@@ -978,17 +950,13 @@ def an():
         l_pos = cfg["tree_up_pos"]
         r_pos = cfg["tree_up_pos"] - 8
         while mix.voice[0].playing:
+            await upd_vol_async(0)
             sw_st = utilities.switch_state(
                 l_sw, r_sw, upd_vol, 0.5)
             if sw_st == "left_held":
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-                snd_f = "/sd/mvc/animation_canceled.wav"
-                w0 = audiocore.WaveFile(open(snd_f, "rb"))
-                mix.voice[0].play(w0, loop=False)
-                while mix.voice[0].playing:
-                    pass
+                stp_all_cmds()
+                cont_run = False
+                ply_a_0("/sd/mvc/animation_canceled.wav")
                 break
             m_t_spd(l_pos, 0.1)
             m_t_spd(r_pos, 0.1)
@@ -1005,38 +973,30 @@ def an():
             sw_st = utilities.switch_state(
                 l_sw, r_sw, upd_vol, 0.5)
             if sw_st == "left_held":
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-                snd_f = "/sd/mvc/animation_canceled.wav"
-                w0 = audiocore.WaveFile(open(snd_f, "rb"))
-                mix.voice[0].play(w0, loop=False)
-                while mix.voice[0].playing:
-                    pass
+                stp_all_cmds()
+                cont_run = False
+                ply_a_0("/sd/mvc/animation_canceled.wav")
                 break
     else:
         while mix.voice[0].playing:
+            await upd_vol_async(0)
             sw_st = utilities.switch_state(
                 l_sw, r_sw, upd_vol, 0.5)
             if sw_st == "left_held":
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-                snd_f = "/sd/mvc/animation_canceled.wav"
-                w0 = audiocore.WaveFile(open(snd_f, "rb"))
-                mix.voice[0].play(w0, loop=False)
-                while mix.voice[0].playing:
-                    pass
+                stp_all_cmds()
+                cont_run = False
+                ply_a_0("/sd/mvc/animation_canceled.wav")
                 break
     w0.deinit()
     w1.deinit()
     gc_col("deinit w0 w1")
     m_f_spd(cfg["feller_rest_pos"], 0.01)
-    upd_vol(0.02)
+    await upd_vol_async(0.02)
     m_t_spd(cfg["tree_up_pos"], 0.01)
 
 ################################################################################
 # State Machine
+
 
 class StMch(object):
 
@@ -1109,14 +1069,16 @@ class BseSt(Ste):
         if sw_st == "left_held":
             if cont_run:
                 cont_run = False
+                clr_cmd_queue()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif sw_st == "left" or cont_run:
-            an()
+            add_cmd(cfg["option_selected"])
         elif sw_st == "right":
             mch.go_to('main_menu')
+
 
 class Main(Ste):
 
@@ -1150,6 +1112,8 @@ class Main(Ste):
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
+            elif sel_mnu == "volume_settings":
+                mch.go_to('volume_settings')
             elif sel_mnu == "adjust_feller_and_tree":
                 mch.go_to('adjust_feller_and_tree')
             elif sel_mnu == "move_feller_and_tree":
@@ -1161,7 +1125,6 @@ class Main(Ste):
             else:
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
-
 
 
 class Snds(Ste):
@@ -1445,6 +1408,62 @@ class WebOpt(Ste):
                 mch.go_to('base_state')
 
 
+class VolSet(Ste):
+
+    def __init__(s):
+        s.i = 0
+        s.sel_i = 0
+        s.vol_adj_mode = False
+
+    @property
+    def name(s):
+        return 'volume_settings'
+
+    def enter(s, mch):
+        files.log_item('Set Web Options')
+        ply_a_0("/sd/mvc/volume_settings_menu.wav")
+        l_r_but()
+        s.vol_adj_mode = False
+        Ste.enter(s, mch)
+
+    def exit(s, mch):
+        Ste.exit(s, mch)
+
+    def upd(s, mch):
+        sw_st = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw_st == "left" and not s.vol_adj_mode:
+            ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
+            s.sel_i = s.i
+            s.i += 1
+            if s.i > len(vol_set)-1:
+                s.i = 0
+        if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
+            if sw_st == "right":
+                s.vol_adj_mode = True
+                ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
+        elif sw_st == "left" and s.vol_adj_mode:
+            ch_vol("lower")
+        elif sw_st == "right" and s.vol_adj_mode:
+            ch_vol("raise")
+        elif sw_st == "right_held" and s.vol_adj_mode:
+            files.write_json_file("/sd/cfg.json", cfg)
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
+            s.vol_adj_mode = False
+            mch.go_to('base_state')
+            upd_vol(0.1)
+        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_off":
+            cfg["volume_pot"] = False
+            if cfg["volume"] == 0:
+                cfg["volume"] = 10
+            files.write_json_file("/sd/cfg.json", cfg)
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
+            mch.go_to('base_state')
+        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_on":
+            cfg["volume_pot"] = True
+            files.write_json_file("/sd/cfg.json", cfg)
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
+            mch.go_to('base_state')
 
 
 gc_col("state mch")
@@ -1453,7 +1472,6 @@ gc_col("state mch")
 # Create the state machine
 
 st_mch = StMch()
-st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
@@ -1461,6 +1479,7 @@ st_mch.add(AdjFellTree())
 st_mch.add(MovFellTree())
 st_mch.add(DiaOpt())
 st_mch.add(WebOpt())
+st_mch.add(VolSet())
 
 aud_en.value = True
 
@@ -1537,4 +1556,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
