@@ -156,6 +156,9 @@ def bndMaxChp(min_chops, max_chops):
 cfg = files.read_json_file("/sd/cfg.json")
 t_ho_offset = -15
 
+cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
+vol_set = cfg_vol["volume_settings"]
+
 t_lst_p = cfg["tree_up_pos"]
 t_min = 60
 t_max = 180
