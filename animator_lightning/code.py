@@ -1,3 +1,27 @@
+# MIT License
+#
+# Copyright (c) 2024 JimmySoftLLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+#######################################################
+
 import utilities
 import gc
 import files
@@ -1531,66 +1555,66 @@ class Snds(Ste):
 #                 mch.go_to('base_state')
 
 
-# class VolSet(Ste):
+class VolSet(Ste):
 
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-#     @property
-#     def name(self):
-#         return 'volume_settings'
+    @property
+    def name(self):
+        return 'volume_settings'
 
-#     def enter(self, mch):
-#         files.log_item('Set Web Options')
-#         ply_a_0("/sd/mvc/volume_settings_menu.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        ply_a_0("/sd/mvc/volume_settings_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def upd(self, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_0("/sd/mvc/" + v_s[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(v_s)-1:
-#                 self.i = 0
-#         if sw == "right":
-#             sel_mnu = v_s[self.sel_i]
-#             if sel_mnu == "volume_level_adjustment":
-#                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
-#                 done = False
-#                 while not done:
-#                     sw = utilities.switch_state(
-#                           l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#                     if sw == "left":
-#                         ch_vol("lower")
-#                     elif sw == "right":
-#                         ch_vol("raise")
-#                     elif sw == "right_held":
-#                         files.write_json_file(
-#                             "/sd/cfg.json", cfg)
-#                         ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                         done = True
-#                         mch.go_to('base_state')
-#                     upd_vol(0.1)
-#                     pass
-#             elif sel_mnu == "volume_pot_off":
-#                 cfg["volume_pot"] = False
-#                 if cfg["volume"] == 0:
-#                     cfg["volume"] = 10
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
-#             elif sel_mnu == "volume_pot_on":
-#                 cfg["volume_pot"] = True
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0("/sd/mvc/" + v_s[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(v_s)-1:
+                self.i = 0
+        if sw == "right":
+            sel_mnu = v_s[self.sel_i]
+            if sel_mnu == "volume_level_adjustment":
+                ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
+                done = False
+                while not done:
+                    sw = utilities.switch_state(
+                          l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+                    if sw == "left":
+                        ch_vol("lower")
+                    elif sw == "right":
+                        ch_vol("raise")
+                    elif sw == "right_held":
+                        files.write_json_file(
+                            "/sd/cfg.json", cfg)
+                        ply_a_0("/sd/mvc/all_changes_complete.wav")
+                        done = True
+                        mch.go_to('base_state')
+                    upd_vol(0.1)
+                    pass
+            elif sel_mnu == "volume_pot_off":
+                cfg["volume_pot"] = False
+                if cfg["volume"] == 0:
+                    cfg["volume"] = 10
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "volume_pot_on":
+                cfg["volume_pot"] = True
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 
 # class WebOpt(Ste):
@@ -1736,7 +1760,7 @@ st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
 # st_mch.add(AddSnds())
-# st_mch.add(VolSet())
+st_mch.add(VolSet())
 # st_mch.add(WebOpt())
 st_mch.add(Light())
 
