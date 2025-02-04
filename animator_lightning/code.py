@@ -421,6 +421,8 @@ if (web):
             rq_d = req.json()
             if rq_d["an"] == "left":
                 ovrde_sw_st["switch_value"] = "left"
+            elif rq_d["an"] == "left_held":
+                ovrde_sw_st["switch_value"] = "left_held"
             elif rq_d["an"] == "right":
                 ovrde_sw_st["switch_value"] = "right"
             elif rq_d["an"] == "right_held":
@@ -1673,7 +1675,7 @@ class Light(Ste):
         self.sel_i = 0
         self.li = 0
         self.sel_li = 0
-
+        self.a = False
 
     @property
     def name(self):
@@ -1691,13 +1693,42 @@ class Light(Ste):
     def upd(self, mch):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left":
+        if self.a:
+            if sw == "left":
+                self.li -= 1
+                if self.li < 0:
+                    self.li = len(l_opt)-1
+                self.sel_li = self.li
+                ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
+            elif sw == "right":
+                self.li += 1
+                if self.li > len(l_opt)-1:
+                    self.li = 0
+                self.sel_li = self.li
+                ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
+            elif sw == "left_held":
+                files.write_json_file("/sd/cfg.json", cfg)
+                upd_l_str()
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                self.a = False
+                mch.go_to('base_state')
+            elif sw == "right_held":
+                if cfg["light_string"] == "":
+                    cfg["light_string"] = l_opt[self.sel_li]
+                else:
+                    cfg["light_string"] = cfg["light_string"] + \
+                        "," + l_opt[self.sel_li]
+                ply_a_0("/sd/mvc/" +
+                        l_opt[self.sel_li] + ".wav")
+                ply_a_0("/sd/mvc/added.wav")
+            upd_vol(0.1)
+        elif sw == "left":
             ply_a_0("/sd/mvc/" + l_mnu[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(l_mnu)-1:
                 self.i = 0
-        if r_sw.fell:
+        elif sw == "right":
             sel_mnu = l_mnu[self.sel_i]
             if sel_mnu == "hear_light_setup_instructions":
                 ply_a_0("/sd/mvc/string_instructions.wav")
@@ -1712,39 +1743,7 @@ class Light(Ste):
                 ply_a_0("/sd/mvc/lights_cleared.wav")
             elif sel_mnu == "add_lights":
                 ply_a_0("/sd/mvc/add_light_menu.wav")
-                a = True
-                while a:
-                    sw = utilities.switch_state(
-                                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-                    if sw == "left":
-                        self.li -= 1
-                        if self.li < 0:
-                            self.li = len(l_opt)-1
-                        self.sel_li = self.li
-                        ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
-                    elif sw == "right":
-                        self.li += 1
-                        if self.li > len(l_opt)-1:
-                            self.li = 0
-                        self.sel_li = self.li
-                        ply_a_0("/sd/mvc/" + l_opt[self.li] + ".wav")
-                    elif sw == "right_held":
-                        if cfg["light_string"] == "":
-                            cfg["light_string"] = l_opt[self.sel_li]
-                        else:
-                            cfg["light_string"] = cfg["light_string"] + \
-                                "," + l_opt[self.sel_li]
-                        ply_a_0("/sd/mvc/" +
-                                l_opt[self.sel_li] + ".wav")
-                        ply_a_0("/sd/mvc/added.wav")
-                    elif sw == "left_held":
-                        files.write_json_file("/sd/cfg.json", cfg)
-                        upd_l_str()
-                        ply_a_0("/sd/mvc/all_changes_complete.wav")
-                        a = False
-                        mch.go_to('base_state')
-                    upd_vol(0.1)
-                    pass
+                self.a = True
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
