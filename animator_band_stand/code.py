@@ -852,11 +852,11 @@ async def an_light_async(f_nm):
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-        sw_st = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left" and cfg["can_cancel"]:
+        if sw == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
-        if sw_st == "left_held":
+        if sw == "left_held":
             mix.voice[0].stop()
             if cont_run:
                 cont_run = False
@@ -1038,9 +1038,9 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global cont_run
-        sw_st = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left_held":
+        if sw == "left_held":
             if cont_run:
                 cont_run = False
                 stp_all_cmds()
@@ -1048,9 +1048,9 @@ class BseSt(Ste):
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif (sw_st == "left" or cont_run) and not mix.voice[0].playing:
+        elif (sw == "left" or cont_run) and not mix.voice[0].playing:
             add_cmd("AN_" + cfg["option_selected"])
-        elif sw_st == "right" and not mix.voice[0].playing:
+        elif sw == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
 
 
@@ -1074,15 +1074,15 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
-        if sw_st == "right":
+        if sw == "right":
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
@@ -1117,9 +1117,9 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1138,7 +1138,7 @@ class Snds(Ste):
                     self.i = 0
                 while mix.voice[0].playing:
                     pass
-        if sw_st == "right":
+        if sw == "right":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1175,16 +1175,16 @@ class AddSnds(Ste):
 
     def upd(self, mch):
         global ts_mode
-        sw_st = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             ply_a_0(
                 "/sd/mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(add_snd)-1:
                 self.i = 0
-        if sw_st == "right":
+        if sw == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
                 ply_a_0("/sd/mvc/create_sound_track_files.wav")
@@ -1223,36 +1223,36 @@ class VolSet(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        sw_st = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left" and not s.vol_adj_mode:
+        if sw == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
                 s.i = 0
         if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
-            if sw_st == "right":
+            if sw == "right":
                 s.vol_adj_mode = True
                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
-        elif sw_st == "left" and s.vol_adj_mode:
+        elif sw == "left" and s.vol_adj_mode:
             ch_vol("lower")
-        elif sw_st == "right" and s.vol_adj_mode:
+        elif sw == "right" and s.vol_adj_mode:
             ch_vol("raise")
-        elif sw_st == "right_held" and s.vol_adj_mode:
+        elif sw == "right_held" and s.vol_adj_mode:
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1)
-        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_off":
+        if sw == "right" and vol_set[s.sel_i] == "volume_pot_off":
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
-        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_on":
+        if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1277,15 +1277,15 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
                 self.i = 0
-        if sw_st == "right":
+        if sw == "right":
             selected_menu_item = web_m[self.sel_i]
             if selected_menu_item == "web_on":
                 cfg["serve_webpage"] = True

@@ -16,6 +16,12 @@
             Use this web app to control and calibrate your animator - lightning
             product. Have fun animating.
         </p>
+        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            data-url="/mode">Left</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            data-url="/mode">Right</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right_held"
+            data-url="/mode">Right Held</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -218,8 +224,8 @@
                     Change
                 </button>
             </div>
-            <button class="mui-btn mui-btn--primary" id="resetIncadescentColorsButton" data-value="reset_incandescent_colors"
-                data-url="/defaults" type="button">
+            <button class="mui-btn mui-btn--primary" id="resetIncadescentColorsButton"
+                data-value="reset_incandescent_colors" data-url="/defaults" type="button">
                 Reset to incandescent colors
             </button>
             <button class="mui-btn mui-btn--primary" id="resetWhiteColorsButton" data-value="reset_white_colors"
@@ -293,10 +299,19 @@
                 Valid volume levels are from 1 to 100
             </p>
 
-            <h2>Animator web page name:</h2>
+            <h2>Animator web page name and ip address:</h2>
 
             <div class="mui-textfield">
-                <input class="input" id="websiteUrl" type="text" placeholder="Enter website name">
+                <label>Base url:</label>
+                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div class="mui-textfield">
+                <label>IP Address:</label>
+                <input class="input" id="settingsIpAddress" type="text" disabled
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div>
                 <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
                     data-url="/update-host-name">
                     Change
@@ -306,7 +321,7 @@
             <p>
                 Use alphanumerics and dashes only. All names are automatically
                 appended with .local. So your website url will be something like
-                "website-name.local"
+                "website-name.local and the ip address will be xx.xx.xx.xx."
             </p>
 
             <h2>Utilities:</h2>
@@ -362,10 +377,30 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
+            });
+
+        // get local ip
+        fetch('/get-local-ip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                local_ip = data; // Set the value of the input field with the received data
+                data = data.replace(/^"|"$/g, '');
+                settingsIpAddress.value = data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
             });
 
         // get volume
@@ -698,12 +733,12 @@
     // Add click event listener to website submit button
     var websiteSubmitButton = document.getElementById('websiteSubmitButton');
     websiteSubmitButton.addEventListener('click', function () {
-        var websiteUrl = document.getElementById('websiteUrl');
-        var websiteUrlText = websiteUrl.value;
+        var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
+        var settingsWebsiteUrlText = settingsWebsiteUrl.value;
         var url = this.getAttribute('data-url');
 
         var data = {
-            text: websiteUrlText,
+            text: settingsWebsiteUrlText,
         };
 
         websiteSubmitButton.setAttribute('disabled', 'true')
@@ -719,7 +754,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
                 websiteSubmitButton.removeAttribute('disabled')
             })
             .catch(function (error) {
@@ -729,7 +764,7 @@
     });
 
     // Restrict input to letters, numbers, and hyphens only
-    websiteUrl.addEventListener('input', function () {
+    settingsWebsiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
     });
@@ -774,9 +809,9 @@
             });
     });
 
-        // Add click event listener to reset default colors button
-        var resetWhiteColorsButton = document.getElementById('resetWhiteColorsButton');
-        resetWhiteColorsButton.addEventListener('click', function () {
+    // Add click event listener to reset default colors button
+    var resetWhiteColorsButton = document.getElementById('resetWhiteColorsButton');
+    resetWhiteColorsButton.addEventListener('click', function () {
         var url = resetWhiteColorsButton.getAttribute('data-url');
         var animation = resetWhiteColorsButton.getAttribute('data-value');
 
