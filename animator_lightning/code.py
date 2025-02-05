@@ -432,6 +432,7 @@ if (web):
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif rq_d["an"] == "cont_mode_off":
                 c_run = False
+                stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             elif rq_d["an"] == "timestamp_mode_on":
                 ts_mode = True
@@ -512,7 +513,7 @@ if (web):
             global cfg
             rq_d = req.json()
             ch_vol(rq_d["action"])
-            return Response(req, cfg["volume"])
+            return Response(req, rq_d["action"])
 
         @server.route("/get-volume", [POST])
         def btn(req: Request):
@@ -622,8 +623,8 @@ command_queue = []
 
 
 def add_cmd(command, to_start=False):
-    global exit_set_hdw_async
-    exit_set_hdw_async = False
+    global ex_hdw
+    ex_hdw = False
     if to_start:
         command_queue.insert(0, command)  # Add to the front
         print("Command added to the start:", command)
@@ -647,9 +648,9 @@ def clr_cmd_queue():
 
 
 def stp_all_cmds():
-    global exit_set_hdw_async
+    global ex_hdw
     clr_cmd_queue()
-    exit_set_hdw_async = True
+    ex_hdw = True
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
@@ -772,10 +773,16 @@ def stp_a_0():
 
 
 def exit_early():
-    upd_vol(0.02)
-    l_sw.update()
-    if l_sw.fell:
+    global c_run
+    sw = utilities.switch_state(
+        l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+    if sw == "left" and cfg["can_cancel"]:
         mix.voice[0].stop()
+    if sw == "left_held":
+        mix.voice[0].stop()
+        c_run = False
+        stp_all_cmds()
+        ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
 
 
 def spk_str(str_to_speak, addLocal):
@@ -881,7 +888,7 @@ async def an(fn):
             elif cur == "fireworks":
                 await an_ls(cur)
             else:
-                t_l(cur)
+                await t_l(cur)
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -949,7 +956,8 @@ async def an_ls(fn):
         if d < 0:
             d = 0
         if te > ft[fti] - 0.25:
-            print("Time elapsed: " + str(te) + " Timestamp: " +
+            exit_early()
+            print("TE: " + str(te) + " TS: " +
                   str(ft[fti]) + " Dif: " + str(te-ft[fti]))
             fti += 1
             i = random.randint(il, ih)
@@ -967,9 +975,7 @@ async def an_ls(fn):
             pi = i
         if ftl == fti:
             fti = 0
-        l_sw.update()
-        if l_sw.fell and cfg["can_cancel"]:
-            mix.voice[0].stop()
+
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
@@ -1024,7 +1030,8 @@ def ts(fn):
     ply_a_0("/sd/mvc/animations_are_now_active.wav")
 
 
-def t_l(file_name):
+async def t_l(file_name):
+    global c_run
 
     ftd = files.read_json_file(
         "/sd/snd/" + file_name + ".json")
@@ -1041,19 +1048,19 @@ def t_l(file_name):
 
     while True:
         upd_vol(.1)
+        await asyncio.sleep(0)
         te = time.monotonic()-st
         # amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
         rt = ft[fti] - random.uniform(.5, 1)
         if te > rt:
-            print("Time elapsed: " + str(te) + " Timestamp: " +
+            exit_early()
+            print("TE: " + str(te) + " TS: " +
                   str(rt) + " Dif: " + str(te-rt))
             fti += 1
             ltng()
         if ftl == fti:
             fti = 0
-        l_sw.update()
-        if l_sw.fell and cfg["can_cancel"]:
-            mix.voice[0].stop()
+        exit_early()
         if not mix.voice[0].playing:
             break
 
@@ -1398,14 +1405,15 @@ class BseSt(Ste):
         global c_run
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held":
+        if sw == "left_held" and not mix.voice[0].playing:
             if c_run:
                 c_run = False
+                stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
                 c_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif sw == "left" or c_run:
+        elif (sw == "left" or c_run) and not mix.voice[0].playing:
             add_cmd(cfg["option_selected"])
         elif sw == "right":
             mch.go_to('main_menu')
@@ -1510,51 +1518,6 @@ class Snds(Ste):
                     pass
             mch.go_to('base_state')
 
-# class AddSnds(Ste):
-
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
-
-#     @property
-#     def name(self):
-#         return 'add_sounds_animate'
-
-#     def enter(self, mch):
-#         files.log_item('Add sounds animate')
-#         ply_a_0("/sd/mvc/add_sounds_animate.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
-
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
-
-#     def upd(self, mch):
-#         global ts_mode
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_0(
-#                 "/sd/mvc/" + a_s[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(a_s)-1:
-#                 self.i = 0
-#         if sw == "right":
-#             sel_mnu = a_s[self.sel_i]
-#             if sel_mnu == "hear_instructions":
-#                 ply_a_0("/sd/mvc/create_sound_track_files.wav")
-#             elif sel_mnu == "timestamp_mode_on":
-#                 ts_mode = True
-#                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
-#                 ply_a_0("/sd/mvc/timestamp_instructions.wav")
-#                 mch.go_to('base_state')
-#             elif sel_mnu == "timestamp_mode_off":
-#                 ts_mode = False
-#                 ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-#             else:
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
 
 
 class VolSet(Ste):
@@ -1618,54 +1581,6 @@ class VolSet(Ste):
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
-
-# class WebOpt(Ste):
-
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
-
-#     @property
-#     def name(self):
-#         return 'web_options'
-
-#     def enter(self, mch):
-#         files.log_item('Set Web Options')
-#         sel_web()
-#         Ste.enter(self, mch)
-
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
-
-#     def upd(self, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_0("/sd/mvc/" + w_mnu[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(w_mnu)-1:
-#                 self.i = 0
-#         if r_sw.fell:
-#             sel_mnu = w_mnu[self.sel_i]
-#             if sel_mnu == "web_on":
-#                 cfg["serve_webpage"] = True
-#                 opt_sel()
-#                 sel_web()
-#             elif sel_mnu == "web_off":
-#                 cfg["serve_webpage"] = False
-#                 opt_sel()
-#                 sel_web()
-#             elif sel_mnu == "hear_url":
-#                 spk_str(cfg["HOST_NAME"], True)
-#                 sel_web()
-#             elif sel_mnu == "hear_instr_web":
-#                 ply_a_0("/sd/mvc/web_instruct.wav")
-#                 sel_web()
-#             else:
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
 
 
 class Light(Ste):
@@ -1758,9 +1673,7 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
-# st_mch.add(AddSnds())
 st_mch.add(VolSet())
-# st_mch.add(WebOpt())
 st_mch.add(Light())
 
 aud_en.value = True
