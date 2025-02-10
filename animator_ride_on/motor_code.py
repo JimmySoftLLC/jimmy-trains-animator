@@ -29,8 +29,8 @@ import board
 import pwmio
 from adafruit_motor import motor
 
-PWM_PIN_A = board.D5  # Pick two PWM pins on their own channels
-PWM_PIN_B = board.D6
+PWM_PIN_A = board.GP16  # Pick two PWM pins on their own channels
+PWM_PIN_B = board.GP17
 PWM_FREQ = 25  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
 DECAY_MODE = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 THROTTLE_HOLD = 1  # Hold the throttle (seconds)
