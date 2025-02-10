@@ -176,18 +176,10 @@ cfg = files.read_json_file("/sd/cfg.json")
 
 snd_opt = files.return_directory("", "/sd/snds", ".wav")
 
-cust_snd_opt = files.return_directory(
-    "customers_owned_music_", "/sd/customers_owned_music", ".wav")
-
-all_snd_opt = []
-all_snd_opt.extend(snd_opt)
-all_snd_opt.extend(cust_snd_opt)
-
 menu_snd_opt = []
 menu_snd_opt.extend(snd_opt)
-rnd_opt = ['random all', 'random built in', 'random my']
+rnd_opt = ['random all']
 menu_snd_opt.extend(rnd_opt)
-menu_snd_opt.extend(cust_snd_opt)
 
 ts_jsons = files.return_directory(
     "", "/sd/t_s_def", ".json")
@@ -414,11 +406,6 @@ if (web):
         def btn(request: Request):
             return Response(request, cfg["volume"])
 
-        @server.route("/get-customers-sound-tracks", [POST])
-        def btn(request: Request):
-            stp_a_0()
-            my_string = files.json_stringify(cust_snd_opt)
-            return Response(request, my_string)
 
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
@@ -757,32 +744,12 @@ async def an_async(f_nm):
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
-        if f_nm == "random built in":
+        if f_nm == "random all":
             h_i = len(snd_opt) - 1
             cur_opt = snd_opt[random.randint(
                 0, h_i)]
             while lst_opt == cur_opt and len(snd_opt) > 1:
                 cur_opt = snd_opt[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
-        elif f_nm == "random my":
-            h_i = len(cust_snd_opt) - 1
-            cur_opt = cust_snd_opt[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(cust_snd_opt) > 1:
-                cur_opt = cust_snd_opt[random.randint(
-                    0, h_i)]
-            lst_opt = cur_opt
-            print("Random sound option: " + f_nm)
-            print("Sound file: " + cur_opt)
-        elif f_nm == "random all":
-            h_i = len(all_snd_opt) - 1
-            cur_opt = all_snd_opt[random.randint(
-                0, h_i)]
-            while lst_opt == cur_opt and len(all_snd_opt) > 1:
-                cur_opt = all_snd_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
@@ -796,7 +763,7 @@ async def an_async(f_nm):
     except Exception as e:
         files.log_item(e)
         no_trk()
-        cfg["option_selected"] = "random built in"
+        cfg["option_selected"] = "random all"
         return
     gc_col("Animation complete.")
 

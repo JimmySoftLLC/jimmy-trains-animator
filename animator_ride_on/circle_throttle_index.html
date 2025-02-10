@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotating Knob with Centered Upright Text</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .knob-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+        .knob {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #c6d6f7 30%, #4a7aeb);
+            border-radius: 50%;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+            user-select: none;
+            transform: rotate(0deg);
+        }
+        .indicator {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgb(12, 88, 228);
+            border-radius: 50%;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .knob-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            pointer-events: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="knob-container">
+    <div class="knob" id="knob">
+        <div class="indicator"></div>
+    </div>
+    <div class="knob-text" id="knob-text">0</div>
+</div>
+
+<script>
+    const knob = document.getElementById('knob');
+    const knobText = document.getElementById('knob-text');
+    let isDragging = false;
+    let previousAngle = 0;
+    let currentRotation = 0;
+
+    function getAngle(x, y, centerX, centerY) {
+        return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
+    }
+
+    function onStart(event) {
+        isDragging = true;
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+        previousAngle = getAngle(clientX, clientY, centerX, centerY);
+    }
+
+    function onMove(event) {
+        if (!isDragging) return;
+
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+        const currentAngle = getAngle(clientX, clientY, centerX, centerY);
+        let angleDiff = currentAngle - previousAngle;
+
+        // Adjust for the discontinuity at 180/-180 degrees
+        if (angleDiff > 180) angleDiff -= 360;
+        if (angleDiff < -180) angleDiff += 360;
+
+        currentRotation += angleDiff;
+        if (currentRotation > 180) currentRotation = 180;
+        if (currentRotation < -180) currentRotation = -180;
+
+        const displayValue = (currentRotation / 180) * 100;
+        knob.style.transform = `rotate(${currentRotation}deg)`;
+        knobText.innerText = Math.round(displayValue);
+
+        previousAngle = currentAngle;
+    }
+
+    function onEnd() {
+        isDragging = false;
+    }
+
+    knob.addEventListener('mousedown', onStart);
+    knob.addEventListener('touchstart', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchend', onEnd);
+</script>
+
+</body>
+</html>
