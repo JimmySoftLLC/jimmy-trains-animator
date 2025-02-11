@@ -444,7 +444,7 @@ if (web):
         def btn(request: Request):
             return Response(request, cfg["volume"])
 
-        @server.route("/get-built-in-sound-tracks", [POST])
+        @server.route("/get-animations", [POST])
         def btn(request: Request):
             stp_a_0()
             sounds = []

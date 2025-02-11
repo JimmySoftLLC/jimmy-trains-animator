@@ -149,12 +149,12 @@
             <h2>Animator web page name:</h2>
             <div class="mui-textfield">
                 <label>Base url:</label>
-                <input type="text" id="websiteUrl" placeholder="Enter website name"
+                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
                     style="width: 300px; padding: 5px; margin: 5px;">
             </div>
             <div class="mui-textfield">
                 <label>IP Address:</label>
-                <input class="input" id="ipAddress" type="text" disabled
+                <input class="input" id="settingsIpAddress" type="text" disabled
                     style="width: 300px; padding: 5px; margin: 5px;">
             </div>
 
@@ -273,7 +273,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
@@ -291,7 +291,7 @@
             })
             .then(function (data) {
                 local_ip = data; // Set the value of the input field with the received data
-                ipAddress.value = local_ip
+                settingsIpAddress.value = local_ip
             })
             .catch(function (error) {
                 console.log(error);
@@ -837,12 +837,12 @@
     // Add click event listener to website submit button
     var websiteSubmitButton = document.getElementById('websiteSubmitButton');
     websiteSubmitButton.addEventListener('click', function () {
-        var websiteUrl = document.getElementById('websiteUrl');
-        var websiteUrlText = websiteUrl.value;
+        var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
+        var settingsWebsiteUrlText = settingsWebsiteUrl.value;
         var url = this.getAttribute('data-url');
 
         var data = {
-            an: websiteUrlText,
+            an: settingsWebsiteUrlText,
         };
 
         websiteSubmitButton.setAttribute('disabled', 'true')
@@ -858,7 +858,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                websiteUrl.value = data; // Set the value of the input field with the received data
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
                 websiteSubmitButton.removeAttribute('disabled')
             })
             .catch(function (error) {
@@ -868,7 +868,7 @@
     });
 
     // Restrict input to letters, numbers, and hyphens only
-    websiteUrl.addEventListener('input', function () {
+    settingsWebsiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
     });

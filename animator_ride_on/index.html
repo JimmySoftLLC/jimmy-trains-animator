@@ -37,10 +37,10 @@
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
                 type="button">
-                Random all sound tracks
+                Random all animations
             </button>
-            <h2>Built in sound tracks:</h2>
-            <div id="builtInTracksContainer"></div>
+            <h2>Animations:</h2>
+            <div id="animationsContainer"></div>
             <h2>Animation settings:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
@@ -256,11 +256,9 @@
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
-            <h2>Built in sound tracks:</h2>
-            <div id="builtInTracksScriptContainer"></div>
-            <h2>My sound tracks:</h2>
-            <div id="myTracksScriptContainer"></div>
-            <h2>Animation script table:</h2>
+            <h2>Animations:</h2>
+            <div id="animationScriptsContainer"></div>
+            <h2>Animation table:</h2>
             <div class="mui-textfield">
                 <input class="input" id="animationName" type="text" disabled>
             </div>
@@ -272,7 +270,7 @@
             <div>TXXX = Train XXX throttle -100 to 100</div>
             <div>H_XXX_YY = Home train XXX throttle -100 to 100 YY position 12 or 6 o'clock</div>
             <div>
-                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
                 <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
                 <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
                 <table id="dataTable" class="mui-table">
@@ -292,6 +290,8 @@
 </body>
 
 <script>
+    local_ip = ""
+
     function removeChildNodes(myDiv) {
         // Remove all child nodes
         while (myDiv.firstChild) {
@@ -377,8 +377,7 @@
             })
             .then(function (data) {
                 local_ip = data; // Set the value of the input field with the received data
-                data = data.replace(/^"|"$/g, '');
-                settingsIpAddress.value = data
+                settingsIpAddress.value = local_ip
             })
             .catch(function (error) {
                 console.log(error);
@@ -386,7 +385,7 @@
             });
 
         // get built in sound tracks
-        fetch('/get-built-in-sound-tracks', {
+        fetch('/get-animations', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -397,15 +396,15 @@
             })
             .then(function (data) {
                 my_data = JSON.parse(data)
-                setBuiltInSoundTrackButtons(my_data)
-                setBuiltInSoundTrackScriptButtons(my_data)
+                setRunAnimationButtons(my_data)
+                setGetAnimationButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
             });
     });
 
-    function setBuiltInSoundTrackButtons(my_data) {
+    function setRunAnimationButtons(my_data) {
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
@@ -447,11 +446,11 @@
                         alert('Try Again');
                     });
             });
-            builtInTracksContainer.appendChild(button);
+            animationsContainer.appendChild(button);
         });
     }
 
-    function setBuiltInSoundTrackScriptButtons(my_data) {
+    function setGetAnimationButtons(my_data) {
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
@@ -494,7 +493,7 @@
                         button.removeAttribute('disabled')
                     });
             });
-            builtInTracksScriptContainer.appendChild(button);
+            animationScriptsContainer.appendChild(button);
         });
     }
 
@@ -610,11 +609,11 @@
     });
 
     // Table component
-    var saveDataButton = document.getElementById("saveDataButton");
+    var saveAnimationScriptDataButton = document.getElementById("saveAnimationScriptDataButton");
     var dataTable = document.getElementById("dataTable");
     var animationTableBody = document.querySelector("#dataTable tbody");
 
-    saveDataButton.addEventListener("click", function () {
+    saveAnimationScriptDataButton.addEventListener("click", function () {
         saveData();
     });
 
@@ -1045,7 +1044,7 @@
     }
 
     function saveData() {
-        saveDataButton.setAttribute("disabled", "true");
+        saveAnimationScriptDataButton.setAttribute("disabled", "true");
         var rows = Array.from(animationTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
@@ -1072,7 +1071,7 @@
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
                 // All blocks have been sent, enable the button
-                saveDataButton.removeAttribute('disabled');
+                saveAnimationScriptDataButton.removeAttribute('disabled');
                 return;
             }
 
@@ -1102,7 +1101,7 @@
                 .catch(function (error) {
                     alert(error.message);
                     // Enable the button even if an error occurs
-                    saveDataButton.removeAttribute('disabled');
+                    saveAnimationScriptDataButton.removeAttribute('disabled');
                 });
         }
 
