@@ -27,7 +27,7 @@ from adafruit_debouncer import Debouncer
 import neopixel
 from analogio import AnalogIn
 import asyncio
-from adafruit_motor import servo
+from adafruit_motor import servo, motor
 import pwmio
 import microcontroller
 import rtc
@@ -44,7 +44,7 @@ import time
 import gc
 import files
 import os
-
+import adafruit_vl53l4cd
 
 def gc_col(collection_point):
     gc.collect()
@@ -108,7 +108,7 @@ spi = busio.SPI(sck, si, so)
 
 # Setup the mixer to play wav files
 mix = audiomixer.Mixer(voice_count=1, sample_rate=22050, channel_count=2,
-                       bits_per_sample=16, samples_signed=True, buffer_size=8192)
+                       bits_per_sample=16, samples_signed=True, buffer_size=4096)
 aud.play(mix)
 
 mix.voice[0].level = .2
@@ -170,6 +170,43 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
+# setup distance sensor
+
+i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=400000)
+
+vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
+
+# OPTIONAL: can set non-default values
+vl53.inter_measurement = 0
+vl53.timing_budget = 200
+
+print("VL53L4CD Simple Test.")
+print("--------------------")
+model_id, module_type = vl53.model_info
+print("Model ID: 0x{:0X}".format(model_id))
+print("Module Type: 0x{:0X}".format(module_type))
+print("Timing Budget: {}".format(vl53.timing_budget))
+print("Inter-Measurement: {}".format(vl53.inter_measurement))
+print("--------------------")
+
+vl53.start_ranging()
+
+while not vl53.data_ready:
+    print("data not ready")
+    time.sleep(.2) 
+
+################################################################################
+# Setup motor controller
+p_frq = 50  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
+d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
+
+# DC motor setup; Set pins to custom PWM frequency
+pwm_a = pwmio.PWMOut(board.GP16, frequency=p_frq)
+pwm_b = pwmio.PWMOut(board.GP17, frequency=p_frq)
+train = motor.DCMotor(pwm_a, pwm_b)
+train.decay_mode = d_mde
+
+################################################################################
 # Sd card config variables
 
 cfg = files.read_json_file("/sd/cfg.json")
@@ -215,7 +252,7 @@ gc_col("config setup")
 num_px = 2
 
 # 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP17, num_px)
+led = neopixel.NeoPixel(board.GP15, num_px)
 
 gc_col("Neopixels setup")
 
@@ -920,7 +957,9 @@ async def set_hdw_async(input_string):
     # Process each segment
     for seg in segs:
         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-        if seg[0] == 'S':
+        if seg == "":
+            print("no command")
+        elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
             if num == 0:
@@ -960,6 +999,23 @@ async def set_hdw_async(input_string):
             seg_split = seg.split("_")
             # Process each command as an async operation
             await an_async(seg_split[1])
+        # TXXX = Train XXX throttle -100 to 100
+        elif seg[0] == 'T':
+            v = int(seg[1:])/100
+            train.throttle = v
+        # HXXX = Train XXX throttle -100 to 100
+        elif seg[0] == 'H':
+            train.throttle = .2
+            while True:
+                vl53.clear_interrupt()
+                cur_dist = vl53.distance
+                if cur_dist < 10: 
+                    train.throttle = 0
+                    break
+                print(cur_dist)
+                time.sleep(.1)  # Hold at current throttle value
+
+            
 
 ################################################################################
 # State Machine
@@ -1380,3 +1436,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
