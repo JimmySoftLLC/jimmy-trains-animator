@@ -210,17 +210,28 @@ train.decay_mode = d_mde
 ################################################################################
 # Sd card config variables
 
+animations_folder = "/sd/snds/"
+
 cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = files.return_directory("", "/sd/snds", ".json")
-
+snd_opt = []
 menu_snd_opt = []
-menu_snd_opt.extend(snd_opt)
-rnd_opt = ['random all']
-menu_snd_opt.extend(rnd_opt)
+ts_jsons = []
 
-ts_jsons = files.return_directory(
-    "", "/sd/t_s_def", ".json")
+def upd_media():
+    global snd_opt, menu_snd_opt, ts_jsons
+
+    snd_opt = files.return_directory("", "/sd/snds", ".json")
+
+    menu_snd_opt = []
+    menu_snd_opt.extend(snd_opt)
+    rnd_opt = ['random all']
+    menu_snd_opt.extend(rnd_opt)
+
+    ts_jsons = files.return_directory(
+        "", "/sd/t_s_def", ".json")
+
+upd_media()
 
 web = cfg["serve_webpage"]
 
@@ -232,10 +243,6 @@ web_m = cfg_web["web_menu"]
 
 cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
-
-cfg_add_song = files.read_json_file(
-    "/sd/mvc/add_sounds_animate.json")
-add_snd = cfg_add_song["add_sounds_animate"]
 
 cont_run = False
 ts_mode = False
@@ -451,6 +458,51 @@ if (web):
             sounds.extend(snd_opt)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
+        
+        @server.route("/create-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                print(rq_d)
+                f_n = animations_folder + rq_d["fn"] + ".json"
+                print(f_n)
+                an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
+                files.write_json_file(f_n, an_data)
+                upd_media()
+                return Response(request, "Created animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error creating animation.")
+        
+        @server.route("/rename-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                fo = animations_folder + rq_d["fo"] + ".json"
+                fn = animations_folder + rq_d["fn"] + ".json"
+                os.rename(fo, fn)
+                upd_media()
+                return Response(request, "Renamed animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.")
+            
+        @server.route("/delete-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                print(rq_d)
+                f_n = animations_folder + rq_d["fn"] + ".json"
+                print(f_n)
+                os.remove(f_n)
+                upd_media()
+                return Response(request, "Delete animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.")
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
@@ -467,36 +519,13 @@ if (web):
             stp_a_0()
             rq_d = request.json()
             snd_f = rq_d["an"]
-            if "customers_owned_music_" in snd_f:
-                snd_f = snd_f.replace("customers_owned_music_", "")
-                if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
-                    f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-                    print(f_n)
-                    return FileResponse(request, f_n, "/")
-                else:
-                    f_n = "/sd/t_s_def/timestamp mode.json"
-                    return FileResponse(request, f_n, "/")
+            if (f_exists("/sd/snds/" + snd_f + ".json") == True):
+                f_n = "/sd/snds/" + snd_f + ".json"
+                return FileResponse(request, f_n, "/")
             else:
-                if (f_exists("/sd/snds/" + snd_f + ".json") == True):
-                    f_n = "/sd/snds/" + snd_f + ".json"
-                    return FileResponse(request, f_n, "/")
-                else:
-                    f_n = "/sd/t_s_def/timestamp mode.json"
-                    return FileResponse(request, f_n, "/")
+                f_n = "/sd/t_s_def/timestamp mode.json"
+                return FileResponse(request, f_n, "/")
 
-        @server.route("/delete-file", [POST])
-        def btn(request: Request):
-            stp_a_0()
-            rq_d = request.json()
-            f_n = ""
-            if "customers_owned_music_" in rq_d["an"]:
-                snd_f = rq_d["an"].replace("customers_owned_music_", "")
-                f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-            else:
-                f_n = "/sd/snds/" + rq_d["an"] + ".json"
-            os.remove(f_n)
-            gc_col("get data")
-            return JSONResponse(request, "file deleted")
 
         data = []
 
@@ -511,17 +540,12 @@ if (web):
                     data = []
                 data.extend(rq_d[2])
                 if rq_d[0] == rq_d[1]:
-                    f_n = ""
-                    if "customers_owned_music_" in rq_d[3]:
-                        snd_f = rq_d[3].replace("customers_owned_music_", "")
-                        f_n = "/sd/customers_owned_music/" + \
-                            snd_f + ".json"
-                    else:
-                        f_n = "/sd/snds/" + \
-                            rq_d[3] + ".json"
+                    f_n = "/sd/snds/" + \
+                        rq_d[3] + ".json"
                     files.write_json_file(f_n, data)
                     data = []
                     gc_col("get data")
+                upd_media()
             except Exception as e:
                 files.log_item(e)
                 data = []

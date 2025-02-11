@@ -570,19 +570,6 @@ if (web):
                 f_n = "t_s_def/timestamp mode.json"
                 return FileResponse(request, f_n, "/")
 
-        @server.route("/delete-file", [POST])
-        def btn(request: Request):
-            rq_d = request.json()
-            f_n = ""
-            if "customers_owned_music_" in rq_d["an"]:
-                snd_f = rq_d["an"].replace("customers_owned_music_", "")
-                f_n = "customers_owned_music/" + snd_f + ".json"
-            else:
-                f_n = "animations/" + rq_d["an"] + ".json"
-            os.remove(f_n)
-            gc_col("get data")
-            return JSONResponse(request, "file deleted")
-
         data = []
 
         @server.route("/save-data", [POST])

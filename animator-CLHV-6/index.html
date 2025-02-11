@@ -318,6 +318,28 @@
         getAnimations()
     });
 
+    function getAnimations() {
+        // get Animations
+        fetch('/get-animations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setRunAnimationButtons(my_data)
+                setGetAnimationButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
+
+
     function createAnimationDialog() {
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
@@ -368,26 +390,6 @@
         mui.overlay('on', modalEl);
     }
 
-    function getAnimations() {
-        // get Animations
-        fetch('/get-animations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                my_data = JSON.parse(data)
-                setRunAnimationButtons(my_data)
-                setGetAnimationButtons(my_data)
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
 
     function createAnimation() {
         var filenameInput = document.getElementById('filename').value.trim();

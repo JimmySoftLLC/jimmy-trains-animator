@@ -251,16 +251,25 @@
         </div>
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
-            <p>
-                Animation scripts run the animation. To load the script press the button for the sound track you want to
-                modify.
-                Modify the script as needed and press save to save the script.
-            </p>
+            <p>Follow these steps to setup animations:</p>
+            <ol>
+                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
+                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
+                    corresponding buttons to duplicate, rename, or delete it.</li>
+            </ol>
+            <button class="mui-btn mui-btn--primary" onclick="createAnimationDialog()">Create
+                Animation</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimationDialog()">Duplicate
+                Animation</button>
+            <button class="mui-btn mui-btn--primary" onclick="renameAnimationDialog()">Rename
+                Animation</button>
+            <button class="mui-btn mui-btn--primary" onclick="deleteAnimationDialog()">Delete
+                Animation</button>
             <h2>Animations:</h2>
             <div id="animationScriptsContainer"></div>
             <h2>Animation table:</h2>
             <div class="mui-textfield">
-                <input class="input" id="animationName" type="text" disabled>
+                <input class="input" id="animationScriptName" type="text" disabled>
             </div>
             <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
             <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
@@ -384,7 +393,11 @@
                 showAlert(error);
             });
 
-        // get built in sound tracks
+            getAnimations()
+    });
+
+    function getAnimations() {
+        // get Animations
         fetch('/get-animations', {
             method: 'POST',
             headers: {
@@ -402,7 +415,326 @@
             .catch(function (error) {
                 console.log(error);
             });
-    });
+    }
+
+
+    function createAnimationDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Create Animation';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', createAnimation);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+
+    function createAnimation() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fn: filenameInput,
+            };
+
+            fetch("/create-animation", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updateAnimations()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function duplicateAnimationDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Duplicate Animation';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', duplicateAnimation);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+
+    function duplicateAnimation() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            animationScriptName.value = filenameInput;
+            saveAnimationScriptData();
+            updateAnimations()
+            var modalEl = document.getElementById("modalEl")
+            mui.overlay('off', modalEl)
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+
+    function renameAnimationDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Rename Animation';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', renameAnimation);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function renameAnimation() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fo: animationScriptName.value,
+                fn: filenameInput,
+            };
+
+            fetch("/rename-animation", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updateAnimations()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function deleteAnimationDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Delete Animation';
+        form.appendChild(legend);
+
+        var message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.textContent = "Are you sure your want to delete " + animationScriptName.value + " this is irreversible.";
+        form.appendChild(message);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Delete';
+        saveBtn.addEventListener('click', deleteAnimation);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function deleteAnimation() {
+        var data = {
+            fn: animationScriptName.value,
+        };
+
+        fetch("/delete-animation", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                updateAnimations()
+                console.log("file deleted")
+                var modalEl = document.getElementById("modalEl")
+                mui.overlay('off', modalEl)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+
+    function updateAnimations() {
+        const myAnimationScriptsDiv = document.getElementById("animationScriptsContainer");
+        removeChildNodes(myAnimationScriptsDiv)
+        const myAnimationsDiv = document.getElementById("animationsContainer");
+        removeChildNodes(myAnimationsDiv)
+        getAnimations()
+    }
 
     function setRunAnimationButtons(my_data) {
         // Loop through the data and create a button for each item
@@ -484,7 +816,7 @@
                     })
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
-                        animationName.value = animation
+                        animationScriptName.value = animation
                         populateAnimationsTable(myData)
                         button.removeAttribute('disabled')
                     })
@@ -614,7 +946,7 @@
     var animationTableBody = document.querySelector("#dataTable tbody");
 
     saveAnimationScriptDataButton.addEventListener("click", function () {
-        saveData();
+        saveAnimationScriptData();
     });
 
     function populateAnimationsTable(data) {
@@ -1043,7 +1375,7 @@
         populateAnimationsTable(combinedData)
     }
 
-    function saveData() {
+    function saveAnimationScriptData() {
         saveAnimationScriptDataButton.setAttribute("disabled", "true");
         var rows = Array.from(animationTableBody.querySelectorAll("tr"));
 
@@ -1080,7 +1412,7 @@
             const block = combinedData.slice(startIdx, endIdx);
             let myObject = [index, totalBlocks - 1, block]
             if (index == totalBlocks - 1) {
-                myObject = [index, totalBlocks - 1, block, animationName.value]
+                myObject = [index, totalBlocks - 1, block, animationScriptName.value]
             }
 
             // Send data to the server
