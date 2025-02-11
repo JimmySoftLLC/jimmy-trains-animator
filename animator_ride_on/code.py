@@ -211,7 +211,7 @@ train.decay_mode = d_mde
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = files.return_directory("", "/sd/snds", ".wav")
+snd_opt = files.return_directory("", "/sd/snds", ".json")
 
 menu_snd_opt = []
 menu_snd_opt.extend(snd_opt)
@@ -578,7 +578,7 @@ def stp_all_cmds():
 def rst_def():
     global cfg
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-bandstand"
+    cfg["HOST_NAME"] = "animator-ride-on-train"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
 
@@ -726,8 +726,8 @@ def no_trk():
 def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-bandstand":
-        ply_a_0("/sd/mvc/animator_dash_bandstand.wav")
+    if cfg["HOST_NAME"] == "animator-ride-on-train":
+        ply_a_0("/sd/mvc/animator_ride_on_train.wav")
         ply_a_0("/sd/mvc/dot.wav")
         ply_a_0("/sd/mvc/local.wav")
     else:
@@ -808,46 +808,20 @@ async def an_async(f_nm):
 async def an_light_async(f_nm):
     global ts_mode, cont_run
 
-    cust_f = "customers_owned_music_" in f_nm
-
     flsh_t = []
 
-    if cust_f:
-        f_nm = f_nm.replace("customers_owned_music_", "")
-        if (f_exists("/sd/customers_owned_music/" + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(
-                "/sd/customers_owned_music/" + f_nm + ".json")
-        else:
-            try:
-                flsh_t = files.read_json_file(
-                    "/sd/customers_owned_music/" + f_nm + ".json")
-            except Exception as e:
-                files.log_item(e)
-                ply_a_0("/sd/mvc/no_timestamp_file_found.wav")
-                while True:
-                    l_sw.update()
-                    r_sw.update()
-                    if l_sw.fell:
-                        ts_mode = False
-                        return
-                    if r_sw.fell:
-                        ts_mode = True
-                        ply_a_0("/sd/mvc/timestamp_instructions.wav")
-                        return
-    else:
-        if (f_exists("/sd/snds/" + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(
-                "/sd/snds/" + f_nm + ".json")
+    if (f_exists("/sd/snds/" + f_nm + ".json") == True):
+        flsh_t = files.read_json_file(
+            "/sd/snds/" + f_nm + ".json")
 
     flsh_i = 0
 
-    if cust_f:
-        w0 = audiocore.WaveFile(
-            open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
-    else:
+    w0_exists = f_exists("/sd/snds/" + f_nm + ".wav")
+
+    if w0_exists:
         w0 = audiocore.WaveFile(
             open("/sd/snds/" + f_nm + ".wav", "rb"))
-    mix.voice[0].play(w0, loop=False)
+        mix.voice[0].play(w0, loop=False)
     srt_t = time.monotonic()
 
     ft1 = []
@@ -890,8 +864,8 @@ async def an_light_async(f_nm):
                 cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-
-        if not mix.voice[0].playing:
+        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1 :
+            mix.voice[0].stop()
             led.fill((0, 0, 0))
             led.show()
             return
@@ -902,17 +876,11 @@ def an_ts(f_nm):
     print("time stamp mode")
     global ts_mode
 
-    cust_f = "customers_owned_music_" in f_nm
-
     t_s = []
 
     f_nm = f_nm.replace("customers_owned_music_", "")
 
-    if cust_f:
-        w0 = audiocore.WaveFile(
-            open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
-    else:
-        w0 = audiocore.WaveFile(
+    w0 = audiocore.WaveFile(
             open("/sd/snds/" + f_nm + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
 
@@ -928,12 +896,8 @@ def an_ts(f_nm):
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            if cust_f:
-                files.write_json_file(
-                    "/sd/customers_owned_music/" + f_nm + ".json", t_s)
-            else:
-                files.write_json_file(
-                    "/sd/snds/" + f_nm + ".json", t_s)
+            files.write_json_file(
+                "/sd/snds/" + f_nm + ".json", t_s)
             break
 
     ts_mode = False
@@ -1006,6 +970,8 @@ async def set_hdw_async(input_string):
         # HXXX = Train XXX throttle -100 to 100
         elif seg[0] == 'H':
             train.throttle = .2
+            vl53.clear_interrupt()
+            cur_dist = vl53.distance
             while True:
                 vl53.clear_interrupt()
                 cur_dist = vl53.distance
@@ -1376,7 +1342,8 @@ if (web):
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
-    except OSError:
+    except Exception as e:
+        files.log_item(e)
         time.sleep(5)
         files.log_item("restarting...")
         rst()
