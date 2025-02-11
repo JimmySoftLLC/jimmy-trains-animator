@@ -46,6 +46,7 @@ import files
 import os
 import adafruit_vl53l4cd
 
+
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
@@ -193,7 +194,7 @@ vl53.start_ranging()
 
 while not vl53.data_ready:
     print("data not ready")
-    time.sleep(.2) 
+    time.sleep(.2)
 
 ################################################################################
 # Setup motor controller
@@ -442,7 +443,6 @@ if (web):
         @server.route("/get-volume", [POST])
         def btn(request: Request):
             return Response(request, cfg["volume"])
-
 
         @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
@@ -858,16 +858,19 @@ async def an_light_async(f_nm):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
+            flsh_i = len(flsh_t) - 1
         if sw == "left_held":
             mix.voice[0].stop()
+            flsh_i = len(flsh_t) - 1
             if cont_run:
                 cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1 :
+        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             led.fill((0, 0, 0))
             led.show()
+            add_cmd("T0")
             return
         await upd_vol_async(.1)
 
@@ -881,7 +884,7 @@ def an_ts(f_nm):
     f_nm = f_nm.replace("customers_owned_music_", "")
 
     w0 = audiocore.WaveFile(
-            open("/sd/snds/" + f_nm + ".wav", "rb"))
+        open("/sd/snds/" + f_nm + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
@@ -967,21 +970,29 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'T':
             v = int(seg[1:])/100
             train.throttle = v
-        # HXXX = Train XXX throttle -100 to 100
+        # H_XXX_YY = Train XXX throttle -100 to 100 YY position 12 or 6 oclock
         elif seg[0] == 'H':
-            train.throttle = .2
+            seg_split = seg.split("_")
+            train.throttle = int(seg_split[1])/100
+            if seg_split[2] == "12":
+                goal = 2.7
+            else:
+                goal = 32.0
             vl53.clear_interrupt()
             cur_dist = vl53.distance
+            i = 0
             while True:
                 vl53.clear_interrupt()
                 cur_dist = vl53.distance
-                if cur_dist < 10: 
-                    train.throttle = 0
-                    break
+
+                if cur_dist > goal - 1 and cur_dist < goal + 1:
+                    i += 1
+                    if i > 2:
+                        train.throttle = 0
+                        break
                 print(cur_dist)
                 time.sleep(.1)  # Hold at current throttle value
 
-            
 
 ################################################################################
 # State Machine
@@ -1348,8 +1359,9 @@ if (web):
         files.log_item("restarting...")
         rst()
 
-#  set all servos to 90
-add_cmd("S090")  # this needs updating
+# initialize items
+add_cmd("S090")
+add_cmd("H_20_12")
 upd_vol(.5)
 
 st_mch.go_to('base_state')
