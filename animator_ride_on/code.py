@@ -972,6 +972,15 @@ async def set_hdw_async(input_string):
                         mix.voice[0].play(w0, loop=False)
                     if seg[1] == "W":
                         wait_snd()
+        # WA = Blow horn or whistle, A (H Horn, W whistle)
+        if seg[0] == 'W': # play file
+                stp_a_0()
+                if seg[1] == "W":
+                    w0 = audiocore.WaveFile(open("/sd/mvc/whistle_1.wav", "rb"))
+                    mix.voice[0].play(w0, loop=False)
+                elif seg[1] == "H" or seg[1] == "P":
+                    w0 = audiocore.WaveFile(open("/sd/mvc/horn_1.wav", "rb"))
+                    mix.voice[0].play(w0, loop=False)
         elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])

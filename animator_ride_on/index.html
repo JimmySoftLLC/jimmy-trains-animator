@@ -352,6 +352,7 @@
             <div>H_XXX_YY = Home train XXX throttle -100 to 100 YY position 12 or 6 o'clock</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder) XXX (file name)</div>
+            <div>WA = Blow horn or whistle, A (H Horn, W whistle)</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
@@ -1600,12 +1601,12 @@
     }
 
     function blowHorn() {
-        let newCommand = "MPMhorn_1";
+        let newCommand = "WH";
         testAnimationCommand(newCommand);
     }
 
     function blowWhistle() {
-        let newCommand = "MPMwhistle_1";
+        let newCommand = "WW";
         testAnimationCommand(newCommand);
     }
 
