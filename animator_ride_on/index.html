@@ -7,6 +7,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
     <script src="/mui.min.js"></script>
+    <style>
+        .knob-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+
+        .knob {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #c6d6f7 30%, #4a7aeb);
+            border-radius: 50%;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+            user-select: none;
+            transform: rotate(0deg);
+        }
+
+        .indicator {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgb(12, 88, 228);
+            border-radius: 50%;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .knob-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            pointer-events: none;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body>
@@ -21,10 +64,13 @@
             data-url="/mode">Left</button>
         <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
             data-url="/mode">Right</button>
-        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button"
-            data-value="right_held" data-url="/mode">Right Held</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right_held"
+            data-url="/mode">Right Held</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
+                <a data-mui-toggle="tab" data-mui-controls="trainControl">Train Control</a>
+            </li>
+            <li>
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
@@ -34,7 +80,15 @@
                 <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
             </li>
         </ul>
-        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+        <div class="mui-tabs__pane mui--is-active" id="trainControl" style="padding-top:0.5rem;">
+            <div class="knob-container">
+                <div class="knob" id="knob">
+                    <div class="indicator"></div>
+                </div>
+                <div class="knob-text" id="knob-text">0</div>
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
                 type="button">
                 Random all animations
@@ -279,7 +333,8 @@
             <div>TXXX = Train XXX throttle -100 to 100</div>
             <div>H_XXX_YY = Home train XXX throttle -100 to 100 YY position 12 or 6 o'clock</div>
             <div>
-                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
+                    Animations</button>
                 <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
                 <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
                 <table id="dataTable" class="mui-table">
@@ -393,7 +448,7 @@
                 showAlert(error);
             });
 
-            getAnimations()
+        getAnimations()
     });
 
     function getAnimations() {
@@ -1003,6 +1058,32 @@
             });
     }
 
+    async function testAnimationCommand(command) {
+        if (!command) {
+            alert("Invalid command, stopping request: " + command);
+            return;
+        }
+
+        const url = "/test-animation";
+        const data = { an: command };
+        const jsonData = JSON.stringify({ ...data });
+
+        try {
+            let response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonData,
+            });
+
+            let text = await response.text();
+            return text;
+        } catch (error) {
+            alert("Fetch Error: " + error + "Sending Data: " + jsonData);
+        }
+    } 
+
+
+
     function getTextOfInput(rowElement, elNum) {
         const inputElements = rowElement.querySelectorAll('input');
         if (inputElements.length >= elNum) {
@@ -1474,6 +1555,100 @@
 
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
     }
+
+
+    const knob = document.getElementById('knob');
+    const knobText = document.getElementById('knob-text');
+    let isDragging = false;
+    let previousAngle = 0;
+    let currentRotation = 0;
+    let lastSentTime = 0;
+    let throttleTimeout = null; // Prevents multiple stacked timeouts
+
+    function getAngle(x, y, centerX, centerY) {
+        return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
+    }
+
+    function onStart(event) {
+        isDragging = true;
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+        previousAngle = getAngle(clientX, clientY, centerX, centerY);
+    }
+
+    function onMove(event) {
+        if (!isDragging) return;
+
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+        const currentAngle = getAngle(clientX, clientY, centerX, centerY);
+        let angleDiff = currentAngle - previousAngle;
+
+        if (angleDiff > 180) angleDiff -= 360;
+        if (angleDiff < -180) angleDiff += 360;
+
+        currentRotation += angleDiff;
+        currentRotation = Math.max(-180, Math.min(180, currentRotation));
+
+        const displayValue = Math.round((currentRotation / 180) * 100);
+        knob.style.transform = `rotate(${currentRotation}deg)`;
+        knobText.innerText = displayValue;
+
+        let newCommand = "T" + displayValue;
+
+        // Throttle command sending
+        throttleSendCommand(newCommand);
+
+        previousAngle = currentAngle;
+    }
+
+    function throttleSendCommand(command) {
+        if (throttleTimeout) {
+            clearTimeout(throttleTimeout); // Cancel any existing timeout
+        }
+
+        const now = Date.now();
+        if (now - lastSentTime >= 200) {
+            sendThrottledCommand(command);
+        } else {
+            throttleTimeout = setTimeout(() => sendThrottledCommand(command), 200);
+        }
+    }
+
+    async function sendThrottledCommand(command) {
+        if (!command) return; // Ignore invalid commands
+
+        lastSentTime = Date.now();
+        throttleTimeout = null; // Clear timeout reference
+
+        try {
+            await testAnimationCommand(command);
+        } catch (error) {
+            console.error("Error sending animation command:", error);
+        }
+    }
+
+    function onEnd() {
+        isDragging = false;
+    }
+
+    knob.addEventListener('mousedown', onStart);
+    knob.addEventListener('touchstart', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchend', onEnd);
+
+    // Prevent iPhone screen from moving when dragging the knob
+    knob.addEventListener('touchstart', event => event.preventDefault(), { passive: false });
+    knob.addEventListener('touchmove', event => event.preventDefault(), { passive: false });
 
 </script>
 

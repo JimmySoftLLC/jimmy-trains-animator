@@ -506,12 +506,15 @@ if (web):
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
-            stp_a_0()
-            rq_d = request.json()
-            print(rq_d["an"])
-            gc_col("Save Data.")
-            add_cmd(rq_d["an"])
-            return Response(request, "success")
+            try:
+                rq_d = request.json()
+                clr_cmd_queue()
+                add_cmd(rq_d["an"])
+                return Response(request, "success")
+            except Exception as e:
+                print(e)
+                return Response(request, "error")
+        
 
         @server.route("/get-animation", [POST])
         def btn(request: Request):
