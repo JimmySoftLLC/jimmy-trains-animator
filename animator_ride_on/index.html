@@ -87,6 +87,7 @@
                 </div>
                 <div class="knob-text" id="knob-text">0</div>
             </div>
+            <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -1564,6 +1565,20 @@
     let currentRotation = 0;
     let lastSentTime = 0;
     let throttleTimeout = null; // Prevents multiple stacked timeouts
+    const throttleTime = 500
+
+    function stopTrain(){
+        previousAngle = 0;
+        currentRotation = 0;
+        const displayValue = Math.round((currentRotation / 180) * 100);
+        knob.style.transform = `rotate(${currentRotation}deg)`;
+        knobText.innerText = displayValue;
+
+        let newCommand = "T" + displayValue;
+
+        // Throttle command sending
+        throttleSendCommand(newCommand);
+    }
 
     function getAngle(x, y, centerX, centerY) {
         return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
@@ -1615,10 +1630,10 @@
         }
 
         const now = Date.now();
-        if (now - lastSentTime >= 200) {
+        if (now - lastSentTime >= throttleTime) {
             sendThrottledCommand(command);
         } else {
-            throttleTimeout = setTimeout(() => sendThrottledCommand(command), 200);
+            throttleTimeout = setTimeout(() => sendThrottledCommand(command), throttleTime);
         }
     }
 
