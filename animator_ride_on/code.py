@@ -689,10 +689,15 @@ def ply_a_0(file_name):
         exit_early()
 
 
+def wait_snd():
+    while mix.voice[0].playing:
+        exit_early()
+        pass
+
+
 def stp_a_0():
     mix.voice[0].stop()
-    while mix.voice[0].playing:
-        pass
+    wait_snd()
 
 
 def exit_early():
@@ -953,6 +958,20 @@ async def set_hdw_async(input_string):
         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
         if seg == "":
             print("no command")
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
+        if seg[0] == 'M': # play file
+                if seg[1] == "S":
+                    stp_a_0()
+                elif seg[1] == "W" or seg[1] == "P":
+                    stp_a_0()
+                    if seg[2] == "S":
+                        w0 = audiocore.WaveFile(open("/sd/snds/" + seg[3:] + ".wav", "rb"))
+                    elif seg[2] == "M":
+                        w0 = audiocore.WaveFile(open("/sd/mvc/" + seg[3:] + ".wav", "rb"))
+                    if seg[1] == "W" or seg[1] == "P":
+                        mix.voice[0].play(w0, loop=False)
+                    if seg[1] == "W":
+                        wait_snd()
         elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
@@ -988,7 +1007,7 @@ async def set_hdw_async(input_string):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
-        # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use "customers_owned_music_filename"
+        # AN_XXX = Animation XXX filename
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
             # Process each command as an async operation
@@ -1011,7 +1030,6 @@ async def set_hdw_async(input_string):
             while True:
                 vl53.clear_interrupt()
                 cur_dist = vl53.distance
-
                 if cur_dist > goal - 1 and cur_dist < goal + 1:
                     i += 1
                     if i > 2:

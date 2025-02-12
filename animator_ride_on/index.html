@@ -350,6 +350,8 @@
             <div>AN_XXX = Animation XXX filename</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
             <div>H_XXX_YY = Home train XXX throttle -100 to 100 YY position 12 or 6 o'clock</div>
+            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
+                tracks, M mvc folder) XXX (file name)</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
@@ -1595,6 +1597,16 @@
 
         // Throttle command sending
         throttleSendCommand(newCommand);
+    }
+
+    function blowHorn() {
+        let newCommand = "MPMhorn_1";
+        testAnimationCommand(newCommand);
+    }
+
+    function blowWhistle() {
+        let newCommand = "MPMwhistle_1";
+        testAnimationCommand(newCommand);
     }
 
     function getAngle(x, y, centerX, centerY) {
