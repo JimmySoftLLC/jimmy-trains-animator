@@ -698,6 +698,7 @@ def wait_snd():
 def stp_a_0():
     mix.voice[0].stop()
     wait_snd()
+    gc_col("stp snd")
 
 
 def exit_early():
@@ -765,6 +766,18 @@ def spk_web():
     else:
         spk_str(cfg["HOST_NAME"], True)
     ply_a_0("/sd/mvc/in_your_browser.wav")
+
+def get_snds(dir, typ):
+    sds = []
+    s = files.return_directory("", dir, ".wav")
+    for el in s:
+        p = el.split('_')
+        if p[0] == typ:
+            sds.append(el)
+    mx = len(sds) - 1
+    i = random.randint(0, mx)
+    fn = dir + "/" + sds[i] + ".wav"
+    return fn
 
 ################################################################################
 # servo helpers
@@ -839,6 +852,8 @@ async def an_async(f_nm):
 
 async def an_light_async(f_nm):
     global ts_mode, cont_run
+
+    stp_a_0()
 
     flsh_t = []
 
@@ -974,13 +989,15 @@ async def set_hdw_async(input_string):
                         wait_snd()
         # WA = Blow horn or whistle, A (H Horn, W whistle)
         if seg[0] == 'W': # play file
-                stp_a_0()
-                if seg[1] == "W":
-                    w0 = audiocore.WaveFile(open("/sd/mvc/whistle_1.wav", "rb"))
-                    mix.voice[0].play(w0, loop=False)
-                elif seg[1] == "H" or seg[1] == "P":
-                    w0 = audiocore.WaveFile(open("/sd/mvc/horn_1.wav", "rb"))
-                    mix.voice[0].play(w0, loop=False)
+            stp_a_0()
+            if seg[1] == "W":
+                fn=get_snds("/sd/mvc","whistle")
+                w0 = audiocore.WaveFile(open(fn, "rb"))
+                mix.voice[0].play(w0, loop=False)
+            elif seg[1] == "H" or seg[1] == "P":
+                fn=get_snds("/sd/mvc","horn")
+                w0 = audiocore.WaveFile(open(fn, "rb"))
+                mix.voice[0].play(w0, loop=False)
         elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
@@ -1045,7 +1062,7 @@ async def set_hdw_async(input_string):
                         train.throttle = 0
                         break
                 print(cur_dist)
-                time.sleep(.1)  # Hold at current throttle value
+                time.sleep(.02)  # Hold at current throttle value
 
 
 ################################################################################
