@@ -130,6 +130,10 @@ import sys
 import asyncio
 import websockets
 import pyautogui
+from picamera2 import Picamera2
+# picam2 = Picamera2()
+# picam2.start()
+# picam2.capture_file("image.jpg")
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
