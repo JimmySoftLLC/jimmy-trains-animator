@@ -18,8 +18,6 @@ PAGE = """
 <h1>Picamera2 MJPEG Streaming Demo</h1>
 <img src="stream.mjpg" width="640" height="480" /><br>
 <button onclick="snapshot()">Take Snapshot</button>
-<button onclick="startRecording()">Start Recording</button>
-<button onclick="stopRecording()">Stop Recording</button>
 
 <script>
 function snapshot() {
@@ -97,33 +95,33 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(f"Failed to take snapshot: {e}".encode())
 
-        elif self.path == '/start_recording':
-            if not recording:
-                try:
-                    picam2.start_recording(H264Encoder(), FileOutput('test.mp4'))
-                    recording = True
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write(b'Started recording')
-                except Exception as e:
-                    logging.error(f"Failed to start recording: {e}")
-                    self.send_response(500)
-                    self.end_headers()
-                    self.wfile.write(f"Failed to start recording: {e}".encode())
+        # elif self.path == '/start_recording':
+        #     if not recording:
+        #         try:
+        #             picam2.start_recording(H264Encoder(), FileOutput('test.mp4'))
+        #             recording = True
+        #             self.send_response(200)
+        #             self.end_headers()
+        #             self.wfile.write(b'Started recording')
+        #         except Exception as e:
+        #             logging.error(f"Failed to start recording: {e}")
+        #             self.send_response(500)
+        #             self.end_headers()
+        #             self.wfile.write(f"Failed to start recording: {e}".encode())
 
-        elif self.path == '/stop_recording':
-            if recording:
-                try:
-                    picam2.stop_recording()
-                    recording = False
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write(b'Stopped recording')
-                except Exception as e:
-                    logging.error(f"Failed to stop recording: {e}")
-                    self.send_response(500)
-                    self.end_headers()
-                    self.wfile.write(f"Failed to stop recording: {e}".encode())
+        # elif self.path == '/stop_recording':
+        #     if recording:
+        #         try:
+        #             picam2.stop_recording()
+        #             recording = False
+        #             self.send_response(200)
+        #             self.end_headers()
+        #             self.wfile.write(b'Stopped recording')
+        #         except Exception as e:
+        #             logging.error(f"Failed to stop recording: {e}")
+        #             self.send_response(500)
+        #             self.end_headers()
+        #             self.wfile.write(f"Failed to stop recording: {e}".encode())
 
         else:
             self.send_error(404)
