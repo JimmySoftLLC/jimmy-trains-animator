@@ -1801,28 +1801,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
 
-PAGE = """
-<html>
-<head>
-<title>picamera2 MJPEG Streaming Demo</title>
-</head>
-<body>
-<h1>Picamera2 MJPEG Streaming Demo</h1>
-<img src="stream.mjpg" width="640" height="480" /><br>
-<button onclick="snapshot()">Take Snapshot</button>
-
-<script>
-function snapshot() {
-    fetch('/snapshot').then(response => console.log('Snapshot taken!'));
-}
-
-
-</script>
-</body>
-</html>
-"""
-
-
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
         self.frame = None
@@ -1836,19 +1814,8 @@ class StreamingOutput(io.BufferedIOBase):
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
-        global recording
-        if self.path == '/':
-            self.send_response(301)
-            self.send_header('Location', '/index.html')
-            self.end_headers()
-        elif self.path == '/index.html':
-            content = PAGE.encode('utf-8')
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/html')
-            self.send_header('Content-Length', len(content))
-            self.end_headers()
-            self.wfile.write(content)
-        elif self.path == '/stream.mjpg':
+        global picam2, output
+        if self.path == '/stream.mjpg':
             self.send_response(200)
             self.send_header('Age', 0)
             self.send_header('Cache-Control', 'no-cache, private')
@@ -1870,7 +1837,6 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             except Exception as e:
                 print('Removed streaming client %s: %s',
                       self.client_address, str(e))
-
         elif self.path == '/snapshot':
             try:
                 picam2.stop_recording()
@@ -1885,7 +1851,6 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(f"Failed to take snapshot: {e}".encode())
-
         else:
             self.send_error(404)
             self.end_headers()
@@ -1902,10 +1867,9 @@ def start_camera_server():
     global picam2, output
     picam2 = Picamera2()
     picam2.configure(picam2.create_video_configuration(
-        main={"size": (640, 480)}))
+        main={"size": (640, 360)}))
     output = StreamingOutput()
     picam2.start_recording(JpegEncoder(), FileOutput(output))
-
     address = ('', 8000)
     camera_server = StreamingServer(address, StreamingHandler)
     camera_server.serve_forever()
