@@ -1209,6 +1209,12 @@ def open_midori():
 ################################################################################
 # Setup camera streaming
 
+# Global state
+camera_running = False
+picam2 = None
+output = None
+camera_thread = None
+
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
         self.frame = None
@@ -1222,16 +1228,22 @@ class StreamingOutput(io.BufferedIOBase):
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
         global picam2, output
-        if self.path == '/stream.mjpg':
+        # Strip query parameters to allow cache-busting
+        path = self.path.split('?', 1)[0]
+        if path == '/stream.mjpg':
+            if not camera_running:
+                self.send_response(503)
+                self.end_headers()
+                self.wfile.write(b'Camera not running')
+                return
             self.send_response(200)
             self.send_header('Age', 0)
             self.send_header('Cache-Control', 'no-cache, private')
             self.send_header('Pragma', 'no-cache')
-            self.send_header(
-                'Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
             self.end_headers()
             try:
-                while True:
+                while camera_running:
                     with output.condition:
                         output.condition.wait()
                         frame = output.frame
@@ -1245,10 +1257,14 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                 print('Removed streaming client %s: %s',
                       self.client_address, str(e))
         elif self.path == '/snapshot':
+            if not camera_running:
+                self.send_response(503)
+                self.end_headers()
+                self.wfile.write(b'Camera not running')
+                return
             try:
                 picam2.stop_recording()
-                picam2.switch_mode_and_capture_file(
-                    picam2.create_still_configuration(), 'test.jpg')
+                picam2.switch_mode_and_capture_file(picam2.create_still_configuration(), 'test.jpg')
                 picam2.start_recording(JpegEncoder(), FileOutput(output))
                 self.send_response(200)
                 self.end_headers()
@@ -1266,19 +1282,29 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-
 def start_camera_server():
-    global picam2, output
-    picam2 = Picamera2()
-    picam2.configure(picam2.create_video_configuration(
-        main={"size": (640, 360)}))
-    output = StreamingOutput()
-    picam2.start_recording(JpegEncoder(), FileOutput(output))
+    global camera_running, picam2, output, camera_thread
+    if not camera_running:
+        picam2 = Picamera2()
+        picam2.configure(picam2.create_video_configuration(main={"size": (640, 480)}))
+        output = StreamingOutput()
+        picam2.start_recording(JpegEncoder(), FileOutput(output))
+        camera_running = True
+        camera_thread = threading.Thread(target=run_camera_server, daemon=True)
+        camera_thread.start()
+
+def run_camera_server():
     address = ('', 8000)
     camera_server = StreamingServer(address, StreamingHandler)
     camera_server.serve_forever()
 
-
+def stop_camera_server():
+    global camera_running, picam2, camera_thread
+    if camera_running:
+        picam2.stop_recording()
+        picam2.close()
+        camera_running = False
+        camera_thread = None
 ################################################################################
 # Setup routes
 
@@ -1295,6 +1321,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             print(self.path)
             self.handle_serve_file("/code" + self.path,
                                    "application/javascript")
+            
         else:
             self.handle_serve_file(self.path)
 
@@ -1405,6 +1432,10 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.get_all_media_post(post_data_obj)
         elif self.path == "/speaker":
             self.speaker_post(post_data_obj)
+        elif self.path == "/start-camera":
+            self.start_camera(post_data_obj)
+        elif self.path == "/stop-camera":
+            self.stop_camera(post_data_obj)
         elif self.path == "/get-light-string":
             self.get_light_string_post(post_data_obj)
         elif self.path == "/get-scene-changes":
@@ -1437,8 +1468,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
-        # elif self.path == "/get-scripts":
-        #     self.get_scripts_post(post_data_obj)
         elif self.path == "/create-playlist":
             self.create_playlist_post(post_data_obj)
         elif self.path == "/get-animation":
@@ -1571,16 +1600,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.handle_serve_file_name(f_n)
             return
 
-    def get_scripts_post(self, rq_d):
-        sounds = []
-        sounds.extend(play_list_options)
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        response = sounds
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
     def create_playlist_post(self, rq_d):
         global data
         f_n = plylst_folder + rq_d["fn"] + ".json"
@@ -1706,12 +1725,29 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def speaker_post(self, rq_d):
         global cfg
         if rq_d["an"] == "speaker_test":
-            cmd_snt = "speaker_test"
             play_mix(code_folder + "mvc/left_speaker_right_speaker.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))
+
+    def start_camera(self, rq_d):
+        global cfg
+        start_camera_server()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "started camera"
+        self.wfile.write(response.encode('utf-8'))
+    
+    def stop_camera(self, rq_d):
+        global cfg
+        stop_camera_server()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "stopped camera"
         self.wfile.write(response.encode('utf-8'))
 
     def get_light_string_post(self, rq_d):
@@ -3387,11 +3423,6 @@ if (web):
         # Run the server in a separate thread to allow mDNS to work simultaneously
         server_thread = threading.Thread(target=start_http_server, daemon=True)
         server_thread.start()
-
-        # Start the camera server in a separate thread
-        camera_thread = threading.Thread(target=start_camera_server, daemon=True)
-        camera_thread.start()
-
     except OSError:
         web = False
         files.log_item("server did not start...")
@@ -3407,9 +3438,11 @@ if (web):
     websocket_thread = threading.Thread(
         target=lambda: asyncio.run(websocket_server()), daemon=True)
     websocket_thread.start()
+    # start_camera_server()
     close_midori()
     open_midori()
     spk_web()
+
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")

@@ -159,14 +159,12 @@
         </div>
         <div class="mui-tabs__pane" id="camera" style="padding-top:0.5rem;">
             <h2>Video feed:</h2>
-            <img src="http://animator-camera-train.local:8000/stream.mjpg" width="640" height="360" /><br>
+            <img id="cameraFeed" src="http://animator-camera-train.local:8000/stream.mjpg" width="640" height="360" /><br>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
-                    type="button">
+                <button class="mui-btn mui-btn--primary" onclick="startCamera()" type="button">
                     Start
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S090" data-url="/lights"
-                    type="button">
+                <button class="mui-btn mui-btn--primary" onclick="stopCamera()" type="button">
                     Stop
                 </button>
             </div>
@@ -196,7 +194,7 @@
                 </button>
             </div>
         </div>
-        <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;"> 
+        <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
             <h2>Setup light string:</h2>
             <div class="mui-textfield">
                 <p>
@@ -554,7 +552,6 @@
     document.addEventListener('DOMContentLoaded', function () {
         getWebSiteUrl()
         getVolume()
-        // getPlaylists()
         getLightString()
         getMedia()
         getSceneChanges()
@@ -686,6 +683,54 @@
             });
     }
 
+    function startCamera() {
+        fetch('/start-camera', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                const cameraFeed = document.getElementById('cameraFeed');
+                setTimeout(() => {
+                    cameraFeed.src = 'http://animator-camera-train.local:8000/stream.mjpg?' + new Date().getTime();
+                }, 1000); // Delay to allow server to start camera
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function stopCamera() {
+        const cameraFeed = document.getElementById('cameraFeed');
+        cameraFeed.src = ''; // Clear the src before stopping the camera
+
+        // Ensure the src is cleared before proceeding
+        setTimeout(() => {
+            fetch('/stop-camera', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    console.log('Camera stopped:', data);
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        }, 100);
+    }
+
+
     function getVolume() {
         fetch('/get-volume', {
             method: 'POST',
@@ -724,27 +769,6 @@
                 showAlert(error);
             });
     }
-
-    // function getPlaylists() {
-    //     fetch('/get-scripts', {
-    //         method: 'POST',
-    //         headers: {
-    //             'Content-Type': 'application/json',
-    //         },
-    //     })
-    //         .then(function (response) {
-    //             return response.text(); // assuming the response is plain text
-    //         })
-    //         .then(function (data) {
-    //             my_data = JSON.parse(data)
-    //             setPlylstButtons(my_data)
-    //             setPlylstScriptButtons(my_data)
-    //         })
-    //         .catch(function (error) {
-    //             console.log(error);
-    //             showAlert(error);
-    //         });
-    // }
 
     function setPlylstButtons(my_data) {
         // Loop through the data and create a button for each item
