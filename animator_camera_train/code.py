@@ -95,7 +95,7 @@ from adafruit_servokit import ServoKit
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple
-import http.server
+from http import server
 import socket
 import socketserver
 import threading
@@ -109,7 +109,6 @@ import digitalio
 from adafruit_debouncer import Debouncer
 import neopixel_spi
 from rainbowio import colorwheel
-from adafruit_motor import servo
 import pygame
 import gc
 import files
@@ -130,10 +129,10 @@ import sys
 import asyncio
 import websockets
 import pyautogui
+import io
 from picamera2 import Picamera2
-# picam2 = Picamera2()
-# picam2.start()
-# picam2.capture_file("image.jpg")
+from picamera2.encoders import JpegEncoder
+from picamera2.outputs import FileOutput
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -241,11 +240,10 @@ def gc_col(collection_point):
     print("Point " + collection_point +
           " Available memory: {} bytes".format(start_mem))
 
+
 # to make this work you must add permission to the visudo file
 # sudo visudo
 # drivein ALL=(ALL) NOPASSWD: /sbin/reboot
-
-
 def restart_pi():
     os.system('sudo reboot')
 
@@ -296,10 +294,6 @@ def upd_media():
     rand_files = get_media_files(media_folder + "random_config/", extensions)
     media_files.update(rand_files)  # add rand_files to media_files dictionary
     # print("All media: " + str(media_files))
-
-    # play_list_options = files.return_directory(
-    #     "plylst_", plylst_folder, ".json", True)
-    # # print("Play lists: " + str(plylst_opt))
 
     media_list_all = []
     for topic, my_files in media_files.items():
@@ -544,6 +538,7 @@ s_6 = kit.servo[5]
 p_arr = [90, 90, 90, 90, 90, 90]
 
 s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
+
 
 def m_servo(n, p):
     global p_arr
@@ -1215,7 +1210,7 @@ def open_midori():
 ################################################################################
 # Setup routes
 
-class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
+class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
@@ -1806,6 +1801,116 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
 
+PAGE = """
+<html>
+<head>
+<title>picamera2 MJPEG Streaming Demo</title>
+</head>
+<body>
+<h1>Picamera2 MJPEG Streaming Demo</h1>
+<img src="stream.mjpg" width="640" height="480" /><br>
+<button onclick="snapshot()">Take Snapshot</button>
+
+<script>
+function snapshot() {
+    fetch('/snapshot').then(response => console.log('Snapshot taken!'));
+}
+
+
+</script>
+</body>
+</html>
+"""
+
+
+class StreamingOutput(io.BufferedIOBase):
+    def __init__(self):
+        self.frame = None
+        self.condition = threading.Condition()
+
+    def write(self, buf):
+        with self.condition:
+            self.frame = buf
+            self.condition.notify_all()
+
+
+class StreamingHandler(server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        global recording
+        if self.path == '/':
+            self.send_response(301)
+            self.send_header('Location', '/index.html')
+            self.end_headers()
+        elif self.path == '/index.html':
+            content = PAGE.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html')
+            self.send_header('Content-Length', len(content))
+            self.end_headers()
+            self.wfile.write(content)
+        elif self.path == '/stream.mjpg':
+            self.send_response(200)
+            self.send_header('Age', 0)
+            self.send_header('Cache-Control', 'no-cache, private')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header(
+                'Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+            self.end_headers()
+            try:
+                while True:
+                    with output.condition:
+                        output.condition.wait()
+                        frame = output.frame
+                    self.wfile.write(b'--FRAME\r\n')
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', len(frame))
+                    self.end_headers()
+                    self.wfile.write(frame)
+                    self.wfile.write(b'\r\n')
+            except Exception as e:
+                print('Removed streaming client %s: %s',
+                      self.client_address, str(e))
+
+        elif self.path == '/snapshot':
+            try:
+                picam2.stop_recording()
+                picam2.switch_mode_and_capture_file(
+                    picam2.create_still_configuration(), 'test.jpg')
+                picam2.start_recording(JpegEncoder(), FileOutput(output))
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'Snapshot taken')
+            except Exception as e:
+                print(f"Failed to take snapshot: {e}")
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(f"Failed to take snapshot: {e}".encode())
+
+        else:
+            self.send_error(404)
+            self.end_headers()
+
+
+class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+# Start the camera streaming server
+
+
+def start_camera_server():
+    global picam2, output
+    picam2 = Picamera2()
+    picam2.configure(picam2.create_video_configuration(
+        main={"size": (640, 480)}))
+    output = StreamingOutput()
+    picam2.start_recording(JpegEncoder(), FileOutput(output))
+
+    address = ('', 8000)
+    camera_server = StreamingServer(address, StreamingHandler)
+    camera_server.serve_forever()
+
+
 if web:
     if wait_for_network():
         # Get the local IP address
@@ -1840,6 +1945,16 @@ if web:
             return mdns_info
 
         mdns_info = get_mdns_info()
+
+        # Register mDNS for camera server
+        camera_mdns_info = ServiceInfo(
+            "_http._tcp.local.",
+            f"{cfg['HOST_NAME']}-camera._http._tcp.local.",
+            addresses=[socket.inet_aton(local_ip)],
+            port=8000,
+            properties={'path': '/'},
+            server=f"{cfg['HOST_NAME']}.local."
+        )
 
         async def command_queue_handler(websocket, path):
             global current_media_playing
@@ -3308,9 +3423,12 @@ if (web):
         zeroconf.register_service(mdns_info)
 
         # Run the server in a separate thread to allow mDNS to work simultaneously
-        server_thread = threading.Thread(target=start_http_server)
-        server_thread.daemon = True
+        server_thread = threading.Thread(target=start_http_server, daemon=True)
         server_thread.start()
+
+        # Start the camera server in a separate thread
+        camera_thread = threading.Thread(target=start_camera_server, daemon=True)
+        camera_thread.start()
 
     except OSError:
         web = False
@@ -3325,8 +3443,7 @@ update_folder_name_wavs()
 if (web):
     # Start the WebSocket server in a separate thread
     websocket_thread = threading.Thread(
-        target=lambda: asyncio.run(websocket_server()))
-    websocket_thread.daemon = True
+        target=lambda: asyncio.run(websocket_server()), daemon=True)
     websocket_thread.start()
     close_midori()
     open_midori()
