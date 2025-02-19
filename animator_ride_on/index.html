@@ -105,6 +105,10 @@
             <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
             <button class="mui-btn mui-btn--primary" onclick="blowHorn()">Horn</button>
             <button class="mui-btn mui-btn--primary" onclick="blowWhistle()">Whistle</button>
+            <button class="mui-btn mui-btn--primary" onclick="home12()">Home 12</button>
+            <button class="mui-btn mui-btn--primary" onclick="Home6()">Home 6</button>
+            <button class="mui-btn mui-btn--primary" onclick="openGates()">Open Gates</button>
+            <button class="mui-btn mui-btn--primary" onclick="closeGates()">Close Gates</button>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -153,45 +157,33 @@
                 <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
                     type="button">
                     Servo 3 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S490" data-url="/lights"
-                    type="button">
-                    Servo 4 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S590" data-url="/lights"
-                    type="button">
-                    Servo 5 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S690" data-url="/lights"
-                    type="button">
-                    Servo 6 90
-                </button>
+            </button>
             </div>
             <h2>Test lights:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
                     type="button">
-                    Spot 1
+                    Light 1
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L2255" data-url="/lights"
                     type="button">
-                    Spot 2
+                    Light 2
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L3255" data-url="/lights"
                     type="button">
-                    Spot 3
+                    Light 3
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L4255" data-url="/lights"
                     type="button">
-                    Spot 4
+                    Light 4
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L5255" data-url="/lights"
                     type="button">
-                    Spot 5
+                    Light 5
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L6255" data-url="/lights"
                     type="button">
-                    Spot 6
+                    SpLightot 6
                 </button>
             </div>
             <div>
@@ -1607,6 +1599,26 @@
 
     function blowWhistle() {
         let newCommand = "WW";
+        testAnimationCommand(newCommand);
+    }
+
+    function home12() {
+        let newCommand = "H_20_12";
+        testAnimationCommand(newCommand);
+    }
+
+    function Home6() {
+        let newCommand = "H_20_6";
+        testAnimationCommand(newCommand);
+    }
+
+    function openGates() {
+        let newCommand = "S190";
+        testAnimationCommand(newCommand);
+    }
+
+    function closeGates() {
+        let newCommand = "S10";
         testAnimationCommand(newCommand);
     }
 

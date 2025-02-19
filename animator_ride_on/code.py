@@ -148,23 +148,15 @@ except Exception as e:
 aud_en.value = False
 
 # Setup the servos
-s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
-s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
-s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
-
-s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
-s_5 = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
-s_6 = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
+s_1 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+s_2 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+s_3 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
 
 s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
 s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
 s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
 
-s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
-s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
-s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
-
-s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
+s_arr = [s_1, s_2, s_3]
 
 # Setup time
 r = rtc.RTC()
@@ -1047,16 +1039,16 @@ async def set_hdw_async(input_string):
             seg_split = seg.split("_")
             train.throttle = int(seg_split[1])/100
             if seg_split[2] == "12":
-                goal = 2.7
+                goal = 5
             else:
-                goal = 32.0
+                goal = 35
             vl53.clear_interrupt()
             cur_dist = vl53.distance
             i = 0
             while True:
                 vl53.clear_interrupt()
                 cur_dist = vl53.distance
-                if cur_dist > goal - 1 and cur_dist < goal + 1:
+                if cur_dist > goal - 5 and cur_dist < goal + 5:
                     i += 1
                     if i > 2:
                         train.throttle = 0
