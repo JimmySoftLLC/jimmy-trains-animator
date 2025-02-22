@@ -2982,9 +2982,11 @@ class BseSt(Ste):
             if switch_state == "left_held":
                 if cfg["cont_run"]:
                     cfg["cont_run"] = False
+                    files.write_json_file(code_folder + "cfg.json", cfg)
                     play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
                 else:
                     cfg["cont_run"] = True
+                    files.write_json_file(code_folder + "cfg.json", cfg)
                     play_mix(code_folder + "mvc/continuous_mode_activated.wav")
                 time.sleep(.5)
             elif switch_state == "left" or cfg["cont_run"]:
@@ -3332,23 +3334,20 @@ st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
-
 def run_state_machine():
     while True:
         st_mch.upd()
         time.sleep(0.05)
-
-
-# Start the state machine in a separate thread
-state_machine_thread = threading.Thread(target=run_state_machine)
-state_machine_thread.daemon = True
-state_machine_thread.start()
 
 # Start the logo_when_idle in a separate thread
 logo_when_idle_thread = threading.Thread(target=logo_when_idle)
 logo_when_idle_thread.daemon = True
 logo_when_idle_thread.start()
 
+# Start the state machine in a separate thread
+state_machine_thread = threading.Thread(target=run_state_machine)
+state_machine_thread.daemon = True
+state_machine_thread.start()
 
 def stop_program():
     stop_all_commands()
