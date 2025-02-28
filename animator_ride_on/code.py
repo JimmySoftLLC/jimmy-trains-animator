@@ -190,7 +190,7 @@ while not vl53.data_ready:
 
 ################################################################################
 # Setup motor controller
-p_frq = 50  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
+p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
 d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 
 # DC motor setup; Set pins to custom PWM frequency
