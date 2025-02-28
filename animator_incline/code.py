@@ -91,8 +91,8 @@ try:
     sd = sdcardio.SDCard(spi, cs)
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
-    except Exception as e:
-        files.log_item(e)
+except Exception as e:
+    files.log_item(e)
     w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
@@ -111,8 +111,8 @@ try:
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
-                except Exception as e:
-                    files.log_item(e)
+            except Exception as e:
+                files.log_item(e)
                 w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
@@ -226,8 +226,8 @@ if (web):
         WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
         print("Using env ssid and password")
-        except Exception as e:
-            files.log_item(e)
+    except Exception as e:
+        files.log_item(e)
         print("Using default ssid and password")
 
     try:
@@ -530,8 +530,8 @@ def spk_str(str_to_speak, addLocal):
             if character == ".":
                 character = "dot"
             ply_a_0("/sd/mvc/" + character + ".wav")
-            except Exception as e:
-                files.log_item(e)
+        except Exception as e:
+            files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
         ply_a_0("/sd/mvc/dot.wav")
