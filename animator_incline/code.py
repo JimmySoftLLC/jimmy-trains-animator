@@ -196,8 +196,9 @@ d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 # DC motor setup; Set pins to custom PWM frequency
 pwm_a = pwmio.PWMOut(board.GP16, frequency=p_frq)
 pwm_b = pwmio.PWMOut(board.GP17, frequency=p_frq)
-train = motor.DCMotor(pwm_a, pwm_b)
-train.decay_mode = d_mde
+car = motor.DCMotor(pwm_a, pwm_b)
+car.decay_mode = d_mde
+car_pos = 0
 
 ################################################################################
 # Sd card config variables
@@ -304,6 +305,7 @@ if (web):
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
+        server.port = 80  # Explicitly set port to 80
 
         gc_col("wifi server")
 
@@ -576,7 +578,7 @@ async def process_cmd():
         print("Processing command:", command)
         # Process each command as an async operation
         await set_hdw_async(command)
-        await asyncio.sleep(0)  # Yield control to the event loop
+        await asyncio.sleep(0)
 
 
 def clr_cmd_queue():
@@ -597,7 +599,7 @@ def stp_all_cmds():
 def rst_def():
     global cfg
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-ride-on-train"
+    cfg["HOST_NAME"] = "animator-incline"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
 
@@ -751,8 +753,8 @@ def no_trk():
 def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-ride-on-train":
-        ply_a_0("/sd/mvc/animator_ride_on_train.wav")
+    if cfg["HOST_NAME"] == "animator-incline":
+        ply_a_0("/sd/mvc/animator_incline.wav")
         ply_a_0("/sd/mvc/dot.wav")
         ply_a_0("/sd/mvc/local.wav")
     else:
@@ -885,12 +887,12 @@ async def an_light_async(f_nm):
                 lgt = random.randint(60, 120)
                 result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
                 if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
+                    await asyncio.sleep(0)
                     break
             else:
                 result = await set_hdw_async(ft1[1])
                 if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
+                    await asyncio.sleep(0)
                     break
             flsh_i += 1
         sw = utilities.switch_state(
@@ -951,12 +953,12 @@ def an_ts(f_nm):
 # animation effects
 
 
-sp = [0, 0, 0, 0, 0, 0]
+sp = [0, 0, 0]
 br = 0
 
 
 async def set_hdw_async(input_string):
-    global sp, br
+    global sp, br, car_pos
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -1030,32 +1032,86 @@ async def set_hdw_async(input_string):
             seg_split = seg.split("_")
             # Process each command as an async operation
             await an_async(seg_split[1])
-        # TXXX = Train XXX throttle -100 to 100
+        # TXXX = Car XXX throttle -100 to 100
         elif seg[0] == 'T':
             v = int(seg[1:])/100
-            train.throttle = v
-        # H_XXX_YY = Train XXX throttle -100 to 100 YY position 12 or 6 oclock
-        elif seg[0] == 'H':
+            car.throttle = v
+        # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, 
+        # BBB target band in decimal cm, AAA acceleration decimal cm/sec
+        elif seg[0] == 'C':
             seg_split = seg.split("_")
-            train.throttle = int(seg_split[1])/100
-            if seg_split[2] == "12":
-                goal = 5
-            else:
-                goal = 35
-            vl53.clear_interrupt()
-            cur_dist = vl53.distance
-            i = 0
+
+            spd = int(seg_split[1]) / 100
+            target_pos = float(seg_split[2])
+            target_band = float(seg_split[3])
+            acc = float(seg_split[4])
+
+            # clear out measurements
+            for _ in range(3):
+                vl53.clear_interrupt()
+                car_pos = vl53.distance
+                time.sleep(.1)
+
+            num_times_in_band = 0
+            give_up = 60
+            srt_t = time.monotonic()
+            
+            # Use current throttle state directly
+            current_speed = abs(car.throttle) if car.throttle else 0
+            current_direction = 1 if car.throttle >= 0 else -1
+            
             while True:
                 vl53.clear_interrupt()
-                cur_dist = vl53.distance
-                if cur_dist > goal - 5 and cur_dist < goal + 5:
-                    i += 1
-                    if i > 2:
-                        train.throttle = 0
-                        break
-                print(cur_dist)
-                time.sleep(.02)  # Hold at current throttle value
+                car_pos = vl53.distance
+                
+                # Calculate distance and target direction
+                distance_to_target = abs(car_pos - target_pos)
+                target_direction = 1 if car_pos < target_pos else -1  # 1 forward, -1 reverse
+                
+                # Calculate slowdown zone based on acceleration
+                slowdown_distance = target_band * 3 + (acc * 0.5)
+                
+                # Determine target speed
+                if distance_to_target < slowdown_distance:
+                    target_speed = max(0.1, spd * (distance_to_target / slowdown_distance))
+                else:
+                    target_speed = spd
+                    
+                # Handle direction change or speed adjustment
+                if current_direction != target_direction and current_speed > 0:
+                    # Decelerate to stop before changing direction
+                    current_speed -= acc * 0.05
+                    if current_speed <= 0:
+                        current_speed = 0
+                        current_direction = target_direction  # Switch direction when stopped
+                else:
+                    # Adjust speed in correct direction
+                    speed_diff = target_speed - current_speed
+                    # Apply acceleration/deceleration
+                    if speed_diff > 0:  # Need to accelerate
+                        current_speed += min(acc * 0.05, speed_diff)
+                    elif speed_diff < 0:  # Need to decelerate
+                        current_speed += max(-acc * 0.05, speed_diff)
+                    current_direction = target_direction
+                    
+                # Apply clamped speed with direction
+                current_speed = max(0, min(spd, current_speed))
+                car.throttle = current_speed * current_direction
 
+                # Check if within target band
+                if target_pos - target_band < car_pos < target_pos + target_band:
+                    num_times_in_band += 1
+                    if num_times_in_band > 2:
+                        car.throttle = 0
+                        break
+                        
+                print(f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
+                time.sleep(.05)
+                
+                t_past = time.monotonic() - srt_t
+                if t_past > give_up:
+                    car.throttle = 0
+                    break
 
 ################################################################################
 # State Machine
@@ -1424,7 +1480,6 @@ if (web):
 
 # initialize items
 add_cmd("S090")
-add_cmd("H_20_12")
 upd_vol(.5)
 
 st_mch.go_to('base_state')
@@ -1438,20 +1493,20 @@ async def process_cmd_tsk():
     """Task to continuously process commands."""
     while True:
         try:
-            await process_cmd()  # Async command processing
+            await process_cmd()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)  # Yield control to other tasks
+        await asyncio.sleep(0)
 
 
 async def server_poll_tsk(server):
     """Poll the web server."""
     while True:
         try:
-            server.poll()  # Web server polling
+            server.poll()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)  # Yield control to other tasks
+        await asyncio.sleep(0)
 
 
 async def state_mach_upd_task(st_mch):
