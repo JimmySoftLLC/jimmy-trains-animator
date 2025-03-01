@@ -194,10 +194,11 @@ p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default i
 d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 
 # DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP16, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP17, frequency=p_frq)
+pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
+pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
 train = motor.DCMotor(pwm_a, pwm_b)
 train.decay_mode = d_mde
+car_pos = 0
 
 ################################################################################
 # Sd card config variables
@@ -956,7 +957,7 @@ br = 0
 
 
 async def set_hdw_async(input_string):
-    global sp, br
+    global sp, br, car_pos
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -1055,6 +1056,82 @@ async def set_hdw_async(input_string):
                         break
                 print(cur_dist)
                 time.sleep(.02)  # Hold at current throttle value
+        # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, 
+        # BBB target band in decimal cm, AAA acceleration decimal cm/sec
+        elif seg[0] == 'C':
+            seg_split = seg.split("_")
+
+            spd = int(seg_split[1]) / 100
+            target_pos = float(seg_split[2])
+            target_band = float(seg_split[3])
+            acc = float(seg_split[4])
+
+            # clear out measurements
+            for _ in range(3):
+                vl53.clear_interrupt()
+                car_pos = vl53.distance
+                time.sleep(.1)
+
+            num_times_in_band = 0
+            give_up = 10
+            srt_t = time.monotonic()
+            
+            # Use current throttle state directly
+            current_speed = abs(train.throttle) if train.throttle else 0
+            current_direction = 1 if train.throttle >= 0 else -1
+            
+            while True:
+                vl53.clear_interrupt()
+                car_pos = vl53.distance
+                
+                # Calculate distance and target direction
+                distance_to_target = abs(car_pos - target_pos)
+                target_direction = 1 if car_pos < target_pos else -1  # 1 forward, -1 reverse
+                
+                # Calculate slowdown zone based on acceleration
+                slowdown_distance = target_band * 3 + (acc * 0.5)
+                
+                # Determine target speed
+                if distance_to_target < slowdown_distance:
+                    target_speed = max(0.1, spd * (distance_to_target / slowdown_distance))
+                else:
+                    target_speed = spd
+                    
+                # Handle direction change or speed adjustment
+                if current_direction != target_direction and current_speed > 0:
+                    # Decelerate to stop before changing direction
+                    current_speed -= acc * 0.05
+                    if current_speed <= 0:
+                        current_speed = 0
+                        current_direction = target_direction  # Switch direction when stopped
+                else:
+                    # Adjust speed in correct direction
+                    speed_diff = target_speed - current_speed
+                    # Apply acceleration/deceleration
+                    if speed_diff > 0:  # Need to accelerate
+                        current_speed += min(acc * 0.05, speed_diff)
+                    elif speed_diff < 0:  # Need to decelerate
+                        current_speed += max(-acc * 0.05, speed_diff)
+                    current_direction = target_direction
+                    
+                # Apply clamped speed with direction
+                current_speed = max(0, min(spd, current_speed))
+                train.throttle = current_speed * current_direction
+
+                # Check if within target band
+                if target_pos - target_band < car_pos < target_pos + target_band:
+                    num_times_in_band += 1
+                    if num_times_in_band > 2:
+                        train.throttle = 0
+                        break
+                        
+                print(f"Pos: {car_pos:.1f}, Speed: {train.throttle:.2f}, Dist: {distance_to_target:.1f}")
+                time.sleep(.05)
+                
+                t_past = time.monotonic() - srt_t
+                if t_past > give_up:
+                    train.throttle = 0
+                    break
 
 
 ################################################################################
