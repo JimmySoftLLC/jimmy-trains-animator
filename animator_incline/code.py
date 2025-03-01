@@ -194,8 +194,8 @@ p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default i
 d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 
 # DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP16, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP17, frequency=p_frq)
+pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
+pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
 car = motor.DCMotor(pwm_a, pwm_b)
 car.decay_mode = d_mde
 car_pos = 0
@@ -295,7 +295,7 @@ if (web):
         mdns.hostname = cfg["HOST_NAME"]
         mdns.advertise_service(
             service_type="_http", protocol="_tcp", port=80)
-
+        
         local_ip = str(wifi.radio.ipv4_address)
 
         # files.log_items IP address to REPL
@@ -1053,7 +1053,7 @@ async def set_hdw_async(input_string):
                 time.sleep(.1)
 
             num_times_in_band = 0
-            give_up = 60
+            give_up = 10
             srt_t = time.monotonic()
             
             # Use current throttle state directly
@@ -1469,14 +1469,12 @@ upd_vol(.1)
 if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
-    except Exception as e:
-        files.log_item(e)
+    except OSError:
         time.sleep(5)
         files.log_item("restarting...")
-        rst()
 
 # initialize items
 add_cmd("S090")
