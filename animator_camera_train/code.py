@@ -131,7 +131,7 @@ import websockets
 import pyautogui
 import io
 from picamera2 import Picamera2
-from picamera2.encoders import JpegEncoder
+from picamera2.encoders import H264Encoder, JpegEncoder
 from picamera2.outputs import FileOutput
 
 
@@ -1212,8 +1212,9 @@ def open_midori():
 # Global state
 camera_running = False
 picam2 = None
-output = None
+stream_output = None
 camera_thread = None
+recording = False
 
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
@@ -1227,9 +1228,9 @@ class StreamingOutput(io.BufferedIOBase):
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
-        global picam2, output
-        # Strip query parameters to allow cache-busting
+        global picam2, stream_output, recording
         path = self.path.split('?', 1)[0]
+        
         if path == '/stream.mjpg':
             if not camera_running:
                 self.send_response(503)
@@ -1244,9 +1245,11 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             self.end_headers()
             try:
                 while camera_running:
-                    with output.condition:
-                        output.condition.wait()
-                        frame = output.frame
+                    with stream_output.condition:
+                        stream_output.condition.wait(timeout=2.0)
+                        if stream_output.frame is None:
+                            continue
+                        frame = stream_output.frame
                     self.wfile.write(b'--FRAME\r\n')
                     self.send_header('Content-Type', 'image/jpeg')
                     self.send_header('Content-Length', len(frame))
@@ -1254,26 +1257,52 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                     self.wfile.write(frame)
                     self.wfile.write(b'\r\n')
             except Exception as e:
-                print('Removed streaming client %s: %s',
-                      self.client_address, str(e))
-        elif self.path == '/snapshot':
+                print(f'Removed streaming client {self.client_address}: {e}')
+                
+        elif path == '/snapshot':
             if not camera_running:
                 self.send_response(503)
                 self.end_headers()
                 self.wfile.write(b'Camera not running')
                 return
             try:
-                picam2.stop_recording()
-                picam2.switch_mode_and_capture_file(picam2.create_still_configuration(), 'test.jpg')
-                picam2.start_recording(JpegEncoder(), FileOutput(output))
+                filename = f'snapshot_{time.strftime("%Y%m%d_%H%M%S")}.jpg'
+                picam2.capture_file(filename)
                 self.send_response(200)
+                self.send_header('Content-Type', 'text/plain')
                 self.end_headers()
-                self.wfile.write(b'Snapshot taken')
+                self.wfile.write(f'Snapshot saved as {filename}'.encode())
             except Exception as e:
                 print(f"Failed to take snapshot: {e}")
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(f"Failed to take snapshot: {e}".encode())
+                
+        elif path == '/start_recording':
+            if not camera_running:
+                self.send_response(503)
+                self.end_headers()
+                return
+            if not recording:
+                start_recording()
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'Recording started')
+            else:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(b'Already recording')
+                
+        elif path == '/stop_recording':
+            if not recording:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(b'Not recording')
+            else:
+                stop_recording()
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'Recording stopped')
         else:
             self.send_error(404)
             self.end_headers()
@@ -1282,16 +1311,37 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
+def start_recording():
+    global recording, picam2
+    if not recording:
+        filename = f'recording_{time.strftime("%Y%m%d_%H%M%S")}.h264'
+        picam2.start_encoder(H264Encoder(), FileOutput(filename))
+        recording = True
+        print(f"Started recording to {filename}")
+
+def stop_recording():
+    global recording, picam2
+    if recording:
+        picam2.stop_encoder()
+        recording = False
+        print("Stopped recording")
+
 def start_camera_server():
-    global camera_running, picam2, output, camera_thread
+    global camera_running, picam2, stream_output, camera_thread
     if not camera_running:
-        picam2 = Picamera2()
-        picam2.configure(picam2.create_video_configuration(main={"size": (1280, 720)}))
-        output = StreamingOutput()
-        picam2.start_recording(JpegEncoder(), FileOutput(output))
-        camera_running = True
-        camera_thread = threading.Thread(target=run_camera_server, daemon=True)
-        camera_thread.start()
+        try:
+            picam2 = Picamera2()
+            config = picam2.create_video_configuration(main={"size": (1280, 720)})
+            picam2.configure(config)
+            stream_output = StreamingOutput()
+            picam2.start_recording(JpegEncoder(), FileOutput(stream_output))
+            camera_running = True
+            camera_thread = threading.Thread(target=run_camera_server, daemon=True)
+            camera_thread.start()
+            print("Camera server started")
+        except Exception as e:
+            print(f"Failed to start camera server: {e}")
+            camera_running = False
 
 def run_camera_server():
     address = ('', 8000)
@@ -1299,12 +1349,20 @@ def run_camera_server():
     camera_server.serve_forever()
 
 def stop_camera_server():
-    global camera_running, picam2, camera_thread
+    global camera_running, picam2, stream_output, camera_thread
     if camera_running:
-        picam2.stop_recording()
-        picam2.close()
-        camera_running = False
-        camera_thread = None
+        try:
+            if recording:
+                stop_recording()
+            picam2.stop_recording()
+            picam2.close()
+            camera_running = False
+            camera_thread = None
+            stream_output = None
+            print("Camera server stopped")
+        except Exception as e:
+            print(f"Error stopping camera server: {e}")
+
 ################################################################################
 # Setup routes
 
