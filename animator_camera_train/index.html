@@ -893,15 +893,20 @@
         constructor(knobId, textId, commandPrefix, minRange, maxRange) {
             this.knob = document.getElementById(knobId);
             this.knobText = document.getElementById(textId);
-            this.commandPrefix = commandPrefix; // e.g., "S2" for knob, "S3" for knob2
-            this.minRange = minRange;           // Custom minimum value
-            this.maxRange = maxRange;           // Custom maximum value
+            this.commandPrefix = commandPrefix;
+            this.minRange = minRange;
+            this.maxRange = maxRange;
             this.isDragging = false;
             this.previousAngle = 0;
             this.currentRotation = 0;
             this.lastSentTime = 0;
             this.throttleTimeout = null;
             this.throttleTime = 500;
+
+            // Determine direction of mapping
+            this.isReversed = minRange > maxRange;
+            this.lowerBound = this.isReversed ? maxRange : minRange;
+            this.upperBound = this.isReversed ? minRange : maxRange;
 
             this.initializeEventListeners();
         }
@@ -938,13 +943,27 @@
             this.currentRotation += angleDiff;
             this.currentRotation = Math.max(-180, Math.min(180, this.currentRotation));
 
-            // Map the rotation (-180 to 180) to the custom range (minRange to maxRange)
-            const rangeSpan = this.maxRange - this.minRange;
-            const displayValue = Math.round(
-                this.minRange + (this.currentRotation + 180) / 360 * rangeSpan
+            // Map the rotation (-180 to 180) to the custom range
+            const rangeSpan = this.upperBound - this.lowerBound;
+            let normalizedRotation = (this.currentRotation + 180) / 360; // 0 to 1
+
+            // Apply mapping based on direction
+            let displayValue;
+            if (this.isReversed) {
+                displayValue = Math.round(
+                    this.upperBound - (normalizedRotation * rangeSpan)
+                );
+            } else {
+                displayValue = Math.round(
+                    this.lowerBound + (normalizedRotation * rangeSpan)
+                );
+            }
+
+            // Clamp the value to the actual specified range
+            const clampedValue = Math.max(
+                Math.min(this.minRange, this.maxRange),
+                Math.min(Math.max(this.minRange, this.maxRange), displayValue)
             );
-            // Clamp the value to the specified range
-            const clampedValue = Math.max(this.minRange, Math.min(this.maxRange, displayValue));
 
             this.knob.style.transform = `rotate(${this.currentRotation}deg)`;
             this.knobText.innerText = clampedValue;
@@ -993,15 +1012,15 @@
             window.addEventListener('mouseup', () => this.onEnd());
             window.addEventListener('touchend', () => this.onEnd());
 
-            // Prevent iPhone screen from moving
             this.knob.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
             this.knob.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
         }
     }
 
-    // Initialize controllers for both knobs with custom ranges
-    const knob1Controller = new KnobController('knob', 'knob-text', 'S1', 0, 180);
-    const knob2Controller = new KnobController('knob2', 'knob2-text', 'S2', 75, 130);
+    // Example usage with both normal and reversed ranges
+    const knob1Controller = new KnobController('knob', 'knob-text', 'S1', 180, 0);    // Normal: 0 to 180
+    const knob2Controller = new KnobController('knob2', 'knob2-text', 'S2', 130, 75); // Reversed: 130 to 75
+
 
     async function testAnimationCommand(command) {
         if (!command) {
