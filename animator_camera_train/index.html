@@ -168,6 +168,15 @@
                 <button class="mui-btn mui-btn--primary" onclick="stopCamera()" type="button">
                     Stop
                 </button>
+                <button class="mui-btn mui-btn--primary" onclick="snapshot()" type="button">
+                    Snapshot
+                </button>
+                <button class="mui-btn mui-btn--primary" onclick="startRecording()" type="button">
+                    Start recording
+                </button>
+                <button class="mui-btn mui-btn--primary" onclick="stopRecording()" type="button">
+                    Stop recording
+                </button>
             </div>
             <h2>Camera positions:</h2>
             <div>
@@ -753,6 +762,54 @@
                     showAlert(error);
                 });
         }, 100);
+    }
+
+    function snapshot() {
+        fetch('/snapshot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function startRecording() {
+        fetch('/start-recording', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function stopRecording() {
+        fetch('/stop-recording', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
     }
 
 

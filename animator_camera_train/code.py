@@ -1266,8 +1266,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                 self.wfile.write(b'Camera not running')
                 return
             try:
-                filename = f'snapshot_{time.strftime("%Y%m%d_%H%M%S")}.jpg'
-                picam2.capture_file(filename)
+                filename = take_snapshot()
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/plain')
                 self.end_headers()
@@ -1325,6 +1324,19 @@ def stop_recording():
         picam2.stop_encoder()
         recording = False
         print("Stopped recording")
+
+def take_snapshot():
+    global stream_output
+    filename = f'snapshot_{time.strftime("%Y%m%d_%H%M%S")}.jpg'
+    print(f"Attempting to save snapshot as {filename}")
+    with stream_output.condition:
+        stream_output.condition.wait(timeout=2.0)
+        if stream_output.frame is None:
+            raise Exception("No frame available")
+        frame = stream_output.frame
+    with open(filename, 'wb') as f:
+        f.write(frame)
+    return filename
 
 def start_camera_server():
     global camera_running, picam2, stream_output, camera_thread
@@ -1494,6 +1506,12 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.start_camera(post_data_obj)
         elif self.path == "/stop-camera":
             self.stop_camera(post_data_obj)
+        elif self.path == "/start-recording":
+            self.start_recording(post_data_obj)
+        elif self.path == "/stop-recording":
+            self.stop_recording(post_data_obj)
+        elif self.path == "/snapshot":
+            self.snapshot(post_data_obj)
         elif self.path == "/get-light-string":
             self.get_light_string_post(post_data_obj)
         elif self.path == "/get-scene-changes":
@@ -1806,6 +1824,33 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = "stopped camera"
+        self.wfile.write(response.encode('utf-8'))
+
+    def snapshot(self, rq_d):
+        global cfg
+        take_snapshot()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "took snapshot"
+        self.wfile.write(response.encode('utf-8'))
+
+    def start_recording(self, rq_d):
+        global cfg
+        start_recording()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "started recording"
+        self.wfile.write(response.encode('utf-8'))
+
+    def stop_recording(self, rq_d):
+        global cfg
+        start_recording()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "stopped recording"
         self.wfile.write(response.encode('utf-8'))
 
     def get_light_string_post(self, rq_d):
