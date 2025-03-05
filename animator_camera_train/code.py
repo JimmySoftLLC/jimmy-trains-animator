@@ -539,7 +539,6 @@ p_arr = [90, 90, 90, 90, 90, 90]
 
 s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
 
-
 def m_servo(n, p):
     global p_arr
     if p < 0:
@@ -547,8 +546,17 @@ def m_servo(n, p):
     if p > 180:
         p = 180
     s_arr[n].angle = p
-    p_arr[n][n] = p
+    p_arr[n] = p
 
+def m_servo_s(n, n_pos, spd=0.01):
+    global p_arr
+    sign = 1
+    if p_arr[n] > n_pos:
+        sign = - 1
+    for p in range(p_arr[n], n_pos, sign):
+        m_servo(n, p)
+        time.sleep(spd)
+    m_servo(n, p)
 
 ################################################################################
 # Create an ordered dictionary to preserve the order of insertion
@@ -2834,7 +2842,7 @@ def rnd_prob(random_value):
     return False
 
 
-def set_hdw(cmd, dur):
+def set_hdw(cmd, dur=0):
     global sp, br, running_mode, exit_set_hdw
 
     if cmd == "":
@@ -2943,9 +2951,9 @@ def set_hdw(cmd, dur):
                 v = int(seg[2:])
                 if num == 0:
                     for i in range(6):
-                        s_arr[i].angle = v
+                        m_servo_s(i,v)
                 else:
-                    s_arr[num-1].angle = int(v)
+                    m_servo_s(num-1,v)
             # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
             if seg[0] == 'Q':
                 file_nm = seg[1:]
@@ -3546,7 +3554,6 @@ if (web):
     open_midori()
     spk_web()
 
-
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
@@ -3567,7 +3574,6 @@ state_machine_thread.start()
 logo_when_idle_thread = threading.Thread(target=logo_when_idle)
 logo_when_idle_thread.daemon = True
 logo_when_idle_thread.start()
-
 
 def stop_program():
     stop_all_commands()
