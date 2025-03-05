@@ -36,6 +36,67 @@
         .bottom-gap {
             height: 100px;
         }
+
+        .parent-container {
+            display: flex;
+            /* Changed from grid to flex */
+            justify-content: center;
+            /* Center the knobs horizontally */
+            gap: 20px;
+            /* Add space between knobs */
+            width: max-content;
+            height: max-content;
+            position: relative;
+            margin: auto;
+        }
+
+        .knob-container {
+            display: grid;
+            place-items: center;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            /* Added for proper positioning */
+        }
+
+        .knob {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #c6d6f7 30%, #4a7aeb);
+            border-radius: 50%;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+            user-select: none;
+            transform: rotate(0deg);
+        }
+
+        .indicator {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgb(12, 88, 228);
+            border-radius: 50%;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .knob-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            pointer-events: none;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -162,6 +223,22 @@
             <img id="cameraFeed" src="http://animator-camera-train.local:8000/stream.mjpg" width="640"
                 height="360" /><br>
             <div>
+                <div class="mui-tabs__pane mui--is-active" id="tiltControl" style="padding-top:0.5rem;">
+                    <div class="parent-container">
+                        <div class="knob-container">
+                            <div class="knob" id="knob">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob-text">0</div>
+                        </div>
+                        <div class="knob-container">
+                            <div class="knob" id="knob2">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob2-text">0</div>
+                        </div>
+                    </div>
+                </div>
                 <button class="mui-btn mui-btn--primary" onclick="startCamera()" type="button">
                     Start
                 </button>
@@ -812,6 +889,143 @@
             });
     }
 
+    class KnobController {
+        constructor(knobId, textId, commandPrefix, minRange, maxRange) {
+            this.knob = document.getElementById(knobId);
+            this.knobText = document.getElementById(textId);
+            this.commandPrefix = commandPrefix; // e.g., "S2" for knob, "S3" for knob2
+            this.minRange = minRange;           // Custom minimum value
+            this.maxRange = maxRange;           // Custom maximum value
+            this.isDragging = false;
+            this.previousAngle = 0;
+            this.currentRotation = 0;
+            this.lastSentTime = 0;
+            this.throttleTimeout = null;
+            this.throttleTime = 500;
+
+            this.initializeEventListeners();
+        }
+
+        getAngle(x, y, centerX, centerY) {
+            return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
+        }
+
+        onStart(event) {
+            this.isDragging = true;
+            const rect = this.knob.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            this.previousAngle = this.getAngle(clientX, clientY, centerX, centerY);
+        }
+
+        onMove(event) {
+            if (!this.isDragging) return;
+
+            const rect = this.knob.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+            const currentAngle = this.getAngle(clientX, clientY, centerX, centerY);
+            let angleDiff = currentAngle - this.previousAngle;
+
+            if (angleDiff > 180) angleDiff -= 360;
+            if (angleDiff < -180) angleDiff += 360;
+
+            this.currentRotation += angleDiff;
+            this.currentRotation = Math.max(-180, Math.min(180, this.currentRotation));
+
+            // Map the rotation (-180 to 180) to the custom range (minRange to maxRange)
+            const rangeSpan = this.maxRange - this.minRange;
+            const displayValue = Math.round(
+                this.minRange + (this.currentRotation + 180) / 360 * rangeSpan
+            );
+            // Clamp the value to the specified range
+            const clampedValue = Math.max(this.minRange, Math.min(this.maxRange, displayValue));
+
+            this.knob.style.transform = `rotate(${this.currentRotation}deg)`;
+            this.knobText.innerText = clampedValue;
+
+            const newCommand = this.commandPrefix + clampedValue;
+            this.throttleSendCommand(newCommand);
+
+            this.previousAngle = currentAngle;
+        }
+
+        onEnd() {
+            this.isDragging = false;
+        }
+
+        throttleSendCommand(command) {
+            if (this.throttleTimeout) {
+                clearTimeout(this.throttleTimeout);
+            }
+
+            const now = Date.now();
+            if (now - this.lastSentTime >= this.throttleTime) {
+                this.sendThrottledCommand(command);
+            } else {
+                this.throttleTimeout = setTimeout(() => this.sendThrottledCommand(command), this.throttleTime);
+            }
+        }
+
+        async sendThrottledCommand(command) {
+            if (!command) return;
+
+            this.lastSentTime = Date.now();
+            this.throttleTimeout = null;
+
+            try {
+                await testAnimationCommand(command);
+            } catch (error) {
+                console.error(`Error sending animation command for ${this.commandPrefix}:`, error);
+            }
+        }
+
+        initializeEventListeners() {
+            this.knob.addEventListener('mousedown', (e) => this.onStart(e));
+            this.knob.addEventListener('touchstart', (e) => this.onStart(e));
+            window.addEventListener('mousemove', (e) => this.onMove(e));
+            window.addEventListener('touchmove', (e) => this.onMove(e));
+            window.addEventListener('mouseup', () => this.onEnd());
+            window.addEventListener('touchend', () => this.onEnd());
+
+            // Prevent iPhone screen from moving
+            this.knob.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+            this.knob.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        }
+    }
+
+    // Initialize controllers for both knobs with custom ranges
+    const knob1Controller = new KnobController('knob', 'knob-text', 'S1', 0, 180);
+    const knob2Controller = new KnobController('knob2', 'knob2-text', 'S2', 75, 130);
+
+    async function testAnimationCommand(command) {
+        if (!command) {
+            console.log("Invalid command, stopping request: " + command);
+            return;
+        }
+
+        const url = "/test-animation";
+        const data = { an: command };
+        const jsonData = JSON.stringify({ ...data });
+
+        try {
+            let response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonData,
+            });
+
+            let text = await response.text();
+            return text;
+        } catch (error) {
+            console.log("Fetch Error: " + error + "Sending Data: " + jsonData);
+        }
+    }
 
     function getVolume() {
         fetch('/get-volume', {
