@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Stream Recorder</title>
+</head>
+<body>
+    <h1>Camera Stream Recorder</h1>
+    <img id="stream" src="/stream.mjpg" alt="MJPEG Stream">
+    <br><br>
+    <button id="startRecording">Start Recording</button>
+    <button id="stopRecording" disabled>Stop Recording</button>
+    <button id="downloadRecording" disabled>Download Recording</button>
+
+    <script>
+        const streamImg = document.getElementById('stream');
+        const startButton = document.getElementById('startRecording');
+        const stopButton = document.getElementById('stopRecording');
+        const downloadButton = document.getElementById('downloadRecording');
+
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        startButton.addEventListener('click', async () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = streamImg.width || 1280;
+                canvas.height = streamImg.height || 720;
+                const ctx = canvas.getContext('2d');
+
+                const drawFrame = () => {
+                    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+                    ctx.drawImage(streamImg, 0, 0, canvas.width, canvas.height);
+                    requestAnimationFrame(drawFrame);
+                };
+
+                const stream = canvas.captureStream(30); // 30 FPS
+
+                // Prioritize MP4, fall back to WebM
+                let mimeType = 'video/mp4; codecs=avc1.42001E'; // H.264 baseline profile
+                let fileExtension = 'mp4';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'video/webm; codecs=vp8';
+                    fileExtension = 'webm';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        throw new Error('No supported video format found');
+                    }
+                }
+                console.log('Using MIME type:', mimeType);
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                        console.log('Data chunk received:', event.data.size);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    console.log('Recording stopped. Total chunks:', recordedChunks.length);
+                    const blob = new Blob(recordedChunks, { type: mimeType });
+                    console.log('Blob created:', blob.size, 'bytes');
+
+                    const video = document.createElement('video');
+                    video.src = URL.createObjectURL(blob);
+                    video.onloadedmetadata = () => {
+                        console.log('Blob validation: Metadata loaded. Duration:', video.duration);
+                    };
+                    video.onerror = () => {
+                        console.error('Blob validation: Error loading video');
+                    };
+
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = URL.createObjectURL(blob);
+                    downloadLink.download = `recording_${new Date().toISOString()}.${fileExtension}`;
+                    downloadButton.onclick = () => downloadLink.click();
+                    downloadButton.disabled = false;
+                };
+
+                recordedChunks = [];
+                mediaRecorder.start();
+                drawFrame();
+
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                downloadButton.disabled = true;
+                console.log('Recording started');
+            } catch (e) {
+                console.error('Error starting recording:', e);
+            }
+        });
+
+        stopButton.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                console.log('Recording stopping...');
+            }
+        });
+    </script>
+</body>
+</html>
