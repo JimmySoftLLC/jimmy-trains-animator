@@ -133,6 +133,7 @@ import io
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, JpegEncoder
 from picamera2.outputs import FileOutput
+from libcamera import Transform  # Add this import for Transform
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -1217,57 +1218,11 @@ def open_midori():
 ################################################################################
 # Setup camera streaming
 
-# Global state
-camera_running = False
-picam2 = None
-stream_output = None
-camera_thread = None
-recording = False
-
-class StreamingOutput(io.BufferedIOBase):
-    def __init__(self):
-        self.frame = None
-        self.condition = threading.Condition()
-
-    def write(self, buf):
-        with self.condition:
-            self.frame = buf
-            self.condition.notify_all()
-
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
         global picam2, stream_output, recording
-        path = self.path.split('?', 1)[0]
-        
-        if path == '/stream.mjpg':
-            if not camera_running:
-                self.send_response(503)
-                self.end_headers()
-                self.wfile.write(b'Camera not running')
-                return
-            self.send_response(200)
-            self.send_header('Age', 0)
-            self.send_header('Cache-Control', 'no-cache, private')
-            self.send_header('Pragma', 'no-cache')
-            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
-            self.end_headers()
-            try:
-                while camera_running:
-                    with stream_output.condition:
-                        stream_output.condition.wait(timeout=2.0)
-                        if stream_output.frame is None:
-                            continue
-                        frame = stream_output.frame
-                    self.wfile.write(b'--FRAME\r\n')
-                    self.send_header('Content-Type', 'image/jpeg')
-                    self.send_header('Content-Length', len(frame))
-                    self.end_headers()
-                    self.wfile.write(frame)
-                    self.wfile.write(b'\r\n')
-            except Exception as e:
-                print(f'Removed streaming client {self.client_address}: {e}')
-                
-        elif path == '/snapshot':
+        path = self.path.split('?', 1)[0]  
+        if path == '/snapshot':
             if not camera_running:
                 self.send_response(503)
                 self.end_headers()
@@ -1346,27 +1301,38 @@ def take_snapshot():
         f.write(frame)
     return filename
 
-def start_camera_server():
-    global camera_running, picam2, stream_output, camera_thread
+def start_camera_server(zoom_factor=1.0):
+    global camera_running, picam2, stream_output
     if not camera_running:
         try:
             picam2 = Picamera2()
-            config = picam2.create_video_configuration(main={"size": (1280, 720)})
+            full_res = picam2.sensor_resolution  # (4608, 2592) for Camera Module 3
+            output_res = (1280, 720)  # Your current output resolution
+
+            # Calculate ScalerCrop for digital zoom
+            if zoom_factor < 1.0:
+                zoom_factor = 1.0  # Minimum zoom (full view)
+            crop_width = int(full_res[0] / zoom_factor)
+            crop_height = int(full_res[1] / zoom_factor)
+            crop_x = (full_res[0] - crop_width) // 2  # Center the crop
+            crop_y = (full_res[1] - crop_height) // 2
+            scaler_crop = (crop_x, crop_y, crop_width, crop_height)
+
+            # Configure with Transform for 180-degree rotation
+            config = picam2.create_video_configuration(
+                main={"size": output_res},
+                controls={"FrameDurationLimits": (33333, 33333), "ScalerCrop": scaler_crop},
+                transform=Transform(hflip=True, vflip=True)  # 180-degree rotation
+            )
             picam2.configure(config)
             stream_output = StreamingOutput()
             picam2.start_recording(JpegEncoder(), FileOutput(stream_output))
+            time.sleep(1)  # Give the camera time to start
             camera_running = True
-            camera_thread = threading.Thread(target=run_camera_server, daemon=True)
-            camera_thread.start()
-            print("Camera server started")
+            print(f"Camera server started with 180-degree rotation and zoom factor {zoom_factor} (ScalerCrop: {scaler_crop})")
         except Exception as e:
             print(f"Failed to start camera server: {e}")
             camera_running = False
-
-def run_camera_server():
-    address = ('', 8000)
-    camera_server = StreamingServer(address, StreamingHandler)
-    camera_server.serve_forever()
 
 def stop_camera_server():
     global camera_running, picam2, stream_output, camera_thread
@@ -1377,7 +1343,6 @@ def stop_camera_server():
             picam2.stop_recording()
             picam2.close()
             camera_running = False
-            camera_thread = None
             stream_output = None
             print("Camera server stopped")
         except Exception as e:
@@ -1385,7 +1350,25 @@ def stop_camera_server():
 
 ################################################################################
 # Setup routes
+# Camera streaming globals
+camera_running = False
+picam2 = None
+stream_output = None
+camera_thread = None
+recording = False
 
+class StreamingOutput(io.BufferedIOBase):
+    def __init__(self):
+        self.frame = None
+        self.condition = threading.Condition()
+        self.frame_count = 0
+
+    def write(self, buf):
+        with self.condition:
+            self.frame = buf
+            self.frame_count += 1
+            #print(f"Frame {self.frame_count} written to stream_output (size: {len(buf)} bytes)")
+            self.condition.notify_all()
 class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
@@ -1397,9 +1380,12 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.handle_serve_file("/code" + self.path, "text/css")
         elif self.path.endswith(".js"):
             print(self.path)
-            self.handle_serve_file("/code" + self.path,
-                                   "application/javascript")
-            
+            self.handle_serve_file("/code" + self.path, "application/javascript")
+        elif self.path == "/record_stream":
+            print(self.path)
+            self.handle_serve_file("/code/record_stream.html")
+        elif self.path == "/stream.mjpg":
+            self.handle_stream_mjpg()
         else:
             self.handle_serve_file(self.path)
 
@@ -1435,6 +1421,40 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(b"File not found")
+
+    def handle_stream_mjpg(self):
+        global picam2, stream_output
+        if not camera_running:
+            self.send_response(503)
+            self.end_headers()
+            self.wfile.write(b'Camera not running')
+            return
+        self.send_response(200)
+        self.send_header('Age', 0)
+        self.send_header('Cache-Control', 'no-cache, private')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+        self.end_headers()
+        try:
+            while camera_running:
+                with stream_output.condition:
+                    if not stream_output.condition.wait(timeout=2.0):
+                        print("Timeout waiting for frame - no frame received within 2 seconds")
+                        continue
+                    if stream_output.frame is None:
+                        print("No frame available - frame buffer is empty")
+                        continue
+                    frame = stream_output.frame
+                self.wfile.write(b'--FRAME\r\n')
+                self.send_header('Content-Type', 'image/jpeg')
+                self.send_header('Content-Length', len(frame))
+                self.end_headers()
+                self.wfile.write(frame)
+                self.wfile.write(b'\r\n')
+                # print(f"Sent frame {stream_output.frame_count} to client (size: {len(frame)} bytes)")
+        except Exception as e:
+            print(f'Removed streaming client {self.client_address}: {e}')
+
 
     def handle_file_upload(self):
         content_length = int(self.headers['Content-Length'])
@@ -1490,6 +1510,24 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         else:
             self.send_response(400)
             self.end_headers()
+
+    def start_camera(self, rq_d):
+        global cfg
+        start_camera_server()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "started camera"
+        self.wfile.write(response.encode('utf-8'))
+
+    def stop_camera(self, rq_d):
+        global cfg
+        stop_camera_server()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "stopped camera"
+        self.wfile.write(response.encode('utf-8'))
 
     def handle_generic_post(self, path):
         content_length = int(self.headers['Content-Length'])
@@ -1824,7 +1862,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.end_headers()
         response = "started camera"
         self.wfile.write(response.encode('utf-8'))
-    
+
     def stop_camera(self, rq_d):
         global cfg
         stop_camera_server()
@@ -2022,7 +2060,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
 if web:
     if wait_for_network():
-        # Get the local IP address
         local_ip = get_local_ip()
         print(f"Local IP address: {local_ip}")
 
@@ -2034,7 +2071,7 @@ if web:
         def start_http_server():
             global httpd
             handler = MyHttpRequestHandler
-            httpd = socketserver.TCPServer((local_ip, PORT), handler)
+            httpd = socketserver.ThreadingTCPServer((local_ip, PORT), handler)
             httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             print(f"Serving on {local_ip}:{PORT}")
             httpd.serve_forever()
@@ -2055,16 +2092,6 @@ if web:
 
         mdns_info = get_mdns_info()
 
-        # Register mDNS for camera server
-        camera_mdns_info = ServiceInfo(
-            "_http._tcp.local.",
-            f"{cfg['HOST_NAME']}-camera._http._tcp.local.",
-            addresses=[socket.inet_aton(local_ip)],
-            port=8000,
-            properties={'path': '/'},
-            server=f"{cfg['HOST_NAME']}.local."
-        )
-
         async def command_queue_handler(websocket, path):
             global current_media_playing
             print("WebSocket connection established")
@@ -2083,10 +2110,9 @@ if web:
                             'current_media_playing': current_media_playing
                         }
                         await websocket.send(json.dumps(response))
-
                     await asyncio.sleep(1)
             except Exception as e:
-                print(f"Error in command_queue_handler: {e}")  # Log any errors
+                print(f"Error in command_queue_handler: {e}")
             finally:
                 print("WebSocket connection closed")
 
@@ -3508,7 +3534,6 @@ class WebOpt(Ste):
 ###############################################################################
 # Create the state machine
 
-
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
@@ -3518,20 +3543,16 @@ st_mch.add(VolumeLevelAdjustment())
 st_mch.add(WebOpt())
 st_mch.add(IntermissionSettings())
 
-
 time.sleep(0.05)
 aud_en.value = True
 upd_vol(0.05)
 
-if (web):
+if web:
     files.log_item("starting server...")
     try:
-        # Register mDNS service
         zeroconf = Zeroconf()
         print("Registering mDNS service...")
         zeroconf.register_service(mdns_info)
-
-        # Run the server in a separate thread to allow mDNS to work simultaneously
         server_thread = threading.Thread(target=start_http_server, daemon=True)
         server_thread.start()
     except OSError:
@@ -3544,12 +3565,12 @@ is_gtts_reachable = check_gtts_status()
 
 update_folder_name_wavs()
 
-if (web):
+if web:
     # Start the WebSocket server in a separate thread
     websocket_thread = threading.Thread(
         target=lambda: asyncio.run(websocket_server()), daemon=True)
     websocket_thread.start()
-    # start_camera_server()
+    start_camera_server()
     close_midori()
     open_midori()
     spk_web()
@@ -3577,14 +3598,13 @@ logo_when_idle_thread.start()
 
 def stop_program():
     stop_all_commands()
-    if (web):
+    if web:
         print("Unregistering mDNS service...")
         zeroconf.unregister_service(mdns_info)
         zeroconf.close()
         httpd.shutdown()
     rst_an(media_folder + 'pictures/logo.jpg')
     quit()
-
 
 while True:
     try:

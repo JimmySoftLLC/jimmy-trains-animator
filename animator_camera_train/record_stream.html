@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MJPEG Stream Recorder</title>
+    <style>
+        #videoContainer { margin: 20px; }
+        #controls { margin: 20px; }
+        #playerContainer { margin: 20px; }
+        #thumbnailGallery { margin: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+        .thumbnail { cursor: pointer; border: 2px solid #ccc; padding: 5px; width: 150px; height: 100px; object-fit: cover; }
+        .thumbnail:hover { border-color: #333; }
+        .thumbnail.active { border-color: #007bff; }
+        button { padding: 10px 20px; margin: 0 5px; cursor: pointer; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        video { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <div id="videoContainer">
+        <img id="stream" src="/stream.mjpg" alt="MJPEG Stream">
+    </div>
+    <div id="controls">
+        <button id="startBtn">Start Recording</button>
+        <button id="stopBtn" disabled>Stop Recording</button>
+        <button id="downloadBtn" disabled>Download Current Recording</button>
+    </div>
+    <div id="playerContainer">
+        <h3>Selected Video</h3>
+        <video id="videoPlayer" controls></video>
+    </div>
+    <div id="thumbnailGallery">
+        <h3>Recordings</h3>
+    </div>
+
+    <script>
+        const streamImg = document.getElementById('stream');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const thumbnailGallery = document.getElementById('thumbnailGallery');
+
+        let canvas, ctx, mediaRecorder, recordedChunks = [];
+        let recordings = [];
+        const blobUrlMap = new Map();
+
+        function setupCanvas() {
+            canvas = document.createElement('canvas');
+            canvas.width = streamImg.naturalWidth || 1280;
+            canvas.height = streamImg.naturalHeight || 720;
+            ctx = canvas.getContext('2d');
+            console.log('Canvas setup with dimensions:', canvas.width, 'x', canvas.height);
+        }
+
+        async function generateThumbnail(videoBlob) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                video.src = URL.createObjectURL(videoBlob);
+                video.muted = true;
+                video.currentTime = 1;
+                video.onloadeddata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const thumbnailDataUrl = canvas.toDataURL('image/jpeg');
+                    URL.revokeObjectURL(video.src);
+                    resolve(thumbnailDataUrl);
+                };
+                video.onerror = (e) => reject(e);
+            });
+        }
+
+        async function validateBlob(blob) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                const url = URL.createObjectURL(blob);
+                video.src = url;
+                video.onloadedmetadata = () => {
+                    console.log('Blob validation: Metadata loaded. Duration:', video.duration, 'Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+                    URL.revokeObjectURL(url);
+                    resolve(true);
+                };
+                video.onerror = (e) => {
+                    console.error('Blob validation: Error loading video:', e);
+                    URL.revokeObjectURL(url);
+                    reject(e);
+                };
+            });
+        }
+
+        async function addRecordingToGallery(recording) {
+            const thumbnailImg = document.createElement('img');
+            thumbnailImg.className = 'thumbnail';
+            thumbnailImg.src = recording.thumbnail || 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+            thumbnailImg.dataset.recordingId = recording.id;
+            thumbnailImg.title = `Recording ${new Date(parseInt(recording.id)).toLocaleString()}`;
+            
+            thumbnailImg.addEventListener('click', async () => {
+                document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+                thumbnailImg.classList.add('active');
+                const blobUrl = URL.createObjectURL(recording.blob);
+                blobUrlMap.set(recording.id, blobUrl);
+                console.log('Created blob URL for playback:', blobUrl);
+                videoPlayer.src = blobUrl;
+                videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                downloadBtn.disabled = false;
+                downloadBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = blobUrl;
+                    a.download = `recording-${recording.id}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                };
+            });
+
+            thumbnailGallery.appendChild(thumbnailImg);
+        }
+
+        async function saveRecording(blob, recordingId) {
+            console.log('Saving recording - Blob size:', blob.size, 'Blob type:', blob.type);
+            try {
+                await validateBlob(blob);
+                console.log('Blob validated successfully');
+                const thumbnailDataUrl = await generateThumbnail(blob);
+                const recording = {
+                    id: recordingId,
+                    blob: blob,
+                    thumbnail: thumbnailDataUrl
+                };
+                recordings.push(recording);
+                await addRecordingToGallery(recording);
+            } catch (e) {
+                console.error('Error processing recording:', e);
+                alert('Failed to process recording. Check the console for details.');
+            }
+        }
+
+        function startRecording() {
+            if (!canvas) setupCanvas();
+            recordedChunks = [];
+            const stream = canvas.captureStream(30); // 30 FPS
+            try {
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8' });
+            } catch (e) {
+                console.error('Error creating MediaRecorder:', e);
+                alert('Failed to start recording. Check the console.');
+                return;
+            }
+
+            mediaRecorder.ondataavailable = event => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                    console.log('Data available:', event.data.size, 'bytes');
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                console.log('MediaRecorder stopped. Total chunks:', recordedChunks.length);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const recordingId = Date.now();
+                await saveRecording(blob, recordingId);
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                downloadBtn.disabled = true;
+            };
+
+            mediaRecorder.onerror = e => console.error('MediaRecorder error:', e);
+
+            function drawToCanvas() {
+                if (mediaRecorder.state === 'recording') {
+                    ctx.drawImage(streamImg, 0, 0, canvas.width, canvas.height);
+                    requestAnimationFrame(drawToCanvas);
+                }
+            }
+
+            try {
+                mediaRecorder.start();
+                console.log('Recording started');
+                drawToCanvas();
+            } catch (e) {
+                console.error('Error starting recording:', e);
+                alert('Failed to start recording. Check the console.');
+                return;
+            }
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            downloadBtn.disabled = true;
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                console.log('Recording stopped');
+            }
+        }
+
+        startBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+
+        streamImg.onload = () => {
+            console.log('MJPEG stream loaded. Dimensions:', streamImg.naturalWidth, 'x', streamImg.naturalHeight);
+            if (!canvas) setupCanvas();
+        };
+
+        streamImg.onerror = () => {
+            console.error('Error loading MJPEG stream');
+            alert('Could not connect to the MJPEG stream.');
+        };
+
+        window.addEventListener('unload', () => {
+            if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+            blobUrlMap.forEach(url => URL.revokeObjectURL(url));
+            recordings.forEach(recording => URL.revokeObjectURL(recording.thumbnail));
+        });
+    </script>
+</body>
+</html>
