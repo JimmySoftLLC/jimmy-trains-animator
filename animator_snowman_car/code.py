@@ -970,8 +970,12 @@ async def set_hdw_async(input_string):
                     sp[i] = v
             else:
                 sp[num-1] = int(v)
-            led[0] = (sp[1], sp[0], sp[2])
-            led[1] = (sp[4], sp[3], sp[5])
+
+            # led[0] = (sp[1], sp[0], sp[2])
+            # led[1] = (sp[4], sp[3], sp[5])
+
+            led[0] = (sp[3], sp[4], sp[5])
+            led[1] = (sp[1], sp[2], sp[0])
             led.show()
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
