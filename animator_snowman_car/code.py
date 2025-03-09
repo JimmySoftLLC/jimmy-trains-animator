@@ -222,8 +222,8 @@ gc_col("config setup")
 
 num_px = 2
 
-# 15 on demo 16 tiny 10 on large
-led = neopixel.NeoPixel(board.GP16, num_px)
+# 15 on demo 15 tiny 10 on large
+led = neopixel.NeoPixel(board.GP15, num_px)
 
 gc_col("Neopixels setup")
 
@@ -703,7 +703,7 @@ def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-snowman-car":
-        ply_a_0("/sd/mvc/animator_dash_snowman_car.wav")
+        ply_a_0("/sd/mvc/animator_dash_snowman_dash_car.wav")
         ply_a_0("/sd/mvc/dot.wav")
         ply_a_0("/sd/mvc/local.wav")
     else:
@@ -1413,4 +1413,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 
