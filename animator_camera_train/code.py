@@ -1288,6 +1288,30 @@ def stop_recording():
         recording = False
         print("Stopped recording")
 
+def set_zoom(zoom_factor):
+    global picam2, camera_running
+    if camera_running and picam2:
+        try:
+            full_res = picam2.sensor_resolution  # (4608, 2592) for Camera Module 3
+            if zoom_factor < 1.0:
+                zoom_factor = 1.0  # Minimum zoom
+            # Avoid integer truncation by keeping float precision until final step
+            crop_width = full_res[0] / zoom_factor
+            crop_height = full_res[1] / zoom_factor
+            crop_x = (full_res[0] - crop_width) / 2
+            crop_y = (full_res[1] - crop_height) / 2
+            # Convert to integers only at the end
+            scaler_crop = (int(crop_x), int(crop_y), int(crop_width), int(crop_height))
+            picam2.set_controls({"ScalerCrop": scaler_crop})
+            print(f"Zoom set to {zoom_factor}x (ScalerCrop: {scaler_crop})")
+            return True
+        except Exception as e:
+            print(f"Failed to set zoom: {e}")
+            return False
+    return False
+
+# [Rest of code unchanged, including MyHttpRequestHandler with /set-zoom...]
+
 def take_snapshot():
     global stream_output
     filename = f'snapshot_{time.strftime("%Y%m%d_%H%M%S")}.jpg'
@@ -1321,7 +1345,7 @@ def start_camera_server(zoom_factor=1.0):
             # Configure with Transform for 180-degree rotation
             config = picam2.create_video_configuration(
                 main={"size": output_res},
-                controls={"FrameDurationLimits": (33333, 33333), "ScalerCrop": scaler_crop},
+                controls={"FrameDurationLimits": (100000, 100000), "ScalerCrop": scaler_crop},
                 transform=Transform(hflip=True, vflip=True)  # 180-degree rotation
             )
             picam2.configure(config)
@@ -1529,6 +1553,22 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         response = "stopped camera"
         self.wfile.write(response.encode('utf-8'))
 
+    def set_camera_focus(self, rq_d):
+        focus_value = float(rq_d.get("focus", 1.0))
+        if 0.0 <= focus_value <= 10.0:
+            if picam2 and camera_running:
+                picam2.set_controls({"AfMode": 0, "LensPosition": focus_value})  # AfMode 0 = Manual
+                print(f"Focus set to {focus_value} (1/{focus_value}m)")
+                self.send_response(200)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(f"Focus set to {focus_value}".encode('utf-8'))
+            else:
+                self.send_response(500, "Camera not running")
+        else:
+            self.send_response(400, "Focus value out of range (0-10)")
+
+
     def handle_generic_post(self, path):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
@@ -1606,6 +1646,25 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.test_animation_post(post_data_obj)
         elif self.path == "/get-local-ip":
             self.get_local_ip(post_data_obj)
+        elif self.path == "/set-zoom":
+            self.set_camera_zoom(post_data_obj)
+        elif self.path == "/set-focus":
+            self.set_camera_focus(post_data_obj)
+            
+
+    def set_camera_zoom(self, rq_d):
+        zoom_factor = float(rq_d.get("zoom", 1.0))
+        if set_zoom(zoom_factor):
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            response = f"Zoom set to {zoom_factor}x"
+        else:
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            response = "Failed to set zoom"
+        self.wfile.write(response.encode('utf-8'))
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
