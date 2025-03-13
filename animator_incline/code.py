@@ -196,8 +196,8 @@ d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 # DC motor setup; Set pins to custom PWM frequency
 pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
 pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
-train = motor.DCMotor(pwm_a, pwm_b)
-train.decay_mode = d_mde
+car = motor.DCMotor(pwm_a, pwm_b)
+car.decay_mode = d_mde
 car_pos = 0
 
 ################################################################################
@@ -295,7 +295,7 @@ if (web):
         mdns.hostname = cfg["HOST_NAME"]
         mdns.advertise_service(
             service_type="_http", protocol="_tcp", port=80)
-
+        
         local_ip = str(wifi.radio.ipv4_address)
 
         # files.log_items IP address to REPL
@@ -305,6 +305,7 @@ if (web):
         # set up server
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=True)
+        server.port = 80  # Explicitly set port to 80
 
         gc_col("wifi server")
 
@@ -577,7 +578,7 @@ async def process_cmd():
         print("Processing command:", command)
         # Process each command as an async operation
         await set_hdw_async(command)
-        await asyncio.sleep(0)  # Yield control to the event loop
+        await asyncio.sleep(0)
 
 
 def clr_cmd_queue():
@@ -598,7 +599,7 @@ def stp_all_cmds():
 def rst_def():
     global cfg
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-ride-on-train"
+    cfg["HOST_NAME"] = "animator-incline"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
 
@@ -752,8 +753,8 @@ def no_trk():
 def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-ride-on-train":
-        ply_a_0("/sd/mvc/animator_ride_on_train.wav")
+    if cfg["HOST_NAME"] == "animator-incline":
+        ply_a_0("/sd/mvc/animator_incline.wav")
         ply_a_0("/sd/mvc/dot.wav")
         ply_a_0("/sd/mvc/local.wav")
     else:
@@ -886,12 +887,12 @@ async def an_light_async(f_nm):
                 lgt = random.randint(60, 120)
                 result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
                 if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
+                    await asyncio.sleep(0)
                     break
             else:
                 result = await set_hdw_async(ft1[1])
                 if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
+                    await asyncio.sleep(0)
                     break
             flsh_i += 1
         sw = utilities.switch_state(
@@ -952,7 +953,7 @@ def an_ts(f_nm):
 # animation effects
 
 
-sp = [0, 0, 0, 0, 0, 0]
+sp = [0, 0, 0]
 br = 0
 
 
@@ -1031,31 +1032,10 @@ async def set_hdw_async(input_string):
             seg_split = seg.split("_")
             # Process each command as an async operation
             await an_async(seg_split[1])
-        # TXXX = Train XXX throttle -100 to 100
+        # TXXX = Car XXX throttle -100 to 100
         elif seg[0] == 'T':
             v = int(seg[1:])/100
-            train.throttle = v
-        # H_XXX_YY = Train XXX throttle -100 to 100 YY position 12 or 6 oclock
-        elif seg[0] == 'H':
-            seg_split = seg.split("_")
-            train.throttle = int(seg_split[1])/100
-            if seg_split[2] == "12":
-                goal = 5
-            else:
-                goal = 35
-            vl53.clear_interrupt()
-            cur_dist = vl53.distance
-            i = 0
-            while True:
-                vl53.clear_interrupt()
-                cur_dist = vl53.distance
-                if cur_dist > goal - 5 and cur_dist < goal + 5:
-                    i += 1
-                    if i > 2:
-                        train.throttle = 0
-                        break
-                print(cur_dist)
-                time.sleep(.02)  # Hold at current throttle value
+            car.throttle = v
         # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, 
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec
         elif seg[0] == 'C':
@@ -1077,8 +1057,8 @@ async def set_hdw_async(input_string):
             srt_t = time.monotonic()
             
             # Use current throttle state directly
-            current_speed = abs(train.throttle) if train.throttle else 0
-            current_direction = 1 if train.throttle >= 0 else -1
+            current_speed = abs(car.throttle) if car.throttle else 0
+            current_direction = 1 if car.throttle >= 0 else -1
             
             while True:
                 vl53.clear_interrupt()
@@ -1116,23 +1096,22 @@ async def set_hdw_async(input_string):
                     
                 # Apply clamped speed with direction
                 current_speed = max(0, min(spd, current_speed))
-                train.throttle = current_speed * current_direction
+                car.throttle = current_speed * current_direction
 
                 # Check if within target band
                 if target_pos - target_band < car_pos < target_pos + target_band:
                     num_times_in_band += 1
                     if num_times_in_band > 2:
-                        train.throttle = 0
+                        car.throttle = 0
                         break
                         
-                print(f"Pos: {car_pos:.1f}, Speed: {train.throttle:.2f}, Dist: {distance_to_target:.1f}")
+                print(f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
                 time.sleep(.05)
                 
                 t_past = time.monotonic() - srt_t
                 if t_past > give_up:
-                    train.throttle = 0
+                    car.throttle = 0
                     break
-
 
 ################################################################################
 # State Machine
@@ -1490,18 +1469,15 @@ upd_vol(.1)
 if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
-    except Exception as e:
-        files.log_item(e)
+    except OSError:
         time.sleep(5)
         files.log_item("restarting...")
-        rst()
 
 # initialize items
 add_cmd("S090")
-add_cmd("H_20_12")
 upd_vol(.5)
 
 st_mch.go_to('base_state')
@@ -1515,20 +1491,20 @@ async def process_cmd_tsk():
     """Task to continuously process commands."""
     while True:
         try:
-            await process_cmd()  # Async command processing
+            await process_cmd()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)  # Yield control to other tasks
+        await asyncio.sleep(0)
 
 
 async def server_poll_tsk(server):
     """Poll the web server."""
     while True:
         try:
-            server.poll()  # Web server polling
+            server.poll()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)  # Yield control to other tasks
+        await asyncio.sleep(0)
 
 
 async def state_mach_upd_task(st_mch):

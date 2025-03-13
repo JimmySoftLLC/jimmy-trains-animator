@@ -2,89 +2,27 @@
 <html>
 
 <head>
-    <title>Animator - Ride on train</title>
+    <title>Animator - City Lights</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
     <script src="/mui.min.js"></script>
-    <style>
-        .parent-container {
-            display: grid;
-            place-items: center;
-            width: max-content;
-            height: max-content;
-            position: relative;
-            margin: auto;
-        }
-
-        .knob-container {
-            display: grid;
-            place-items: center;
-            width: 300px;
-            height: 300px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .knob {
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, #c6d6f7 30%, #4a7aeb);
-            border-radius: 50%;
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-            position: absolute;
-            top: 0;
-            left: 0;
-            user-select: none;
-            transform: rotate(0deg);
-        }
-
-        .indicator {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background: rgb(12, 88, 228);
-            border-radius: 50%;
-            top: 5px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        .knob-text {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            pointer-events: none;
-            text-align: center;
-        }
-    </style>
 </head>
 
 <body>
     <div id="modalEl"></div>
     <div class="mui-container">
-        <h1>Animator - Ride on train</h1>
+        <h1>Animator - City Lights</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your Animator - Ride on train
+            Use this web app to control and setup your Animator - City Lights
             product. Have fun animating.
         </p>
-        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-            data-url="/mode">Left</button>
-        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-            data-url="/mode">Right</button>
-        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right_held"
-            data-url="/mode">Right Held</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
-                <a data-mui-toggle="tab" data-mui-controls="trainControl">Train Control</a>
+                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
-                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
+                <a data-mui-toggle="tab" data-mui-controls="my_animations">my animations</a>
             </li>
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
@@ -93,30 +31,27 @@
                 <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
             </li>
         </ul>
-        <div class="mui-tabs__pane mui--is-active" id="trainControl" style="padding-top:0.5rem;">
-            <div class="parent-container ">
-                <div class="knob-container">
-                    <div class="knob" id="knob">
-                        <div class="indicator"></div>
-                    </div>
-                    <div class="knob-text" id="knob-text">0</div>
-                </div>
-            </div>
-            <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
-            <button class="mui-btn mui-btn--primary" onclick="blowHorn()">Horn</button>
-            <button class="mui-btn mui-btn--primary" onclick="blowWhistle()">Whistle</button>
-            <button class="mui-btn mui-btn--primary" onclick="home12()">Home 12</button>
-            <button class="mui-btn mui-btn--primary" onclick="Home6()">Home 6</button>
-            <button class="mui-btn mui-btn--primary" onclick="openGates()">Open Gates</button>
-            <button class="mui-btn mui-btn--primary" onclick="closeGates()">Close Gates</button>
-        </div>
-        <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
-            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
+        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+            <button class="mui-btn mui-btn--primary animator-action" data-value="rnd sndtrk" data-url="/animation"
                 type="button">
-                Random all animations
+                Random only sound tracks
             </button>
-            <h2>Animations:</h2>
-            <div id="animationsContainer"></div>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="rnd mysndtrk" data-url="/animation"
+                type="button">
+                Random only my sound tracks
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="rnd plylst" data-url="/animation"
+                type="button">
+                Random only playlists
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="rnd all" data-url="/animation"
+                type="button">
+                Random all sound tracks
+            </button>
+            <h2>Playlists:</h2>
+            <div id="playlistContainer"></div>
+            <h2>Sound tracks:</h2>
+            <div id="builtInTracksContainer"></div>
             <h2>Animation settings:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
@@ -129,61 +64,81 @@
                 </button>
             </div>
         </div>
-        <div class="mui-tabs__pane" id="settings">
-            <h2>Platform positions:</h2>
+        <div class="mui-tabs__pane" id="my_animations" style="padding-top:0.5rem;">
+            <h2>My sound tracks:</h2>
+            <div id="myTracksContainer"></div>
+            <h2>Instructions on how to add your own sound tracks:</h2>
+            <p>
+                You can create your own sound track files by putting wav files in the folder called
+                "customers_owned_music" on the microSD card that is inserted
+                in your animator. The files must be named with only lower case letters, numbers and spaces. For example
+                "white christmas". The files must be wav files encoded with a sample rate of 22050Hz and a sample format
+                of 16 bits.
+                You can create files of this type using Audacity, a free application.
+            </p>
+            <p>
+                Once you have your files on the microSD card reinsert it into the animator and power it back on. The
+                animator will scan for new files and populate the web page with your sound tracks. Next you animate them
+                by selecting one of your sound tracks and follow the spoken instructions.
+            </p>
+            <h2>Animation timing:</h2>
+            <p>
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
+                left button to start your animation. Once the sound track starts press the right button for each point
+                that you want an animation change. Time your button presses to key moments in the sound track. Continue
+                to do this until the animation finishes. Then
+                timestamp mode will be automatically turned off and your animation will be ready.
+            </p>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
                     type="button">
-                    All 0
+                    Timestamp Mode On
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S090" data-url="/lights"
-                    type="button">
-                    All 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S0180" data-url="/lights"
-                    type="button">
-                    All 180
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/mode" type="button">
+                    Timestamp Mode Off
                 </button>
             </div>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
-                    type="button">
-                    Servo 1 90
+                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_animation_timing_to_defaults"
+                    data-url="/defaults" type="button">
+                    Reset animation timing to factory defaults
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
-                    type="button">
-                    Servo 2 90
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="settings">
+            <h2>Number of light modules:</h2>
+            <div class="mui-textfield">
+                <input class="input" id="moduleNumber" type="text" placeholder="Enter 1 to 49">
+                <button id="moduleNumberSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/set-mod-num">
+                    Change
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
-                    type="button">
-                    Servo 3 90
-            </button>
+                <p>
+                    Valid number of modules are from 1 to 49
+                </p>
             </div>
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000255" data-url="/lights"
                     type="button">
-                    Light 1
+                    All 255
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L2255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000150" data-url="/lights"
                     type="button">
-                    Light 2
+                    All 150
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L3255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L000100" data-url="/lights"
                     type="button">
-                    Light 3
+                    All 100
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L4255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00050" data-url="/lights"
                     type="button">
-                    Light 4
+                    All 50
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L5255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L0000" data-url="/lights"
                     type="button">
-                    Light 5
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L6255" data-url="/lights"
-                    type="button">
-                    Light 6
+                    All 0
                 </button>
             </div>
             <div>
@@ -277,19 +232,10 @@
                 Valid volume levels are from 1 to 100
             </p>
 
-            <h2>Animator web page name and ip address:</h2>
+            <h2>Animator web page name:</h2>
 
             <div class="mui-textfield">
-                <label>Base url:</label>
-                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div class="mui-textfield">
-                <label>IP Address:</label>
-                <input class="input" id="settingsIpAddress" type="text" disabled
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div>
+                <input class="input" id="websiteUrl" type="text" placeholder="Enter website name">
                 <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
                     data-url="/update-host-name">
                     Change
@@ -299,7 +245,7 @@
             <p>
                 Use alphanumerics and dashes only. All names are automatically
                 appended with .local. So your website url will be something like
-                "website-name.local and the ip address will be xx.xx.xx.xx."
+                "website-name.local"
             </p>
 
             <h2>Utilities:</h2>
@@ -315,59 +261,338 @@
         </div>
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
-            <p>Follow these steps to setup animations:</p>
-            <ol>
-                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
-                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
-                    corresponding buttons to duplicate, rename, or delete it.</li>
-            </ol>
-            <button class="mui-btn mui-btn--primary" onclick="createAnimationDialog()">Create
-                Animation</button>
-            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimationDialog()">Duplicate
-                Animation</button>
-            <button class="mui-btn mui-btn--primary" onclick="renameAnimationDialog()">Rename
-                Animation</button>
-            <button class="mui-btn mui-btn--primary" onclick="deleteAnimationDialog()">Delete
-                Animation</button>
-            <h2>Animations:</h2>
-            <div id="animationScriptsContainer"></div>
-            <h2>Animation table:</h2>
+            <p>
+                Animation scripts run the animation. To load the script press the button for the sound track you want to
+                modify.
+                Modify the script as needed and press save to save the script.
+            </p>
+            <h2>Playlists:</h2>
+            <button class="mui-btn mui-btn--primary" onclick="createPlaylistDialog()">Create playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicatePlaylistDialog()">Duplicate playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="renamePlaylistDialog()">Rename playlist</button>
+            <button class="mui-btn mui-btn--primary" onclick="deletePlaylistDialog()">Delete playlist</button>
+            <div id="playlistScriptContainer"></div>
+            <h2>Sound tracks:</h2>
+            <div id="builtInTracksScriptContainer"></div>
+            <h2>My sound tracks:</h2>
+            <div id="myTracksScriptContainer"></div>
+            <h2>Animation script table:</h2>
             <div class="mui-textfield">
-                <input class="input" id="animationScriptName" type="text" disabled>
+                <input class="input" id="animationName" type="text" disabled>
             </div>
-            <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
-            <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
-            <div>BXXX = Brightness XXX 0 to 100</div>
-            <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
-            <div>AN_XXX = Animation XXX filename</div>
-            <div>TXXX = Train XXX throttle -100 to 100</div>
-            <div>H_XXX_YY = Home train XXX throttle -100 to 100 YY position 12 or 6 o'clock</div>
-            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
-                tracks, M mvc folder) XXX (file name)</div>
-            <div>WA = Blow horn or whistle, A (H Horn, W whistle)</div>
             <div>
-                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
-                    Animations</button>
-                <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-                <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
-                <table id="dataTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>TimeStamp</th>
-                            <th>TimeCode</th>
-                            <th>Animation</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="playButton" class="mui-btn mui-btn--primary" type="button">Play</button>
+                <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+                <div>LNN-IXXX = Lights NN (00 All, 01 to 58) I index (0 All, 1 to 6) XXX 0 to 255</div>
+                <div>BXXX-TTT = Brightness XXX 000 to 100, TTT time between transitions in seconds</div>
+                <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
+                <div>MALXXX = Play file, A (P play music, W play music wait, A play animation), L = file location (S
+                    sound tracks, M my sound tracks, P playlist) XXX (file name)</div>
+                <div>RXXX = Rainbow, XXX cycle speed in seconds</div>
+                <div>C-NN-...-XXX = Cycle, NN one or many commands seperated by dashes, XXX interval in seconds between
+                    commands</div>
+                <div>E = End script<div>
+                        <table id="dataTable" class="mui-table">
+                            <thead>
+                                <tr>
+                                    <th>TimeStamp</th>
+                                    <th>TimeCode</th>
+                                    <th>Animation</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 </body>
 
 <script>
-    local_ip = ""
+
+    function createPlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Create playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', createPlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function createPlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fn: filenameInput,
+            };
+
+            fetch("/create-playlist", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function duplicatePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Duplicate playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', duplicatePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function duplicatePlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            saveData("plylst_" + filenameInput, true);
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function renamePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Rename playlist';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', renamePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function renamePlaylist() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fo: animationName.value,
+                fn: filenameInput,
+            };
+
+            fetch("/rename-playlist", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function deletePlaylistDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Delete playlist';
+        form.appendChild(legend);
+
+        var message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
+        form.appendChild(message);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Delete';
+        saveBtn.addEventListener('click', deletePlaylist);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function updatePlaylists() {
+        const myPlaylistDiv = document.getElementById("playlistContainer");
+        removeChildNodes(myPlaylistDiv)
+        const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
+        removeChildNodes(myPlaylistScriptDiv)
+        getPlaylists()
+    }
 
     function removeChildNodes(myDiv) {
         // Remove all child nodes
@@ -379,28 +604,16 @@
         myDiv.parentNode.replaceChild(clonedDiv, myDiv);
     }
 
-
     function showAlert(message) {
         var alertModal = document.createElement('div');
         alertModal.className = 'mui-container';
-        alertModal.style.width = '400px';
-        alertModal.style.margin = '100px auto'; // Center horizontally with top margin
-        alertModal.style.backgroundColor = '#fff';
-        alertModal.style.borderRadius = '5px';
-        alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-
         alertModal.innerHTML = `
-            <div class="mui-form" style="padding: 20px;">
-                <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
-                <div style="margin: 10px 0; font-size: 1em; color: #333;">
-                    ${message}
-                </div>
-                <button class="mui-btn mui-btn--primary" onclick="closeAlert()" style="margin-top: 15px;">OK</button>
-            </div>`;
-
+        <div class="mui-panel">
+            <span>${message}</span>
+            <button class="mui-btn mui-btn--primary" onclick="closeAlert()">OK</button>
+        </div>`
         mui.overlay('on', alertModal);
     }
-
 
     function closeAlert() {
         mui.overlay('off');
@@ -408,7 +621,57 @@
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
-        // get website url
+        getWebSiteUrl()
+        getVolume()
+        getPlaylists()
+        getBuiltInSoundTracks()
+        getCustomersSoundTracks()
+        getModuleNumber()
+    });
+
+    function getCustomersSoundTracks() {
+        fetch('/get-customers-sound-tracks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setCustomersSoundTrackButtons(my_data)
+                setCustomersSoundTrackScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getBuiltInSoundTracks() {
+        fetch('/get-built-in-sound-tracks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setBuiltInSoundTrackButtons(my_data)
+                setBuiltInSoundTrackScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getWebSiteUrl() {
         fetch('/get-host-name', {
             method: 'POST',
             headers: {
@@ -419,13 +682,15 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
+                websiteUrl.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
+    }
 
-        // get volume
+    function getVolume() {
         fetch('/get-volume', {
             method: 'POST',
             headers: {
@@ -440,10 +705,12 @@
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
+    }
 
-        // get local ip
-        fetch('/get-local-ip', {
+    function getModuleNumber() {
+        fetch('/get-mod-num', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -453,20 +720,16 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                local_ip = data; // Set the value of the input field with the received data
-                settingsIpAddress.value = local_ip
+                moduleNumber.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
                 showAlert(error);
             });
+    }
 
-        getAnimations()
-    });
-
-    function getAnimations() {
-        // get Animations
-        fetch('/get-animations', {
+    function getPlaylists() {
+        fetch('/get-scripts', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -477,317 +740,8 @@
             })
             .then(function (data) {
                 my_data = JSON.parse(data)
-                setRunAnimationButtons(my_data)
-                setGetAnimationButtons(my_data)
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-    }
-
-
-    function createAnimationDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Create Animation';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', createAnimation);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-
-    function createAnimation() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            console.log('Filename:', filenameInput);
-            var data = {
-                fn: filenameInput,
-            };
-
-            fetch("/create-animation", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    updateAnimations()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function duplicateAnimationDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Duplicate Animation';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', duplicateAnimation);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-
-    function duplicateAnimation() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            animationScriptName.value = filenameInput;
-            saveAnimationScriptData();
-            updateAnimations()
-            var modalEl = document.getElementById("modalEl")
-            mui.overlay('off', modalEl)
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-
-    function renameAnimationDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Rename Animation';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', renameAnimation);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function renameAnimation() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            console.log('Filename:', filenameInput);
-            var data = {
-                fo: animationScriptName.value,
-                fn: filenameInput,
-            };
-
-            fetch("/rename-animation", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    updateAnimations()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function deleteAnimationDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Delete Animation';
-        form.appendChild(legend);
-
-        var message = document.createElement('div');
-        message.className = "mui-textfield"
-        message.textContent = "Are you sure your want to delete " + animationScriptName.value + " this is irreversible.";
-        form.appendChild(message);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Delete';
-        saveBtn.addEventListener('click', deleteAnimation);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function deleteAnimation() {
-        var data = {
-            fn: animationScriptName.value,
-        };
-
-        fetch("/delete-animation", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                updateAnimations()
-                console.log("file deleted")
-                var modalEl = document.getElementById("modalEl")
-                mui.overlay('off', modalEl)
+                setScriptButtons(my_data)
+                setScriptScriptButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -795,16 +749,102 @@
             });
     }
 
+    function setScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("plylst_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
 
-    function updateAnimations() {
-        const myAnimationScriptsDiv = document.getElementById("animationScriptsContainer");
-        removeChildNodes(myAnimationScriptsDiv)
-        const myAnimationsDiv = document.getElementById("animationsContainer");
-        removeChildNodes(myAnimationsDiv)
-        getAnimations()
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            button.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled');
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            playlistContainer.appendChild(button);
+        });
     }
 
-    function setRunAnimationButtons(my_data) {
+    function setScriptScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("plylst_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        animationName.value = animation
+                        populateTable(myData)
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled')
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            playlistScriptContainer.appendChild(button);
+        });
+    }
+
+    function setBuiltInSoundTrackButtons(my_data) {
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
@@ -843,14 +883,15 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        console.log(error);
+                        showAlert(error);
                     });
             });
-            animationsContainer.appendChild(button);
+            builtInTracksContainer.appendChild(button);
         });
     }
 
-    function setGetAnimationButtons(my_data) {
+    function setBuiltInSoundTrackScriptButtons(my_data) {
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
@@ -884,16 +925,112 @@
                     })
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
-                        animationScriptName.value = animation
-                        populateAnimationsTable(myData)
+                        animationName.value = animation
+                        populateTable(myData)
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
-                        console.log(error);
                         button.removeAttribute('disabled')
+                        console.log(error);
+                        showAlert(error);
                     });
             });
-            animationScriptsContainer.appendChild(button);
+            builtInTracksScriptContainer.appendChild(button);
+        });
+    }
+
+    function setCustomersSoundTrackButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("customers_owned_music_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            button.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled');
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            myTracksContainer.appendChild(button);
+        });
+    }
+
+    function setCustomersSoundTrackScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("customers_owned_music_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        animationName.value = animation
+                        populateTable(myData)
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled')
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            myTracksScriptContainer.appendChild(button);
         });
     }
 
@@ -931,7 +1068,8 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    console.log(error);
+                    showAlert(error);
                 });
         });
     });
@@ -963,8 +1101,9 @@
                     button.removeAttribute('disabled')
                 })
                 .catch(function (error) {
-                    console.log(error);
                     button.removeAttribute('disabled')
+                    console.log(error);
+                    showAlert(error);
                 });
         });
     });
@@ -972,8 +1111,8 @@
     // Add click event listener to website submit button
     var websiteSubmitButton = document.getElementById('websiteSubmitButton');
     websiteSubmitButton.addEventListener('click', function () {
-        var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
-        var websiteUrlText = settingsWebsiteUrl.value;
+        var websiteUrl = document.getElementById('websiteUrl');
+        var websiteUrlText = websiteUrl.value;
         var url = this.getAttribute('data-url');
 
         var data = {
@@ -993,42 +1132,139 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
+                websiteUrl.value = data; // Set the value of the input field with the received data
                 websiteSubmitButton.removeAttribute('disabled')
             })
             .catch(function (error) {
-                console.log(error);
                 websiteSubmitButton.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
             });
     });
 
+    // Add click event listener to website submit button
+    var moduleNumberSubmitButton = document.getElementById('moduleNumberSubmitButton');
+    moduleNumberSubmitButton.addEventListener('click', function () {
+        var moduleNumber = document.getElementById('moduleNumber');
+        var moduleNumberText = moduleNumber.value;
+        var url = this.getAttribute('data-url');
+
+        var data = {
+            an: moduleNumberText,
+        };
+
+        moduleNumberSubmitButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                moduleNumber.value = data; // Set the value of the input field with the received data
+                moduleNumberSubmitButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                moduleNumberSubmitButton.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
+    });
+
+
     // Restrict input to letters, numbers, and hyphens only
-    settingsWebsiteUrl.addEventListener('input', function () {
+    websiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
     });
 
     // Table component
-    var saveAnimationScriptDataButton = document.getElementById("saveAnimationScriptDataButton");
+    var saveDataButton = document.getElementById("saveDataButton");
+    var stopButton = document.getElementById("stopButton");
     var dataTable = document.getElementById("dataTable");
-    var animationTableBody = document.querySelector("#dataTable tbody");
+    var dataTableBody = document.querySelector("#dataTable tbody");
+    var deletePlaylistButton = document.getElementById("deletePlaylistButton");
 
-    saveAnimationScriptDataButton.addEventListener("click", function () {
-        saveAnimationScriptData();
+
+    stopButton.addEventListener("click", function () {
+        stopAnimation();
     });
 
-    function populateAnimationsTable(data) {
+    saveDataButton.addEventListener("click", function () {
+        saveData(animationName.value, false);
+    });
+
+    function stopAnimation() {
+        stopButton.setAttribute("disabled", "true");
+
+        var data = {
+            an: animationName.value,
+        };
+
+        fetch("/stop", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log("file deleted")
+                stopButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                stopButton.removeAttribute('disabled')
+            });
+    }
+
+    function deletePlaylist() {
+        var data = {
+            fn: animationName.value,
+        };
+
+        fetch("/delete-playlist", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                updatePlaylists()
+                console.log("file deleted")
+                var modalEl = document.getElementById("modalEl")
+                mui.overlay('off', modalEl)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function populateTable(data) {
         // Clear existing table rows
-        animationTableBody.innerHTML = "";
+        dataTableBody.innerHTML = "";
 
         // Populate table with new data
         data.forEach(function (rowData) {
             var row = createDataRow(rowData);
-            animationTableBody.appendChild(row);
+            dataTableBody.appendChild(row);
         });
     }
 
-    animationTableBody.addEventListener("click", function (event) {
+    dataTableBody.addEventListener("click", function (event) {
         var target = event.target;
         if (target.classList.contains("insert-row-btn")) {
             insertRow(target.parentNode.parentNode);
@@ -1066,36 +1302,11 @@
                 target.removeAttribute('disabled')
             })
             .catch(function (error) {
-                console.log(error);
                 target.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
             });
     }
-
-    async function testAnimationCommand(command) {
-        if (!command) {
-            console.log("Invalid command, stopping request: " + command);
-            return;
-        }
-
-        const url = "/test-animation";
-        const data = { an: command };
-        const jsonData = JSON.stringify({ ...data });
-
-        try {
-            let response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: jsonData,
-            });
-
-            let text = await response.text();
-            return text;
-        } catch (error) {
-            console.log("Fetch Error: " + error + "Sending Data: " + jsonData);
-        }
-    }
-
-
 
     function getTextOfInput(rowElement, elNum) {
         const inputElements = rowElement.querySelectorAll('input');
@@ -1122,202 +1333,6 @@
         var inputValue = convertTimeCodeToSeconds(event.target.value)
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
     }
-
-    // Global variables to store number of rows and data
-    var globalPasteTableNumRows = 0;
-    var globalPasteTable = [];
-    var globalRowIndex = 0; // Index for data
-
-    function pasteRowsAndResetTable() {
-        var pasteIndex = 0;
-
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var data = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null;
-                return cellValue;
-            });
-            return values;
-        });
-
-        console.log(globalPasteTable);
-        console.log(data);
-
-        // First mutate the data
-        while (globalRowIndex < data.length && pasteIndex < globalPasteTable.length) {
-            // Replace data[globalRowIndex][2] with the item from globalPasteTable
-            data[globalRowIndex][2] = globalPasteTable[pasteIndex];
-            globalRowIndex++; // Move to the next row in data
-            pasteIndex++; // Move to the next item in globalPasteTable
-        }
-
-        // Now combine the data into combinedData
-        const combinedData = data.map(function (row) {
-            var secondsConverted = convertTimeCodeToSeconds(row[1]);
-            return secondsConverted + "|" + (row[2] || ""); // Ensure a fallback in case row[2] is undefined
-        });
-
-        console.log(combinedData);
-
-        // Populate the table with the combined data
-        populateAnimationsTable(combinedData);
-    }
-
-
-
-    function animationCellClicked(event) {
-        var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
-        globalRowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
-        console.log("Row Index:", globalRowIndex);
-    }
-
-    function editPasteTableDialog() {
-        var modalEl = document.getElementById("modalEl");
-        removeChildNodes(modalEl);
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px';
-        form.style.margin = '20px';
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Paste table';
-        form.appendChild(legend);
-
-        // Input for number of rows
-        var numberRowsInput = document.createElement('div');
-        numberRowsInput.className = 'mui-textfield';
-        numberRowsInput.innerHTML = '<input type="number" id="numRows" placeholder="Number of rows" min="1" />';
-        form.appendChild(numberRowsInput);
-
-        // Button to generate the table
-        var generateBtn = document.createElement('button');
-        generateBtn.type = 'button';
-        generateBtn.className = 'mui-btn mui-btn--primary';
-        generateBtn.textContent = 'Generate Table';
-        generateBtn.addEventListener('click', generateTable);
-        form.appendChild(generateBtn);
-
-        // Container for the table
-        var tableContainer = document.createElement('div');
-        tableContainer.id = 'tableContainer';
-        form.appendChild(tableContainer);
-
-        // Save button
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', function () {
-            var data = collectTableData();
-            globalPasteTable = data; // Save data globally
-            globalPasteTableNumRows = data.length; // Save the number of rows globally
-            mui.overlay('off', modalEl); // Close modal after saving
-        });
-        form.appendChild(saveBtn);
-
-        // Clear button
-        var clearBtn = document.createElement('button');
-        clearBtn.type = 'button';
-        clearBtn.className = 'mui-btn mui-btn--secondary';
-        clearBtn.textContent = 'Clear';
-        clearBtn.addEventListener('click', function () {
-            clearTableData(); // Clear input values but keep the table structure
-        });
-        form.appendChild(clearBtn);
-
-        // Cancel button
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-
-        // Populate fields if there's existing data
-        document.getElementById('numRows').value = globalPasteTableNumRows;
-        if (globalPasteTableNumRows > 0) {
-            generateTable(globalPasteTable); // Generate the table with existing data
-        }
-
-        // Function to generate the table
-        function generateTable(data) {
-            var numRows = parseInt(document.getElementById('numRows').value, 10) || globalPasteTableNumRows;
-            var tableContainer = document.getElementById('tableContainer');
-            removePasteTableChildNodes(tableContainer); // Clear existing table if any
-
-            if (numRows > 0) {
-                var table = document.createElement('table');
-                table.className = 'mui-table';
-                // Create rows
-                for (var i = 0; i < numRows; i++) {
-                    var row = table.insertRow();
-                    var myCell = row.insertCell(0);
-                    myCell.style.padding = '0';
-                    var textFieldDiv = document.createElement('div');
-                    textFieldDiv.className = 'mui-textfield';
-                    var input = document.createElement('input');
-                    input.type = 'text';
-                    input.placeholder = 'Enter value';
-                    input.value = data[i] || ''; // Populate with existing data if available
-                    textFieldDiv.appendChild(input);
-                    myCell.appendChild(textFieldDiv);
-                }
-
-                tableContainer.appendChild(table);
-            } else {
-                showAlert("Please enter a valid number of rows.");
-            }
-        }
-
-        // Function to collect data from the table
-        function collectTableData() {
-            var table = document.querySelector('#tableContainer table');
-            var data = [];
-
-            if (table) {
-                for (var i = 0; i < table.rows.length; i++) {
-                    var rowData = table.rows[i].cells[0].querySelector('input').value;
-                    data.push(rowData);
-                }
-            }
-
-            return data;
-        }
-
-        // Function to clear input values from the table
-        function clearTableData() {
-            var table = document.querySelector('#tableContainer table');
-            if (table) {
-                for (var i = 0; i < table.rows.length; i++) {
-                    table.rows[i].cells[0].querySelector('input').value = '';
-                }
-            }
-        }
-    }
-
-    // Helper function to remove all child nodes from an element
-    function removePasteTableChildNodes(parent) {
-        while (parent.firstChild) {
-            parent.removeChild(parent.firstChild);
-        }
-    }
-
 
     function createDataRow(rowData) {
         var row = document.createElement("tr");
@@ -1351,14 +1366,8 @@
 
         if (myRowDataSplit[1]) {
             var anCell = createEditableCell(myRowDataSplit[1], "500px");
-            anCell.addEventListener('click', function (event) {
-                animationCellClicked(event);
-            });
         } else {
             var anCell = createEditableCell("", "500px");
-            anCell.addEventListener('click', function (event) {
-                animationCellClicked(event);
-            });
         }
         row.appendChild(anCell);
 
@@ -1436,18 +1445,18 @@
 
     function addRow(row) {
         var newRow = createDataRow("|");
-        animationTableBody.insertBefore(newRow, row.nextSibling);
+        dataTableBody.insertBefore(newRow, row.nextSibling);
         copyAndResetTable();
     }
 
     function insertRow(row) {
         var newRow = createDataRow("|");
-        animationTableBody.insertBefore(newRow, row);
+        dataTableBody.insertBefore(newRow, row);
         copyAndResetTable();
     }
 
     function copyAndResetTable() {
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -1466,12 +1475,13 @@
             combinedData.push(secondsConverted + "|" + data[i][2])
         }
 
-        populateAnimationsTable(combinedData)
+        populateTable(combinedData)
     }
 
-    function saveAnimationScriptData() {
-        saveAnimationScriptDataButton.setAttribute("disabled", "true");
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
+
+    function saveData(file_name, get_changes) {
+        saveDataButton.setAttribute("disabled", "true");
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -1496,8 +1506,13 @@
         // Function to send each block sequentially
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
+                if (get_changes == true) {
+                    updatePlaylists()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                }
                 // All blocks have been sent, enable the button
-                saveAnimationScriptDataButton.removeAttribute('disabled');
+                saveDataButton.removeAttribute('disabled');
                 return;
             }
 
@@ -1506,7 +1521,7 @@
             const block = combinedData.slice(startIdx, endIdx);
             let myObject = [index, totalBlocks - 1, block]
             if (index == totalBlocks - 1) {
-                myObject = [index, totalBlocks - 1, block, animationScriptName.value]
+                myObject = [index, totalBlocks - 1, block, file_name]
             }
 
             // Send data to the server
@@ -1525,9 +1540,9 @@
                     sendBlockSequentially(index + 1);
                 })
                 .catch(function (error) {
-                    alert(error.message);
-                    // Enable the button even if an error occurs
-                    saveAnimationScriptDataButton.removeAttribute('disabled');
+                    saveDataButton.removeAttribute('disabled');
+                    console.log(error);
+                    showAlert(error);
                 });
         }
 
@@ -1568,144 +1583,6 @@
 
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
     }
-
-
-    const knob = document.getElementById('knob');
-    const knobText = document.getElementById('knob-text');
-    let isDragging = false;
-    let previousAngle = 0;
-    let currentRotation = 0;
-    let lastSentTime = 0;
-    let throttleTimeout = null; // Prevents multiple stacked timeouts
-    const throttleTime = 500
-
-    function stopTrain() {
-        previousAngle = 0;
-        currentRotation = 0;
-        const displayValue = Math.round((currentRotation / 180) * 100);
-        knob.style.transform = `rotate(${currentRotation}deg)`;
-        knobText.innerText = displayValue;
-
-        let newCommand = "T" + displayValue;
-
-        // Throttle command sending
-        throttleSendCommand(newCommand);
-    }
-
-    function blowHorn() {
-        let newCommand = "WH";
-        testAnimationCommand(newCommand);
-    }
-
-    function blowWhistle() {
-        let newCommand = "WW";
-        testAnimationCommand(newCommand);
-    }
-
-    function home12() {
-        let newCommand = "H_20_12";
-        testAnimationCommand(newCommand);
-    }
-
-    function Home6() {
-        let newCommand = "H_20_6";
-        testAnimationCommand(newCommand);
-    }
-
-    function openGates() {
-        let newCommand = "S190";
-        testAnimationCommand(newCommand);
-    }
-
-    function closeGates() {
-        let newCommand = "S10";
-        testAnimationCommand(newCommand);
-    }
-
-    function getAngle(x, y, centerX, centerY) {
-        return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
-    }
-
-    function onStart(event) {
-        isDragging = true;
-        const rect = knob.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-        previousAngle = getAngle(clientX, clientY, centerX, centerY);
-    }
-
-    function onMove(event) {
-        if (!isDragging) return;
-
-        const rect = knob.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-        const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-
-        const currentAngle = getAngle(clientX, clientY, centerX, centerY);
-        let angleDiff = currentAngle - previousAngle;
-
-        if (angleDiff > 180) angleDiff -= 360;
-        if (angleDiff < -180) angleDiff += 360;
-
-        currentRotation += angleDiff;
-        currentRotation = Math.max(-180, Math.min(180, currentRotation));
-
-        const displayValue = Math.round((currentRotation / 180) * 100);
-        knob.style.transform = `rotate(${currentRotation}deg)`;
-        knobText.innerText = displayValue;
-
-        let newCommand = "T" + displayValue;
-
-        // Throttle command sending
-        throttleSendCommand(newCommand);
-
-        previousAngle = currentAngle;
-    }
-
-    function throttleSendCommand(command) {
-        if (throttleTimeout) {
-            clearTimeout(throttleTimeout); // Cancel any existing timeout
-        }
-
-        const now = Date.now();
-        if (now - lastSentTime >= throttleTime) {
-            sendThrottledCommand(command);
-        } else {
-            throttleTimeout = setTimeout(() => sendThrottledCommand(command), throttleTime);
-        }
-    }
-
-    async function sendThrottledCommand(command) {
-        if (!command) return; // Ignore invalid commands
-
-        lastSentTime = Date.now();
-        throttleTimeout = null; // Clear timeout reference
-
-        try {
-            await testAnimationCommand(command);
-        } catch (error) {
-            console.error("Error sending animation command:", error);
-        }
-    }
-
-    function onEnd() {
-        isDragging = false;
-    }
-
-    knob.addEventListener('mousedown', onStart);
-    knob.addEventListener('touchstart', onStart);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('touchmove', onMove);
-    window.addEventListener('mouseup', onEnd);
-    window.addEventListener('touchend', onEnd);
-
-    // Prevent iPhone screen from moving when dragging the knob
-    knob.addEventListener('touchstart', event => event.preventDefault(), { passive: false });
-    knob.addEventListener('touchmove', event => event.preventDefault(), { passive: false });
 
 </script>
 

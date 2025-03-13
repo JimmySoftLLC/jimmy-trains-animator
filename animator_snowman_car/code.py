@@ -27,7 +27,7 @@ from adafruit_debouncer import Debouncer
 import neopixel
 from analogio import AnalogIn
 import asyncio
-from adafruit_motor import servo, motor
+from adafruit_motor import servo
 import pwmio
 import microcontroller
 import rtc
@@ -44,7 +44,6 @@ import time
 import gc
 import files
 import os
-import adafruit_vl53l4cd
 
 
 def gc_col(collection_point):
@@ -109,7 +108,7 @@ spi = busio.SPI(sck, si, so)
 
 # Setup the mixer to play wav files
 mix = audiomixer.Mixer(voice_count=1, sample_rate=22050, channel_count=2,
-                       bits_per_sample=16, samples_signed=True, buffer_size=4096)
+                       bits_per_sample=16, samples_signed=True, buffer_size=8192)
 aud.play(mix)
 
 mix.voice[0].level = .2
@@ -148,83 +147,50 @@ except Exception as e:
 aud_en.value = False
 
 # Setup the servos
-s_1 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
-s_2 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
-s_3 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
+s_1 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
+s_2 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
+s_3 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+
+s_4 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
+s_5 = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
+s_6 = pwmio.PWMOut(board.GP14, duty_cycle=2 ** 15, frequency=50)
 
 s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
 s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
 s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
 
-s_arr = [s_1, s_2, s_3]
+s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
+s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
+s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
+
+s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
 
 # Setup time
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
-# setup distance sensor
-
-i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=400000)
-
-vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
-
-# OPTIONAL: can set non-default values
-vl53.inter_measurement = 0
-vl53.timing_budget = 200
-
-print("VL53L4CD Simple Test.")
-print("--------------------")
-model_id, module_type = vl53.model_info
-print("Model ID: 0x{:0X}".format(model_id))
-print("Module Type: 0x{:0X}".format(module_type))
-print("Timing Budget: {}".format(vl53.timing_budget))
-print("Inter-Measurement: {}".format(vl53.inter_measurement))
-print("--------------------")
-
-vl53.start_ranging()
-
-while not vl53.data_ready:
-    print("data not ready")
-    time.sleep(.2)
-
-################################################################################
-# Setup motor controller
-p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
-d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
-
-# DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
-train = motor.DCMotor(pwm_a, pwm_b)
-train.decay_mode = d_mde
-car_pos = 0
-
-################################################################################
 # Sd card config variables
-
-animations_folder = "/sd/snds/"
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-snd_opt = []
+snd_opt = files.return_directory("", "/sd/snds", ".wav")
+
+cust_snd_opt = files.return_directory(
+    "customers_owned_music_", "/sd/customers_owned_music", ".wav")
+
+all_snd_opt = []
+all_snd_opt.extend(snd_opt)
+all_snd_opt.extend(cust_snd_opt)
+
 menu_snd_opt = []
-ts_jsons = []
+menu_snd_opt.extend(snd_opt)
+rnd_opt = ['random all', 'random built in', 'random my']
+menu_snd_opt.extend(rnd_opt)
+menu_snd_opt.extend(cust_snd_opt)
 
-def upd_media():
-    global snd_opt, menu_snd_opt, ts_jsons
-
-    snd_opt = files.return_directory("", "/sd/snds", ".json")
-
-    menu_snd_opt = []
-    menu_snd_opt.extend(snd_opt)
-    rnd_opt = ['random all']
-    menu_snd_opt.extend(rnd_opt)
-
-    ts_jsons = files.return_directory(
-        "", "/sd/t_s_def", ".json")
-
-upd_media()
+ts_jsons = files.return_directory(
+    "", "/sd/t_s_def", ".json")
 
 web = cfg["serve_webpage"]
 
@@ -236,6 +202,10 @@ web_m = cfg_web["web_menu"]
 
 cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
+
+cfg_add_song = files.read_json_file(
+    "/sd/mvc/add_sounds_animate.json")
+add_snd = cfg_add_song["add_sounds_animate"]
 
 cont_run = False
 ts_mode = False
@@ -252,7 +222,7 @@ gc_col("config setup")
 
 num_px = 2
 
-# 15 on demo 17 tiny 10 on large
+# 15 on demo 15 tiny 10 on large
 led = neopixel.NeoPixel(board.GP15, num_px)
 
 gc_col("Neopixels setup")
@@ -444,70 +414,28 @@ if (web):
         def btn(request: Request):
             return Response(request, cfg["volume"])
 
-        @server.route("/get-animations", [POST])
+        @server.route("/get-customers-sound-tracks", [POST])
+        def btn(request: Request):
+            stp_a_0()
+            my_string = files.json_stringify(cust_snd_opt)
+            return Response(request, my_string)
+
+        @server.route("/get-built-in-sound-tracks", [POST])
         def btn(request: Request):
             stp_a_0()
             sounds = []
             sounds.extend(snd_opt)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
-        
-        @server.route("/create-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animations_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                print(rq_d)
-                f_n = animations_folder + rq_d["fn"] + ".json"
-                print(f_n)
-                an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
-                files.write_json_file(f_n, an_data)
-                upd_media()
-                return Response(request, "Created animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error creating animation.")
-        
-        @server.route("/rename-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animations_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                fo = animations_folder + rq_d["fo"] + ".json"
-                fn = animations_folder + rq_d["fn"] + ".json"
-                os.rename(fo, fn)
-                upd_media()
-                return Response(request, "Renamed animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.")
-            
-        @server.route("/delete-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animations_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                print(rq_d)
-                f_n = animations_folder + rq_d["fn"] + ".json"
-                print(f_n)
-                os.remove(f_n)
-                upd_media()
-                return Response(request, "Delete animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.")
 
         @server.route("/test-animation", [POST])
         def btn(request: Request):
-            try:
-                rq_d = request.json()
-                clr_cmd_queue()
-                add_cmd(rq_d["an"])
-                return Response(request, "success")
-            except Exception as e:
-                print(e)
-                return Response(request, "error")
-        
+            stp_a_0()
+            rq_d = request.json()
+            print(rq_d["an"])
+            gc_col("Save Data.")
+            add_cmd(rq_d["an"])
+            return Response(request, "success")
 
         @server.route("/get-animation", [POST])
         def btn(request: Request):
@@ -515,13 +443,36 @@ if (web):
             stp_a_0()
             rq_d = request.json()
             snd_f = rq_d["an"]
-            if (f_exists("/sd/snds/" + snd_f + ".json") == True):
-                f_n = "/sd/snds/" + snd_f + ".json"
-                return FileResponse(request, f_n, "/")
+            if "customers_owned_music_" in snd_f:
+                snd_f = snd_f.replace("customers_owned_music_", "")
+                if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
+                    f_n = "/sd/customers_owned_music/" + snd_f + ".json"
+                    print(f_n)
+                    return FileResponse(request, f_n, "/")
+                else:
+                    f_n = "/sd/t_s_def/timestamp mode.json"
+                    return FileResponse(request, f_n, "/")
             else:
-                f_n = "/sd/t_s_def/timestamp mode.json"
-                return FileResponse(request, f_n, "/")
+                if (f_exists("/sd/snds/" + snd_f + ".json") == True):
+                    f_n = "/sd/snds/" + snd_f + ".json"
+                    return FileResponse(request, f_n, "/")
+                else:
+                    f_n = "/sd/t_s_def/timestamp mode.json"
+                    return FileResponse(request, f_n, "/")
 
+        @server.route("/delete-file", [POST])
+        def btn(request: Request):
+            stp_a_0()
+            rq_d = request.json()
+            f_n = ""
+            if "customers_owned_music_" in rq_d["an"]:
+                snd_f = rq_d["an"].replace("customers_owned_music_", "")
+                f_n = "/sd/customers_owned_music/" + snd_f + ".json"
+            else:
+                f_n = "/sd/snds/" + rq_d["an"] + ".json"
+            os.remove(f_n)
+            gc_col("get data")
+            return JSONResponse(request, "file deleted")
 
         data = []
 
@@ -536,12 +487,17 @@ if (web):
                     data = []
                 data.extend(rq_d[2])
                 if rq_d[0] == rq_d[1]:
-                    f_n = "/sd/snds/" + \
-                        rq_d[3] + ".json"
+                    f_n = ""
+                    if "customers_owned_music_" in rq_d[3]:
+                        snd_f = rq_d[3].replace("customers_owned_music_", "")
+                        f_n = "/sd/customers_owned_music/" + \
+                            snd_f + ".json"
+                    else:
+                        f_n = "/sd/snds/" + \
+                            rq_d[3] + ".json"
                     files.write_json_file(f_n, data)
                     data = []
                     gc_col("get data")
-                upd_media()
             except Exception as e:
                 files.log_item(e)
                 data = []
@@ -598,7 +554,7 @@ def stp_all_cmds():
 def rst_def():
     global cfg
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-ride-on-train"
+    cfg["HOST_NAME"] = "animator-snowman-car"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
 
@@ -682,16 +638,10 @@ def ply_a_0(file_name):
         exit_early()
 
 
-def wait_snd():
-    while mix.voice[0].playing:
-        exit_early()
-        pass
-
-
 def stp_a_0():
     mix.voice[0].stop()
-    wait_snd()
-    gc_col("stp snd")
+    while mix.voice[0].playing:
+        pass
 
 
 def exit_early():
@@ -752,25 +702,13 @@ def no_trk():
 def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-ride-on-train":
-        ply_a_0("/sd/mvc/animator_ride_on_train.wav")
+    if cfg["HOST_NAME"] == "animator-snowman-car":
+        ply_a_0("/sd/mvc/animator_dash_snowman_dash_car.wav")
         ply_a_0("/sd/mvc/dot.wav")
         ply_a_0("/sd/mvc/local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
     ply_a_0("/sd/mvc/in_your_browser.wav")
-
-def get_snds(dir, typ):
-    sds = []
-    s = files.return_directory("", dir, ".wav")
-    for el in s:
-        p = el.split('_')
-        if p[0] == typ:
-            sds.append(el)
-    mx = len(sds) - 1
-    i = random.randint(0, mx)
-    fn = dir + "/" + sds[i] + ".wav"
-    return fn
 
 ################################################################################
 # servo helpers
@@ -819,12 +757,32 @@ async def an_async(f_nm):
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
-        if f_nm == "random all":
+        if f_nm == "random built in":
             h_i = len(snd_opt) - 1
             cur_opt = snd_opt[random.randint(
                 0, h_i)]
             while lst_opt == cur_opt and len(snd_opt) > 1:
                 cur_opt = snd_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            print("Random sound option: " + f_nm)
+            print("Sound file: " + cur_opt)
+        elif f_nm == "random my":
+            h_i = len(cust_snd_opt) - 1
+            cur_opt = cust_snd_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(cust_snd_opt) > 1:
+                cur_opt = cust_snd_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            print("Random sound option: " + f_nm)
+            print("Sound file: " + cur_opt)
+        elif f_nm == "random all":
+            h_i = len(all_snd_opt) - 1
+            cur_opt = all_snd_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(all_snd_opt) > 1:
+                cur_opt = all_snd_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
@@ -838,7 +796,7 @@ async def an_async(f_nm):
     except Exception as e:
         files.log_item(e)
         no_trk()
-        cfg["option_selected"] = "random all"
+        cfg["option_selected"] = "random built in"
         return
     gc_col("Animation complete.")
 
@@ -846,22 +804,46 @@ async def an_async(f_nm):
 async def an_light_async(f_nm):
     global ts_mode, cont_run
 
-    stp_a_0()
+    cust_f = "customers_owned_music_" in f_nm
 
     flsh_t = []
 
-    if (f_exists("/sd/snds/" + f_nm + ".json") == True):
-        flsh_t = files.read_json_file(
-            "/sd/snds/" + f_nm + ".json")
+    if cust_f:
+        f_nm = f_nm.replace("customers_owned_music_", "")
+        if (f_exists("/sd/customers_owned_music/" + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(
+                "/sd/customers_owned_music/" + f_nm + ".json")
+        else:
+            try:
+                flsh_t = files.read_json_file(
+                    "/sd/customers_owned_music/" + f_nm + ".json")
+            except Exception as e:
+                files.log_item(e)
+                ply_a_0("/sd/mvc/no_timestamp_file_found.wav")
+                while True:
+                    l_sw.update()
+                    r_sw.update()
+                    if l_sw.fell:
+                        ts_mode = False
+                        return
+                    if r_sw.fell:
+                        ts_mode = True
+                        ply_a_0("/sd/mvc/timestamp_instructions.wav")
+                        return
+    else:
+        if (f_exists("/sd/snds/" + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(
+                "/sd/snds/" + f_nm + ".json")
 
     flsh_i = 0
 
-    w0_exists = f_exists("/sd/snds/" + f_nm + ".wav")
-
-    if w0_exists:
+    if cust_f:
+        w0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
+    else:
         w0 = audiocore.WaveFile(
             open("/sd/snds/" + f_nm + ".wav", "rb"))
-        mix.voice[0].play(w0, loop=False)
+    mix.voice[0].play(w0, loop=False)
     srt_t = time.monotonic()
 
     ft1 = []
@@ -898,19 +880,16 @@ async def an_light_async(f_nm):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
-            flsh_i = len(flsh_t) - 1
         if sw == "left_held":
             mix.voice[0].stop()
-            flsh_i = len(flsh_t) - 1
             if cont_run:
                 cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
-            mix.voice[0].stop()
+
+        if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            add_cmd("T0")
             return
         await upd_vol_async(.1)
 
@@ -919,12 +898,18 @@ def an_ts(f_nm):
     print("time stamp mode")
     global ts_mode
 
+    cust_f = "customers_owned_music_" in f_nm
+
     t_s = []
 
     f_nm = f_nm.replace("customers_owned_music_", "")
 
-    w0 = audiocore.WaveFile(
-        open("/sd/snds/" + f_nm + ".wav", "rb"))
+    if cust_f:
+        w0 = audiocore.WaveFile(
+            open("/sd/customers_owned_music/" + f_nm + ".wav", "rb"))
+    else:
+        w0 = audiocore.WaveFile(
+            open("/sd/snds/" + f_nm + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
@@ -939,8 +924,12 @@ def an_ts(f_nm):
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            files.write_json_file(
-                "/sd/snds/" + f_nm + ".json", t_s)
+            if cust_f:
+                files.write_json_file(
+                    "/sd/customers_owned_music/" + f_nm + ".json", t_s)
+            else:
+                files.write_json_file(
+                    "/sd/snds/" + f_nm + ".json", t_s)
             break
 
     ts_mode = False
@@ -957,41 +946,14 @@ br = 0
 
 
 async def set_hdw_async(input_string):
-    global sp, br, car_pos
+    global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
 
     # Process each segment
     for seg in segs:
         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-        if seg == "":
-            print("no command")
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
-        if seg[0] == 'M': # play file
-                if seg[1] == "S":
-                    stp_a_0()
-                elif seg[1] == "W" or seg[1] == "P":
-                    stp_a_0()
-                    if seg[2] == "S":
-                        w0 = audiocore.WaveFile(open("/sd/snds/" + seg[3:] + ".wav", "rb"))
-                    elif seg[2] == "M":
-                        w0 = audiocore.WaveFile(open("/sd/mvc/" + seg[3:] + ".wav", "rb"))
-                    if seg[1] == "W" or seg[1] == "P":
-                        mix.voice[0].play(w0, loop=False)
-                    if seg[1] == "W":
-                        wait_snd()
-        # WA = Blow horn or whistle, A (H Horn, W whistle)
-        if seg[0] == 'W': # play file
-            stp_a_0()
-            if seg[1] == "W":
-                fn=get_snds("/sd/mvc","whistle")
-                w0 = audiocore.WaveFile(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
-            elif seg[1] == "H" or seg[1] == "P":
-                fn=get_snds("/sd/mvc","horn")
-                w0 = audiocore.WaveFile(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
-        elif seg[0] == 'S':
+        if seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
             if num == 0:
@@ -1008,8 +970,12 @@ async def set_hdw_async(input_string):
                     sp[i] = v
             else:
                 sp[num-1] = int(v)
-            led[0] = (sp[1], sp[0], sp[2])
-            led[1] = (sp[4], sp[3], sp[5])
+
+            # led[0] = (sp[1], sp[0], sp[2])
+            # led[1] = (sp[4], sp[3], sp[5])
+
+            led[0] = (sp[3], sp[4], sp[5])
+            led[1] = (sp[1], sp[2], sp[0])
             led.show()
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
@@ -1026,113 +992,11 @@ async def set_hdw_async(input_string):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
-        # AN_XXX = Animation XXX filename
+        # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use "customers_owned_music_filename"
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
             # Process each command as an async operation
             await an_async(seg_split[1])
-        # TXXX = Train XXX throttle -100 to 100
-        elif seg[0] == 'T':
-            v = int(seg[1:])/100
-            train.throttle = v
-        # H_XXX_YY = Train XXX throttle -100 to 100 YY position 12 or 6 oclock
-        elif seg[0] == 'H':
-            seg_split = seg.split("_")
-            train.throttle = int(seg_split[1])/100
-            if seg_split[2] == "12":
-                goal = 5
-            else:
-                goal = 35
-            vl53.clear_interrupt()
-            cur_dist = vl53.distance
-            i = 0
-            while True:
-                vl53.clear_interrupt()
-                cur_dist = vl53.distance
-                if cur_dist > goal - 5 and cur_dist < goal + 5:
-                    i += 1
-                    if i > 2:
-                        train.throttle = 0
-                        break
-                print(cur_dist)
-                time.sleep(.02)  # Hold at current throttle value
-        # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, 
-        # BBB target band in decimal cm, AAA acceleration decimal cm/sec
-        elif seg[0] == 'C':
-            seg_split = seg.split("_")
-
-            spd = int(seg_split[1]) / 100
-            target_pos = float(seg_split[2])
-            target_band = float(seg_split[3])
-            acc = float(seg_split[4])
-
-            # clear out measurements
-            for _ in range(3):
-                vl53.clear_interrupt()
-                car_pos = vl53.distance
-                time.sleep(.1)
-
-            num_times_in_band = 0
-            give_up = 10
-            srt_t = time.monotonic()
-            
-            # Use current throttle state directly
-            current_speed = abs(train.throttle) if train.throttle else 0
-            current_direction = 1 if train.throttle >= 0 else -1
-            
-            while True:
-                vl53.clear_interrupt()
-                car_pos = vl53.distance
-                
-                # Calculate distance and target direction
-                distance_to_target = abs(car_pos - target_pos)
-                target_direction = 1 if car_pos < target_pos else -1  # 1 forward, -1 reverse
-                
-                # Calculate slowdown zone based on acceleration
-                slowdown_distance = target_band * 3 + (acc * 0.5)
-                
-                # Determine target speed
-                if distance_to_target < slowdown_distance:
-                    target_speed = max(0.1, spd * (distance_to_target / slowdown_distance))
-                else:
-                    target_speed = spd
-                    
-                # Handle direction change or speed adjustment
-                if current_direction != target_direction and current_speed > 0:
-                    # Decelerate to stop before changing direction
-                    current_speed -= acc * 0.05
-                    if current_speed <= 0:
-                        current_speed = 0
-                        current_direction = target_direction  # Switch direction when stopped
-                else:
-                    # Adjust speed in correct direction
-                    speed_diff = target_speed - current_speed
-                    # Apply acceleration/deceleration
-                    if speed_diff > 0:  # Need to accelerate
-                        current_speed += min(acc * 0.05, speed_diff)
-                    elif speed_diff < 0:  # Need to decelerate
-                        current_speed += max(-acc * 0.05, speed_diff)
-                    current_direction = target_direction
-                    
-                # Apply clamped speed with direction
-                current_speed = max(0, min(spd, current_speed))
-                train.throttle = current_speed * current_direction
-
-                # Check if within target band
-                if target_pos - target_band < car_pos < target_pos + target_band:
-                    num_times_in_band += 1
-                    if num_times_in_band > 2:
-                        train.throttle = 0
-                        break
-                        
-                print(f"Pos: {car_pos:.1f}, Speed: {train.throttle:.2f}, Dist: {distance_to_target:.1f}")
-                time.sleep(.05)
-                
-                t_past = time.monotonic() - srt_t
-                if t_past > give_up:
-                    train.throttle = 0
-                    break
-
 
 ################################################################################
 # State Machine
@@ -1493,15 +1357,13 @@ if (web):
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
-    except Exception as e:
-        files.log_item(e)
+    except OSError:
         time.sleep(5)
         files.log_item("restarting...")
         rst()
 
-# initialize items
-add_cmd("S090")
-add_cmd("H_20_12")
+#  set all servos to 90
+add_cmd("S090")  # this needs updating
 upd_vol(.5)
 
 st_mch.go_to('base_state')
@@ -1555,4 +1417,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 

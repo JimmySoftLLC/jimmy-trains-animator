@@ -77,7 +77,7 @@ while True:
         vl53.clear_interrupt()
         cur_dist = vl53.distance
         throttle = cur_dist
-        if cur_dist > 20: throttle = 50
+        if cur_dist > 20: throttle = 70
         if cur_dist < 34 : throttle = 5
         if cur_dist < 10: throttle = 5
         print(cur_dist)

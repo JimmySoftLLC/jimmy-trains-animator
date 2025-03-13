@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Stream Recorder</title>
+    <link rel="stylesheet" href="https://cdn.muicss.com/mui-0.10.3/css/mui.min.css">
+    <style>
+        .mui-slider-container { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+        .mui-slider { width: 200px; accent-color: #2196f3; }
+        .mui-zoom-value { font-family: 'Roboto', sans-serif; color: #2196f3; }
+    </style>
+</head>
+<body>
+    <h1>Camera Stream Recorder</h1>
+    <img id="stream" src="/stream.mjpg" alt="MJPEG Stream">
+    <div class="mui-form-group mui-slider-container">
+        <label class="mui-form__label" for="zoomSlider">Zoom (1x - 3.6x):</label>
+        <input type="range" id="zoomSlider" class="mui-slider" min="1" max="3.6" step="0.1" value="1">
+        <span id="zoomValue" class="mui-zoom-value">1.0x</span>
+    </div>
+    <div class="mui-form-group mui-slider-container">
+        <label class="mui-form__label" for="focusSlider">Focus (0-10):</label>
+        <input type="range" id="focusSlider" class="mui-slider" min="0" max="10" step="0.1" value="1">
+        <span id="focusValue" class="mui-zoom-value">1.0</span>
+    </div>
+    <button id="startRecordBtn" class="mui-btn mui-btn--primary">Start Disk Recording</button>
+    <button id="stopRecordBtn" class="mui-btn mui-btn--primary" disabled>Stop Disk Recording</button>
+    <button id="downloadBtn" class="mui-btn mui-btn--primary" disabled>Download Recording</button>
+    <video id="videoPlayer" controls></video>
+    <div id="thumbnailGallery"></div>
+
+    <script src="https://cdn.muicss.com/mui-0.10.3/js/mui.min.js"></script>
+    <script>
+        const streamImg = document.getElementById('stream');
+        const startRecordBtn = document.getElementById('startRecordBtn');
+        const stopRecordBtn = document.getElementById('stopRecordBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const thumbnailGallery = document.getElementById('thumbnailGallery');
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomValue = document.getElementById('zoomValue');
+        const focusSlider = document.getElementById('focusSlider');
+        const focusValue = document.getElementById('focusValue');
+
+        let recordings = [];
+        const blobUrlMap = new Map();
+
+        function throttle(func, limit) {
+            let lastCall = 0;
+            return function (...args) {
+                const now = Date.now();
+                if (now - lastCall >= limit) {
+                    lastCall = now;
+                    return func.apply(this, args);
+                }
+            };
+        }
+
+        async function setZoom(zoomFactor) {
+            try {
+                const response = await fetch('/set-zoom', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zoom: zoomFactor }) });
+                if (response.ok) console.log(`Zoom set to ${zoomFactor}x`);
+                else console.error('Failed to set zoom:', response.status);
+            } catch (e) { console.error('Error setting zoom:', e); }
+        }
+
+        async function setFocus(focusValue) {
+            try {
+                const response = await fetch('/set-focus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ focus: focusValue }) });
+                if (response.ok) console.log(`Focus set to ${focusValue}`);
+                else console.error('Failed to set focus:', response.status);
+            } catch (e) { console.error('Error setting focus:', e); }
+        }
+
+        const throttledSetZoom = throttle(setZoom, 200);
+        const throttledSetFocus = throttle(setFocus, 200);
+
+        zoomSlider.addEventListener('input', () => { const zoom = parseFloat(zoomSlider.value); zoomValue.textContent = `${zoom}x`; throttledSetZoom(zoom); });
+        zoomSlider.addEventListener('change', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+        zoomSlider.addEventListener('touchend', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+
+        focusSlider.addEventListener('input', () => { const focus = parseFloat(focusSlider.value); focusValue.textContent = focus; throttledSetFocus(focus); });
+        focusSlider.addEventListener('change', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+        focusSlider.addEventListener('touchend', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+
+        startRecordBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/start-recording', { method: 'POST' });
+                if (response.ok) {
+                    console.log('Started disk recording');
+                    startRecordBtn.disabled = true;
+                    stopRecordBtn.disabled = false;
+                    downloadBtn.disabled = true;
+                } else {
+                    console.error('Failed to start recording:', response.status);
+                }
+            } catch (e) { console.error('Error starting recording:', e); }
+        });
+
+        stopRecordBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/stop-recording', { method: 'POST' });
+                if (response.ok) {
+                    console.log('Stopped disk recording');
+                    startRecordBtn.disabled = false;
+                    stopRecordBtn.disabled = true;
+                    downloadBtn.disabled = false;
+                } else {
+                    console.error('Failed to stop recording:', response.status);
+                }
+            } catch (e) { console.error('Error stopping recording:', e); }
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/download-recording');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `recording-${Date.now()}.mp4`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    console.log('Downloaded recording');
+                } else {
+                    console.error('No recording available:', response.status);
+                    alert('No recording available to download');
+                }
+            } catch (e) { console.error('Error downloading recording:', e); }
+        });
+
+        streamImg.onload = () => console.log('MJPEG stream loaded');
+        streamImg.onerror = () => {
+            console.error('Error loading MJPEG stream');
+            alert('Could not connect to the MJPEG stream.');
+        };
+
+        window.addEventListener('unload', () => {
+            if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+            blobUrlMap.forEach(url => URL.revokeObjectURL(url));
+            recordings.forEach(recording => URL.revokeObjectURL(recording.thumbnail));
+        });
+    </script>
+</body>
+</html>

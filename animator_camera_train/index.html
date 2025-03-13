@@ -36,6 +36,156 @@
         .bottom-gap {
             height: 100px;
         }
+
+        .parent-container {
+            display: flex;
+            justify-content: flex-start;
+            /* Changed from center to flex-start to align left */
+            gap: 20px;
+            /* Keeps space between knobs */
+            width: max-content;
+            height: max-content;
+            position: relative;
+            margin: 0;
+            /* Changed from auto to 0 to remove centering */
+        }
+
+        .knob-container {
+            display: grid;
+            place-items: center;
+            width: 150px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .knob {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #c6d6f7 30%, #4a7aeb);
+            border-radius: 50%;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+            user-select: none;
+            transform: rotate(0deg);
+        }
+
+        .indicator {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: rgb(12, 88, 228);
+            border-radius: 50%;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .knob-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        #videoContainer {
+            margin: 20px;
+        }
+
+        #controls {
+            margin: 20px;
+        }
+
+        #playerContainer {
+            margin: 20px;
+        }
+
+        #thumbnailGallery {
+            margin: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .thumbnail {
+            cursor: pointer;
+            border: 2px solid #ccc;
+            padding: 5px;
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+        }
+
+        .thumbnail:hover {
+            border-color: #333;
+        }
+
+        .thumbnail.active {
+            border-color: #007bff;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        video {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .stream-container {
+            position: relative;
+            text-align: center;
+        }
+
+        .stream-status {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+        .stream-status.error {
+            color: #d9534f;
+            /* A soft red color for errors */
+            font-weight: bold;
+        }
+
+        .mui-slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+        }
+
+        .mui-slider {
+            width: 200px;
+            /* Adjust as needed */
+            accent-color: #2196f3;
+            /* Matches mui-btn--primary blue */
+        }
+
+        .mui-zoom-value {
+            font-family: 'Roboto', sans-serif;
+            /* Matches MUI typography */
+            color: #2196f3;
+        }
     </style>
 </head>
 
@@ -60,6 +210,9 @@
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
+                <a data-mui-toggle="tab" data-mui-controls="camera">Camera</a>
+            </li>
+            <li>
                 <a data-mui-toggle="tab" data-mui-controls="lighting">lights</a>
             </li>
             <li>
@@ -75,8 +228,6 @@
             <h2>Current Media Queue</h2>
             <div id="currentMedia"></div>
             <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-            <!-- <h2>Playlists:</h2>
-            <div id="playlistContainer"></div> -->
             <h2>Media:</h2>
             <div id="mediaContainer"></div>
             <h2>Intermission between movies:</h2>
@@ -154,6 +305,118 @@
                         <div id="progressBar">0%</div>
                     </div>
                     <p id="status"></p>
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="camera" style="padding-top:0.5rem;">
+            <h2>Video feed:</h2>
+            <div class="stream-container">
+                <img id="stream" src="/stream.mjpg" alt="MJPEG Stream">
+                <div id="streamStatus" class="stream-status"></div>
+            </div>
+            <div class="mui-tabs__pane mui--is-active" id="tiltControl" style="padding-top:0.5rem;">
+                <div class="parent-container">
+                    <div class="knob-container">
+                        <div class="knob" id="knob">
+                            <div class="indicator"></div>
+                        </div>
+                        <div class="knob-text" id="knob-text">0</div>
+                    </div>
+                    <div class="knob-container">
+                        <div class="knob" id="knob2">
+                            <div class="indicator"></div>
+                        </div>
+                        <div class="knob-text" id="knob2-text">0</div>
+                    </div>
+                    <div class="knob-container">
+                        <div class="knob" id="knob3">
+                            <div class="indicator"></div>
+                        </div>
+                        <div class="knob-text" id="knob3-text">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mui-form-group mui-slider-container">
+                <label class="mui-form__label" for="zoomSlider">Zoom Level (1x - 6x) beyond 3x resolution
+                    decreases:</label>
+                <input type="range" id="zoomSlider" class="mui-slider" min="1" max="6" step="0.1" value="1">
+                <span id="zoomValue" class="mui-zoom-value">1.0x</span>
+            </div>
+            <div class="mui-form-group mui-slider-container">
+                <label class="mui-form__label" for="focusSlider">Focus (0-10):</label>
+                <input type="range" id="focusSlider" class="mui-slider" min="0" max="10" step="0.1" value="1">
+                <span id="focusValue" class="mui-zoom-value">1.0</span>
+            </div>
+            <div id="controls">
+                <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
+                <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
+                <button id="downloadBtn" class="mui-btn mui-btn--primary" disabled>Download Current Recording</button>
+            </div>
+            <div id="controls">
+                <button class="mui-btn mui-btn--primary" onclick="startCamera()" type="button">
+                    Start stream
+                </button>
+                <button class="mui-btn mui-btn--primary" onclick="stopCamera()" type="button">
+                    Stop stream
+                </button>
+                <button class="mui-btn mui-btn--primary" onclick="snapshot()" type="button">
+                    Snapshot
+                </button>
+            </div>
+            <div id="playerContainer">
+                <h3>Selected Video</h3>
+                <video id="videoPlayer" controls></video>
+            </div>
+            <div id="thumbnailGallery">
+                <h3>Recordings</h3>
+            </div>
+            <h2>Camera positions:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
+                    type="button">
+                    All 0
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S010" data-url="/lights"
+                    type="button">
+                    All 10
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S020" data-url="/lights"
+                    type="button">
+                    All 20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S030" data-url="/lights"
+                    type="button">
+                    All 30
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S040" data-url="/lights"
+                    type="button">
+                    All 40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S050" data-url="/lights"
+                    type="button">
+                    All 50
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S060" data-url="/lights"
+                    type="button">
+                    All 60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S070" data-url="/lights"
+                    type="button">
+                    All 70
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S080" data-url="/lights"
+                    type="button">
+                    All 80
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
+                    type="button">
+                    Servo 1 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
+                    type="button">
+                    Servo 2 90
+                </button>
             </div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
@@ -514,7 +777,6 @@
     document.addEventListener('DOMContentLoaded', function () {
         getWebSiteUrl()
         getVolume()
-        // getPlaylists()
         getLightString()
         getMedia()
         getSceneChanges()
@@ -646,6 +908,227 @@
             });
     }
 
+    function startCamera() {
+        fetch('/start-camera', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                streamStatus.textContent = ""
+                const stream = document.getElementById('stream');
+                setTimeout(() => {
+                    stream.src = 'http://animator-camera-train.local:8083/stream.mjpg';
+                }, 1000); // Delay to allow server to start camera
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function stopCamera() {
+        const stream = document.getElementById('stream');
+        stream.src = ''; // Clear the src before stopping the camera
+
+        // Ensure the src is cleared before proceeding
+        setTimeout(() => {
+            fetch('/stop-camera', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    console.log('Camera stopped:', data);
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        }, 100);
+    }
+
+    function snapshot() {
+        fetch('/snapshot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    class KnobController {
+        constructor(knobId, textId, commandPrefix, minRange, maxRange) {
+            this.knob = document.getElementById(knobId);
+            this.knobText = document.getElementById(textId);
+            this.commandPrefix = commandPrefix;
+            this.minRange = minRange;
+            this.maxRange = maxRange;
+            this.isDragging = false;
+            this.previousAngle = 0;
+            this.currentRotation = 0;
+            this.lastSentTime = 0;
+            this.throttleTimeout = null;
+            this.throttleTime = 500;
+
+            // Determine direction of mapping
+            this.isReversed = minRange > maxRange;
+            this.lowerBound = this.isReversed ? maxRange : minRange;
+            this.upperBound = this.isReversed ? minRange : maxRange;
+
+            this.initializeEventListeners();
+        }
+
+        getAngle(x, y, centerX, centerY) {
+            return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
+        }
+
+        onStart(event) {
+            this.isDragging = true;
+            const rect = this.knob.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            this.previousAngle = this.getAngle(clientX, clientY, centerX, centerY);
+        }
+
+        onMove(event) {
+            if (!this.isDragging) return;
+
+            const rect = this.knob.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+            const currentAngle = this.getAngle(clientX, clientY, centerX, centerY);
+            let angleDiff = currentAngle - this.previousAngle;
+
+            if (angleDiff > 180) angleDiff -= 360;
+            if (angleDiff < -180) angleDiff += 360;
+
+            this.currentRotation += angleDiff;
+            this.currentRotation = Math.max(-180, Math.min(180, this.currentRotation));
+
+            // Map the rotation (-180 to 180) to the custom range
+            const rangeSpan = this.upperBound - this.lowerBound;
+            let normalizedRotation = (this.currentRotation + 180) / 360; // 0 to 1
+
+            // Apply mapping based on direction
+            let displayValue;
+            if (this.isReversed) {
+                displayValue = Math.round(
+                    this.upperBound - (normalizedRotation * rangeSpan)
+                );
+            } else {
+                displayValue = Math.round(
+                    this.lowerBound + (normalizedRotation * rangeSpan)
+                );
+            }
+
+            // Clamp the value to the actual specified range
+            const clampedValue = Math.max(
+                Math.min(this.minRange, this.maxRange),
+                Math.min(Math.max(this.minRange, this.maxRange), displayValue)
+            );
+
+            this.knob.style.transform = `rotate(${this.currentRotation}deg)`;
+            this.knobText.innerText = clampedValue;
+
+            const newCommand = this.commandPrefix + clampedValue;
+            this.throttleSendCommand(newCommand);
+
+            this.previousAngle = currentAngle;
+        }
+
+        onEnd() {
+            this.isDragging = false;
+        }
+
+        throttleSendCommand(command) {
+            if (this.throttleTimeout) {
+                clearTimeout(this.throttleTimeout);
+            }
+
+            const now = Date.now();
+            if (now - this.lastSentTime >= this.throttleTime) {
+                this.sendThrottledCommand(command);
+            } else {
+                this.throttleTimeout = setTimeout(() => this.sendThrottledCommand(command), this.throttleTime);
+            }
+        }
+
+        async sendThrottledCommand(command) {
+            if (!command) return;
+
+            this.lastSentTime = Date.now();
+            this.throttleTimeout = null;
+
+            try {
+                await testAnimationCommand(command);
+            } catch (error) {
+                console.error(`Error sending animation command for ${this.commandPrefix}:`, error);
+            }
+        }
+
+        initializeEventListeners() {
+            this.knob.addEventListener('mousedown', (e) => this.onStart(e));
+            this.knob.addEventListener('touchstart', (e) => this.onStart(e));
+            window.addEventListener('mousemove', (e) => this.onMove(e));
+            window.addEventListener('touchmove', (e) => this.onMove(e));
+            window.addEventListener('mouseup', () => this.onEnd());
+            window.addEventListener('touchend', () => this.onEnd());
+
+            this.knob.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+            this.knob.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        }
+    }
+
+    // Example usage with both normal and reversed ranges
+    const knob1Controller = new KnobController('knob', 'knob-text', 'S1', 180, 0);
+    const knob2Controller = new KnobController('knob2', 'knob2-text', 'S2', 140, 90);
+    const knob3Controller = new KnobController('knob3', 'knob3-text', 'S3', 0, 180);
+
+    async function testAnimationCommand(command) {
+        if (!command) {
+            console.log("Invalid command, stopping request: " + command);
+            return;
+        }
+
+        const url = "/test-animation";
+        const data = { an: command };
+        const jsonData = JSON.stringify({ ...data });
+
+        try {
+            let response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonData,
+            });
+
+            let text = await response.text();
+            return text;
+        } catch (error) {
+            console.log("Fetch Error: " + error + "Sending Data: " + jsonData);
+        }
+    }
+
     function getVolume() {
         fetch('/get-volume', {
             method: 'POST',
@@ -684,27 +1167,6 @@
                 showAlert(error);
             });
     }
-
-    // function getPlaylists() {
-    //     fetch('/get-scripts', {
-    //         method: 'POST',
-    //         headers: {
-    //             'Content-Type': 'application/json',
-    //         },
-    //     })
-    //         .then(function (response) {
-    //             return response.text(); // assuming the response is plain text
-    //         })
-    //         .then(function (data) {
-    //             my_data = JSON.parse(data)
-    //             setPlylstButtons(my_data)
-    //             setPlylstScriptButtons(my_data)
-    //         })
-    //         .catch(function (error) {
-    //             console.log(error);
-    //             showAlert(error);
-    //         });
-    // }
 
     function setPlylstButtons(my_data) {
         // Loop through the data and create a button for each item
@@ -1148,7 +1610,7 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    showAlert('Try Again');
                 });
         });
     });
@@ -2409,6 +2871,267 @@
             });
         }
     }
+
+    // Video recording code
+
+    const streamImg = document.getElementById('stream');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const thumbnailGallery = document.getElementById('thumbnailGallery');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = document.getElementById('zoomValue');
+    const setZoomBtn = document.getElementById('setZoomBtn');
+    const focusSlider = document.getElementById('focusSlider');
+    const focusValue = document.getElementById('focusValue');
+
+
+    let canvas, ctx, mediaRecorder, recordedChunks = [];
+    let recordings = [];
+    const blobUrlMap = new Map();
+
+    function throttle(func, limit) {
+            let lastCall = 0;
+            return function (...args) {
+                const now = Date.now();
+                if (now - lastCall >= limit) {
+                    lastCall = now;
+                    return func.apply(this, args);
+                }
+            };
+        }
+
+    async function setZoom(zoomFactor) {
+        try {
+            const response = await fetch('/set-zoom', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zoom: zoomFactor }) });
+            if (response.ok) console.log(`Zoom set to ${zoomFactor}x`);
+            else console.error('Failed to set zoom:', response.status);
+        } catch (e) { console.error('Error setting zoom:', e); }
+    }
+
+    async function setFocus(focusValue) {
+        try {
+            const response = await fetch('/set-focus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ focus: focusValue }) });
+            if (response.ok) console.log(`Focus set to ${focusValue}`);
+            else console.error('Failed to set focus:', response.status);
+        } catch (e) { console.error('Error setting focus:', e); }
+    }
+
+
+    const throttledSetZoom = throttle(setZoom, 200);
+    const throttledSetFocus = throttle(setFocus, 200);
+
+    zoomSlider.addEventListener('input', () => { const zoom = parseFloat(zoomSlider.value); zoomValue.textContent = `${zoom}x`; throttledSetZoom(zoom); });
+    zoomSlider.addEventListener('change', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+    zoomSlider.addEventListener('touchend', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+
+
+    focusSlider.addEventListener('input', () => { const focus = parseFloat(focusSlider.value); focusValue.textContent = focus; throttledSetFocus(focus); });
+    focusSlider.addEventListener('change', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+    focusSlider.addEventListener('touchend', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+
+
+    function setupCanvas() {
+        canvas = document.createElement('canvas');
+        canvas.width = streamImg.naturalWidth || 1280;
+        canvas.height = streamImg.naturalHeight || 720;
+        ctx = canvas.getContext('2d');
+        console.log('Canvas setup with dimensions:', canvas.width, 'x', canvas.height);
+    }
+
+    async function generateThumbnail(videoBlob) {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement('video');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            video.src = URL.createObjectURL(videoBlob);
+            video.muted = true;
+            video.currentTime = 1;
+            video.onloadeddata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const thumbnailDataUrl = canvas.toDataURL('image/jpeg');
+                URL.revokeObjectURL(video.src);
+                resolve(thumbnailDataUrl);
+            };
+            video.onerror = (e) => reject(e);
+        });
+    }
+
+    async function validateBlob(blob) {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement('video');
+            const url = URL.createObjectURL(blob);
+            video.src = url;
+            video.onloadedmetadata = () => {
+                console.log('Blob validation: Metadata loaded. Duration:', video.duration, 'Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+                URL.revokeObjectURL(url);
+                resolve(true);
+            };
+            video.onerror = (e) => {
+                console.error('Blob validation: Error loading video:', e);
+                URL.revokeObjectURL(url);
+                reject(e);
+            };
+        });
+    }
+
+    async function addRecordingToGallery(recording, fileExtension) {
+        const thumbnailImg = document.createElement('img');
+        thumbnailImg.className = 'thumbnail';
+        thumbnailImg.src = recording.thumbnail || 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+        thumbnailImg.dataset.recordingId = recording.id;
+        thumbnailImg.title = `Recording ${new Date(parseInt(recording.id)).toLocaleString()}`;
+
+        thumbnailImg.addEventListener('click', async () => {
+            document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+            thumbnailImg.classList.add('active');
+            const blobUrl = URL.createObjectURL(recording.blob);
+            blobUrlMap.set(recording.id, blobUrl);
+            console.log('Created blob URL for playback:', blobUrl);
+            videoPlayer.src = blobUrl;
+            videoPlayer.play().catch(e => console.error('Error playing video:', e));
+            downloadBtn.disabled = false;
+            downloadBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = `recording-${recording.id}.${fileExtension}`; // Use dynamic extension
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+        });
+
+        thumbnailGallery.appendChild(thumbnailImg);
+    }
+
+    async function saveRecording(blob, recordingId, fileExtension) {
+        console.log('Saving recording - Blob size:', blob.size, 'Blob type:', blob.type);
+        try {
+            await validateBlob(blob);
+            console.log('Blob validated successfully');
+            const thumbnailDataUrl = await generateThumbnail(blob);
+            const recording = {
+                id: recordingId,
+                blob: blob,
+                thumbnail: thumbnailDataUrl
+            };
+            recordings.push(recording);
+            await addRecordingToGallery(recording, fileExtension); // Pass fileExtension
+        } catch (e) {
+            console.error('Error processing recording:', e);
+            showAlert('Failed to process recording. Check the console for details.');
+        }
+    }
+
+    function startRecording() {
+        if (!canvas) setupCanvas();
+        recordedChunks = [];
+
+        const stream = canvas.captureStream(30); // 30 FPS
+
+        // Prioritize MP4, fall back to WebM
+        let mimeType = 'video/mp4; codecs=avc1.42001E'; // H.264 baseline profile
+        let fileExtension = 'mp4';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            console.warn(`MIME type ${mimeType} not supported, falling back to WebM`);
+            mimeType = 'video/webm; codecs=vp8';
+            fileExtension = 'webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                console.error('No supported video format found');
+                showAlert('No supported video format available. Check the console.');
+                return;
+            }
+        }
+        console.log('Selected MIME type:', mimeType);
+        console.log('File extension:', fileExtension);
+
+        try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+            console.log('MediaRecorder created with MIME type:', mediaRecorder.mimeType);
+        } catch (e) {
+            console.error('Error creating MediaRecorder:', e);
+            showAlert('Failed to start recording. Check the console.');
+            return;
+        }
+
+        mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+                console.log('Data available:', event.data.size, 'bytes', 'Type:', event.data.type);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            console.log('MediaRecorder stopped. Total chunks:', recordedChunks.length);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const blob = new Blob(recordedChunks, { type: mimeType });
+            console.log('Blob created:', blob.size, 'bytes', 'Type:', blob.type);
+
+            const recordingId = Date.now();
+            await saveRecording(blob, recordingId, fileExtension);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            downloadBtn.disabled = true;
+        };
+
+        mediaRecorder.onerror = e => console.error('MediaRecorder error:', e);
+
+        function drawToCanvas() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                ctx.drawImage(streamImg, 0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(drawToCanvas);
+            }
+        }
+
+        try {
+            mediaRecorder.start();
+            console.log('Recording started');
+            drawToCanvas();
+        } catch (e) {
+            console.error('Error starting recording:', e);
+            showAlert('Failed to start recording. Check the console.');
+            return;
+        }
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        downloadBtn.disabled = true;
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            console.log('Stop requested');
+        } else {
+            console.warn('No active recording to stop');
+        }
+    }
+
+    startBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+
+    streamImg.onload = () => {
+        console.log('MJPEG stream loaded. Dimensions:', streamImg.naturalWidth, 'x', streamImg.naturalHeight);
+        if (!canvas) setupCanvas();
+    };
+
+    const streamStatus = document.getElementById('streamStatus');
+
+    streamImg.onerror = () => {
+        console.error('Error loading MJPEG stream');
+        streamStatus.textContent = 'Streaming stopped. Press start stream to continue streaming.';
+    };
+
+    window.addEventListener('unload', () => {
+        if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+        blobUrlMap.forEach(url => URL.revokeObjectURL(url));
+        recordings.forEach(recording => URL.revokeObjectURL(recording.thumbnail));
+    });
+
 
 </script>
 
