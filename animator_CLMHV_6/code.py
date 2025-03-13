@@ -1170,11 +1170,15 @@ def set_neo_module_to(mod_n, ind, v):
         led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
     led.show()
 
+upd_vol(.1)
+aud_en.value = True
+
 if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+
         spk_web()
     except OSError:
         time.sleep(5)
