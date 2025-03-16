@@ -22,23 +22,22 @@
 
 #######################################################
 
-from rainbowio import colorwheel
+from adafruit_debouncer import Debouncer
 import neopixel
+from analogio import AnalogIn
 import asyncio
 import microcontroller
 import random
 import board
-import time
-import gc
 import files
 import os
+import time
 import gc
-from analogio import AnalogIn
 import audiomp3
 import audiomixer
 import audiobusio
 import digitalio
-from adafruit_debouncer import Debouncer
+from rainbowio import colorwheel
 
 
 def gc_col(collection_point):
@@ -50,7 +49,7 @@ def gc_col(collection_point):
 
 def f_exists(filename):
     try:
-        status = os.stat(filename)
+        _ = os.stat(filename)
         f_exists = True
     except OSError:
         f_exists = False
@@ -1205,7 +1204,6 @@ if (web):
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-
         spk_web()
     except OSError:
         time.sleep(5)
