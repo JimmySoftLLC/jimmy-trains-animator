@@ -40,6 +40,7 @@ import audiobusio
 import digitalio
 from adafruit_debouncer import Debouncer
 
+
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
@@ -79,10 +80,12 @@ exit_set_hdw_async = False
 
 gc_col("config setup")
 
+
 def upd_media():
     global animations
 
     animations = files.return_directory("", "animations", ".json")
+
 
 upd_media()
 
@@ -156,10 +159,11 @@ neo_arr = []
 
 n_px = 0
 
-#15 on demo 17 tiny 10 on large, GP11 on clhv-6, GP15 on clhv-6 and clmhv-6
+# 15 on demo 17 tiny 10 on large, GP11 on clhv-6, GP15 on clhv-6 and clmhv-6
 neo_pixel_pin = board.GP15
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
+
 
 def bld_tree(p):
     i = []
@@ -236,6 +240,7 @@ def show_l():
     time.sleep(.05)
     led.fill((0, 0, 0))
     led.show()
+
 
 def l_tst():
     global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
@@ -422,235 +427,244 @@ if (web):
         files.log_item(e)
         print("Using default ssid and password")
 
-    try:
-        # connect to your SSID
-        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
-        gc_col("wifi connect")
+    for i in range(3):
+        web = True
+        try:
+            # connect to your SSID
+            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+            gc_col("wifi connect")
 
-        # setup mdns server
-        mdns = mdns.Server(wifi.radio)
-        mdns.hostname = cfg["HOST_NAME"]
-        mdns.advertise_service(
-            service_type="_http", protocol="_tcp", port=80)
-        
-        local_ip = str(wifi.radio.ipv4_address)
+            # setup mdns server
+            mdns = mdns.Server(wifi.radio)
+            mdns.hostname = cfg["HOST_NAME"]
+            mdns.advertise_service(
+                service_type="_http", protocol="_tcp", port=80)
 
-        # files.log_items IP address to REPL
-        files.log_item("IP is" + local_ip)
-        files.log_item("Connected")
+            local_ip = str(wifi.radio.ipv4_address)
 
-        # set up server
-        pool = socketpool.SocketPool(wifi.radio)
-        server = Server(pool, "/static", debug=True)
-        server.port = 80  # Explicitly set port to 80
+            # files.log_items IP address to REPL
+            files.log_item("IP is" + local_ip)
+            files.log_item("Connected")
 
-        gc_col("wifi server")
+            # set up server
+            pool = socketpool.SocketPool(wifi.radio)
+            server = Server(pool, "/static", debug=True)
+            server.port = 80  # Explicitly set port to 80
 
-        ################################################################################
-        # Setup routes
+            gc_col("wifi server")
+            
+            ################################################################################
+            # Setup routes
 
-        @server.route("/")
-        def base(request: HTTPRequest):
-            gc_col("Home page.")
-            return FileResponse(request, "index.html", "/")
+            @server.route("/")
+            def base(request: HTTPRequest):
+                gc_col("Home page.")
+                return FileResponse(request, "index.html", "/")
 
-        @server.route("/mui.min.css")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.css", "/")
+            @server.route("/mui.min.css")
+            def base(request: HTTPRequest):
+                return FileResponse(request, "mui.min.css", "/")
 
-        @server.route("/mui.min.js")
-        def base(request: HTTPRequest):
-            return FileResponse(request, "mui.min.js", "/")
+            @server.route("/mui.min.js")
+            def base(request: HTTPRequest):
+                return FileResponse(request, "mui.min.js", "/")
 
-        @server.route("/animation", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            cfg["option_selected"] = rq_d["an"]
-            add_command(cfg["option_selected"])
-            files.write_json_file("cfg.json", cfg)
-            return Response(request, "Animation " + cfg["option_selected"] + " started.")
-
-        @server.route("/defaults", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            if rq_d["an"] == "reset_animation_timing_to_defaults":
-                for ts_fn in ts_jsons:
-                    ts = files.read_json_file(
-                        "t_s_def/" + ts_fn + ".json")
-                    files.write_json_file(
-                        "animations/"+ts_fn+".json", ts)
-            elif rq_d["an"] == "reset_to_defaults":
-                rst_def()
+            @server.route("/animation", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                cfg["option_selected"] = rq_d["an"]
+                add_command(cfg["option_selected"])
                 files.write_json_file("cfg.json", cfg)
-            return Response(request, "Utility: " + rq_d["an"])
-        
-        @server.route("/stop", [POST])
-        def btn(request: Request):
-            stop_all_commands()
-            return Response(request, "Stopped all commands")
+                return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
-        @server.route("/lights", [POST])
-        def btn(request: Request):
-            global exit_set_hdw_async
-            exit_set_hdw_async = False
-            """Handle lights route synchronously but process async operation in background."""
-            try:
-                rq_d = request.json()  # Parse the incoming JSON
-                asyncio.create_task(set_hdw_async(rq_d["an"],0))  # Schedule the async task
-                return Response(request, "Utility: set lights successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.")
-            
-        @server.route("/create-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animators_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                print(rq_d)
-                f_n = animators_folder + rq_d["fn"] + ".json"
-                print(f_n)
-                an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0", "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
-                files.write_json_file(f_n, an_data)
-                upd_media()
-                return Response(request, "Created animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error creating animation.")
-        
-        @server.route("/rename-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animators_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                fo = animators_folder + rq_d["fo"] + ".json"
-                fn = animators_folder + rq_d["fn"] + ".json"
-                os.rename(fo, fn)
-                upd_media()
-                return Response(request, "Renamed animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.")
-            
-        @server.route("/delete-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animators_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                print(rq_d)
-                f_n = animators_folder + rq_d["fn"] + ".json"
-                print(f_n)
-                os.remove(f_n)
-                upd_media()
-                return Response(request, "Delete animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.")
-            
-        @server.route("/update-light-string", [POST])
-        def btn(req: Request):
-            global cfg
-            rq_d = req.json()
-            if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
-                cfg["light_string"] = rq_d["text"]
-                print("action: " +
-                      rq_d["action"] + " data: " + cfg["light_string"])
+            @server.route("/defaults", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                if rq_d["an"] == "reset_animation_timing_to_defaults":
+                    for ts_fn in ts_jsons:
+                        ts = files.read_json_file(
+                            "t_s_def/" + ts_fn + ".json")
+                        files.write_json_file(
+                            "animations/"+ts_fn+".json", ts)
+                elif rq_d["an"] == "reset_to_defaults":
+                    rst_def()
+                    files.write_json_file("cfg.json", cfg)
+                return Response(request, "Utility: " + rq_d["an"])
+
+            @server.route("/stop", [POST])
+            def btn(request: Request):
+                stop_all_commands()
+                return Response(request, "Stopped all commands")
+
+            @server.route("/lights", [POST])
+            def btn(request: Request):
+                global exit_set_hdw_async
+                exit_set_hdw_async = False
+                """Handle lights route synchronously but process async operation in background."""
+                try:
+                    rq_d = request.json()  # Parse the incoming JSON
+                    # Schedule the async task
+                    asyncio.create_task(set_hdw_async(rq_d["an"], 0))
+                    return Response(request, "Utility: set lights successfully.")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error setting lights.")
+
+            @server.route("/create-animation", [POST])
+            def btn(request: Request):
+                try:
+                    global data, animators_folder
+                    rq_d = request.json()  # Parse the incoming JSON
+                    print(rq_d)
+                    f_n = animators_folder + rq_d["fn"] + ".json"
+                    print(f_n)
+                    an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0",
+                               "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
+                    files.write_json_file(f_n, an_data)
+                    upd_media()
+                    return Response(request, "Created animation successfully.")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error creating animation.")
+
+            @server.route("/rename-animation", [POST])
+            def btn(request: Request):
+                try:
+                    global data, animators_folder
+                    rq_d = request.json()  # Parse the incoming JSON
+                    fo = animators_folder + rq_d["fo"] + ".json"
+                    fn = animators_folder + rq_d["fn"] + ".json"
+                    os.rename(fo, fn)
+                    upd_media()
+                    return Response(request, "Renamed animation successfully.")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error setting lights.")
+
+            @server.route("/delete-animation", [POST])
+            def btn(request: Request):
+                try:
+                    global data, animators_folder
+                    rq_d = request.json()  # Parse the incoming JSON
+                    print(rq_d)
+                    f_n = animators_folder + rq_d["fn"] + ".json"
+                    print(f_n)
+                    os.remove(f_n)
+                    upd_media()
+                    return Response(request, "Delete animation successfully.")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error setting lights.")
+
+            @server.route("/update-light-string", [POST])
+            def btn(req: Request):
+                global cfg
+                rq_d = req.json()
+                if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
+                    cfg["light_string"] = rq_d["text"]
+                    print("action: " +
+                          rq_d["action"] + " data: " + cfg["light_string"])
+                    files.write_json_file("cfg.json", cfg)
+                    upd_l_str()
+                    return Response(req, cfg["light_string"])
+                if cfg["light_string"] == "":
+                    cfg["light_string"] = rq_d["text"]
+                else:
+                    cfg["light_string"] = cfg["light_string"] + \
+                        "," + rq_d["text"]
+                print("action: " + rq_d["action"] +
+                      " data: " + cfg["light_string"])
                 files.write_json_file("cfg.json", cfg)
                 upd_l_str()
                 return Response(req, cfg["light_string"])
-            if cfg["light_string"] == "":
-                cfg["light_string"] = rq_d["text"]
-            else:
-                cfg["light_string"] = cfg["light_string"] + \
-                    "," + rq_d["text"]
-            print("action: " + rq_d["action"] +
-                  " data: " + cfg["light_string"])
-            files.write_json_file("cfg.json", cfg)
-            upd_l_str()
-            return Response(req, cfg["light_string"])
 
-        @server.route("/get-light-string", [POST])
-        def btn(req: Request):
-            return Response(req, cfg["light_string"])
-        
-        @server.route("/update-host-name", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            cfg["HOST_NAME"] = rq_d["an"]
-            files.write_json_file("cfg.json", cfg)
-            mdns.hostname = cfg["HOST_NAME"]
-            return Response(request, cfg["HOST_NAME"])
+            @server.route("/get-light-string", [POST])
+            def btn(req: Request):
+                return Response(req, cfg["light_string"])
 
-        @server.route("/get-host-name", [POST])
-        def btn(request: Request):
-            return Response(request, cfg["HOST_NAME"])
-        
-        @server.route("/get-local-ip", [POST])
-        def btn(request: Request):
-            return Response(request, local_ip)
-
-        @server.route("/get-animations", [POST])
-        def btn(request: Request):
-            sounds = []
-            sounds.extend(animations)
-            my_string = files.json_stringify(sounds)
-            return Response(request, my_string)
-
-        @server.route("/test-animation", [POST])
-        def btn(request: Request):
-            global exit_set_hdw_async
-            exit_set_hdw_async = False
-            try:
+            @server.route("/update-host-name", [POST])
+            def btn(request: Request):
+                global cfg
                 rq_d = request.json()
-                print(rq_d["an"])
-                gc_col("Save Data.")
-                asyncio.create_task(set_hdw_async(rq_d["an"], 3))  # Schedule the async task
-                return Response(request, "Test animation successfully")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error test animation.")
+                cfg["HOST_NAME"] = rq_d["an"]
+                files.write_json_file("cfg.json", cfg)
+                mdns.hostname = cfg["HOST_NAME"]
+                spk_web()
+                return Response(request, cfg["HOST_NAME"])
 
-        @server.route("/get-animation", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            snd_f = rq_d["an"]
-            if (f_exists("animations/" + snd_f + ".json") == True):
-                f_n = "animations/" + snd_f + ".json"
-                return FileResponse(request, f_n, "/")
-            else:
-                f_n = "t_s_def/timestamp mode.json"
-                return FileResponse(request, f_n, "/")
+            @server.route("/get-host-name", [POST])
+            def btn(request: Request):
+                return Response(request, cfg["HOST_NAME"])
 
-        data = []
+            @server.route("/get-local-ip", [POST])
+            def btn(request: Request):
+                return Response(request, local_ip)
 
-        @server.route("/save-data", [POST])
-        def btn(request: Request):
-            global data
-            rq_d = request.json()
-            try:
-                if rq_d[0] == 0:
-                    data = []
-                data.extend(rq_d[2])
-                if rq_d[0] == rq_d[1]:
-                    f_n = "animations/" + rq_d[3] + ".json"
-                    files.write_json_file(f_n, data)
+            @server.route("/get-animations", [POST])
+            def btn(request: Request):
+                sounds = []
+                sounds.extend(animations)
+                my_string = files.json_stringify(sounds)
+                return Response(request, my_string)
+
+            @server.route("/test-animation", [POST])
+            def btn(request: Request):
+                global exit_set_hdw_async
+                exit_set_hdw_async = False
+                try:
+                    rq_d = request.json()
+                    print(rq_d["an"])
+                    gc_col("Save Data.")
+                    # Schedule the async task
+                    asyncio.create_task(set_hdw_async(rq_d["an"], 3))
+                    return Response(request, "Test animation successfully")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error test animation.")
+
+            @server.route("/get-animation", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                snd_f = rq_d["an"]
+                if (f_exists("animations/" + snd_f + ".json") == True):
+                    f_n = "animations/" + snd_f + ".json"
+                    return FileResponse(request, f_n, "/")
+                else:
+                    f_n = "t_s_def/timestamp mode.json"
+                    return FileResponse(request, f_n, "/")
+
+            data = []
+
+            @server.route("/save-data", [POST])
+            def btn(request: Request):
+                global data
+                rq_d = request.json()
+                try:
+                    if rq_d[0] == 0:
+                        data = []
+                    data.extend(rq_d[2])
+                    if rq_d[0] == rq_d[1]:
+                        f_n = "animations/" + rq_d[3] + ".json"
+                        files.write_json_file(f_n, data)
+                        data = []
+                        gc_col("get data")
+                    upd_media()
+                except Exception as e:
+                    files.log_item(e)
                     data = []
                     gc_col("get data")
-                upd_media()
-            except Exception as e:
-                files.log_item(e)
-                data = []
-                gc_col("get data")
-                return Response(request, "out of memory")
-            return Response(request, "success")
+                    return Response(request, "out of memory")
+                return Response(request, "success")
+            break
+        except Exception as e:
+            web = False
+            files.log_item(e)
+            time.sleep(2)
 
-    except Exception as e:
-        web = False
-        files.log_item(e)
+    
 
 gc_col("web server")
 
@@ -779,8 +793,8 @@ def sel_web():
 def spk_web():
     ply_a_0("/mvc/animator_available_on_network.mp3")
     ply_a_0("/mvc/to_access_type.mp3")
-    if cfg["HOST_NAME"] == "animator-outhouse":
-        ply_a_0("/mvc/animator_dash_outhouse.mp3")
+    if cfg["HOST_NAME"] == "animator-clmhv6":
+        ply_a_0("/mvc/animator_clmhv6.mp3")
         ply_a_0("/mvc/dot.mp3")
         ply_a_0("/mvc/local.mp3")
     else:
@@ -806,6 +820,7 @@ def no_user_track():
 # Command queue
 command_queue = []
 
+
 def add_command(command, to_start=False):
     global exit_set_hdw_async
     exit_set_hdw_async = False
@@ -817,6 +832,7 @@ def add_command(command, to_start=False):
         command_queue.append(command)  # Add to the end
         print("Command added to the end:", command)
 
+
 async def process_commands():
     """Asynchronous function to process commands in a FIFO order."""
     while command_queue:
@@ -825,10 +841,12 @@ async def process_commands():
         await an_async(command)  # Process each command as an async operation
         await asyncio.sleep(0)  # Yield control to the event loop
 
+
 def clear_command_queue():
     """Clear all commands from the queue."""
     command_queue.clear()
     print("Command queue cleared.")
+
 
 def stop_all_commands():
     """Stop all commands and clear the queue."""
@@ -894,17 +912,17 @@ async def an_light_async(f_nm):
             if len(ft1) == 1 or ft1[1] == "":
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                result = await set_hdw_async(f"L0{lgt},S0{pos}",dur)
+                result = await set_hdw_async(f"L0{lgt},S0{pos}", dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1],dur)
+                result = await set_hdw_async(ft1[1], dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-            
+
         # print (flsh_i)
 
         await asyncio.sleep(0)  # Yield control to other tasks
@@ -918,6 +936,7 @@ async def an_light_async(f_nm):
 ##############################
 # animation effects
 
+
 async def random_effect(il, ih, d):
     i = random.randint(il, ih)
     if i == 1:
@@ -927,6 +946,7 @@ async def random_effect(il, ih, d):
         await asyncio.sleep(d)
     elif i == 3:
         await fire(d)
+
 
 async def rbow(spd, dur):
     global exit_set_hdw_async
@@ -955,7 +975,8 @@ async def rbow(spd, dur):
             te = time.monotonic()-st
             if te > dur:
                 return
-            
+
+
 async def fire(dur):
     global exit_set_hdw_async
     st = time.monotonic()
@@ -1049,6 +1070,7 @@ def bnd(c, l, u):
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
+
 async def set_hdw_async(input_string, dur):
     """Async hardware control for NeoPixel lights."""
     global sp, br, exit_set_hdw_async
@@ -1112,10 +1134,12 @@ async def set_hdw_async(input_string, dur):
                 file_nm = seg[1:]
                 add_command(file_nm)
     except Exception as e:
-            files.log_item(e)
+        files.log_item(e)
+
 
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
+
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -1131,12 +1155,14 @@ def set_neo_to(light_n, r, g, b):
             led[light_n] = (r, g, b)
     led.show()
 
+
 def get_neo_ids():
     matches = []
     for num in range(n_px + 1):
         if any(num == sublist[0] for sublist in neos):
             matches.append(num)
-    return matches    
+    return matches
+
 
 def set_neo_module_to(mod_n, ind, v):
     cur = []
@@ -1170,11 +1196,16 @@ def set_neo_module_to(mod_n, ind, v):
         led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
     led.show()
 
+
+upd_vol(.1)
+aud_en.value = True
+
 if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+
         spk_web()
     except OSError:
         time.sleep(5)
@@ -1185,6 +1216,8 @@ files.log_item("animator has started...")
 gc_col("animations started.")
 
 # Main task handling
+
+
 async def process_commands_task():
     """Task to continuously process commands."""
     while True:
@@ -1193,6 +1226,7 @@ async def process_commands_task():
         except Exception as e:
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
+
 
 async def server_poll_task(server):
     """Poll the web server."""
@@ -1203,10 +1237,12 @@ async def server_poll_task(server):
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
 
+
 async def garbage_collection_task():
     while True:
         gc.collect()  # Collect garbage
         await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
+
 
 async def main():
     # Create asyncio tasks
@@ -1226,6 +1262,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
-
 
