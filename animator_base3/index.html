@@ -114,6 +114,9 @@
                 data_object}</div>
             <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object
                 i.e. {"an":data_object}</div>
+            <div>TMCC_DDD_ID_BUTTON = TMCC command DDD device ("engine", "switch", "accessory", "route", "train",
+                "group"), ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
+                AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, SPEED_1-5-9)</div>
             <div>E = End script</div>
             <h2>Animator settings:</h2>
             <form class="mui-form">
@@ -1279,7 +1282,7 @@
 
         port = ""
 
-        if (portPartSplit.length ==2) {
+        if (portPartSplit.length == 2) {
             port = ":" + portPartSplit[1]
         }
 
