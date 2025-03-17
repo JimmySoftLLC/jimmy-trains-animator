@@ -230,6 +230,8 @@ def gc_col(collection_point):
 # to make this work you must add permission to the visudo file
 # sudo visudo
 # base3 ALL=(ALL) NOPASSWD: /sbin/reboot
+
+
 def restart_pi():
     os.system('sudo reboot')
 
@@ -247,6 +249,8 @@ gc_col("Imports gc, files")
 # ssid and password setup
 
 # Function to mount the USB drive (assumes automatic mounting to /media/pi)
+
+
 def get_usb_path():
     media_path = "/media/base3/"
     usb_path = None
@@ -257,6 +261,8 @@ def get_usb_path():
     return usb_path
 
 # Function to read the SSID and PASSWORD from the file
+
+
 def read_wifi_credentials(file_path):
     with open(file_path, 'r') as f:
         lines = f.readlines()
@@ -269,14 +275,17 @@ def read_wifi_credentials(file_path):
             password = line.strip().split('=')[1]
     return ssid, password
 
+
 def connect_wifi(ssid, password):
     # Run nmcli added a connection to the connection manager list,
     # this public connection can be edited by the user later if needed.
     subprocess.call(['sudo', 'nmcli', 'connection', 'add', 'type', 'wifi',
-        'con-name', ssid,'ifname', 'wlan0', 'ssid', ssid,
-        'wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', password])
+                     'con-name', ssid, 'ifname', 'wlan0', 'ssid', ssid,
+                     'wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', password])
 
 # Update ssid password using usb drive
+
+
 def update_ssid_password_from_usb():
     print("Looking for USB with Wi-Fi configuration...")
     while True:
@@ -338,7 +347,8 @@ def upd_media():
 
 upd_media()
 
-web = True # This device only works if it is connected to the wifi network so no config setting for this.
+# This device only works if it is connected to the wifi network so no config setting for this.
+web = True
 
 cfg_main = files.read_json_file(code_folder + "mvc/main_menu.json")
 main_m = cfg_main["main_menu"]
@@ -624,7 +634,9 @@ def send_animator_post(url, endpoint, new_data):
 
 
 ################################################################################
-# Setup serial communication and Legacy/TMCC
+# Setup serial communication
+
+global ser
 
 
 def list_serial_ports():
@@ -638,12 +650,15 @@ def open_serial_connection(port, baud_rate=115200):
     return ser
 
 
-def send_data(ser, data):
-    hex_data = bytes.fromhex(data)
-    ser.write(hex_data)
+def get_usb_ports():
+    ports = list_serial_ports()
+    print("Available serial ports:", ports)
+    text_to_wav_file("Available serial ports are", tmp_wav_file_name, 2)
+    for port in ports:
+        text_to_wav_file(port, tmp_wav_file_name, 2)
 
 
-def read_from_serial(ser):
+def read_from_serial():
     global exit_set_hdw
     while True:
         try:
@@ -656,67 +671,62 @@ def read_from_serial(ser):
                     binary_word1 = f'{word1:0>8b}'
                     binary_word2 = f'{word2:0>8b}'
                     binary_word3 = f'{word3:0>8b}'
-
-                    # print("Received command: " + str(received_data))
-                    # print("Received 0: " + str(received_data[0]))
-                    # print("Received 1: " + str(received_data[1]))
-                    # print("Received 2: " + str(received_data[2]))
                     print(f"Word 1: {binary_word1}")
                     print(f"Word 2: {binary_word2}")
                     print(f"Word 3: {binary_word3}\n")
-                    response = get_command_object(
+
+                    command = get_command_object(
                         binary_word1, binary_word2, binary_word3)
-                    response = process_command(response)
+
+                    response = process_command(command)
                     # print(response["system"], response["device"],
                     #       response["address"], response["command"], response["data"], response["button"])
 
-                    commands = process_command_animator_config(response)
+                    matched_commands = animator_command_matches(response)
 
                     # Check if there are any matches
-                    if commands:
-                        for command, item in commands:
-                            print(command, item)  # Print each matched row and item
-                            if command:
+                    if matched_commands:
+                        for matched_command, animator_command_rows in matched_commands:
+                            # Print each matched command and animators command rows
+                            print(matched_command, command)
+                            if matched_command:
                                 exit_set_hdw = False
-                                set_hdw(command[1], 1, item["animatorIpAddress"])
+                                set_hdw(matched_command[1], 1,
+                                        animator_command_rows["animatorIpAddress"])
                     else:
                         print("No matches found")
 
                     time.sleep(1)
                     ser.read(ser.in_waiting)
-
-                    # Reconstruct the command bytes
-                    # reconstructed_word1 = int(binary_word1, 2).to_bytes(1, 'big')
-                    # reconstructed_word2 = int(binary_word2, 2).to_bytes(1, 'big')
-                    # reconstructed_word3 = int(binary_word3, 2).to_bytes(1, 'big')
-
-                    # Construct the command to send back
-                    # reconstructed_command = reconstructed_word1 + reconstructed_word2 + reconstructed_word3
-                    # print("Reconstructed command: " + str(reconstructed_command))
-                    # Echo back the received command
-                    # ser.write(reconstructed_command)  # Echo back the received command
                 else:
                     # Invalid command format, discard the data
                     ser.read(ser.in_waiting)
         except Exception as e:
             print(f"Comms issue: {e}")
 
+def write_to_serial(word1, word2, word3):
+    byte1 = int(word1, 2).to_bytes(1, 'big')
+    byte2 = int(word2, 2).to_bytes(1, 'big')
+    byte3 = int(word3, 2).to_bytes(1, 'big')
 
-def get_usb_ports():
-    ports = list_serial_ports()
-    print("Available serial ports:", ports)
-    text_to_wav_file("Available serial ports are", tmp_wav_file_name, 2)
-    for port in ports:
-        text_to_wav_file(port, tmp_wav_file_name, 2)
+    command = byte1 + byte2 + byte3
 
-# Command decoding and processing functions
+    try:
+        ser.write(command)
+        print(f"Sent command: {word1} {word2} {word3}")
+        return True
+    except Exception as e:
+        print(f"Error sending command: {e}")
+        return False
 
+################################################################################
+# Command decoding
 
 def get_command_object(binary_word1, binary_word2, binary_word3):
     print(binary_word1)
     response = {}
-    response["system"] = what_system(binary_word1)
-    if binary_word2 == "11111111" and binary_word2 == "11111111":
+    response["system"] = get_system(binary_word1)
+    if binary_word1 == "11111111" and binary_word2 == "11111111":
         response["system"] = "halt"
         response["device"] = "halt"
         response["address"] = "0000"
@@ -725,15 +735,15 @@ def get_command_object(binary_word1, binary_word2, binary_word3):
         if command == "01":  # Switch command
             response["device"] = "switch"
             response["address"] = str(
-                what_address(binary_word2, binary_word3, 7))
+                get_address(binary_word2, binary_word3, 7))
         elif command == "00":  # Engine command
             response["device"] = "engine"
             response["address"] = str(
-                what_address(binary_word2, binary_word3, 7))
+                get_address(binary_word2, binary_word3, 7))
         elif command == "10":  # Accessory command
             response["device"] = "accessory"
             response["address"] = str(
-                what_address(binary_word2, binary_word3, 7))
+                get_address(binary_word2, binary_word3, 7))
         elif command == "11":  # Route, train or group command
             command = binary_word2[0:4]
             if command == "1101":  # Route command
@@ -744,48 +754,101 @@ def get_command_object(binary_word1, binary_word2, binary_word3):
                     response["device"] = "train"
                 elif command == "11000":  # Group command
                     response["device"] = "group"
-        response["command"] = what_command(binary_word3)
-        response["data"] = what_data(binary_word3)
+        response["command"] = get_command(binary_word3)
+        response["data"] = get_data(binary_word3)
     return response
 
 
-def what_system(binary_word1):
-    # 0xFE for TMCC1 commands
-    # 0xF8 for Legacy Engine commands
-    # 0xF9 for Legacy Train commands
-    # 0xFB for Parameter commands
-    command = binary_word1
-    if command == "11111110":
-        return "tmcc"
-    elif command == "11111000":
-        return "legacy_engine"
-    elif command == "11111001":
-        return "legacy_train"
-    elif command == "11111011":
-        return "parameter"
+def get_system(binary_word1):
+    bits_to_system = {
+        "11111110": "tmcc",
+        "11111000": "legacy_engine",
+        "11111001": "legacy_train",
+        "11111011": "parameter"
+    }
+    
+    if binary_word1 not in bits_to_system:
+        raise ValueError(f"Invalid binary_word1: {binary_word1}. Must be one of {list(bits_to_system.keys())}.")
+    
+    return bits_to_system[binary_word1]
+
+def set_system(command):
+    system_to_bits = {
+        "tmcc": "11111110",
+        "legacy_engine": "11111000",
+        "legacy_train": "11111001",
+        "parameter": "11111011"
+    }
+    
+    if command not in system_to_bits:
+        raise ValueError(f"Invalid command: {command}. Must be one of {list(system_to_bits.keys())}.")
+    
+    return system_to_bits[command]
 
 
-def what_command(binary_word3):
+def get_command(binary_word3):
+    bits_to_command = {
+        "00": "action",
+        "01": "extended",
+        "10": "relative",
+        "11": "absolute"
+    }
+    
     command = binary_word3[1:3]
-    if command == "00":
-        return "action"
-    elif command == "01":
-        return "extended"
-    elif command == "10":
-        return "relative"
-    elif command == "11":
-        return "absolute"
+    
+    if command not in bits_to_command:
+        raise ValueError(f"Invalid command bits: {command}. Must be one of {list(bits_to_command.keys())}.")
+    
+    return bits_to_command[command]
+    
+def set_command(binary_word3, textcommand):
+    command_to_bits = {
+        "action": "00",
+        "extended": "01",
+        "relative": "10",
+        "absolute": "11"
+    }
+    
+    if textcommand not in command_to_bits:
+        raise ValueError(f"Invalid textcommand: {textcommand}. Must be one of {list(command_to_bits.keys())}.")
+    
+    binary_command = command_to_bits[textcommand]
+    
+    new_binary_word3 = binary_word3[:1] + binary_command + binary_word3[3:]
+    
+    return new_binary_word3
 
 
-def what_address(binary_word2, binary_word3, number_bits):
+def get_address(binary_word2, binary_word3, number_bits):
     whole_word = binary_word2 + binary_word3
     start = 9 - number_bits
     end = start + number_bits
     binary_number = whole_word[start:end]
-    return int(binary_number, 2)
+    int_returned = int(binary_number, 2)
+    return int_returned
+
+def set_address(binary_word2, binary_word3, number_bits, int_supplied):
+    binary_int = bin(int_supplied)[2:]
+    binary_int = binary_int.zfill(number_bits)
+    
+    max_value = 2 ** number_bits - 1
+    if int_supplied > max_value:
+        raise ValueError(f"int_supplied ({int_supplied}) is too large to fit in {number_bits} bits. Max value is {max_value}.")
+    
+    whole_word = binary_word2 + binary_word3
+    
+    start = 9 - number_bits
+    end = start + number_bits
+    
+    new_whole_word = whole_word[:start] + binary_int + whole_word[end:]
+
+    new_binary_word2 = new_whole_word[:8]
+    new_binary_word3 = new_whole_word[8:]
+    
+    return new_binary_word2, new_binary_word3
 
 
-def what_data(binary_word3):
+def get_data(binary_word3):
     return binary_word3[3:8]
 
 
@@ -793,7 +856,7 @@ def scale_number(num, exponent):
     return int((num if num >= 0 else -(-num)) ** exponent)
 
 
-def process_command_animator_config(response):
+def animator_command_matches(response):
     global animator_configs
     # response = {
     # "system": "tmcc",
@@ -805,11 +868,12 @@ def process_command_animator_config(response):
     # }
     matches = []  # Initialize an empty list to store matches
 
-    for item in animator_configs:
-        if item["device"] == response["device"] and item["address"] == response["address"] or response["device"] == "halt":
-            for row in item['table_data']:
+    for animator_config in animator_configs:
+        if animator_config["device"] == response["device"] and animator_config["address"] == response["address"] or response["device"] == "halt":
+            for row in animator_config['table_data']:
                 if row[0] == response["button"]:
-                    matches.append((row, item))  # Append the matched row and item to the list
+                    # Append the matched row and item to the list
+                    matches.append((row, animator_config))
     return matches  # Return all matches
 
 
@@ -844,7 +908,7 @@ def process_command(response):
                 play_mix(code_folder + "mvc/" + response["device"] + ".wav")
                 spk_str(str(response["address"]), False)
                 play_mix(code_folder + "mvc/high_momentum.wav")
-            response["button"] = "HIGHM"    
+            response["button"] = "HIGHM"
         elif response["command"] == "relative":
             binary_number = response["data"][1:5]
             decimal_number = int(binary_number, 2)
@@ -922,12 +986,16 @@ def process_command(response):
             if speak_commands:
                 play_mix(code_folder + "mvc/out.wav")
             response["button"] = "OUT"
-    
+
     if response["device"] == "halt":
-            if speak_commands:
-                play_mix(code_folder + "mvc/halt.wav")
-            response["button"] = "HALT"
+        if speak_commands:
+            play_mix(code_folder + "mvc/halt.wav")
+        response["button"] = "HALT"
     return response
+
+################################################################################
+# Command encoding
+
 
 
 ################################################################################
@@ -1826,7 +1894,7 @@ def set_hdw(cmd, dur, url):
 
     if cmd == "":
         return "NOCMDS"
-    
+
     if "API_" in cmd:
         segs = [cmd]
     else:
@@ -1836,19 +1904,19 @@ def set_hdw(cmd, dur, url):
         for seg in segs:
             if exit_set_hdw:
                 return "STOP"
-            f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
             # USB connect to base3 usb port
             elif seg[:3] == 'USB':
                 get_usb_ports()
-            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)  
+            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 if len(segs_split) == 2:
                     override_switch_state["switch_value"] = segs_split[1]
                 elif len(segs_split) == 3:
-                    override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
+                    override_switch_state["switch_value"] = segs_split[1] + \
+                        "_" + segs_split[2]
                 else:
                     override_switch_state["switch_value"] = "none"
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
@@ -1876,47 +1944,54 @@ def set_hdw(cmd, dur, url):
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = split_string(seg)
-                print (seg_split)
+                print(seg_split)
                 if len(seg_split) == 3:
-                    print ("three params")       
+                    print("three params")
                     response = send_animator_post(
                         url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
-                    print ("four params")
+                    print("four params")
                     response = send_animator_post(
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
                 return ""
+            # TMCC_DDD_ID_BUTTON = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER, AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, SPEED_N)
+            if seg[:4] == 'TMCC':
+                seg_split = split_string(seg)
+                device = seg_split[1]
+                id = int(seg_split[2])
+                button = seg_split[3]
+                send_tmcc_command(device, id, button)
     except Exception as e:
         files.log_item(e)
+
 
 def split_string(seg):
     # Find the position of the first '_{' and the last '}'
     start_idx = seg.find('_{')
     end_idx = seg.find('}', start_idx)
-    
+
     if start_idx != -1 and end_idx != -1:
         # Extract the object part including the curly braces
         object_part = seg[start_idx:end_idx+1]
-        
+
         # Remove the object part from the string
         seg = seg[:start_idx] + seg[end_idx+1:]
-        
+
         # Remove the leading underscore from the object part
         object_part = object_part[1:]  # Strip the first character '_'
     else:
         object_part = ''  # If no object is found, set it to empty
-    
+
     # Now split the remaining part by underscores
     parts = seg.split('_')
-    
+
     # Add the object part as the last item
     if object_part:
         parts.append(object_part)
-    
-    return parts
 
+    return parts
 
 
 ################################################################################
@@ -1985,7 +2060,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global  override_switch_state
+        global override_switch_state
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
@@ -2043,6 +2118,7 @@ class Main(Ste):
             else:
                 play_mix(code_folder + "mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
+
 
 class VolumeLevelAdjustment(Ste):
 
@@ -2185,12 +2261,12 @@ if connect_to_base_3 == True:
     target_port = "/dev/ttyUSB0"
     ports = list_serial_ports()
     if target_port in ports:
-        serial_connection = open_serial_connection(target_port)
+        ser = open_serial_connection(target_port)
         play_mix(code_folder + "mvc/connected_to_base3.wav")
 
         # Start a thread to continuously read from the serial port
         read_thread = threading.Thread(
-            target=read_from_serial, args=(serial_connection,))
+            target=read_from_serial)
         read_thread.daemon = True
         read_thread.start()
 
@@ -2202,7 +2278,7 @@ def stop_program():
         zeroconf.unregister_service(mdns_info)
         zeroconf.close()
         httpd.shutdown()
-    serial_connection.close()
+    ser.close()
     quit()
 
 
@@ -2214,4 +2290,3 @@ while True:
 
 
 # type: ignore
-
