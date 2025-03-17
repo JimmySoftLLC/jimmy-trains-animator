@@ -1045,7 +1045,7 @@ def set_address(binary_word2, binary_word3, number_bits, id):
     
     return new_binary_word2, new_binary_word3
 
-def get_command_and_data(button, binary_word3, value = 0):
+def get_command_and_data(button, binary_word3, value=0):
     command_mapping = {
         "action": "00",
         "extended": "01",
@@ -1067,7 +1067,7 @@ def get_command_and_data(button, binary_word3, value = 0):
         "RCOUPLER": ("action", "00110"),
         "AUX1": ("action", "01001"),
         "AUX2": ("action", "01101"),
-        "KNOB": ("relative", "00000") # the 00000 data is a place holder it will be changed with the value parameter
+        "KNOB": ("relative", None)  # Data will be set based on value
     }
 
     switch_buttons = {
@@ -1076,40 +1076,55 @@ def get_command_and_data(button, binary_word3, value = 0):
         "OUT": ("action", "11111")
     }
 
+
     if len(binary_word3) != 8:
         print(f"Error: binary_word3 '{binary_word3}' must be exactly 8 bits")
         return binary_word3  # Return unchanged word on error
 
+
     prefix = binary_word3[0]      # Index 0 (1 bit, unchanged)
-    command = binary_word3[1:3]   # Index 1-2 (2 bits, to be updated)
-    data = binary_word3[3:8]      # Index 3-7 (5 bits, to be updated)
 
     if button in accessory_engine_buttons:
-        command_type, data = accessory_engine_buttons[button]
-        command = command_mapping[command_type]
-        new_word = prefix + command + data
+        command_type, default_data = accessory_engine_buttons[button]
+        new_command = command_mapping[command_type]
+        if button == "KNOB":
+            if not -5 <= value <= 5:
+                print(f"Warning: Value {value} for KNOB must be between -5 and 5")
+                return binary_word3  # Return unchanged word
+            decimal_number = value + 5  # Shift to 0-10 (0x0 to 0xA)
+            new_data = "0" + format(decimal_number, "04b")  # 00000 to 01010
+        else:
+            new_data = default_data
+        new_word = prefix + new_command + new_data
         return new_word
 
+
     if button in switch_buttons:
-        command_type, data = switch_buttons[button]
-        command = command_mapping[command_type]
-        new_word = prefix + command + data
+        command_type, new_data = switch_buttons[button]
+        new_command = command_mapping[command_type]
+        new_word = prefix + new_command + new_data
         return new_word
+
 
     if button.isdigit():
         num = int(button)
         if 0 <= num <= 9:  # Only consider values 0 through 9
             # Convert number to 4-bit binary, prepend "1" (as per code logic)
-            data = "1" + format(num, "04b")
-            command = command_mapping["action"]
-            new_word = prefix + command + data
+            new_data = "1" + format(num, "04b")
+            new_command = command_mapping["action"]
+            new_word = prefix + new_command + new_data
             return new_word
         else:
             print(f"Warning: Numeric button {button} is invalid (must be 0-9)")
             return binary_word3  # Return unchanged word
 
+
+    if button == "HALT":
+        return binary_word3  # No specific command/data for HALT, return unchanged word
+
     print(f"Warning: Button {button} not found")
     return binary_word3  # Return unchanged word
+
 
 ################################################################################
 # Setup wifi and web server
