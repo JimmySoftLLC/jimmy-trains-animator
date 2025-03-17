@@ -710,8 +710,8 @@ def read_command():
         except Exception as e:
             print(f"Comms issue: {e}")
 
-def send_command(system, device, address, button):
-    word1, word2, word3 = get_command_binary_words(system, device, address, button, value = 5)
+def send_command(system, device, address, button, value):
+    word1, word2, word3 = get_command_binary_words(system, device, address, button, value)
 
     byte1 = int(word1, 2).to_bytes(1, 'big')
     byte2 = int(word2, 2).to_bytes(1, 'big')
@@ -733,10 +733,15 @@ def send_command(system, device, address, button):
 def get_command_object(binary_word1, binary_word2, binary_word3):
     command_object = {}
     command_object["system"] = get_system(binary_word1)
-    if binary_word1 == "11111111" and binary_word2 == "11111111":
+    if binary_word1 == "11111110" and binary_word2 == "11111111" and binary_word3 == "11111111":
         command_object["system"] = "halt"
         command_object["device"] = "halt"
         command_object["address"] = "0000"
+        command_object["button"] = "HALT"
+        command_object["command"] = "absolute"
+        command_object["value"] = "11"
+        command_object["data"] = "11111"
+        return command_object
     elif command_object["system"] == "tmcc":
         command = binary_word2[0:2]
         if command == "01":  # Switch command
@@ -966,11 +971,18 @@ def animator_command_matches(command_object):
 ################################################################################
 # Command encoding
 
-def get_command_binary_words(system, device, address, button, value = 0):
+def get_command_binary_words(system, device, address, button, value=0):
     address = int(address)
+    
+    if button == "HALT":
+        binary_word1 = "11111110"
+        binary_word2 = "11111111"
+        binary_word3 = "11111111"
+        return binary_word1, binary_word2, binary_word3
+
     binary_word1 = set_system(system)
     binary_word2 = set_device("00000000", device)
-    binary_word3 = get_command_and_data(button,"00000000", value)
+    binary_word3 = get_command_and_data(button, "00000000", value)
     binary_word2, binary_word3 = set_address(binary_word2, binary_word3, 7, address)
     return binary_word1, binary_word2, binary_word3
 
@@ -1046,6 +1058,7 @@ def set_address(binary_word2, binary_word3, number_bits, id):
     return new_binary_word2, new_binary_word3
 
 def get_command_and_data(button, binary_word3, value=0):
+    # Command mapping
     command_mapping = {
         "action": "00",
         "extended": "01",
@@ -1053,6 +1066,7 @@ def get_command_and_data(button, binary_word3, value=0):
         "absolute": "11"
     }
 
+    # Named button mappings for accessory/engine
     accessory_engine_buttons = {
         "SET": ("extended", "01011"),
         "LOWM": ("extended", "01000"),
@@ -1067,50 +1081,59 @@ def get_command_and_data(button, binary_word3, value=0):
         "RCOUPLER": ("action", "00110"),
         "AUX1": ("action", "01001"),
         "AUX2": ("action", "01101"),
-        "KNOB": ("relative", None)  # Data will be set based on value
+        "KNOB": ("relative", None),  # Data will be set based on value
+        "SPEED": ("absolute", None)  # Data will be set based on value (0-31)
     }
 
+    # Named button mappings for switch
     switch_buttons = {
         "SET": ("extended", "01011"),
         "THROUGH": ("action", "00000"),
         "OUT": ("action", "11111")
     }
 
-
+    # Check if binary_word3 is exactly 8 bits
     if len(binary_word3) != 8:
         print(f"Error: binary_word3 '{binary_word3}' must be exactly 8 bits")
         return binary_word3  # Return unchanged word on error
 
+    # Extract prefix (index 0, unchanged)
+    prefix = binary_word3[0]  # Index 0 (1 bit, unchanged)
 
-    prefix = binary_word3[0]      # Index 0 (1 bit, unchanged)
-
+    # Check named buttons (accessory/engine)
     if button in accessory_engine_buttons:
         command_type, default_data = accessory_engine_buttons[button]
         new_command = command_mapping[command_type]
         if button == "KNOB":
+            # Map value (-5 to +5) to data field
             if not -5 <= value <= 5:
                 print(f"Warning: Value {value} for KNOB must be between -5 and 5")
                 return binary_word3  # Return unchanged word
             decimal_number = value + 5  # Shift to 0-10 (0x0 to 0xA)
-            new_data = "0" + format(decimal_number, "04b")  # 00000 to 01010
+            new_data = "0" + format(decimal_number, "04b")  # 00000 to 01010 (data[0] = 0)
+        elif button == "SPEED":
+            # Map value (0 to 31) to data field
+            if not 0 <= value <= 31:
+                print(f"Warning: Value {value} for SPEED must be between 0 and 31")
+                return binary_word3  # Return unchanged word
+            new_data = format(value, "05b")  # 00000 to 11111 (direct 5-bit encoding)
         else:
             new_data = default_data
         new_word = prefix + new_command + new_data
         return new_word
 
-
+    # Check named buttons (switch)
     if button in switch_buttons:
         command_type, new_data = switch_buttons[button]
         new_command = command_mapping[command_type]
         new_word = prefix + new_command + new_data
         return new_word
 
-
+    # Handle numeric buttons (0 through 9 only)
     if button.isdigit():
         num = int(button)
         if 0 <= num <= 9:  # Only consider values 0 through 9
-            # Convert number to 4-bit binary, prepend "1" (as per code logic)
-            new_data = "1" + format(num, "04b")
+            new_data = "1" + format(num, "04b")  # 10000 to 11001
             new_command = command_mapping["action"]
             new_word = prefix + new_command + new_data
             return new_word
@@ -1118,13 +1141,8 @@ def get_command_and_data(button, binary_word3, value=0):
             print(f"Warning: Numeric button {button} is invalid (must be 0-9)")
             return binary_word3  # Return unchanged word
 
-
-    if button == "HALT":
-        return binary_word3  # No specific command/data for HALT, return unchanged word
-
     print(f"Warning: Button {button} not found")
     return binary_word3  # Return unchanged word
-
 
 ################################################################################
 # Setup wifi and web server
@@ -2084,13 +2102,18 @@ def set_hdw(cmd, dur, url):
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
                 return ""
-            # TMCC_DDD_ID_BUTTON = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER, AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, SPEED_N)
+            # TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
+            # ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
+            # AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED) VALUE is optional (KNOB 1-9, SPEED 0-31)
             if seg[:4] == 'TMCC':
                 seg_split = split_string(seg)
                 device = seg_split[1]
                 id = int(seg_split[2])
                 button = seg_split[3]
-                send_command("tmcc", device, id, button)
+                value = 0
+                if button == "KNOB" or button == "SPEED":
+                    value = int(seg_split[4])
+                send_command("tmcc", device, id, button, value)
     except Exception as e:
         files.log_item(e)
 
