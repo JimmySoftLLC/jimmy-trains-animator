@@ -657,8 +657,10 @@ def get_usb_ports():
     for port in ports:
         text_to_wav_file(port, tmp_wav_file_name, 2)
 
+################################################################################
+# Read and write serial commands connected to base3
 
-def read_from_serial():
+def read_command():
     global exit_set_hdw
     while True:
         try:
@@ -675,25 +677,24 @@ def read_from_serial():
                     print(f"Word 2: {binary_word2}")
                     print(f"Word 3: {binary_word3}\n")
 
-                    command = get_command_object(
+                    command_object = get_command_object(
                         binary_word1, binary_word2, binary_word3)
 
-                    response = process_command(command)
-                    print(response["system"], response["device"],
-                          response["address"], response["command"], response["data"], response["button"])
+                    print(command_object["system"], command_object["device"],
+                          command_object["address"], command_object["command"], command_object["data"], command_object["button"], command_object["value"])
 
-                    binary_word1, binary_word2, binary_word3 = get_command_binary_words(response["system"], response["device"], response["address"], response["button"])   
+                    binary_word1, binary_word2, binary_word3 = get_command_binary_words(command_object["system"], command_object["device"], command_object["address"], command_object["button"], command_object["value"])   
                     print(f"Word cmd 1: {binary_word1}")
                     print(f"Word cmd 2: {binary_word2}")
                     print(f"Word cmd 3: {binary_word3}\n")
 
-                    matched_commands = animator_command_matches(response)
+                    matched_commands = animator_command_matches(command_object)
 
                     # Check if there are any matches
                     if matched_commands:
                         for matched_command, animator_command_rows in matched_commands:
                             # Print each matched command and animators command rows
-                            print(matched_command, command)
+                            # print(matched_command, command_object)
                             if matched_command:
                                 exit_set_hdw = False
                                 set_hdw(matched_command[1], 1,
@@ -710,7 +711,7 @@ def read_from_serial():
             print(f"Comms issue: {e}")
 
 def send_command(system, device, address, button):
-    word1, word2, word3 = get_command_binary_words(system, device, address, button)
+    word1, word2, word3 = get_command_binary_words(system, device, address, button, value = 5)
 
     byte1 = int(word1, 2).to_bytes(1, 'big')
     byte2 = int(word2, 2).to_bytes(1, 'big')
@@ -730,40 +731,40 @@ def send_command(system, device, address, button):
 # Command decoding
 
 def get_command_object(binary_word1, binary_word2, binary_word3):
-    print(binary_word1)
-    response = {}
-    response["system"] = get_system(binary_word1)
+    command_object = {}
+    command_object["system"] = get_system(binary_word1)
     if binary_word1 == "11111111" and binary_word2 == "11111111":
-        response["system"] = "halt"
-        response["device"] = "halt"
-        response["address"] = "0000"
-    elif response["system"] == "tmcc":
+        command_object["system"] = "halt"
+        command_object["device"] = "halt"
+        command_object["address"] = "0000"
+    elif command_object["system"] == "tmcc":
         command = binary_word2[0:2]
         if command == "01":  # Switch command
-            response["device"] = "switch"
-            response["address"] = str(
+            command_object["device"] = "switch"
+            command_object["address"] = str(
                 get_address(binary_word2, binary_word3, 7))
         elif command == "00":  # Engine command
-            response["device"] = "engine"
-            response["address"] = str(
+            command_object["device"] = "engine"
+            command_object["address"] = str(
                 get_address(binary_word2, binary_word3, 7))
         elif command == "10":  # Accessory command
-            response["device"] = "accessory"
-            response["address"] = str(
+            command_object["device"] = "accessory"
+            command_object["address"] = str(
                 get_address(binary_word2, binary_word3, 7))
         elif command == "11":  # Route, train or group command
             command = binary_word2[0:4]
             if command == "1101":  # Route command
-                response["device"] = "route"
+                command_object["device"] = "route"
             else:
                 command = binary_word2[0:5]
                 if command == "11001":  # Train command
-                    response["device"] = "train"
+                    command_object["device"] = "train"
                 elif command == "11000":  # Group command
-                    response["device"] = "group"
-        response["command"] = get_command(binary_word3)
-        response["data"] = get_data(binary_word3)
-    return response
+                    command_object["device"] = "group"
+        command_object["command"] = get_command(binary_word3)
+        command_object["data"] = get_data(binary_word3)
+    command_object = get_button(command_object)
+    return command_object
 
 
 def get_system(binary_word1):
@@ -794,8 +795,11 @@ def get_command(binary_word3):
         raise ValueError(f"Invalid command bits: {command}. Must be one of {list(bits_to_command.keys())}.")
     
     return bits_to_command[command]
-    
 
+
+def get_data(binary_word3):
+    return binary_word3[3:8]
+    
 def get_address(binary_word2, binary_word3, number_bits):
     whole_word = binary_word2 + binary_word3
     start = 9 - number_bits
@@ -804,159 +808,169 @@ def get_address(binary_word2, binary_word3, number_bits):
     int_returned = int(binary_number, 2)
     return int_returned
 
-def get_data(binary_word3):
-    return binary_word3[3:8]
+
+def get_button(command_object):
+    global cfg
+    speak_commands = cfg["tmcc_voice_enabled"]
+    command_object["value"] = 0
+    command_object["button"] = ""
+    if command_object["device"] == "accessory" or command_object["device"] == "engine":
+        if command_object["command"] != "extended" and command_object["data"] != "01011" and speak_commands:
+            play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+            spk_str(str(command_object["address"]), False)
+        if command_object["command"] == "extended" and command_object["data"] == "01011":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                play_mix(code_folder + "mvc/set_to_id.wav")
+                spk_str(str(command_object["address"]), False)
+            command_object["button"] = "SET"
+        elif command_object["command"] == "extended" and command_object["data"] == "01000":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                spk_str(str(command_object["address"]), False)
+                play_mix(code_folder + "mvc/low_momentum.wav")
+            command_object["button"] = "LOWM"
+        elif command_object["command"] == "extended" and command_object["data"] == "01001":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                spk_str(str(command_object["address"]), False)
+                play_mix(code_folder + "mvc/medium_momentum.wav")
+            command_object["button"] = "MEDM"
+        elif command_object["command"] == "extended" and command_object["data"] == "01010":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                spk_str(str(command_object["address"]), False)
+                play_mix(code_folder + "mvc/high_momentum.wav")
+            command_object["button"] = "HIGHM"
+        elif command_object["command"] == "relative":
+            # Relative Speed “D”
+            # D = 0xA => +5
+            # D = 0x9 => +4
+            # .....
+            # D = 0x5 => 0 (no change) 
+            # .....
+            # D = 0x1 => -4 
+            # D = 0x0 => -5
+            binary_number = command_object["data"][1:5]
+            decimal_number = int(binary_number, 2)
+            command_object["button"] = "KNOB"
+            command_object["value"] = 0
+            if decimal_number > 5:
+                command_object["value"] = decimal_number - 5
+                print("throttle up :" + str(command_object["value"]))
+                if speak_commands:
+                    play_mix(code_folder + "mvc/trottle_up.wav")
+                    spk_str(str(command_object["value"]), False)
+            elif decimal_number < 5 :
+                command_object["value"] = decimal_number - 5
+                print("throttle down :" + str(command_object["value"]))
+                if speak_commands:
+                    play_mix(code_folder + "mvc/trottle_down.wav")
+                    spk_str(str(command_object["value"]), False)
+        elif command_object["command"] == "action" and command_object["data"] == "00001":
+            if speak_commands:
+                play_mix(code_folder + "mvc/direction.wav")
+            command_object["button"] = "DIR"
+        elif command_object["command"] == "action" and command_object["data"] == "11100":
+            if speak_commands:
+                play_mix(code_folder + "mvc/horn.wav")
+            command_object["button"] = "HORN"
+        elif command_object["command"] == "action" and command_object["data"] == "11101":
+            if speak_commands:
+                play_mix(code_folder + "mvc/bell.wav")
+            command_object["button"] = "BELL"
+        elif command_object["command"] == "action" and command_object["data"] == "00100":
+            if speak_commands:
+                play_mix(code_folder + "mvc/boost.wav")
+            command_object["button"] = "BOOST"
+        elif command_object["command"] == "action" and command_object["data"] == "00111":
+            if speak_commands:
+                play_mix(code_folder + "mvc/brake.wav")
+            command_object["button"] = "BRAKE"
+        elif command_object["command"] == "action" and command_object["data"] == "00101":
+            if speak_commands:
+                play_mix(code_folder + "mvc/front_coupler.wav")
+            command_object["button"] = "FCOUPLER"
+        elif command_object["command"] == "action" and command_object["data"] == "00110":
+            if speak_commands:
+                play_mix(code_folder + "mvc/rear_coupler.wav")
+            command_object["button"] = "RCOUPLER"
+        elif command_object["command"] == "action" and command_object["data"] == "01001":
+            if speak_commands:
+                play_mix(code_folder + "mvc/aux_1.wav")
+            command_object["button"] = "AUX1"
+        elif command_object["command"] == "action" and command_object["data"] == "01101":
+            if speak_commands:
+                play_mix(code_folder + "mvc/aux_2.wav")
+            command_object["button"] = "AUX2"
+        elif command_object["command"] == "action" and command_object["data"][0:1] == "1":
+            binary_number = command_object["data"][1:5]
+            decimal_number = int(binary_number, 2)
+            if speak_commands:
+                play_mix(code_folder + "mvc/numeric_button.wav")
+                spk_str(str(decimal_number), False)
+            command_object["button"] = str(decimal_number)
+
+    if command_object["device"] == "switch":
+        if command_object["command"] != "extended" and command_object["data"] != "01011" and speak_commands:
+            play_mix(code_folder + "mvc/switch.wav")
+            spk_str(str(command_object["address"]), False)
+        if command_object["command"] == "extended" and command_object["data"] == "01011":
+            if speak_commands:
+                play_mix(code_folder + "mvc/switch.wav")
+                play_mix(code_folder + "mvc/set_to_id.wav")
+                spk_str(str(command_object["address"]), False)
+            command_object["button"] = "SET"
+        elif command_object["command"] == "action" and command_object["data"][0:5] == "00000":
+            if speak_commands:
+                play_mix(code_folder + "mvc/through.wav")
+            command_object["button"] = "THROUGH"
+        elif command_object["command"] == "action" and command_object["data"][0:5] == "11111":
+            if speak_commands:
+                play_mix(code_folder + "mvc/out.wav")
+            command_object["button"] = "OUT"
+
+    if command_object["device"] == "halt":
+        if speak_commands:
+            play_mix(code_folder + "mvc/halt.wav")
+        command_object["button"] = "HALT"
+    return command_object
 
 
 def scale_number(num, exponent):
     return int((num if num >= 0 else -(-num)) ** exponent)
 
 
-def animator_command_matches(response):
+def animator_command_matches(command_object):
     global animator_configs
-    # response = {
+    # command_object = {
     # "system": "tmcc",
     # "device": "engine",
     # "address": 1,
     # "command": "action",
     # "data": "01001",
-    # "button": "AUX1"
+    # "button": "AUX1",
+    # "value": 0
     # }
     matches = []  # Initialize an empty list to store matches
 
     for animator_config in animator_configs:
-        if animator_config["device"] == response["device"] and animator_config["address"] == response["address"] or response["device"] == "halt":
+        if animator_config["device"] == command_object["device"] and animator_config["address"] == command_object["address"] or command_object["device"] == "halt":
             for row in animator_config['table_data']:
-                if row[0] == response["button"]:
+                if row[0] == command_object["button"]:
                     # Append the matched row and item to the list
                     matches.append((row, animator_config))
     return matches  # Return all matches
 
 
-def process_command(response):
-    global cfg
-    speak_commands = cfg["tmcc_voice_enabled"]
-    response["button"] = ""
-    if response["device"] == "accessory" or response["device"] == "engine":
-        if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
-            play_mix(code_folder + "mvc/" + response["device"] + ".wav")
-            spk_str(str(response["address"]), False)
-        if response["command"] == "extended" and response["data"] == "01011":
-            if speak_commands:
-                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
-                play_mix(code_folder + "mvc/set_to_id.wav")
-                spk_str(str(response["address"]), False)
-            response["button"] = "SET"
-        elif response["command"] == "extended" and response["data"] == "01000":
-            if speak_commands:
-                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
-                spk_str(str(response["address"]), False)
-                play_mix(code_folder + "mvc/low_momentum.wav")
-            response["button"] = "LOWM"
-        elif response["command"] == "extended" and response["data"] == "01001":
-            if speak_commands:
-                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
-                spk_str(str(response["address"]), False)
-                play_mix(code_folder + "mvc/medium_momentum.wav")
-            response["button"] = "MEDM"
-        elif response["command"] == "extended" and response["data"] == "01010":
-            if speak_commands:
-                play_mix(code_folder + "mvc/" + response["device"] + ".wav")
-                spk_str(str(response["address"]), False)
-                play_mix(code_folder + "mvc/high_momentum.wav")
-            response["button"] = "HIGHM"
-        elif response["command"] == "relative":
-            binary_number = response["data"][1:5]
-            decimal_number = int(binary_number, 2)
-            if decimal_number > 5:
-                decimal_number = scale_number(decimal_number-5, 2)
-                print("throttle up :" + str(decimal_number))
-                if speak_commands:
-                    play_mix(code_folder + "mvc/trottle_up.wav")
-                    spk_str(str(decimal_number), False)
-            else:
-                decimal_number = scale_number(5-decimal_number, 2)
-                print("throttle down :" + str(decimal_number))
-                if speak_commands:
-                    play_mix(code_folder + "mvc/trottle_down.wav")
-                    spk_str(str(decimal_number), False)
-        elif response["command"] == "action" and response["data"] == "00001":
-            if speak_commands:
-                play_mix(code_folder + "mvc/direction.wav")
-            response["button"] = "DIR"
-        elif response["command"] == "action" and response["data"] == "11100":
-            if speak_commands:
-                play_mix(code_folder + "mvc/horn.wav")
-            response["button"] = "HORN"
-        elif response["command"] == "action" and response["data"] == "11101":
-            if speak_commands:
-                play_mix(code_folder + "mvc/bell.wav")
-            response["button"] = "BELL"
-        elif response["command"] == "action" and response["data"] == "00100":
-            if speak_commands:
-                play_mix(code_folder + "mvc/boost.wav")
-            response["button"] = "BOOST"
-        elif response["command"] == "action" and response["data"] == "00111":
-            if speak_commands:
-                play_mix(code_folder + "mvc/brake.wav")
-            response["button"] = "BRAKE"
-        elif response["command"] == "action" and response["data"] == "00101":
-            if speak_commands:
-                play_mix(code_folder + "mvc/front_coupler.wav")
-            response["button"] = "FCOUPLER"
-        elif response["command"] == "action" and response["data"] == "00110":
-            if speak_commands:
-                play_mix(code_folder + "mvc/rear_coupler.wav")
-            response["button"] = "RCOUPLER"
-        elif response["command"] == "action" and response["data"] == "01001":
-            if speak_commands:
-                play_mix(code_folder + "mvc/aux_1.wav")
-            response["button"] = "AUX1"
-        elif response["command"] == "action" and response["data"] == "01101":
-            if speak_commands:
-                play_mix(code_folder + "mvc/aux_2.wav")
-            response["button"] = "AUX2"
-        elif response["command"] == "action" and response["data"][0:1] == "1":
-            binary_number = response["data"][1:5]
-            decimal_number = int(binary_number, 2)
-            if speak_commands:
-                play_mix(code_folder + "mvc/numeric_button.wav")
-                spk_str(str(decimal_number), False)
-            response["button"] = str(decimal_number)
-
-    if response["device"] == "switch":
-        if response["command"] != "extended" and response["data"] != "01011" and speak_commands:
-            play_mix(code_folder + "mvc/switch.wav")
-            spk_str(str(response["address"]), False)
-        if response["command"] == "extended" and response["data"] == "01011":
-            if speak_commands:
-                play_mix(code_folder + "mvc/switch.wav")
-                play_mix(code_folder + "mvc/set_to_id.wav")
-                spk_str(str(response["address"]), False)
-            response["button"] = "SET"
-        elif response["command"] == "action" and response["data"][0:5] == "00000":
-            if speak_commands:
-                play_mix(code_folder + "mvc/through.wav")
-            response["button"] = "THROUGH"
-        elif response["command"] == "action" and response["data"][0:5] == "11111":
-            if speak_commands:
-                play_mix(code_folder + "mvc/out.wav")
-            response["button"] = "OUT"
-
-    if response["device"] == "halt":
-        if speak_commands:
-            play_mix(code_folder + "mvc/halt.wav")
-        response["button"] = "HALT"
-    return response
-
 ################################################################################
 # Command encoding
 
-def get_command_binary_words(system, device, address, button):
+def get_command_binary_words(system, device, address, button, value = 0):
     address = int(address)
     binary_word1 = set_system(system)
     binary_word2 = set_device("00000000", device)
-    binary_word3 = get_command_and_data(button,"00000000")
+    binary_word3 = get_command_and_data(button,"00000000", value)
     binary_word2, binary_word3 = set_address(binary_word2, binary_word3, 7, address)
     return binary_word1, binary_word2, binary_word3
 
@@ -1031,7 +1045,7 @@ def set_address(binary_word2, binary_word3, number_bits, id):
     
     return new_binary_word2, new_binary_word3
 
-def get_command_and_data(button, binary_word3):
+def get_command_and_data(button, binary_word3, value = 0):
     command_mapping = {
         "action": "00",
         "extended": "01",
@@ -1052,7 +1066,8 @@ def get_command_and_data(button, binary_word3):
         "FCOUPLER": ("action", "00101"),
         "RCOUPLER": ("action", "00110"),
         "AUX1": ("action", "01001"),
-        "AUX2": ("action", "01101")
+        "AUX2": ("action", "01101"),
+        "KNOB": ("relative", "00000") # the 00000 data is a place holder it will be changed with the value parameter
     }
 
     switch_buttons = {
@@ -2364,7 +2379,7 @@ if connect_to_base_3 == True:
 
         # Start a thread to continuously read from the serial port
         read_thread = threading.Thread(
-            target=read_from_serial)
+            target=read_command)
         read_thread.daemon = True
         read_thread.start()
 
