@@ -679,8 +679,13 @@ def read_from_serial():
                         binary_word1, binary_word2, binary_word3)
 
                     response = process_command(command)
-                    # print(response["system"], response["device"],
-                    #       response["address"], response["command"], response["data"], response["button"])
+                    print(response["system"], response["device"],
+                          response["address"], response["command"], response["data"], response["button"])
+
+                    binary_word1, binary_word2, binary_word3 = get_command_binary_words(response["system"], response["device"], response["address"], response["button"])   
+                    print(f"Word cmd 1: {binary_word1}")
+                    print(f"Word cmd 2: {binary_word2}")
+                    print(f"Word cmd 3: {binary_word3}\n")
 
                     matched_commands = animator_command_matches(response)
 
@@ -704,7 +709,9 @@ def read_from_serial():
         except Exception as e:
             print(f"Comms issue: {e}")
 
-def write_to_serial(word1, word2, word3):
+def send_command(system, device, address, button):
+    word1, word2, word3 = get_command_binary_words(system, device, address, button)
+
     byte1 = int(word1, 2).to_bytes(1, 'big')
     byte2 = int(word2, 2).to_bytes(1, 'big')
     byte3 = int(word3, 2).to_bytes(1, 'big')
@@ -772,19 +779,6 @@ def get_system(binary_word1):
     
     return bits_to_system[binary_word1]
 
-def set_system(command):
-    system_to_bits = {
-        "tmcc": "11111110",
-        "legacy_engine": "11111000",
-        "legacy_train": "11111001",
-        "parameter": "11111011"
-    }
-    
-    if command not in system_to_bits:
-        raise ValueError(f"Invalid command: {command}. Must be one of {list(system_to_bits.keys())}.")
-    
-    return system_to_bits[command]
-
 
 def get_command(binary_word3):
     bits_to_command = {
@@ -801,23 +795,6 @@ def get_command(binary_word3):
     
     return bits_to_command[command]
     
-def set_command(binary_word3, textcommand):
-    command_to_bits = {
-        "action": "00",
-        "extended": "01",
-        "relative": "10",
-        "absolute": "11"
-    }
-    
-    if textcommand not in command_to_bits:
-        raise ValueError(f"Invalid textcommand: {textcommand}. Must be one of {list(command_to_bits.keys())}.")
-    
-    binary_command = command_to_bits[textcommand]
-    
-    new_binary_word3 = binary_word3[:1] + binary_command + binary_word3[3:]
-    
-    return new_binary_word3
-
 
 def get_address(binary_word2, binary_word3, number_bits):
     whole_word = binary_word2 + binary_word3
@@ -826,27 +803,6 @@ def get_address(binary_word2, binary_word3, number_bits):
     binary_number = whole_word[start:end]
     int_returned = int(binary_number, 2)
     return int_returned
-
-def set_address(binary_word2, binary_word3, number_bits, int_supplied):
-    binary_int = bin(int_supplied)[2:]
-    binary_int = binary_int.zfill(number_bits)
-    
-    max_value = 2 ** number_bits - 1
-    if int_supplied > max_value:
-        raise ValueError(f"int_supplied ({int_supplied}) is too large to fit in {number_bits} bits. Max value is {max_value}.")
-    
-    whole_word = binary_word2 + binary_word3
-    
-    start = 9 - number_bits
-    end = start + number_bits
-    
-    new_whole_word = whole_word[:start] + binary_int + whole_word[end:]
-
-    new_binary_word2 = new_whole_word[:8]
-    new_binary_word3 = new_whole_word[8:]
-    
-    return new_binary_word2, new_binary_word3
-
 
 def get_data(binary_word3):
     return binary_word3[3:8]
@@ -996,7 +952,149 @@ def process_command(response):
 ################################################################################
 # Command encoding
 
+def get_command_binary_words(system, device, address, button):
+    address = int(address)
+    binary_word1 = set_system(system)
+    binary_word2 = set_device("00000000", device)
+    binary_word3 = get_command_and_data(button,"00000000")
+    binary_word2, binary_word3 = set_address(binary_word2, binary_word3, 7, address)
+    return binary_word1, binary_word2, binary_word3
 
+def set_system(command):
+    system_to_bits = {
+        "tmcc": "11111110",
+        "legacy_engine": "11111000",
+        "legacy_train": "11111001",
+        "parameter": "11111011"
+    }
+    
+    if command not in system_to_bits:
+        raise ValueError(f"Invalid command: {command}. Must be one of {list(system_to_bits.keys())}.")
+    
+    return system_to_bits[command]
+
+def set_device(binary_word2, device):
+    # Device-to-command mapping
+    device_command_mapping = {
+        "engine": "00",      # 2 bits (index 0-1)
+        "switch": "01",      # 2 bits (index 0-1)
+        "accessory": "10",   # 2 bits (index 0-1)
+        "route": "1101",     # 4 bits (index 0-3)
+        "train": "11001",    # 5 bits (index 0-4)
+        "group": "11000"     # 5 bits (index 0-4)
+    }
+
+    # Check if binary_word2 is exactly 8 bits
+    if len(binary_word2) != 8:
+        print(f"Error: binary_word2 '{binary_word2}' must be exactly 8 bits")
+        return binary_word2  # Return unchanged word on error
+
+    # Check if device is valid
+    if device not in device_command_mapping:
+        print(f"Warning: Device '{device}' not recognized")
+        return binary_word2  # Return unchanged word
+
+    # Get the command bits for the device
+    new_command = device_command_mapping[device]
+    command_length = len(new_command)
+
+    # Extract the unchanged portion of binary_word2 (bits after the command)
+    remaining_bits = binary_word2[command_length:]
+
+    # Construct new word with updated command bits and unchanged remaining bits
+    new_word = new_command + remaining_bits
+
+    # Ensure the new word is exactly 8 bits (should always be true with this mapping)
+    if len(new_word) != 8:
+        print(f"Error: New word '{new_word}' is not 8 bits after modification")
+        return binary_word2  # Return unchanged word on error
+
+    return new_word
+
+def set_address(binary_word2, binary_word3, number_bits, id):
+    binary_int = bin(id)[2:]
+    binary_int = binary_int.zfill(number_bits)
+    
+    max_value = 2 ** number_bits - 1
+    if id > max_value:
+        raise ValueError(f"int_supplied ({id}) is too large to fit in {number_bits} bits. Max value is {max_value}.")
+    
+    whole_word = binary_word2 + binary_word3
+    
+    start = 9 - number_bits
+    end = start + number_bits
+    
+    new_whole_word = whole_word[:start] + binary_int + whole_word[end:]
+
+    new_binary_word2 = new_whole_word[:8]
+    new_binary_word3 = new_whole_word[8:]
+    
+    return new_binary_word2, new_binary_word3
+
+def get_command_and_data(button, binary_word3):
+    command_mapping = {
+        "action": "00",
+        "extended": "01",
+        "relative": "10",
+        "absolute": "11"
+    }
+
+    accessory_engine_buttons = {
+        "SET": ("extended", "01011"),
+        "LOWM": ("extended", "01000"),
+        "MEDM": ("extended", "01001"),
+        "HIGHM": ("extended", "01010"),
+        "DIR": ("action", "00001"),
+        "HORN": ("action", "11100"),  # Checked before numeric buttons
+        "BELL": ("action", "11101"),  # Checked before numeric buttons
+        "BOOST": ("action", "00100"),
+        "BRAKE": ("action", "00111"),
+        "FCOUPLER": ("action", "00101"),
+        "RCOUPLER": ("action", "00110"),
+        "AUX1": ("action", "01001"),
+        "AUX2": ("action", "01101")
+    }
+
+    switch_buttons = {
+        "SET": ("extended", "01011"),
+        "THROUGH": ("action", "00000"),
+        "OUT": ("action", "11111")
+    }
+
+    if len(binary_word3) != 8:
+        print(f"Error: binary_word3 '{binary_word3}' must be exactly 8 bits")
+        return binary_word3  # Return unchanged word on error
+
+    prefix = binary_word3[0]      # Index 0 (1 bit, unchanged)
+    command = binary_word3[1:3]   # Index 1-2 (2 bits, to be updated)
+    data = binary_word3[3:8]      # Index 3-7 (5 bits, to be updated)
+
+    if button in accessory_engine_buttons:
+        command_type, data = accessory_engine_buttons[button]
+        command = command_mapping[command_type]
+        new_word = prefix + command + data
+        return new_word
+
+    if button in switch_buttons:
+        command_type, data = switch_buttons[button]
+        command = command_mapping[command_type]
+        new_word = prefix + command + data
+        return new_word
+
+    if button.isdigit():
+        num = int(button)
+        if 0 <= num <= 9:  # Only consider values 0 through 9
+            # Convert number to 4-bit binary, prepend "1" (as per code logic)
+            data = "1" + format(num, "04b")
+            command = command_mapping["action"]
+            new_word = prefix + command + data
+            return new_word
+        else:
+            print(f"Warning: Numeric button {button} is invalid (must be 0-9)")
+            return binary_word3  # Return unchanged word
+
+    print(f"Warning: Button {button} not found")
+    return binary_word3  # Return unchanged word
 
 ################################################################################
 # Setup wifi and web server
@@ -1962,7 +2060,7 @@ def set_hdw(cmd, dur, url):
                 device = seg_split[1]
                 id = int(seg_split[2])
                 button = seg_split[3]
-                send_tmcc_command(device, id, button)
+                send_command("tmcc", device, id, button)
     except Exception as e:
         files.log_item(e)
 
