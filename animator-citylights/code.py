@@ -358,6 +358,7 @@ exit_set_hdw = False
 local_ip = ""
 t_s = []
 t_elsp = 0.0
+mdns_to_ip = {}
 
 
 ################################################################################
@@ -1135,7 +1136,7 @@ def send_animator_post(url, endpoint, new_data):
         return created_data
     except Exception as e:
         print(f"Comms issue: {e}")
-
+        
 
 ################################################################################
 # Setup wifi and web server
@@ -2812,6 +2813,7 @@ def set_hdw(cmd, dur, url):
                     return response
                 elif len(seg_split) == 4:
                     print ("four params")
+                    #ip_from_mdns = get_ip_from_mdns(seg_split[1])
                     response = send_animator_post(
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
@@ -2819,31 +2821,48 @@ def set_hdw(cmd, dur, url):
     except Exception as e:
         files.log_item(e)
 
-    def split_string(seg):
-        # Find the position of the first '_{' and the last '}'
-        start_idx = seg.find('_{')
-        end_idx = seg.find('}', start_idx)
+def split_string(seg):
+    # Find the position of the first '_{' and the last '}'
+    start_idx = seg.find('_{')
+    end_idx = seg.find('}', start_idx)
+    
+    if start_idx != -1 and end_idx != -1:
+        # Extract the object part including the curly braces
+        object_part = seg[start_idx:end_idx+1]
         
-        if start_idx != -1 and end_idx != -1:
-            # Extract the object part including the curly braces
-            object_part = seg[start_idx:end_idx+1]
-            
-            # Remove the object part from the string
-            seg = seg[:start_idx] + seg[end_idx+1:]
-            
-            # Remove the leading underscore from the object part
-            object_part = object_part[1:]  # Strip the first character '_'
-        else:
-            object_part = ''  # If no object is found, set it to empty
+        # Remove the object part from the string
+        seg = seg[:start_idx] + seg[end_idx+1:]
         
-        # Now split the remaining part by underscores
-        parts = seg.split('_')
-        
-        # Add the object part as the last item
-        if object_part:
-            parts.append(object_part)
-        
-        return parts
+        # Remove the leading underscore from the object part
+        object_part = object_part[1:]  # Strip the first character '_'
+    else:
+        object_part = ''  # If no object is found, set it to empty
+    
+    # Now split the remaining part by underscores
+    parts = seg.split('_')
+    
+    # Add the object part as the last item
+    if object_part:
+        parts.append(object_part)
+    
+    return parts
+
+def get_ip_address(hostname):
+    response = send_animator_post(
+                        hostname, "get-local-ip", "")
+    print(response)
+    return response
+
+def get_ip_from_mdns(mdns_name):
+    if mdns_name not in mdns_to_ip:
+        ip_address = get_ip_address(mdns_name)
+        mdns_to_ip[mdns_name] = ip_address
+        print(f"Resolved and added {mdns_name}: {ip_address} to the dictionary")
+    else:
+        print(f"Found {mdns_name} in dictionary: {mdns_to_ip[mdns_name]}")
+    
+    return mdns_to_ip[mdns_name]
+
 
 ##############################
 # Led color effects
