@@ -118,7 +118,8 @@ try:
     sd = sdcardio.SDCard(spi, cs)
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
-except:
+except Exception as e:
+    files.log_item(e)
     w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
@@ -137,7 +138,8 @@ except:
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
-            except:
+            except Exception as e:
+                files.log_item(e)
                 w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
@@ -258,7 +260,8 @@ if (web):
         WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
         print("Using env ssid and password")
-    except:
+    except Exception as e:
+        files.log_item(e)
         print("Using default ssid and password")
 
     try:
@@ -525,7 +528,7 @@ def rst_def():
     global cfg
     cfg["volume_pot"] = True
     cfg["HOST_NAME"] = "animator-outhouse"
-    cfg["volume"] = 20
+    cfg["volume"] = "20"
     cfg["roof_open_position"] = 100
     cfg["guy_up_position"] = 0
     cfg["door_open_position"] = 24
@@ -549,7 +552,8 @@ def upd_vol(seconds):
     else:
         try:
             v = int(cfg["volume"]) / 100
-        except:
+        except Exception as e:
+            files.log_item(e)
             v = .5
         if v < 0 or v > 1:
             v = .5
@@ -653,7 +657,8 @@ def spk_str(str_to_speak, addLocal):
             if character == ".":
                 character = "dot"
             ply_a_0("/sd/mvc/" + character + ".wav")
-        except:
+        except Exception as e:
+            files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
         ply_a_0("/sd/mvc/dot.wav")
