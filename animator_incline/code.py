@@ -171,7 +171,8 @@ vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
 
 # OPTIONAL: can set non-default values
 vl53.inter_measurement = 0
-vl53.timing_budget = 200
+vl53.distance_mode = 1  # 1 = Short, 2 = Long
+vl53.timing_budget = 200  # 200 ms
 
 print("VL53L4CD Simple Test.")
 print("--------------------")
@@ -250,10 +251,12 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 
-num_px = 2
+num_px = 200
 
 # 15 on demo 17 tiny 10 on large
 led = neopixel.NeoPixel(board.GP15, num_px)
+led.fill((50, 50, 50))
+led.show()
 
 gc_col("Neopixels setup")
 
@@ -1531,4 +1534,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 
