@@ -37,7 +37,6 @@ import os
 import adafruit_vl53l4cd
 
 
-
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
@@ -77,268 +76,41 @@ exit_set_hdw_async = False
 
 gc_col("config setup")
 
+
 def upd_media():
     global animations
 
     animations = files.return_directory("", "animations", ".json")
 
+
 upd_media()
+
+br = 0
 
 ################################################################################
 # Setup neo pixels
 
-trees = []
-canes = []
-ornmnts = []
-stars = []
-brnchs = []
-cane_s = []
-cane_e = []
+n_px = 1
 
-bars = []
-bolts = []
-noods = []
-neos = []
-
-bar_arr = []
-bolt_arr = []
-neo_arr = []
-
-n_px = 0
-
-#15 on demo 17 tiny 10 on large, GP11 on clhv-6, GP18 on smart bumper
+# 15 on demo 17, GP18 on smart bumper
 neo_pixel_pin = board.GP18
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
-def bld_tree(p):
-    i = []
-    for t in trees:
-        for ledi in t:
-            si = ledi
-            break
-        if p == "ornaments":
-            for ledi in range(0, 7):
-                i.append(ledi+si)
-        if p == "star":
-            for ledi in range(7, 14):
-                i.append(ledi+si)
-        if p == "branches":
-            for ledi in range(14, 21):
-                i.append(ledi+si)
-    return i
+led.fill((255, 0, 0))
+led.show()
+time.sleep(.2)
 
+led.fill((0, 255, 0))
+led.show()
+time.sleep(.2)
 
-def bld_cane(p):
-    i = []
-    for c in canes:
-        for led_i in c:
-            si = led_i
-            break
-        if p == "end":
-            for led_i in range(0, 2):
-                i.append(led_i+si)
-        if p == "start":
-            for led_i in range(2, 4):
-                i.append(led_i+si)
-    return i
+led.fill((0, 0, 255))
+led.show()
+time.sleep(.2)
 
-
-def bld_bar():
-    i = []
-    for b in bars:
-        for l in b:
-            si = l
-            break
-        for l in range(0, 10):
-            i.append(l+si)
-    return i
-
-
-def bld_bolt():
-    i = []
-    for b in bolts:
-        for l in b:
-            si = l
-            break
-        if len(b) == 4:
-            for l in range(0, 4):
-                i.append(l+si)
-        if len(b) == 1:
-            for l in range(0, 1):
-                i.append(l+si)
-    return i
-
-
-def bld_neo():
-    i = []
-    for n in neos:
-        for l in n:
-            si = l
-            break
-        for l in range(0, 6):
-            i.append(l+si)
-    return i
-
-
-def show_l():
-    led.show()
-    time.sleep(.2)
-    led.fill((0, 0, 0))
-    led.show()
-
-def l_tst():
-    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
-
-    # Christmas items
-    ornmnts = bld_tree("ornaments")
-    stars = bld_tree("star")
-    brnchs = bld_tree("branches")
-    cane_s = bld_cane("start")
-    cane_e = bld_cane("end")
-
-    # Lightning items
-    bar_arr = bld_bar()
-    bolt_arr = bld_bolt()
-
-    # Neo items
-    neo_arr = bld_neo()
-
-    # cane test
-    cnt = 0
-    for i in cane_s:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 1:
-            show_l()
-            cnt = 0
-    for i in cane_e:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 1:
-            show_l()
-            cnt = 0
-
-    # tree test
-    cnt = 0
-    for i in ornmnts:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-    for i in stars:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-    for i in brnchs:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-
-    # bar test
-    for b in bars:
-        for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # bolt test
-    for b in bolts:
-        for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # nood test
-    for n in noods:
-        led[n[0]] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # neo test
-    for n in neos:
-        for i in n:
-            led[i] = (0, 50, 0)
-            time.sleep(.3)
-            led.show()
-            led[i] = (50, 0, 0)
-            time.sleep(.3)
-            led.show()
-            led[i] = (0, 0, 50)
-            time.sleep(.3)
-            led.show()
-            time.sleep(.3)
-            led.fill((0, 0, 0))
-            led.show()
-
-
-def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, n_px, led
-    trees = []
-    canes = []
-    bars = []
-    bolts = []
-    noods = []
-    neos = []
-
-    n_px = 0
-
-    els = cfg["light_string"].split(',')
-
-    for el in els:
-        p = el.split('-')
-        if len(p) == 2:
-            typ, qty = p
-            qty = int(qty)
-            if typ == 'grandtree':
-                s = list(range(n_px, n_px + qty))
-                trees.append(s)
-                n_px += qty
-            elif typ == 'cane':
-                s = list(range(n_px, n_px + qty))
-                canes.append(s)
-                n_px += qty
-            if typ == 'bar':
-                s = list(range(n_px, n_px + qty))
-                bars.append(s)
-                n_px += qty
-            elif typ == 'bolt' and qty < 4:
-                s = [n_px, qty]
-                noods.append(s)
-                n_px += 1
-            elif typ == 'bolt' and qty == 4:
-                s = list(range(n_px, n_px + qty))
-                bolts.append(s)
-                n_px += qty
-            if typ == 'neo':
-                if qty == 6:
-                    neoqty = 2
-                if qty == 12:
-                    neoqty = 4
-                s = list(range(n_px, n_px + neoqty))
-                neos.append(s)
-                n_px += neoqty
-
-    print("Number of pixels total: ", n_px)
-    led.deinit()
-    led = neopixel.NeoPixel(neo_pixel_pin, n_px)
-    led.auto_write = False
-    led.brightness = 1.0
-    l_tst()
-
-
-upd_l_str()
+led.fill((0, 0, 0))
+led.show()
 
 gc_col("Neopixels setup")
 
@@ -380,6 +152,8 @@ if (web):
     gc_col("config wifi imports")
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
     gc_col("config wifi imports")
+    import adafruit_requests
+    gc_col("config wifi imports")
 
     files.log_item("Connecting to WiFi")
 
@@ -414,12 +188,15 @@ if (web):
 
             # files.log_items IP address to REPL
             local_ip = str(wifi.radio.ipv4_address)
-            files.log_item("IP is" + local_ip)
+            files.log_item("IP is " + local_ip)
             files.log_item("Connected")
 
             # set up server
             pool = socketpool.SocketPool(wifi.radio)
             server = Server(pool, "/static", debug=True)
+
+            # Set up requests session for HTTP requests
+            requests = adafruit_requests.Session(pool)
 
             gc_col("wifi server")
 
@@ -462,7 +239,7 @@ if (web):
                     rst_def()
                     files.write_json_file("cfg.json", cfg)
                 return Response(request, "Utility: " + rq_d["an"])
-            
+
             @server.route("/stop", [POST])
             def btn(request: Request):
                 stop_all_commands()
@@ -472,15 +249,15 @@ if (web):
             def btn(request: Request):
                 global exit_set_hdw_async
                 exit_set_hdw_async = False
-                """Handle lights route synchronously but process async operation in background."""
                 try:
                     rq_d = request.json()  # Parse the incoming JSON
-                    asyncio.create_task(set_hdw_async(rq_d["an"],0))  # Schedule the async task
+                    # Schedule the async task
+                    asyncio.create_task(set_hdw_async(rq_d["an"], 0))
                     return Response(request, "Utility: set lights successfully.")
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error setting lights.")
-                
+
             @server.route("/create-animation", [POST])
             def btn(request: Request):
                 try:
@@ -489,14 +266,15 @@ if (web):
                     print(rq_d)
                     f_n = animators_folder + rq_d["fn"] + ".json"
                     print(f_n)
-                    an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0", "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
+                    an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0",
+                               "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
                     files.write_json_file(f_n, an_data)
                     upd_media()
                     return Response(request, "Created animation successfully.")
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error creating animation.")
-            
+
             @server.route("/rename-animation", [POST])
             def btn(request: Request):
                 try:
@@ -510,7 +288,7 @@ if (web):
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error setting lights.")
-                
+
             @server.route("/delete-animation", [POST])
             def btn(request: Request):
                 try:
@@ -525,33 +303,11 @@ if (web):
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error setting lights.")
-                
-            @server.route("/update-light-string", [POST])
-            def btn(req: Request):
-                global cfg
-                rq_d = req.json()
-                if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
-                    cfg["light_string"] = rq_d["text"]
-                    print("action: " +
-                        rq_d["action"] + " data: " + cfg["light_string"])
-                    files.write_json_file("cfg.json", cfg)
-                    upd_l_str()
-                    return Response(req, cfg["light_string"])
-                if cfg["light_string"] == "":
-                    cfg["light_string"] = rq_d["text"]
-                else:
-                    cfg["light_string"] = cfg["light_string"] + \
-                        "," + rq_d["text"]
-                print("action: " + rq_d["action"] +
-                    " data: " + cfg["light_string"])
-                files.write_json_file("cfg.json", cfg)
-                upd_l_str()
-                return Response(req, cfg["light_string"])
 
             @server.route("/get-light-string", [POST])
             def btn(req: Request):
                 return Response(req, cfg["light_string"])
-            
+
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
                 global cfg
@@ -564,7 +320,7 @@ if (web):
             @server.route("/get-host-name", [POST])
             def btn(request: Request):
                 return Response(request, cfg["HOST_NAME"])
-            
+
             @server.route("/get-local-ip", [POST])
             def btn(request: Request):
                 return Response(request, local_ip)
@@ -584,7 +340,8 @@ if (web):
                     rq_d = request.json()
                     print(rq_d["an"])
                     gc_col("Save Data.")
-                    asyncio.create_task(set_hdw_async(rq_d["an"], 3))  # Schedule the async task
+                    # Schedule the async task
+                    asyncio.create_task(set_hdw_async(rq_d["an"], 3))
                     return Response(request, "Test animation successfully")
                 except Exception as e:
                     files.log_item(e)  # Log any errors
@@ -631,17 +388,49 @@ if (web):
             files.log_item(e)
             time.sleep(2)
 
+def send_get_request(url):
+    try:
+        files.log_item("Sending GET request to " + url)
+        response = requests.get(url)
+        files.log_item("GET Response: " + response.text)
+        response.close()
+    except Exception as e:
+        files.log_item("GET request failed: " + str(e))
+
+def send_post_request(url, data):
+    try:
+        files.log_item("Sending POST request to " + url)
+        response = requests.post(url, json=data)
+        files.log_item("POST Response: " + response.text)
+        response.close()
+    except Exception as e:
+        files.log_item("POST request failed: " + str(e))
+
 gc_col("web server")
 
+# Test GET request
+files.log_item("Sending GET request to internet")
+response = requests.get("http://httpbin.org/get")
+files.log_item("GET Response: " + response.text)
+response.close()
 
+# Test POST request
+try:
+    data = {"test": "value"}  # Simple dictionary
+    files.log_item("Sending POST request to http://httpbin.org/post")
+    response = requests.post("http://httpbin.org/post", json=data)
+    files.log_item("POST Response: " + response.text)
+    response.close()
+except Exception as e:
+    files.log_item("POST request failed: " + str(e))
 ################################################################################
 # Command queue
 command_queue = []
 
+
 def add_command(command, to_start=False):
     global exit_set_hdw_async
     exit_set_hdw_async = False
-    """Add a command to the queue. If to_start is True, add to the front."""
     if to_start:
         command_queue.insert(0, command)  # Add to the front
         print("Command added to the start:", command)
@@ -649,21 +438,21 @@ def add_command(command, to_start=False):
         command_queue.append(command)  # Add to the end
         print("Command added to the end:", command)
 
+
 async def process_commands():
-    """Asynchronous function to process commands in a FIFO order."""
     while command_queue:
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
         await an_async(command)  # Process each command as an async operation
         await asyncio.sleep(0)  # Yield control to the event loop
 
+
 def clear_command_queue():
-    """Clear all commands from the queue."""
     command_queue.clear()
     print("Command queue cleared.")
 
+
 def stop_all_commands():
-    """Stop all commands and clear the queue."""
     global exit_set_hdw_async
     clear_command_queue()
     exit_set_hdw_async = True
@@ -682,9 +471,7 @@ def rst_def():
 ################################################################################
 # animations
 
-
 async def an_async(f_nm):
-    """Run animation lighting as an async task."""
     print("Filename:", f_nm)
     try:
         await an_light_async(f_nm)
@@ -695,8 +482,6 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    """Asynchronous animation lighting."""
-
     flsh_t = []
     if f_exists("animations/" + f_nm + ".json"):
         flsh_t = files.read_json_file("animations/" + f_nm + ".json")
@@ -726,17 +511,17 @@ async def an_light_async(f_nm):
             if len(ft1) == 1 or ft1[1] == "":
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                result = await set_hdw_async(f"L0{lgt},S0{pos}",dur)
+                result = await set_hdw_async(f"L0{lgt},S0{pos}", dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1],dur)
+                result = await set_hdw_async(ft1[1], dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-            
+
         # print (flsh_i)
 
         await asyncio.sleep(0)  # Yield control to other tasks
@@ -750,6 +535,7 @@ async def an_light_async(f_nm):
 ##############################
 # animation effects
 
+
 async def random_effect(il, ih, d):
     i = random.randint(il, ih)
     if i == 1:
@@ -760,6 +546,7 @@ async def random_effect(il, ih, d):
     elif i == 3:
         await fire(d)
 
+
 async def rbow(spd, dur):
     global exit_set_hdw_async
     st = time.monotonic()
@@ -768,9 +555,8 @@ async def rbow(spd, dur):
         for j in range(0, 255, 1):
             if exit_set_hdw_async:
                 return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
+            pixel_index = (i * 256 // n_px) + j
+            led[0] = colorwheel(pixel_index & 255)
             led.show()
             await asyncio.sleep(spd)
             te = time.monotonic()-st
@@ -779,36 +565,18 @@ async def rbow(spd, dur):
         for j in reversed(range(0, 255, 1)):
             if exit_set_hdw_async:
                 return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
+            pixel_index = (i * 256 // n_px) + j
+            led[0] = colorwheel(pixel_index & 255)
             led.show()
             await asyncio.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
                 return
-            
+
+
 async def fire(dur):
     global exit_set_hdw_async
     st = time.monotonic()
-
-    firei = []
-
-    firei.extend(ornmnts)
-    firei.extend(cane_s)
-    firei.extend(cane_e)
-
-    stari = []
-    stari.extend(stars)
-
-    for i in stari:
-        led[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend((brnchs))
-
-    for i in brnchsi:
-        led[i] = (50, 50, 50)
 
     r = random.randint(0, 255)
     g = random.randint(0, 255)
@@ -816,15 +584,12 @@ async def fire(dur):
 
     # Flicker, based on our initial RGB values
     while True:
-        for i in firei:
-            if exit_set_hdw_async:
-                return
-            f = random.randint(0, 110)
-            r1 = bnd(r-f, 0, 255)
-            g1 = bnd(g-f, 0, 255)
-            b1 = bnd(b-f, 0, 255)
-            led[i] = (r1, g1, b1)
-            led.show()
+        f = random.randint(0, 110)
+        r1 = bnd(r-f, 0, 255)
+        g1 = bnd(g-f, 0, 255)
+        b1 = bnd(b-f, 0, 255)
+        led[0] = (r1, g1, b1)
+        led.show()
         await asyncio.sleep(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
@@ -832,42 +597,23 @@ async def fire(dur):
 
 
 def multi_color():
-    for i in range(0, n_px):
-        r = random.randint(128, 255)
-        g = random.randint(128, 255)
-        b = random.randint(128, 255)
-        c = random.randint(0, 2)
-        if c == 0:
-            r1 = r
-            g1 = 0
-            b1 = 0
-        elif c == 1:
-            r1 = 0
-            g1 = g
-            b1 = 0
-        elif c == 2:
-            r1 = 0
-            g1 = 0
-            b1 = b
-        led[i] = (r1, g1, b1)
-
-    stari = []
-    stari.extend(stars)
-
-    for i in stari:
-        led[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend((brnchs))
-
-    for i in brnchsi:
-        led[i] = (7, 163, 30)
-
-    canei = []
-    canei.extend(cane_e)
-    for i in canei:
-        led[i] = (255, 255, 255)
-    led.show()
+    r = random.randint(128, 255)
+    g = random.randint(128, 255)
+    b = random.randint(128, 255)
+    c = random.randint(0, 2)
+    if c == 0:
+        r1 = r
+        g1 = 0
+        b1 = 0
+    elif c == 1:
+        r1 = 0
+        g1 = g
+        b1 = 0
+    elif c == 2:
+        r1 = 0
+        g1 = 0
+        b1 = b
+    led[0] = (r1, g1, b1)
 
 
 def bnd(c, l, u):
@@ -878,11 +624,7 @@ def bnd(c, l, u):
     return c
 
 
-sp = [0, 0, 0, 0, 0, 0]
-br = 0
-
 async def set_hdw_async(input_string, dur):
-    """Async hardware control for NeoPixel lights."""
     global sp, br, exit_set_hdw_async
     segs = input_string.split(",")
 
@@ -892,22 +634,14 @@ async def set_hdw_async(input_string, dur):
                 return "STOP"
             if seg[0] == 'E':  # end an
                 return "STOP"
-            elif seg[:2] == 'LN':
+            elif seg[:1] == 'L':
                 segs_split = seg.split("_")
-                light_n = int(segs_split[0][2:])-1
-                r = int(segs_split[1])
-                g = int(segs_split[2])
-                b = int(segs_split[3])
-                set_neo_to(light_n, r, g, b)
-            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            elif seg[:2] == 'NM':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0][2:])
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_module_to(mod_n, index, v)
+                r = int(segs_split[0])
+                g = int(segs_split[1])
+                b = int(segs_split[2])
+                led[0] = (r, g, b)
             # brightness BXXX = Brightness XXX 000 to 100
-            elif seg[0:2] == 'BN':
+            elif seg[0:1] == 'B':
                 br = int(seg[2:])
                 led.brightness = float(br/100)
                 led.show()
@@ -944,63 +678,7 @@ async def set_hdw_async(input_string, dur):
                 file_nm = seg[1:]
                 add_command(file_nm)
     except Exception as e:
-            files.log_item(e)
-
-def is_neo(number, nested_array):
-    return any(number in sublist for sublist in nested_array)
-
-def set_neo_to(light_n, r, g, b):
-    if light_n == -1:
-        for i in range(n_px):  # in range(n_px)
-            if is_neo(i, neos):
-                led[i] = (g, r, b)
-            else:
-                led[i] = (r, g, b)
-    else:
-        if is_neo(light_n, neos):
-            led[light_n] = (g, r, b)
-        else:
-            led[light_n] = (r, g, b)
-    led.show()
-
-def get_neo_ids():
-    matches = []
-    for num in range(n_px + 1):
-        if any(num == sublist[0] for sublist in neos):
-            matches.append(num)
-    return matches    
-
-def set_neo_module_to(mod_n, ind, v):
-    cur = []
-    neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
-    if mod_n == 0:
-        for i in neo_ids:
-            led[i] = (v, v, v)
-            led[i+1] = (v, v, v)
-    elif ind == 0:
-        led[neo_ids[mod_n-1]] = (v, v, v)
-        led[neo_ids[mod_n-1]+1] = (v, v, v)
-    elif ind < 4:
-        ind -= 1
-        if ind == 0:
-            ind = 1
-        elif ind == 1:
-            ind = 0
-        cur = list(led[neo_ids[mod_n-1]])
-        cur[ind] = v
-        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n-1]])
-    else:
-        ind -= 1
-        if ind == 3:
-            ind = 4
-        elif ind == 4:
-            ind = 3
-        cur = list(led[neo_ids[mod_n-1]+1])
-        cur[ind-3] = v
-        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
-    led.show()
+        files.log_item(e)
 
 if (web):
     files.log_item("starting server...")
@@ -1023,6 +701,8 @@ else:
     led.show()
 
 # Main task handling
+
+
 async def process_commands_task():
     """Task to continuously process commands."""
     while True:
@@ -1031,6 +711,7 @@ async def process_commands_task():
         except Exception as e:
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
+
 
 async def server_poll_task(server):
     """Poll the web server."""
@@ -1041,10 +722,12 @@ async def server_poll_task(server):
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
 
+
 async def garbage_collection_task():
     while True:
         gc.collect()  # Collect garbage
         await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
+
 
 async def main():
     # Create asyncio tasks
@@ -1064,6 +747,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
-
 
