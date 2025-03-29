@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - City Lights CLHV-6</title>
+    <title>Animator - Smart Bumper</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
@@ -12,9 +12,9 @@
 <body>
     <div id="modalEl"></div>
     <div class="mui-container">
-        <h1>Animator - City Lights CLHV-6</h1>
+        <h1>Animator - Smart Bumper</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your Animator - City Lights CLHV-6
+            Use this web app to control and setup your Animator - Smart Bumper
             product. Have fun animating.
         </p>
         <ul class="mui-tabs__bar">
@@ -34,113 +34,47 @@
         </div>
         <div class="mui-tabs__pane" id="settings">
             <h2>Setup light string:</h2>
-            <div class="mui-textfield">
-                <p>
-                    Enter your light string in the order which each component is connected together by pressing neo-6,
-                    cane-4...
-                    When finished press "Save".
-                </p>
-                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
-                    data-url="/update-light-string">
-                    Save
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
-                    data-url="/update-light-string">
-                    Clear
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
-                    data-url="/update-light-string">
-                    Set to defaults
-                </button>
-            </div>
-            <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
-                    data-url="/update-light-string">
-                    projector-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
-                    data-url="/update-light-string">
-                    concession-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
-                    data-url="/update-light-string">
-                    sign-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
-                    data-url="/update-light-string">
-                    cane-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
-                    data-url="/update-light-string">
-                    grandtree-21
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neo-6"
-                    data-url="/update-light-string">
-                    neo-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
-                    data-url="/update-light-string">
-                    bolt-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-2"
-                    data-url="/update-light-string">
-                    bolt-2
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-3"
-                    data-url="/update-light-string">
-                    bolt-3
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-4"
-                    data-url="/update-light-string">
-                    bolt-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bar-10"
-                    data-url="/update-light-string">
-                    bar-10
-                </button>
-            </div>
-            <h2>Test lights:</h2>
+            <h2>Test light:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L_255_0_0" data-url="/lights"
                     type="button">
                     red
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L_0_255_0" data-url="/lights"
                     type="button">
                     green
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L_0_0_255" data-url="/lights"
                     type="button">
                     blue
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L_255_255_255" data-url="/lights"
                     type="button">
                     white
                 </button>
             </div>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B0" data-url="/lights"
                     type="button">
                     Off
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN20" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B20" data-url="/lights"
                     type="button">
                     20
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN40" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B40" data-url="/lights"
                     type="button">
                     40
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN60" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B60" data-url="/lights"
                     type="button">
                     60
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN80" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B80" data-url="/lights"
                     type="button">
                     80
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN100" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="B100" data-url="/lights"
                     type="button">
                     100
                 </button>
@@ -198,36 +132,35 @@
             <div class="mui-textfield">
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
-            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
-            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time between
+            <div>L_R_G_B = Neopixel light RGB 0 to 255</div>
+            <div>BYYY = Brightness Neopixel light YYY 000 to 100</div>
+            <div>F_TTT = Fade brightness Neopixel light in or out XXX 0 to 100, TTT time between
                 transitions in decimal seconds</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
             <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
             <div>ZFIRE = Fire</div>
             <div>ZCOLCH = Color change</div>
             <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-            <div>
-                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
-                    Animations</button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop"
-                    type="button">
-                    Stop
-                </button>
-                <table id="dataTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>TimeStamp</th>
-                            <th>TimeCode</th>
-                            <th>Animation</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                data_object}</div>
+            <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
+                Animations</button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop" type="button">
+                Stop
+            </button>
+            <table id="dataTable" class="mui-table">
+                <thead>
+                    <tr>
+                        <th>TimeStamp</th>
+                        <th>TimeCode</th>
+                        <th>Animation</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
+    </div>
     </div>
 </body>
 
@@ -296,24 +229,6 @@
             .catch(function (error) {
                 console.log(error);
             });
-
-        // get light string
-        fetch('/get-light-string', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                lightString.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-            });
-
 
         getAnimations()
     });

@@ -61,7 +61,7 @@ def rst():
 gc_col("Imports gc, files")
 
 ################################################################################
-# Sd card config variables
+# Sd card config variables and globals
 
 animators_folder = "/animations/"
 
@@ -87,6 +87,8 @@ upd_media()
 
 br = 0
 
+mdns_to_ip = {}
+
 ################################################################################
 # Setup neo pixels
 
@@ -97,17 +99,9 @@ neo_pixel_pin = board.GP18
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
-led.fill((255, 0, 0))
+led.fill((255, 255, 255))
 led.show()
-time.sleep(.2)
-
-led.fill((0, 255, 0))
-led.show()
-time.sleep(.2)
-
-led.fill((0, 0, 255))
-led.show()
-time.sleep(.2)
+time.sleep(1)
 
 led.fill((0, 0, 0))
 led.show()
@@ -136,11 +130,17 @@ print("--------------------")
 
 vl53.start_ranging()
 
+led.fill((255, 255, 0))
+led.show()
+
 while not vl53.data_ready:
     print("data not ready")
     time.sleep(.2)
 
+time.sleep(1)
 
+led.fill((0, 0, 0))
+led.show()
 ################################################################################
 # Setup wifi and web server
 
@@ -172,6 +172,9 @@ if (web):
     except Exception as e:
         files.log_item(e)
         print("Using default ssid and password")
+
+    led.fill((0, 0, 255))
+    led.show()
 
     for i in range(3):
         web = True
@@ -388,41 +391,60 @@ if (web):
             files.log_item(e)
             time.sleep(2)
 
-def send_get_request(url):
+    led.fill((0, 0, 0))
+    led.show()
+
+def send_animator_get(url, endpoint=""):
     try:
-        files.log_item("Sending GET request to " + url)
-        response = requests.get(url)
+        # Construct the full URL (e.g., "http://httpbin.org" + "/get")
+        full_url = "http://" + url + "/" + endpoint
+        files.log_item("Sending GET request to " + full_url)
+        response = requests.get(full_url)
         files.log_item("GET Response: " + response.text)
+        created_data = response.text  # Store response to return
         response.close()
+        return created_data
     except Exception as e:
         files.log_item("GET request failed: " + str(e))
+        return None  # Return None on failure
 
-def send_post_request(url, data):
+
+def send_animator_post(url, endpoint, new_data=None):
     try:
-        files.log_item("Sending POST request to " + url)
-        response = requests.post(url, json=data)
+        new_url = "http://" + url + "/" + endpoint
+        files.log_item("Sending POST request to " + new_url)
+
+        if new_data is not None:
+            # Assume new_data is a dict; no json.loads needed
+            response = requests.post(new_url, json=new_data)
+        else:
+            response = requests.post(new_url)
+
         files.log_item("POST Response: " + response.text)
+        created_data = response.text
         response.close()
+        return created_data
     except Exception as e:
-        files.log_item("POST request failed: " + str(e))
+        files.log_item("Comms issue: " + str(e))
+        return None
+
 
 gc_col("web server")
 
 # Test GET request
-files.log_item("Sending GET request to internet")
-response = requests.get("http://httpbin.org/get")
-files.log_item("GET Response: " + response.text)
-response.close()
+get_result = send_animator_get("httpbin.org", "get")
+if get_result:
+    files.log_item("GET test succeeded with result: " + get_result)
+else:
+    files.log_item("GET test failed")
 
 # Test POST request
-try:
-    data = {"test": "value"}  # Simple dictionary
-    files.log_item("Sending POST request to http://httpbin.org/post")
-    response = requests.post("http://httpbin.org/post", json=data)
-    files.log_item("POST Response: " + response.text)
-    response.close()
-except Exception as e:
-    files.log_item("POST request failed: " + str(e))
+data = {"test": "value"}  # Simple dictionary
+post_result = send_animator_post("httpbin.org", "post", data)
+if post_result:
+    files.log_item("POST test succeeded with result: " + post_result)
+else:
+    files.log_item("POST test failed")
 ################################################################################
 # Command queue
 command_queue = []
@@ -597,23 +619,10 @@ async def fire(dur):
 
 
 def multi_color():
-    r = random.randint(128, 255)
-    g = random.randint(128, 255)
-    b = random.randint(128, 255)
-    c = random.randint(0, 2)
-    if c == 0:
-        r1 = r
-        g1 = 0
-        b1 = 0
-    elif c == 1:
-        r1 = 0
-        g1 = g
-        b1 = 0
-    elif c == 2:
-        r1 = 0
-        g1 = 0
-        b1 = b
-    led[0] = (r1, g1, b1)
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+    led[0] = (r, g, b)
 
 
 def bnd(c, l, u):
@@ -632,20 +641,22 @@ async def set_hdw_async(input_string, dur):
         for seg in segs:
             if exit_set_hdw_async:
                 return "STOP"
-            if seg[0] == 'E':  # end an
+            # end animation
+            if seg[0] == 'E':  
                 return "STOP"
+            # L_R_G_B = Neopixel light RGB 0 to 255
             elif seg[:1] == 'L':
                 segs_split = seg.split("_")
-                r = int(segs_split[0])
-                g = int(segs_split[1])
-                b = int(segs_split[2])
+                r = int(segs_split[1])
+                g = int(segs_split[2])
+                b = int(segs_split[3])
                 led[0] = (r, g, b)
-            # brightness BXXX = Brightness XXX 000 to 100
+            # BXXX = Brightness XXX 000 to 100
             elif seg[0:1] == 'B':
-                br = int(seg[2:])
+                br = int(seg[1:])
                 led.brightness = float(br/100)
                 led.show()
-            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+            # FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
             elif seg[0] == 'F':
                 segs_split = seg.split("_")
                 v = int(segs_split[0][1:])
@@ -658,7 +669,7 @@ async def set_hdw_async(input_string, dur):
                         br -= 1
                         led.brightness = float(br/100)
                     led.show()
-                    await asyncio.sleep(s)
+                    # await asyncio.sleep(s)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 await random_effect(1, 3, dur)
@@ -677,8 +688,101 @@ async def set_hdw_async(input_string, dur):
             if seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
+            # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":data_object}
+            if seg[:3] == 'API':
+                seg_split = split_string(seg)
+                files.log_item("Split segment: " + str(seg_split))
+                files.log_item("Four params")
+                max_retries = 2
+                attempts = 0
+                while attempts < max_retries:
+                    ip_from_mdns = get_ip_from_mdns(
+                        seg_split[1], overwrite=(attempts > 0))
+                    files.log_item(
+                        f"Attempt {attempts + 1}: Resolved {seg_split[1]} to {ip_from_mdns}")
+                    if ip_from_mdns:
+                        try:
+                            response = send_animator_post(
+                                ip_from_mdns, seg_split[2], seg_split[3])
+                            if response is not None:
+                                return response
+                            files.log_item(
+                                f"send_animator_post failed with {ip_from_mdns}, retrying...")
+                        except Exception as e:
+                            files.log_item(
+                                f"Error with {ip_from_mdns}: {e}, retrying...")
+                    else:
+                        files.log_item(
+                            f"Failed to resolve {seg_split[1]} to an IP, retrying...")
+                    attempts += 1
+
+                if attempts >= max_retries:
+                    if seg_split[1] in mdns_to_ip:
+                        del mdns_to_ip[seg_split[1]]
+                        files.log_item(
+                            f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
+                    return "host not found after retries"
     except Exception as e:
         files.log_item(e)
+
+
+def split_string(seg):
+    start_idx = seg.find('_{')
+    end_idx = seg.find('}', start_idx)
+
+    if start_idx != -1 and end_idx != -1:
+        object_part = seg[start_idx:end_idx+1]
+        seg = seg[:start_idx] + seg[end_idx+1:]
+        object_part = object_part[1:]  # Strip the leading '_'
+    else:
+        object_part = ''
+
+    parts = seg.split('_')
+    if object_part:
+        parts.append(object_part)
+
+    return parts
+
+
+def get_ip_address(hostname):
+    response = send_animator_post(hostname, "get-local-ip")
+    return response
+
+
+def get_ip_from_mdns(mdns_name, overwrite=False):
+    ip_part = mdns_name.split(':')[0] if ':' in mdns_name else mdns_name
+    is_ip = '.' in ip_part and all(part.isdigit()
+                                   for part in ip_part.split('.'))
+
+    if is_ip:
+        files.log_item(
+            f"{mdns_name} is already an IP address, skipping dictionary")
+        return mdns_name
+    else:
+        if mdns_name in mdns_to_ip and not overwrite:
+            ip_with_port = mdns_to_ip[mdns_name]
+            files.log_item(f"Found {mdns_name} in dictionary: {ip_with_port}")
+        else:
+            port = None
+            if ':' in mdns_name:
+                _, port = mdns_name.rsplit(':', 1)
+                if not port.isdigit():
+                    port = None
+
+            ip_address = get_ip_address(mdns_name)
+
+            if ip_address and isinstance(ip_address, str) and '.' in ip_address and all(part.isdigit() for part in ip_address.split('.')):
+                ip_with_port = f"{ip_address}:{port}" if port else ip_address
+                mdns_to_ip[mdns_name] = ip_with_port
+                files.log_item(
+                    f"Resolved and added {mdns_name}: {ip_with_port} to the dictionary")
+            else:
+                files.log_item(
+                    f"Resolved {mdns_name} to {ip_address}, but it doesn't look like an IP - not adding to dictionary")
+                ip_with_port = None
+
+        return ip_with_port
+
 
 if (web):
     files.log_item("starting server...")
@@ -747,4 +851,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
