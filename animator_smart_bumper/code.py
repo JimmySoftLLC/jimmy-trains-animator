@@ -431,20 +431,6 @@ def send_animator_post(url, endpoint, new_data=None):
 
 gc_col("web server")
 
-# Test GET request
-get_result = send_animator_get("httpbin.org", "get")
-if get_result:
-    files.log_item("GET test succeeded with result: " + get_result)
-else:
-    files.log_item("GET test failed")
-
-# Test POST request
-data = {"test": "value"}  # Simple dictionary
-post_result = send_animator_post("httpbin.org", "post", data)
-if post_result:
-    files.log_item("POST test succeeded with result: " + post_result)
-else:
-    files.log_item("POST test failed")
 ################################################################################
 # Command queue
 command_queue = []
