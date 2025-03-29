@@ -363,6 +363,7 @@ is_gtts_reachable = False
 
 exit_set_hdw = False
 local_ip = ""
+mdns_to_ip = {}
 
 ################################################################################
 # Setup io hardware
@@ -621,16 +622,22 @@ class ApiClient:
             response.raise_for_status()  # Raise an error for bad responses
 
 
-def send_animator_post(url, endpoint, new_data):
+def send_animator_post(url, endpoint, new_data=None):
     try:
         new_url = "http://" + url
-        new_data_loads = json.loads(new_data)
         api_client = ApiClient(new_url)
-        created_data = api_client.post(endpoint, data=new_data_loads)
+        
+        if new_data is not None:
+            new_data_loads = json.loads(new_data)
+            created_data = api_client.post(endpoint, data=new_data_loads)
+        else:
+            created_data = api_client.post(endpoint)
+        
         print("POST response:", created_data)
         return created_data
     except Exception as e:
         print(f"Comms issue: {e}")
+        return None  # Optionally return None or raise the exception, depending on your needs
 
 
 ################################################################################
@@ -2097,11 +2104,14 @@ def set_hdw(cmd, dur, url):
                         url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
-                    print("four params")
-                    response = send_animator_post(
-                        seg_split[1], seg_split[2], seg_split[3])
-                    return response
-                return ""
+                    print ("four params")
+                    ip_from_mdns = get_ip_from_mdns(seg_split[1])
+                    print (ip_from_mdns)
+                    if ip_from_mdns:
+                        response = send_animator_post(
+                            ip_from_mdns, seg_split[2], seg_split[3])
+                        return response
+                return "host not found"
             # TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
             # ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
             # AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED) VALUE is optional (KNOB 1-9, SPEED 0-31)
@@ -2143,6 +2153,47 @@ def split_string(seg):
         parts.append(object_part)
 
     return parts
+
+def get_ip_address(hostname):
+    response = send_animator_post(hostname, "get-local-ip")
+    return response
+
+def get_ip_from_mdns(mdns_name, overwrite=False):
+    # Check if mdns_name itself looks like an IP address (with or without port)
+    ip_part = mdns_name.split(':')[0] if ':' in mdns_name else mdns_name
+    is_ip = '.' in ip_part and all(part.isdigit() for part in ip_part.split('.'))
+
+    if is_ip:
+        # If it's already an IP, return it as-is without adding to dictionary
+        print(f"{mdns_name} is already an IP address, skipping dictionary")
+        return mdns_name
+    else:
+        # Use the full mdns_name (with port if present) as the key
+        if mdns_name in mdns_to_ip and not overwrite:
+            ip_with_port = mdns_to_ip[mdns_name]
+            print(f"Found {mdns_name} in dictionary: {ip_with_port}")
+        else:
+            # Extract port from mdns_name if it exists
+            port = None
+            if ':' in mdns_name:
+                _, port = mdns_name.rsplit(':', 1)
+                if not port.isdigit():
+                    port = None
+
+            # Get the IP address using the full mdns_name (including port if present)
+            ip_address = get_ip_address(mdns_name)
+
+            # Validate the IP address and append the port if it exists
+            if ip_address and isinstance(ip_address, str) and '.' in ip_address and all(part.isdigit() for part in ip_address.split('.')):
+                # Append the original port to the IP if it exists
+                ip_with_port = f"{ip_address}:{port}" if port else ip_address
+                mdns_to_ip[mdns_name] = ip_with_port
+                print(f"Resolved and added {mdns_name}: {ip_with_port} to the dictionary")
+            else:
+                print(f"Resolved {mdns_name} to {ip_address}, but it doesn't look like an IP - not adding to dictionary")
+                ip_with_port = None
+
+        return ip_with_port
 
 
 ################################################################################
