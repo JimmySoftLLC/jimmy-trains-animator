@@ -1089,7 +1089,11 @@ def get_command_and_data(button, binary_word3, value=0):
         "AUX1": ("action", "01001"),
         "AUX2": ("action", "01101"),
         "KNOB": ("relative", None),  # Data will be set based on value
-        "SPEED": ("absolute", None)  # Data will be set based on value (0-31)
+        "SPEED": ("absolute", None),  # Data will be set based on value (0-31)
+        "FORWARD": ("action", "00000"),
+        "REVERSE": ("action", "00011"),
+        "HORN2": ("action", "11111"),
+        "LETOFF": ("action", "11110")
     }
 
     # Named button mappings for switch

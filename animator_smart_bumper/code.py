@@ -147,12 +147,11 @@ led.show()
 if (web):
     import socketpool
     import mdns
-    gc_col("config wifi imports")
     import wifi
-    gc_col("config wifi imports")
-    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
-    gc_col("config wifi imports")
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST
     import adafruit_requests
+
+    import json
     gc_col("config wifi imports")
 
     files.log_item("Connecting to WiFi")
@@ -415,10 +414,16 @@ def send_animator_post(url, endpoint, new_data=None):
         files.log_item("Sending POST request to " + new_url)
 
         if new_data is not None:
-            # Assume new_data is a dict; no json.loads needed
-            response = requests.post(new_url, json=new_data)
+            print("sending new_data object")
+            if isinstance(new_data, str):
+                new_data_loads = json.loads(new_data)
+                response = requests.post(new_url, json=new_data_loads)
+            else:
+                response = requests.post(new_url, json=new_data)
         else:
-            response = requests.post(new_url)
+            print("not sending new_data object")
+            response = requests.post(new_url, json={"status": "empty"}
+)
 
         files.log_item("POST Response: " + response.text)
         created_data = response.text
@@ -837,3 +842,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
