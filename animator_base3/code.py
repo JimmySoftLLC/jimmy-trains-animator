@@ -2100,18 +2100,33 @@ def set_hdw(cmd, dur, url):
                 print(seg_split)
                 if len(seg_split) == 3:
                     print("three params")
-                    response = send_animator_post(
-                        url, seg_split[1], seg_split[2])
+                    response = send_animator_post(url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
-                    print ("four params")
-                    ip_from_mdns = get_ip_from_mdns(seg_split[1])
-                    print (ip_from_mdns)
-                    if ip_from_mdns:
-                        response = send_animator_post(
-                            ip_from_mdns, seg_split[2], seg_split[3])
-                        return response
-                return "host not found"
+                    print("four params")
+                    max_retries = 2
+                    attempts = 0
+                    while attempts < max_retries:
+                        ip_from_mdns = get_ip_from_mdns(seg_split[1], overwrite=(attempts > 0))
+                        print(f"Attempt {attempts + 1}: Resolved {seg_split[1]} to {ip_from_mdns}")
+                        if ip_from_mdns:
+                            try:
+                                response = send_animator_post(ip_from_mdns, seg_split[2], seg_split[3])
+                                if response is not None:  # Assuming None indicates failure
+                                    return response
+                                print(f"send_animator_post failed with {ip_from_mdns}, retrying...")
+                            except Exception as e:
+                                print(f"Error with {ip_from_mdns}: {e}, retrying...")
+                        else:
+                            print(f"Failed to resolve {seg_split[1]} to an IP, retrying...")
+                        attempts += 1
+                    
+                    # If all retries fail, assume the mDNS entry no longer exists and clean up
+                    if attempts >= max_retries:
+                        if seg_split[1] in mdns_to_ip:
+                            del mdns_to_ip[seg_split[1]]
+                            print(f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
+                        return "host not found after retries"
             # TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
             # ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
             # AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED) VALUE is optional (KNOB 1-9, SPEED 0-31)
