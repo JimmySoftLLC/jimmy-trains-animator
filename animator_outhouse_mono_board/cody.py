@@ -168,8 +168,8 @@ reset_roof = True
 
 local_ip = ""
 
-override_switch_state = {}
-override_switch_state["switch_value"] = ""
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
 
@@ -346,15 +346,15 @@ if (web):
             global cfg, cont_run
             req_d = req.json()
             if req_d["an"] == "left":
-                override_switch_state["switch_value"] = "left"
+                ovrde_sw_st["switch_value"] = "left"
             elif req_d["an"] == "right":
-                override_switch_state["switch_value"] = "right"
+                ovrde_sw_st["switch_value"] = "right"
             elif req_d["an"] == "right_held":
-                override_switch_state["switch_value"] = "right_held"
+                ovrde_sw_st["switch_value"] = "right_held"
             elif req_d["an"] == "three":
-                override_switch_state["switch_value"] = "three"
+                ovrde_sw_st["switch_value"] = "three"
             elif req_d["an"] == "four":
-                override_switch_state["switch_value"] = "four"
+                ovrde_sw_st["switch_value"] = "four"
             elif "cont_mode_on" == req_d["an"]:
                 cont_run = True
                 ply_a_0("/mvc/continuous_mode_activated.mp3")
@@ -711,7 +711,7 @@ def cal_pos(s, mov_typ):
     while not done:
         s.angle = cfg[mov_typ]
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if switch_state == "left":
             cal_l_but(s, mov_typ, sign, min, max)
         elif switch_state == "right":
@@ -1113,7 +1113,7 @@ class BseSt(Ste):
     def upd(self, mch):
         global cont_run, instal_fig
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if switch_state == "left_held" and not instal_fig:
             if cont_run:
                 cont_run = False
@@ -1154,7 +1154,7 @@ class Main(Ste):
 
     def upd(self, mch):
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if switch_state == "left":
             ply_a_0("/mvc/" + main_m[self.i] + ".mp3")
             self.sel_i = self.i
@@ -1203,7 +1203,7 @@ class MoveRD(Ste):
 
     def upd(s, mch):
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if switch_state == "left":
             ply_a_0("/mvc/" + mov_r_d[s.i] + ".mp3")
             s.sel_i = s.i
@@ -1246,7 +1246,7 @@ class AdjRD(Ste):
 
     def upd(s, mch):
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if switch_state == "left":
             ply_a_0(
                 "/mvc/" + adj_r_d[s.i] + ".mp3")
@@ -1301,7 +1301,7 @@ class VolSet(Ste):
 
     def upd(s, mch):
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if switch_state == "left":
             ch_vol("lower")
         elif switch_state == "right":
@@ -1334,7 +1334,7 @@ class WebOpt(Ste):
 
     def upd(s, mch):
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if switch_state == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -1389,7 +1389,7 @@ class Dlg_Opt(Ste):
 
     def upd(s, mch):
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if  switch_state == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -1440,7 +1440,7 @@ class InsFig(Ste):
 
     def upd(self, mch):
         switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if  switch_state == "left":
             ply_a_0(
                 "/mvc/" + inst_m[self.i] + ".mp3")
