@@ -2811,21 +2811,36 @@ def set_hdw(cmd, dur, url):
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = split_string(seg)
-                print (seg_split)
+                print(seg_split)
                 if len(seg_split) == 3:
-                    print ("three params")       
-                    response = send_animator_post(
-                        url, seg_split[1], seg_split[2])
+                    print("three params")
+                    response = send_animator_post(url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
-                    print ("four params")
-                    ip_from_mdns = get_ip_from_mdns(seg_split[1])
-                    print (ip_from_mdns)
-                    if ip_from_mdns:
-                        response = send_animator_post(
-                            ip_from_mdns, seg_split[2], seg_split[3])
-                        return response
-                return "host not found"
+                    print("four params")
+                    max_retries = 2
+                    attempts = 0
+                    while attempts < max_retries:
+                        ip_from_mdns = get_ip_from_mdns(seg_split[1], overwrite=(attempts > 0))
+                        print(f"Attempt {attempts + 1}: Resolved {seg_split[1]} to {ip_from_mdns}")
+                        if ip_from_mdns:
+                            try:
+                                response = send_animator_post(ip_from_mdns, seg_split[2], seg_split[3])
+                                if response is not None:  # Assuming None indicates failure
+                                    return response
+                                print(f"send_animator_post failed with {ip_from_mdns}, retrying...")
+                            except Exception as e:
+                                print(f"Error with {ip_from_mdns}: {e}, retrying...")
+                        else:
+                            print(f"Failed to resolve {seg_split[1]} to an IP, retrying...")
+                        attempts += 1
+                    
+                    # If all retries fail, assume the mDNS entry no longer exists and clean up
+                    if attempts >= max_retries:
+                        if seg_split[1] in mdns_to_ip:
+                            del mdns_to_ip[seg_split[1]]
+                            print(f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
+                        return "host not found after retries"
     except Exception as e:
         files.log_item(e)
 

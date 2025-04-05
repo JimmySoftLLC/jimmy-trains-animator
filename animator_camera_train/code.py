@@ -1408,6 +1408,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path == "/record_stream":
             print(self.path)
             self.handle_serve_file("/code/record_stream.html")
+        elif self.path == "/control":
+            print(self.path)
+            self.handle_serve_file("/code/control.html")
         elif self.path == "/stream.mjpg":
             self.handle_stream_mjpg()
         else:

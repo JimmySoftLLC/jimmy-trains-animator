@@ -35,6 +35,7 @@ import gc
 import files
 import os
 import adafruit_vl53l4cd
+import json
 
 
 def gc_col(collection_point):
@@ -89,6 +90,7 @@ br = 0
 
 mdns_to_ip = {}
 
+
 ################################################################################
 # Setup neo pixels
 
@@ -99,12 +101,36 @@ neo_pixel_pin = board.GP18
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
-led.fill((255, 255, 255))
-led.show()
+
+def set_red():
+    led.fill((255, 0, 0))
+    led.show()
+
+
+def set_blue():
+    led.fill((0, 0, 255))
+    led.show()
+
+
+def set_green():
+    led.fill((0, 255, 0))
+    led.show()
+
+
+def set_white():
+    led.fill((255, 255, 255))
+    led.show()
+
+
+def set_off():
+    led.fill((0, 0, 0))
+    led.show()
+
+
+set_white()
 time.sleep(1)
 
-led.fill((0, 0, 0))
-led.show()
+set_off()
 
 gc_col("Neopixels setup")
 
@@ -151,7 +177,6 @@ if (web):
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST
     import adafruit_requests
 
-    import json
     gc_col("config wifi imports")
 
     files.log_item("Connecting to WiFi")
@@ -172,8 +197,7 @@ if (web):
         files.log_item(e)
         print("Using default ssid and password")
 
-    led.fill((0, 0, 255))
-    led.show()
+    set_blue()
 
     for i in range(3):
         web = True
@@ -196,6 +220,7 @@ if (web):
             # set up server
             pool = socketpool.SocketPool(wifi.radio)
             server = Server(pool, "/static", debug=True)
+            server.port = 80  # Explicitly set port to 80
 
             # Set up requests session for HTTP requests
             requests = adafruit_requests.Session(pool)
@@ -306,7 +331,18 @@ if (web):
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error setting lights.")
 
-            @server.route("/get-light-string", [POST])
+            @server.route("/get-train-pos", [POST])
+            def btn(req: Request):
+                set_blue()
+                for _ in range(3):
+                    vl53.clear_interrupt()
+                    time.sleep(0.1)
+                vl53.clear_interrupt()
+                train_pos = vl53.distance  # Distance in cm
+                return Response(req, train_pos)
+            set_green()
+
+            @server.route("/get-dist", [POST])
             def btn(req: Request):
                 return Response(req, cfg["light_string"])
 
@@ -339,13 +375,16 @@ if (web):
                 global exit_set_hdw_async
                 exit_set_hdw_async = False
                 try:
+                    set_blue()
                     rq_d = request.json()
                     print(rq_d["an"])
-                    gc_col("Save Data.")
+                    gc_col("Added hardware task.")
                     # Schedule the async task
                     asyncio.create_task(set_hdw_async(rq_d["an"], 3))
+                    set_green()
                     return Response(request, "Test animation successfully")
                 except Exception as e:
+                    set_red()
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error test animation.")
 
@@ -387,11 +426,10 @@ if (web):
         except Exception as e:
             web = False
             files.log_item(e)
-            files.log_item(e)
             time.sleep(2)
 
-    led.fill((0, 0, 0))
-    led.show()
+    set_off()
+
 
 def send_animator_get(url, endpoint=""):
     try:
@@ -423,7 +461,7 @@ def send_animator_post(url, endpoint, new_data=None):
         else:
             print("not sending new_data object")
             response = requests.post(new_url, json={"status": "empty"}
-)
+                                     )
 
         files.log_item("POST Response: " + response.text)
         created_data = response.text
@@ -625,7 +663,7 @@ def bnd(c, l, u):
 
 
 async def set_hdw_async(input_string, dur):
-    global sp, br, exit_set_hdw_async
+    global sp, br, exit_set_hdw_async, vl53
     segs = input_string.split(",")
 
     try:
@@ -633,7 +671,7 @@ async def set_hdw_async(input_string, dur):
             if exit_set_hdw_async:
                 return "STOP"
             # end animation
-            if seg[0] == 'E':  
+            if seg[0] == 'E':
                 return "STOP"
             # L_R_G_B = Neopixel light RGB 0 to 255
             elif seg[:1] == 'L':
@@ -676,11 +714,11 @@ async def set_hdw_async(input_string, dur):
                 multi_color()
                 await asyncio.sleep(dur)
             # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
-            if seg[0] == 'Q':
+            elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":data_object}
-            if seg[:3] == 'API':
+            elif seg[:3] == 'API':
                 seg_split = split_string(seg)
                 files.log_item("Split segment: " + str(seg_split))
                 files.log_item("Four params")
@@ -713,6 +751,126 @@ async def set_hdw_async(input_string, dur):
                         files.log_item(
                             f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
                     return "host not found after retries"
+
+            # POS_II_PPP_DDD_SSS = Position car, II of engine (1-99),  PPP pos (decimal cm), DDD direction (FORWARD, REVERSE) SSS speed(1-31)
+            elif seg[:3] == 'POS':
+                seg_split = seg.split("_")
+                ii = int(seg_split[1])
+                position = float(seg_split[2])
+                # set direction
+                button = seg_split[3]
+                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
+                    ii) + "_" + button + "\"}"
+                await set_hdw_async(command, 0)
+                # Clear initial measurements
+                for _ in range(3):
+                    vl53.clear_interrupt()
+                    time.sleep(0.1)
+                # set speed
+                button = "SPEED"
+                speed = int(seg_split[4])
+                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
+                    ii) + "_" + button + "_" + str(speed) + "\"}"
+                await set_hdw_async(command, 0)
+                # check distance
+                give_up = 30  # Timeout in seconds
+                srt_t = time.monotonic()
+                while True:
+                    vl53.clear_interrupt()
+                    train_pos = vl53.distance
+                    if train_pos < position:
+                        break
+                    t_past = time.monotonic() - srt_t
+                    if t_past > give_up:
+                        break
+                # set speed to 0 to stop train
+                button = "SPEED"
+                speed = 0
+                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
+                    ii) + "_" + button + "_" + str(speed) + "\"}"
+
+                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_FORWARD"}
+                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_REVERSE"}
+                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_2"}
+                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_7"}
+                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_SPEED_0"}
+
+            # # POS_ID_SSS_XXX_BBB_AAA = Position car, ID of engine,  SSS speed(1-31), XXX target pos (cm), BBB target band (cm), AAA accel (cm/sec)
+            # elif seg[:3] == 'POS':
+            #     final_speed = 0
+            #     seg_split = seg.split("_")
+            #     id = int(seg_split[1])
+            #     initial_speed = int(seg_split[2])
+            #     target_pos = float(seg_split[3])
+            #     target_band = float(seg_split[4])
+            #     acc = float(seg_split[5])
+
+            #     print("Initial speed: ",initial_speed)
+            #     print("Target pos: ",target_pos)
+            #     print("Target band: ",target_band)
+            #     print("Acceleration: ",acc)
+
+            #     # Clear initial measurements
+            #     for _ in range(3):
+            #         vl53.clear_interrupt()
+            #         time.sleep(0.1)
+
+            #     num_times_in_band = 0
+            #     give_up = 30  # Timeout in seconds
+            #     srt_t = time.monotonic()
+
+            #     current_speed = initial_speed  # Start at y
+
+            #     while True:
+            #         vl53.clear_interrupt()
+            #         car_pos = vl53.distance  # Distance in mm
+
+            #         # Calculate distance and target direction
+            #         distance_to_target = abs(car_pos - target_pos)
+
+            #         # Calculate slowdown zone based on acceleration (adapted from car example)
+            #         slowdown_distance = target_band * 3 + (acc * 0.5) * 10  # Convert acc effect to mm
+
+            #         # Determine target speed
+            #         if distance_to_target < target_band:
+            #             # Within target band, use final_speed (x)
+            #             target_speed = final_speed
+            #             num_times_in_band += 1
+            #         elif distance_to_target < slowdown_distance:
+            #             # Interpolate between initial_speed and final_speed
+            #             ratio = distance_to_target / slowdown_distance
+            #             target_speed = initial_speed + (final_speed - initial_speed) * (1 - ratio)
+            #         else:
+            #             # Far away, use initial_speed (y)
+            #             target_speed = initial_speed
+            #             num_times_in_band = 0
+
+            #         # Adjust speed with acceleration (adapted for animation)
+            #         speed_diff = target_speed - current_speed
+            #         if speed_diff > 0:  # Accelerate
+            #             current_speed += min(acc * 0.5, speed_diff)  # Scale acc for animation timing
+            #         elif speed_diff < 0:  # Decelerate
+            #             current_speed += max(-acc * 0.5, speed_diff)  # Scale acc for animation timing
+
+            #         # Clamp speed between initial and final
+            #         sp = max(initial_speed, min(final_speed, current_speed))
+
+            #         files.log_item(f"Pos: {car_pos:.1f} mm, Speed: {sp:.3f} s, Dist: {distance_to_target:.1f} mm")
+
+            #         # Apply to LED (optional visual feedback)
+            #         led.show()
+
+            #         # Exit conditions
+            #         if num_times_in_band > 2:  # Stable within target band
+            #             sp = final_speed  # Lock to x
+            #             break
+            #         t_past = time.monotonic() - srt_t
+            #         if t_past > give_up:  # Timeout
+            #             sp = initial_speed  # Reset to y
+            #             break
+
+            #         await asyncio.sleep(1)  # Check every 50ms (same as car example)
+
     except Exception as e:
         files.log_item(e)
 
@@ -789,11 +947,9 @@ files.log_item("animator has started...")
 gc_col("animations started.")
 
 if web:
-    led.fill((0, 255, 0))
-    led.show()
+    set_green()
 else:
-    led.fill((255, 0, 0))
-    led.show()
+    set_red()
 
 # Main task handling
 
@@ -842,4 +998,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-

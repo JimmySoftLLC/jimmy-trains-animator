@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - City Lights</title>
+    <title>Animator - Camera train</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
@@ -36,664 +36,234 @@
         .bottom-gap {
             height: 100px;
         }
+
+        .parent-container {
+            display: flex;
+            justify-content: flex-start;
+            /* Changed from center to flex-start to align left */
+            gap: 20px;
+            /* Keeps space between knobs */
+            width: max-content;
+            height: max-content;
+            position: relative;
+            margin: 0;
+            /* Changed from auto to 0 to remove centering */
+        }
+
+        .knob-container {
+            display: grid;
+            place-items: center;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .knob {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #c6d6f7 30%, #4a7aeb);
+            border-radius: 50%;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+            user-select: none;
+            transform: rotate(0deg);
+        }
+
+        .indicator {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgb(12, 88, 228);
+            border-radius: 50%;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .knob-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        #videoContainer {
+            margin: 20px;
+        }
+
+        #controls {
+            margin: 20px;
+        }
+
+        #playerContainer {
+            margin: 20px;
+        }
+
+        #thumbnailGallery {
+            margin: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .thumbnail {
+            cursor: pointer;
+            border: 2px solid #ccc;
+            padding: 5px;
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+        }
+
+        .thumbnail:hover {
+            border-color: #333;
+        }
+
+        .thumbnail.active {
+            border-color: #007bff;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        video {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .stream-container {
+            position: relative;
+            text-align: center;
+        }
+
+        #stream {
+            width: 400px;
+            height: auto;
+            max-width: 100%;
+        }
+
+        .stream-status {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+            font-family: Arial, sans-serif;
+        }
+
+        .stream-status.error {
+            color: #d9534f;
+            /* A soft red color for errors */
+            font-weight: bold;
+        }
+
+        .mui-slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+        }
+
+        .mui-slider {
+            width: 200px;
+            /* Adjust as needed */
+            accent-color: #2196f3;
+            /* Matches mui-btn--primary blue */
+        }
+
+        .mui-zoom-value {
+            font-family: 'Roboto', sans-serif;
+            /* Matches MUI typography */
+            color: #2196f3;
+        }
     </style>
 </head>
 
 <body>
     <div id="modalEl"></div>
     <div class="mui-container">
-        <ul class="mui-tabs__bar">
-            <li class="mui--is-active">
-                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
-            </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="lighting">lights</a>
-            </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
-            </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
-            </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="camera">Camera train</a>
-            </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="trolley">Trolley</a>
-            </li>
-        </ul>
-        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
-            <h1>Animator - City Lights</h1>
-            <p style="padding-top:0.5rem;">
-                Use this web app to control and setup your Animator - City Lights
-                product. Have fun animating.
-            </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-                data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-                data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-                data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-                data-url="/mode">Four</button>
-            <h2>Random play:</h2>
-            <div id="topicButtonContainer"></div>
-            <h2>Current Media Queue</h2>
-            <div id="currentMedia"></div>
-            <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-            <h2>Media:</h2>
-            <div id="mediaContainer"></div>
-            <h2>Intermission between movies:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0" data-url="/mode"
-                    type="button">
-                    Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.33" data-url="/mode"
-                    type="button">
-                    Infrequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.66" data-url="/mode"
-                    type="button">
-                    Frequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_1" data-url="/mode"
-                    type="button">
-                    Always
-                </button>
-            </div>
-            <h2>Animation settings:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
-                    type="button">
-                    Continuous Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
-                    type="button">
-                    Continuous Mode Off
-                </button>
-            </div>
-            <h2>Instructions on how to add your own media:</h2>
-            <p>
-                Media goes in folders you create in the media folder in your home directory. Name these folders with
-                logical names related to what is in them. For
-                example Christmas music could go in a folder named Holiday.
-            </p>
-            <h2>Animation timing:</h2>
-            <p>
-                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
-                left button to start your animation. Once the media starts press the right button for each point
-                that you want an animation timestamp. Time your button presses to key moments in the media. Continue
-                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
-                animation script will be ready to add animations to.
-            </p>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
-                    type="button">
-                    Timestamp Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
-                    data-url="/mode" type="button">
-                    Timestamp Mode Off
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_on" data-url="/mode"
-                    type="button">
-                    Terminal Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_off" data-url="/mode"
-                    type="button">
-                    Terminal Mode Off
-                </button>
-            </div>
-
-            <div class="mui-textfield">
-                <h2>Upload a File</h1>
-                    <form id="uploadForm" enctype="multipart/form-data">
-                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
-                        <input type="file" id="fileInput" name="file" style="display: none;" required>
-                    </form>
-                    <div id="progressContainer">
-                        <div id="progressBar">0%</div>
+        <h2>Video feed:</h2>
+        <div class="stream-container">
+            <img id="stream" src="/stream.mjpg" alt="MJPEG Stream">
+            <div id="streamStatus" class="stream-status"></div>
+        </div>
+        <div class="mui-tabs__pane mui--is-active" id="tiltControl" style="padding-top:0.5rem;">
+            <div class="parent-container">
+                <div class="knob-container">
+                    <div class="knob" id="knob">
+                        <div class="indicator"></div>
                     </div>
-                    <p id="status"></p>
+                    <div class="knob-text" id="knob-text">0</div>
+                </div>
+                <div class="knob-container">
+                    <div class="knob" id="knob2">
+                        <div class="indicator"></div>
+                    </div>
+                    <div class="knob-text" id="knob2-text">0</div>
+                </div>
+                <div class="knob-container">
+                    <div class="knob" id="knob3">
+                        <div class="indicator"></div>
+                    </div>
+                    <div class="knob-text" id="knob3-text">0</div>
+                </div>
             </div>
         </div>
-        <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
-            <h1>Animator - City Lights</h1>
-            <p style="padding-top:0.5rem;">
-                Use this web app to control and setup your Animator - City Lights
-                product. Have fun animating.
-            </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-                data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-                data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-                data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-                data-url="/mode">Four</button>
-            <h2>Setup light string:</h2>
-            <div class="mui-textfield">
-                <p>
-                    Enter your light string in the order which each component is connected together by pressing neo-6,
-                    cane-4...
-                    When finished press "Save".
-                </p>
-                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
-                    data-url="/update-light-string">
-                    Save
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
-                    data-url="/update-light-string">
-                    Clear
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
-                    data-url="/update-light-string">
-                    Set to defaults
-                </button>
-            </div>
-            <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
-                    data-url="/update-light-string">
-                    projector-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
-                    data-url="/update-light-string">
-                    concession-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
-                    data-url="/update-light-string">
-                    sign-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
-                    data-url="/update-light-string">
-                    cane-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
-                    data-url="/update-light-string">
-                    grandtree-21
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neo-6"
-                    data-url="/update-light-string">
-                    neo-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
-                    data-url="/update-light-string">
-                    bolt-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-2"
-                    data-url="/update-light-string">
-                    bolt-2
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-3"
-                    data-url="/update-light-string">
-                    bolt-3
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-4"
-                    data-url="/update-light-string">
-                    bolt-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bar-10"
-                    data-url="/update-light-string">
-                    bar-10
-                </button>
-            </div>
-            <h2>Test neopixel lights:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
-                    type="button">
-                    Red
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
-                    type="button">
-                    Green
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
-                    type="button">
-                    Blue
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
-                    type="button">
-                    White
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN0" data-url="/lights"
-                    type="button">
-                    Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN20" data-url="/lights"
-                    type="button">
-                    20
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN40" data-url="/lights"
-                    type="button">
-                    40
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN60" data-url="/lights"
-                    type="button">
-                    60
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN80" data-url="/lights"
-                    type="button">
-                    80
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="BN100" data-url="/lights"
-                    type="button">
-                    100
-                </button>
-            </div>
-            <h2>Neo pixel colors:</h2>
-            <div id="neoButtonContainer"></div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_neo_to_defaults"
-                    data-url="/defaults" type="button">
-                    Reset neo pixel colors to defaults
-                </button>
-            </div>
-            <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
-            <div class="mui-checkbox">
-                <label>
-                    <input type="checkbox" id="lifxCheckbox" data-url="/set-lifx-enabled">
-                    Enable Lifx lights
-                </label>
-            </div>
-            <div id="lifxDiv">
-                <h2>Test lifx lights:</h2>
-                <div>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
-                        type="button">
-                        Red
-                    </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
-                        type="button">
-                        Green
-                    </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
-                        type="button">
-                        Blue
-                    </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255"
-                        data-url="/lights" type="button">
-                        White
-                    </button>
-                </div>
-                <div>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_OFF" data-url="/lights"
-                        type="button">
-                        All Off
-                    </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_ON" data-url="/lights"
-                        type="button">
-                        All On
-                    </button>
-                </div>
-                <div>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP1_ON" data-url="/lights"
-                        type="button">
-                        1 On
-                    </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP2_ON" data-url="/lights"
-                        type="button">
-                        2 On
-                    </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP3_ON" data-url="/lights"
-                        type="button">
-                        3 On
-                    </button>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP4_ON" data-url="/lights"
-                        type="button">
-                        4 On
-                    </button>
-                </div>
-                <h2>Scene colors:</h2>
-                <div id="sceneButtonContainer"></div>
-                <div>
-                    <button class="mui-btn mui-btn--primary animator-action" data-value="reset_scene_to_defaults"
-                        data-url="/defaults" type="button">
-                        Reset scene colors to defaults
-                    </button>
-                </div>
-                <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
-            </div>
-            <div class="bottom-gap"></div>
+        <div class="mui-form-group mui-slider-container">
+            <label class="mui-form__label" for="zoomSlider">Zoom Level (1x - 6x) beyond 3x resolution
+                decreases:</label>
+            <input type="range" id="zoomSlider" class="mui-slider" min="1" max="6" step="0.1" value="1">
+            <span id="zoomValue" class="mui-zoom-value">1.0x</span>
         </div>
-        <div class="mui-tabs__pane" id="settings">
-            <h1>Animator - City Lights</h1>
-            <p style="padding-top:0.5rem;">
-                Use this web app to control and setup your Animator - City Lights
-                product. Have fun animating.
-            </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-                data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-                data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-                data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-                data-url="/mode">Four</button>
-            <h1>Animator - City Lights</h1>
-            <p style="padding-top:0.5rem;">
-                Use this web app to control and setup your Animator - City Lights
-                product. Have fun animating.
-            </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-                data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-                data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-                data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-                data-url="/mode">Four</button>
-            <div class="mui-textfield">
-                <input class="input" id="volume" type="number" disabled>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume10">
-                    Volume 10
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume20">
-                    Volume 20
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume30">
-                    Volume 30
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume40">
-                    Volume 40
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume50">
-                    Volume 50
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume60">
-                    Volume 60
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume70">
-                    Volume 70
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume80">
-                    Volume 80
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume90">
-                    Volume 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="volume100">
-                    Volume 100
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="lower1">
-                    Lower Volume by 1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                    data-action="raise1">
-                    Raise Volume by 1
-                </button>
-            </div>
-
-            <p>
-                Valid volume levels are from 1 to 100
-            </p>
-
-            <h2>Animator web page name and ip address:</h2>
-
-            <div class="mui-textfield">
-                <label>Base url:</label>
-                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div class="mui-textfield">
-                <label>IP Address:</label>
-                <input class="input" id="settingsIpAddress" type="text" disabled
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div>
-                <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
-                    data-url="/update-host-name">
-                    Change
-                </button>
-            </div>
-
-            <p>
-                Use alphanumerics and dashes only. All names are automatically
-                appended with .local:8083. So your website url will be something like
-                "website-name.local:8083 and the ip address will be xx.xx.xx.xx:8083."
-            </p>
-
-            <h2>Utilities:</h2>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
-                type="button">
-                Speaker Test
+        <div class="mui-form-group mui-slider-container">
+            <label class="mui-form__label" for="focusSlider">Focus (0-10):</label>
+            <input type="range" id="focusSlider" class="mui-slider" min="0" max="10" step="0.1" value="1">
+            <span id="focusValue" class="mui-zoom-value">1.0</span>
+        </div>
+        <div id="controls">
+            <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
+            <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
+            <button id="downloadBtn" class="mui-btn mui-btn--primary" disabled>Download Current Recording</button>
+        </div>
+        <div id="controls">
+            <button class="mui-btn mui-btn--primary" onclick="startCamera()" type="button">
+                Start stream
             </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
-                type="button">
-                Reset to defaults
+            <button class="mui-btn mui-btn--primary" onclick="stopCamera()" type="button">
+                Stop stream
+            </button>
+            <button class="mui-btn mui-btn--primary" onclick="snapshot()" type="button">
+                Snapshot
             </button>
         </div>
-        <div class="mui-tabs__pane" id="tables">
-            <h1>Animator - City Lights</h1>
-            <p style="padding-top:0.5rem;">
-                Use this web app to control and setup your Animator - City Lights
-                product. Have fun animating.
-            </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-                data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-                data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-                data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-                data-url="/mode">Four</button>
-            <h2>Animation scripts:</h2>
-            <p>
-                Animation scripts run the animation. To load the script press the button for the sound track you want to
-                modify.
-                Modify the script as needed and press save to save the script.
-            </p>
-            <div class="mui-textfield">
-                <label>Reset Hardware string:</label>
-                <input type="text" id="resetHdw" placeholder="Enter hardware string"
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div>
-                <button id="setResetHdwButton" class="mui-btn mui-btn--primary" type="button" data-url="/set-reset-hdw">
-                    Change
-                </button>
-            </div>
-
-            <h2>Media:</h2>
-            <div id="mediaScriptContainer"></div>
-            <h2>Animation script table:</h2>
-            <div class="mui-textfield">
-                <input class="input" id="animationName" type="text" disabled>
-            </div>
-            <button id="saveAnimationButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
-            <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-            <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-            <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
-            <div>USB connect to base3 usb port</div>
-            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
-            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
-            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
-            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
-            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
-                between
-                transitions in decimal seconds
-            </div>
-            <div>ZRAND = Random rainbow, fire, or color change</div>
-            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-            <div>ZFIRE = Fire</div>
-            <div>ZCOLCH = Color change</div>
-            <div>ZJ = Joke</div>
-            <div id="neoInstructionsContainer"></div>
-            <div id="sceneInstructionsContainer"></div>
-            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
-            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
-                data_object}</div>
-            <div>E = End script</div>
-            <table id="animationsTable" class="mui-table">
-                <thead>
-                    <tr>
-                        <th>TimeStamp</th>
-                        <th>TimeCode</th>
-                        <th>Animation</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <div id="playerContainer">
+            <h3>Selected Video</h3>
+            <video id="videoPlayer" controls></video>
         </div>
-        <div class="mui-tabs__pane" id="animators">
-            <h1>Animator - City Lights</h1>
-            <p style="padding-top:0.5rem;">
-                Use this web app to control and setup your Animator - City Lights
-                product. Have fun animating.
-            </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-                data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-                data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-                data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-                data-url="/mode">Four</button>
-            <h2>Animator setup:</h2>
-            <p>Follow these steps to setup animators to be controlled by Lionel Legacy/TMCC remotes:</p>
-            <ol>
-                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
-                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
-                    corresponding buttons to duplicate, rename, or delete it.</li>
-            </ol>
-            <div class="mui-checkbox">
-                <label>
-                    <input type="checkbox" id="tmccVoiceCheckbox" data-url="/set-tmcc-voice-enabled">
-                    Enable command voice
-                </label>
-            </div>
-            <button class="mui-btn mui-btn--primary" onclick="createAnimatorDialog()">Create
-                Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimatorDialog()">Duplicate
-                Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename
-                Animator</button>
-            <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete
-                Animator</button>
-            <h2>Animators:</h2>
-            <div id="animatorContainer"></div>
-            <h2>Animator commands:</h2>
-            <div>USB connect to base3 usb port</div>
-            <div>SW_XXXX = Switch XXXX (right,left,three,four)</div>
-            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
-            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
-            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
-            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
-                between
-                transitions in decimal seconds
-            </div>
-            <div>ZRAND = Random rainbow, fire, or color change</div>
-            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-            <div>ZFIRE = Fire</div>
-            <div>ZCOLCH = Color change</div>
-            <div>ZJ = Joke</div>
-            <div id="neoInstructionsContainer"></div>
-            <div id="sceneInstructionsContainer"></div>
-            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
-            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
-                data_object}</div>
-            <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object
-                i.e. {"an":data_object}</div>
-            <div>E = End script</div>
-            <h2>Animator settings:</h2>
-            <form class="mui-form">
-                <div class="mui-textfield">
-                    <label>Animator Name:</label>
-                    <input class="input" id="animatorName" type="text" disabled
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>Device Type:</label>
-                    <input type="text" id="animatorDevice" placeholder="Enter Device Type"
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>Address:</label>
-                    <input type="text" id="animatorAddress" placeholder="Enter Address"
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>Base url:</label>
-                    <input type="text" id="animatorBaseUrl" placeholder="Enter Base Url"
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-                <div class="mui-textfield">
-                    <label>IP Address:</label>
-                    <input class="input" id="animatorIpAddress" type="text" disabled
-                        style="width: 300px; padding: 5px; margin: 5px;">
-                </div>
-            </form>
-            <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
-                <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP Address
-                    Animator</button>
-                <table id="animatorTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>Button</th>
-                            <th>Commands</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-        </div>
-        <div class="mui-tabs__pane" id="camera">
-            <div class="iframe-container">
-                <iframe src="http://animator-camera-train.local:8083/control" width="100%" height="400" title="Embedded Page"
-                    frameborder="0">
-                </iframe>
-            </div>
-        </div>
-        <div class="mui-tabs__pane" id="trolley">
-            <div class="iframe-container">
-                <iframe src="http://t.local/" width="100%" height="400" title="Embedded Page" frameborder="0">
-                </iframe>
-            </div>
+        <div id="thumbnailGallery">
+            <h3>Recordings</h3>
         </div>
     </div>
 </body>
 
 <script>
     let isRequestInProgress = false;
-
-    // Load initial data after webpage loads
-    document.addEventListener('DOMContentLoaded', function () {
-        getLocalIp()
-        getWebSiteUrl()
-        getVolume()
-        getAnimators()
-        getLightString()
-        getMedia()
-        getSceneChanges()
-        getNeoChanges()
-        getLifxEnabled()
-        getResetHdw()
-    });
 
     function getLightString() {
         fetch('/get-light-string', {
@@ -794,24 +364,6 @@
             });
     }
 
-    function getResetHdw() {
-        fetch('/get-reset-hdw', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                resetHdw.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
-    }
 
     local_ip = ""
 
@@ -834,6 +386,227 @@
                 console.log(error);
                 showAlert(error);
             });
+    }
+
+    function startCamera() {
+        fetch('/start-camera', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                streamStatus.textContent = ""
+                const stream = document.getElementById('stream');
+                setTimeout(() => {
+                    stream.src = 'http://animator-camera-train.local:8083/stream.mjpg';
+                }, 1000); // Delay to allow server to start camera
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function stopCamera() {
+        const stream = document.getElementById('stream');
+        stream.src = ''; // Clear the src before stopping the camera
+
+        // Ensure the src is cleared before proceeding
+        setTimeout(() => {
+            fetch('/stop-camera', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    console.log('Camera stopped:', data);
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        }, 100);
+    }
+
+    function snapshot() {
+        fetch('/snapshot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    class KnobController {
+        constructor(knobId, textId, commandPrefix, minRange, maxRange) {
+            this.knob = document.getElementById(knobId);
+            this.knobText = document.getElementById(textId);
+            this.commandPrefix = commandPrefix;
+            this.minRange = minRange;
+            this.maxRange = maxRange;
+            this.isDragging = false;
+            this.previousAngle = 0;
+            this.currentRotation = 0;
+            this.lastSentTime = 0;
+            this.throttleTimeout = null;
+            this.throttleTime = 500;
+
+            // Determine direction of mapping
+            this.isReversed = minRange > maxRange;
+            this.lowerBound = this.isReversed ? maxRange : minRange;
+            this.upperBound = this.isReversed ? minRange : maxRange;
+
+            this.initializeEventListeners();
+        }
+
+        getAngle(x, y, centerX, centerY) {
+            return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
+        }
+
+        onStart(event) {
+            this.isDragging = true;
+            const rect = this.knob.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            this.previousAngle = this.getAngle(clientX, clientY, centerX, centerY);
+        }
+
+        onMove(event) {
+            if (!this.isDragging) return;
+
+            const rect = this.knob.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+            const currentAngle = this.getAngle(clientX, clientY, centerX, centerY);
+            let angleDiff = currentAngle - this.previousAngle;
+
+            if (angleDiff > 180) angleDiff -= 360;
+            if (angleDiff < -180) angleDiff += 360;
+
+            this.currentRotation += angleDiff;
+            this.currentRotation = Math.max(-180, Math.min(180, this.currentRotation));
+
+            // Map the rotation (-180 to 180) to the custom range
+            const rangeSpan = this.upperBound - this.lowerBound;
+            let normalizedRotation = (this.currentRotation + 180) / 360; // 0 to 1
+
+            // Apply mapping based on direction
+            let displayValue;
+            if (this.isReversed) {
+                displayValue = Math.round(
+                    this.upperBound - (normalizedRotation * rangeSpan)
+                );
+            } else {
+                displayValue = Math.round(
+                    this.lowerBound + (normalizedRotation * rangeSpan)
+                );
+            }
+
+            // Clamp the value to the actual specified range
+            const clampedValue = Math.max(
+                Math.min(this.minRange, this.maxRange),
+                Math.min(Math.max(this.minRange, this.maxRange), displayValue)
+            );
+
+            this.knob.style.transform = `rotate(${this.currentRotation}deg)`;
+            this.knobText.innerText = clampedValue;
+
+            const newCommand = this.commandPrefix + clampedValue;
+            this.throttleSendCommand(newCommand);
+
+            this.previousAngle = currentAngle;
+        }
+
+        onEnd() {
+            this.isDragging = false;
+        }
+
+        throttleSendCommand(command) {
+            if (this.throttleTimeout) {
+                clearTimeout(this.throttleTimeout);
+            }
+
+            const now = Date.now();
+            if (now - this.lastSentTime >= this.throttleTime) {
+                this.sendThrottledCommand(command);
+            } else {
+                this.throttleTimeout = setTimeout(() => this.sendThrottledCommand(command), this.throttleTime);
+            }
+        }
+
+        async sendThrottledCommand(command) {
+            if (!command) return;
+
+            this.lastSentTime = Date.now();
+            this.throttleTimeout = null;
+
+            try {
+                await testAnimationCommand(command);
+            } catch (error) {
+                console.error(`Error sending animation command for ${this.commandPrefix}:`, error);
+            }
+        }
+
+        initializeEventListeners() {
+            this.knob.addEventListener('mousedown', (e) => this.onStart(e));
+            this.knob.addEventListener('touchstart', (e) => this.onStart(e));
+            window.addEventListener('mousemove', (e) => this.onMove(e));
+            window.addEventListener('touchmove', (e) => this.onMove(e));
+            window.addEventListener('mouseup', () => this.onEnd());
+            window.addEventListener('touchend', () => this.onEnd());
+
+            this.knob.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+            this.knob.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        }
+    }
+
+    // Example usage with both normal and reversed ranges
+    const knob1Controller = new KnobController('knob', 'knob-text', 'S1', 180, 0);
+    const knob2Controller = new KnobController('knob2', 'knob2-text', 'S2', 140, 90);
+    const knob3Controller = new KnobController('knob3', 'knob3-text', 'S3', 0, 180);
+
+    async function testAnimationCommand(command) {
+        if (!command) {
+            console.log("Invalid command, stopping request: " + command);
+            return;
+        }
+
+        const url = "/test-animation";
+        const data = { an: command };
+        const jsonData = JSON.stringify({ ...data });
+
+        try {
+            let response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: jsonData,
+            });
+
+            let text = await response.text();
+            return text;
+        } catch (error) {
+            console.log("Fetch Error: " + error + "Sending Data: " + jsonData);
+        }
     }
 
     function getVolume() {
@@ -875,34 +648,61 @@
             });
     }
 
-    function getAnimators() {
-        fetch('/get-scripts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                my_data = JSON.parse(data)
-                setAnimatorConfigButtons(my_data)
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
-    }
-
-    function setAnimatorConfigButtons(my_data) {
+    function setPlylstButtons(my_data) {
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
-            button.textContent = item
+            button.textContent = item.replace("plylst_", "");
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
-            button.setAttribute("data-url", "/get-animator");
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        // Handle the response from the server
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            button.removeAttribute('disabled');
+                        }
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled');
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            playlistContainer.appendChild(button);
+        });
+    }
+
+    function setPlylstScriptButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item.replace("plylst_", "");
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
             button.setAttribute("type", "button");
             button.addEventListener('click', function () {
                 var url = button.getAttribute('data-url');
@@ -929,12 +729,8 @@
                     })
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
-                        animatorName.value = animation
-                        animatorDevice.value = myData["device"]
-                        animatorAddress.value = myData["address"]
-                        animatorBaseUrl.value = myData["baseUrl"]
-                        animatorIpAddress.value = myData["animatorIpAddress"]
-                        populateAnimatorTable(myData["table_data"])
+                        animationName.value = animation
+                        populateTable(myData)
                         button.removeAttribute('disabled')
                     })
                     .catch(function (error) {
@@ -943,7 +739,7 @@
                         showAlert(error);
                     });
             });
-            animatorContainer.appendChild(button);
+            playlistScriptContainer.appendChild(button);
         });
     }
 
@@ -958,7 +754,7 @@
 
         // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('pictures') || topic.includes('random_config') || topic.includes('animator')) {
+            if (topic.includes('pictures') || topic.includes('random_config')) {
                 return; // Skip this topic
             }
             // Create and add a button for the folder (topic)
@@ -1067,6 +863,8 @@
         });
     }
 
+
+
     function setMediaScriptButtons(my_data) {
         // Clear the existing buttons (if needed)
         const mediaScriptContainer = document.getElementById("mediaScriptContainer");
@@ -1119,7 +917,7 @@
                         .then(function (data) {
                             myData = JSON.parse(data); // Set the value of the input field with the received data
                             animationName.value = animation;
-                            populateAnimationsTable(myData);
+                            populateTable(myData);
                             button.removeAttribute('disabled');
                         })
                         .catch(function (error) {
@@ -1292,7 +1090,7 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    showAlert('Try Again');
                 });
         });
     });
@@ -1408,39 +1206,6 @@
             });
     });
 
-    // Add click event listener to website submit button
-    var setResetHdwButton = document.getElementById('setResetHdwButton');
-    setResetHdwButton.addEventListener('click', function () {
-        var resetHdw = document.getElementById('resetHdw');
-        var resetHdwText = resetHdw.value;
-        var url = this.getAttribute('data-url');
-
-        var data = {
-            text: resetHdwText,
-        };
-
-        setResetHdwButton.setAttribute('disabled', 'true')
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                resetHdw.value = data; // Set the value of the input field with the received data
-                setResetHdwButton.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                console.log(error);
-                setResetHdwButton.removeAttribute('disabled')
-            });
-    });
-
     // Restrict input to letters, numbers, and hyphens only
     settingsWebsiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
@@ -1455,7 +1220,7 @@
     function pasteRowsAndResetTable() {
         var pasteIndex = 0;
 
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -1487,7 +1252,7 @@
         console.log(combinedData);
 
         // Populate the table with the combined data
-        populateAnimationsTable(combinedData);
+        populateTable(combinedData);
     }
 
 
@@ -1642,7 +1407,7 @@
         }
     }
 
-    function createAnimatorDialog() {
+    function createPlaylistDialog() {
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
@@ -1657,7 +1422,7 @@
         form.style.margin = '20px'; // Add margin to the form
 
         var legend = document.createElement('legend');
-        legend.textContent = 'Create Animator';
+        legend.textContent = 'Create playlist';
         form.appendChild(legend);
 
         var filenameInput = document.createElement('div');
@@ -1674,7 +1439,7 @@
         saveBtn.type = 'button';
         saveBtn.className = 'mui-btn mui-btn--primary';
         saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', createAnimator);
+        saveBtn.addEventListener('click', createPlaylist);
         form.appendChild(saveBtn);
 
         var cancelBtn = document.createElement('button');
@@ -1692,7 +1457,7 @@
         mui.overlay('on', modalEl);
     }
 
-    function createAnimator() {
+    function createPlaylist() {
         var filenameInput = document.getElementById('filename').value.trim();
         var errorMessage = document.querySelector('.mui--text-danger');
 
@@ -1702,7 +1467,7 @@
                 fn: filenameInput,
             };
 
-            fetch("/create-animator", {
+            fetch("/create-playlist", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1713,7 +1478,7 @@
                     return response.text();
                 })
                 .then(function (data) {
-                    updateAnimators()
+                    updatePlaylists()
                     var modalEl = document.getElementById("modalEl")
                     mui.overlay('off', modalEl)
                 })
@@ -1726,7 +1491,7 @@
         }
     }
 
-    function duplicateAnimatorDialog() {
+    function duplicatePlaylistDialog() {
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
@@ -1741,7 +1506,7 @@
         form.style.margin = '20px'; // Add margin to the form
 
         var legend = document.createElement('legend');
-        legend.textContent = 'Duplicate Animator';
+        legend.textContent = 'Duplicate playlist';
         form.appendChild(legend);
 
         var filenameInput = document.createElement('div');
@@ -1758,7 +1523,7 @@
         saveBtn.type = 'button';
         saveBtn.className = 'mui-btn mui-btn--primary';
         saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', duplicateAnimator);
+        saveBtn.addEventListener('click', duplicatePlaylist);
         form.appendChild(saveBtn);
 
         var cancelBtn = document.createElement('button');
@@ -1776,18 +1541,18 @@
         mui.overlay('on', modalEl);
     }
 
-    function duplicateAnimator() {
+    function duplicatePlaylist() {
         var filenameInput = document.getElementById('filename').value.trim();
         var errorMessage = document.querySelector('.mui--text-danger');
 
         if (filenameInput) {
-            saveAnimatorData(filenameInput + ".json", true);
+            saveData("plylst_" + filenameInput, true);
         } else {
             errorMessage.textContent = 'Please enter a filename.';
         }
     }
 
-    function renameAnimatorDialog() {
+    function renamePlaylistDialog() {
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
@@ -1802,7 +1567,7 @@
         form.style.margin = '20px'; // Add margin to the form
 
         var legend = document.createElement('legend');
-        legend.textContent = 'Rename Animator';
+        legend.textContent = 'Rename playlist';
         form.appendChild(legend);
 
         var filenameInput = document.createElement('div');
@@ -1819,7 +1584,7 @@
         saveBtn.type = 'button';
         saveBtn.className = 'mui-btn mui-btn--primary';
         saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', renameAnimator);
+        saveBtn.addEventListener('click', renamePlaylist);
         form.appendChild(saveBtn);
 
         var cancelBtn = document.createElement('button');
@@ -1837,18 +1602,18 @@
         mui.overlay('on', modalEl);
     }
 
-    function renameAnimator() {
+    function renamePlaylist() {
         var filenameInput = document.getElementById('filename').value.trim();
         var errorMessage = document.querySelector('.mui--text-danger');
 
         if (filenameInput) {
             console.log('Filename:', filenameInput);
             var data = {
-                fo: animatorName.value,
+                fo: animationName.value,
                 fn: filenameInput,
             };
 
-            fetch("/rename-animator", {
+            fetch("/rename-playlist", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1859,7 +1624,7 @@
                     return response.text();
                 })
                 .then(function (data) {
-                    updateAnimators()
+                    updatePlaylists()
                     var modalEl = document.getElementById("modalEl")
                     mui.overlay('off', modalEl)
                 })
@@ -1872,7 +1637,7 @@
         }
     }
 
-    function deleteAnimatorDialog() {
+    function deletePlaylistDialog() {
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
@@ -1887,7 +1652,7 @@
         form.style.margin = '20px'; // Add margin to the form
 
         var legend = document.createElement('legend');
-        legend.textContent = 'Delete Animator';
+        legend.textContent = 'Delete playlist';
         form.appendChild(legend);
 
         var message = document.createElement('div');
@@ -1899,7 +1664,7 @@
         saveBtn.type = 'button';
         saveBtn.className = 'mui-btn mui-btn--primary';
         saveBtn.textContent = 'Delete';
-        saveBtn.addEventListener('click', deleteAnimator);
+        saveBtn.addEventListener('click', deletePlaylist);
         form.appendChild(saveBtn);
 
         var cancelBtn = document.createElement('button');
@@ -1915,12 +1680,6 @@
 
         // Show modal
         mui.overlay('on', modalEl);
-    }
-
-    function updateAnimators() {
-        const myAnimatorDiv = document.getElementById("animatorContainer");
-        removeChildNodes(myAnimatorDiv)
-        getAnimators()
     }
 
     function removeChildNodes(myDiv) {
@@ -1961,69 +1720,20 @@
     }
 
     // Table component
-    var saveAnimationButton = document.getElementById("saveAnimationButton");
-    var saveAnimatorButton = document.getElementById("saveAnimatorButton");
+    var saveDataButton = document.getElementById("saveDataButton");
     var stopButton = document.getElementById("stopButton");
-    var getAnimatorIpAddressButton = document.getElementById("getAnimatorIpAddressButton");
-    var animationTableBody = document.querySelector("#animationsTable tbody");
-    var animatorTableBody = document.querySelector("#animatorTable tbody");
+    var dataTable = document.getElementById("dataTable");
+    var dataTableBody = document.querySelector("#dataTable tbody");
+    var deletePlaylistButton = document.getElementById("deletePlaylistButton");
+
 
     stopButton.addEventListener("click", function () {
         stopAnimation();
     });
 
-    saveAnimationButton.addEventListener("click", function () {
-        saveAnimationData(animationName.value, false);
+    saveDataButton.addEventListener("click", function () {
+        saveData(animationName.value, false);
     });
-
-    saveAnimatorButton.addEventListener("click", function () {
-        saveAnimatorData(animatorName.value, false);
-    });
-
-    getAnimatorIpAddressButton.addEventListener("click", function () {
-        getAnimatorIpAddress(animatorBaseUrl.value);
-    });
-
-
-    function getAnimatorIpAddress(baseUrl) {
-        const thirdInput = "API_" + baseUrl + "_get-local-ip_{}"
-
-        var url = "/test-animation";
-
-        var data = {
-            an: thirdInput,
-        };
-
-        portPartSplit = baseUrl.split(":")
-
-        port = ""
-
-        if (portPartSplit.length == 2) {
-            port = ":" + portPartSplit[1]
-        }
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text();
-            })
-            .then(function (data) {
-                data = data.replace(/^"|"$/g, '');
-                animatorIpAddress.value = data + port
-                target.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                target.removeAttribute('disabled')
-                console.log(error);
-                showAlert(error);
-            });
-    }
-
 
     function stopAnimation() {
         stopButton.setAttribute("disabled", "true");
@@ -2052,12 +1762,12 @@
             });
     }
 
-    function deleteAnimator() {
+    function deletePlaylist() {
         var data = {
-            fn: animatorName.value,
+            fn: animationName.value,
         };
 
-        fetch("/delete-animator", {
+        fetch("/delete-playlist", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2068,7 +1778,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                updateAnimators()
+                updatePlaylists()
                 console.log("file deleted")
                 var modalEl = document.getElementById("modalEl")
                 mui.overlay('off', modalEl)
@@ -2079,53 +1789,62 @@
             });
     }
 
-    function populateAnimationsTable(data) {
+
+
+    function populateTable(data) {
         // Clear existing table rows
-        animationTableBody.innerHTML = "";
+        dataTableBody.innerHTML = "";
 
         // Populate table with new data
         data.forEach(function (rowData, index) {
-            var row = createAnimationsDataRow(rowData, index);
-            animationTableBody.appendChild(row);
+            var row = createDataRow(rowData, index);
+            dataTableBody.appendChild(row);
         });
     }
 
-    function populateAnimatorTable(data) {
-        // Clear existing table rows
-        animatorTableBody.innerHTML = "";
+    dataTableBody.addEventListener("click", function (event) {
+        var target = event.target;
+        if (target.classList.contains("insert-row-btn")) {
+            insertRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("delete-row-btn")) {
+            deleteRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("add-row-btn")) {
+            addRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("test-row-btn")) {
+            testAnimation(target)
+        }
+    });
 
-        // Populate table with new data
-        data.forEach(function (rowData, index) {
-            var row = createAnimatorDataRow(rowData, index);
-            animatorTableBody.appendChild(row);
-        });
+    function testAnimation(target) {
+        const rowElement = target.parentNode.parentNode;
+        const thirdInput = getTextOfInput(rowElement, 3);
+        target.setAttribute("disabled", "true");
+        var url = "/test-animation";
+
+        var data = {
+            an: thirdInput,
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                console.log(data);
+                target.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                target.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
     }
-
-    animationTableBody.addEventListener("click", function (event) {
-        var target = event.target;
-        if (target.classList.contains("animation-insert-row-btn")) {
-            animationInsertRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-delete-row-btn")) {
-            animationDeleteRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-add-row-btn")) {
-            animationAddRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animation-test-row-btn")) {
-            animationTestAnimation(target)
-        }
-    });
-
-    animatorTableBody.addEventListener("click", function (event) {
-        var target = event.target;
-        if (target.classList.contains("animator-insert-row-btn")) {
-            animatorInsertRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animator-delete-row-btn")) {
-            animatorDeleteRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animator-add-row-btn")) {
-            animatorAddRow(target.parentNode.parentNode);
-        } else if (target.classList.contains("animator-test-row-btn")) {
-            animatorTestAnimation(target)
-        }
-    });
 
     function getTextOfInput(rowElement, elNum) {
         const inputElements = rowElement.querySelectorAll('input');
@@ -2154,8 +1873,7 @@
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
     }
 
-
-    function createAnimationsDataRow(rowData, rowIndex) {
+    function createDataRow(rowData, rowIndex) {
         var row = document.createElement("tr");
         myRowDataSplit = rowData.split("|")
 
@@ -2202,52 +1920,16 @@
         actionCell.style.paddingTop = "0px";  // Adjust top padding
         actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
 
-        var testButton = createAnimationTestButton();
+        var testButton = createTestButton();
         actionCell.appendChild(testButton);
 
-        var insertButton = createAnimationInsertButton();
+        var insertButton = createInsertButton();
         actionCell.appendChild(insertButton);
 
-        var addButton = createAnimationAddButton();
+        var addButton = createAddButton();
         actionCell.appendChild(addButton);
 
-        var deleteButton = createAnimationDeleteButton();
-        actionCell.appendChild(deleteButton);
-
-        row.appendChild(actionCell);
-
-        return row;
-    }
-
-    function createAnimatorDataRow(rowData, rowIndex) {
-        var row = document.createElement("tr");
-
-        var anCell = createEditableCell(rowData[0], "50px");
-        anCell.addEventListener('click', function (event) {
-            animationCellClicked(event);
-        });
-        row.appendChild(anCell);
-
-        var anCell = createEditableCell(rowData[1], "600px");
-        anCell.addEventListener('click', function (event) {
-            animationCellClicked(event);
-        });
-        row.appendChild(anCell);
-
-        var actionCell = document.createElement("td");
-        actionCell.style.paddingTop = "0px";  // Adjust top padding
-        actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
-
-        var testButton = createAnimatorTestButton();
-        actionCell.appendChild(testButton);
-
-        var insertButton = createAnimationInsertButton();
-        actionCell.appendChild(insertButton);
-
-        var addButton = createAnimationAddButton();
-        actionCell.appendChild(addButton);
-
-        var deleteButton = createAnimationDeleteButton();
+        var deleteButton = createDeleteButton();
         actionCell.appendChild(deleteButton);
 
         row.appendChild(actionCell);
@@ -2273,169 +1955,57 @@
         return cell;
     }
 
-    function createAnimationTestButton() {
+    function createTestButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-test-row-btn";
+        button.className = "mui-btn mui-btn--primary test-row-btn";
         button.innerHTML = 'Tst';
         return button;
     }
 
-    function createAnimationDeleteButton() {
+    function createDeleteButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-delete-row-btn";
+        button.className = "mui-btn mui-btn--primary delete-row-btn";
         button.innerHTML = 'Del';
         return button;
     }
 
-    function createAnimationInsertButton() {
+    function createInsertButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-insert-row-btn";
+        button.className = "mui-btn mui-btn--primary insert-row-btn";
         button.innerHTML = 'Ins';
         return button;
     }
 
-    function createAnimationAddButton() {
+    function createAddButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary animation-add-row-btn";
+        button.className = "mui-btn mui-btn--primary add-row-btn";
         button.innerHTML = 'Add';
         return button;
     }
 
-    function createAnimatorTestButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animator-test-row-btn";
-        button.innerHTML = 'Tst';
-        return button;
-    }
-
-    function createAnimatorDeleteButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animator-delete-row-btn";
-        button.innerHTML = 'Del';
-        return button;
-    }
-
-    function createAnimatorInsertButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animator-insert-row-btn";
-        button.innerHTML = 'Ins';
-        return button;
-    }
-
-    function createAnimatorAddButton() {
-        var button = document.createElement("button");
-        button.type = "button";
-        button.className = "mui-btn mui-btn--primary animator-add-row-btn";
-        button.innerHTML = 'Add';
-        return button;
-    }
-
-    function animationDeleteRow(row) {
+    function deleteRow(row) {
         row.parentNode.removeChild(row);
         copyAndResetTable();
     }
 
-    function animationAddRow(row) {
-        var newRow = createAnimationsDataRow("|");
-        animationTableBody.insertBefore(newRow, row.nextSibling);
+    function addRow(row) {
+        var newRow = createDataRow("|");
+        dataTableBody.insertBefore(newRow, row.nextSibling);
         copyAndResetTable();
     }
 
-    function animationInsertRow(row) {
-        var newRow = createAnimationsDataRow("|");
-        animatorTableBody.insertBefore(newRow, row);
+    function insertRow(row) {
+        var newRow = createDataRow("|");
+        dataTableBody.insertBefore(newRow, row);
         copyAndResetTable();
-    }
-
-    function animationTestAnimation(target) {
-        const rowElement = target.parentNode.parentNode;
-        const thirdInput = getTextOfInput(rowElement, 3);
-        target.setAttribute("disabled", "true");
-        var url = "/test-animation";
-
-        var data = {
-            an: thirdInput,
-        };
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text();
-            })
-            .then(function (data) {
-                console.log(data);
-                target.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                target.removeAttribute('disabled')
-                console.log(error);
-                showAlert(error);
-            });
-    }
-
-    function animatorDeleteRow(row) {
-        row.parentNode.removeChild(row);
-        copyAndResetTable();
-    }
-
-    function animatorAddRow(row) {
-        var newRow = createAnimatorDataRow("");
-        animatorTableBody.insertBefore(newRow, row.nextSibling);
-        copyAndResetTable();
-    }
-
-    function animatorInsertRow(row) {
-        var newRow = createAnimatorDataRow("");
-        animatorTableBody.insertBefore(newRow, row);
-        copyAndResetTable();
-    }
-
-    function animatorTestAnimation(target) {
-        const rowElement = target.parentNode.parentNode;
-        const secondInput = getTextOfInput(rowElement, 2);
-        target.setAttribute("disabled", "true");
-        var url = "/test-animation";
-
-        var data = {
-            an: secondInput,
-            ip: animatorIpAddress.value
-        };
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text();
-            })
-            .then(function (data) {
-                console.log(data);
-                target.removeAttribute('disabled')
-            })
-            .catch(function (error) {
-                target.removeAttribute('disabled')
-                console.log(error);
-                showAlert(error);
-            });
     }
 
     function copyAndResetTable() {
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -2454,13 +2024,13 @@
             combinedData.push(secondsConverted + "|" + data[i][2])
         }
 
-        populateAnimationsTable(combinedData)
+        populateTable(combinedData)
     }
 
 
-    function saveAnimationData(file_name, get_changes) {
-        saveAnimationButton.setAttribute("disabled", "true");
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
+    function saveData(file_name, get_changes) {
+        saveDataButton.setAttribute("disabled", "true");
+        var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
         // Extract data from table rows
         var data = rows.map(function (row) {
@@ -2486,12 +2056,12 @@
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
                 if (get_changes == true) {
-                    updateAnimators()
+                    updatePlaylists()
                     var modalEl = document.getElementById("modalEl")
                     mui.overlay('off', modalEl)
                 }
                 // All blocks have been sent, enable the button
-                saveAnimationButton.removeAttribute('disabled');
+                saveDataButton.removeAttribute('disabled');
                 return;
             }
 
@@ -2504,7 +2074,7 @@
             }
 
             // Send data to the server
-            fetch("/save-animation-data", {
+            fetch("/save-data", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -2519,7 +2089,7 @@
                     sendBlockSequentially(index + 1);
                 })
                 .catch(function (error) {
-                    saveAnimationButton.removeAttribute('disabled');
+                    saveDataButton.removeAttribute('disabled');
                     console.log(error);
                     showAlert(error);
                 });
@@ -2527,49 +2097,6 @@
 
         // Start sending blocks sequentially
         sendBlockSequentially(0);
-    }
-
-    function saveAnimatorData(file_name) {
-        saveAnimatorButton.setAttribute("disabled", "true");
-        var rows = Array.from(animatorTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var buttonMappingTable = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
-                return cellValue;
-            });
-            return values;
-        });
-
-        // Create an object with the data to be sent in the request
-        var data = {
-            fn: file_name,
-            device: animatorDevice.value,
-            address: animatorAddress.value,
-            baseUrl: animatorBaseUrl.value,
-            animatorIpAddress: animatorIpAddress.value,
-            table_data: buttonMappingTable
-        };
-
-        fetch("/save-animator-data", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                saveAnimatorButton.removeAttribute('disabled');
-                var modalEl = document.getElementById("modalEl")
-                mui.overlay('off', modalEl)
-                return response.text();
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
     }
 
     // Function to convert DaVinci Resolve timestamp to seconds
@@ -2711,7 +2238,7 @@
             })
             .catch(error => {
                 console.error('Error:', error)
-                isRequestInProgress = false; // Reset the flag in case of save-animation-data error
+                isRequestInProgress = false; // Reset the flag in case of an error
             });
     }
 
@@ -2734,6 +2261,7 @@
         toggleLifxDiv()
         programmaticChange = false;
     }
+
 
     // Combined event listener for checkbox change
     lifxCheckbox.addEventListener('change', function () {
@@ -2765,48 +2293,6 @@
             .catch(error => {
                 console.log(error);
                 lifxCheckbox.removeAttribute('disabled');
-            });
-    });
-
-    var tmccVoiceCheckbox = document.getElementById("tmccVoiceCheckbox");
-
-    // Function to change checkbox state programmatically
-    function setTmccVoiceCheckboxState(newState) {
-        programmaticChange = true;
-        tmccVoiceCheckbox.checked = newState;
-        programmaticChange = false;
-    }
-
-    // Combined event listener for checkbox change
-    tmccVoiceCheckbox.addEventListener('change', function () {
-        // Skip fetch request if this is a programmatic change
-        if (programmaticChange) return;
-
-        const url = this.getAttribute('data-url');
-        const isChecked = this.checked;
-
-        toggleLifxDiv()
-
-        const data = {
-            enabled: isChecked
-        };
-
-        tmccVoiceCheckbox.setAttribute('disabled', 'true');
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(response => response.text())
-            .then(data => {
-                console.log('Response:', data);
-                tmccVoiceCheckbox.removeAttribute('disabled');
-            })
-            .catch(error => {
-                console.log(error);
-                tmccVoiceCheckbox.removeAttribute('disabled');
             });
     });
 
@@ -2857,6 +2343,267 @@
             });
         }
     }
+
+    // Video recording code
+
+    const streamImg = document.getElementById('stream');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const thumbnailGallery = document.getElementById('thumbnailGallery');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = document.getElementById('zoomValue');
+    const setZoomBtn = document.getElementById('setZoomBtn');
+    const focusSlider = document.getElementById('focusSlider');
+    const focusValue = document.getElementById('focusValue');
+
+
+    let canvas, ctx, mediaRecorder, recordedChunks = [];
+    let recordings = [];
+    const blobUrlMap = new Map();
+
+    function throttle(func, limit) {
+        let lastCall = 0;
+        return function (...args) {
+            const now = Date.now();
+            if (now - lastCall >= limit) {
+                lastCall = now;
+                return func.apply(this, args);
+            }
+        };
+    }
+
+    async function setZoom(zoomFactor) {
+        try {
+            const response = await fetch('/set-zoom', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zoom: zoomFactor }) });
+            if (response.ok) console.log(`Zoom set to ${zoomFactor}x`);
+            else console.error('Failed to set zoom:', response.status);
+        } catch (e) { console.error('Error setting zoom:', e); }
+    }
+
+    async function setFocus(focusValue) {
+        try {
+            const response = await fetch('/set-focus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ focus: focusValue }) });
+            if (response.ok) console.log(`Focus set to ${focusValue}`);
+            else console.error('Failed to set focus:', response.status);
+        } catch (e) { console.error('Error setting focus:', e); }
+    }
+
+
+    const throttledSetZoom = throttle(setZoom, 200);
+    const throttledSetFocus = throttle(setFocus, 200);
+
+    zoomSlider.addEventListener('input', () => { const zoom = parseFloat(zoomSlider.value); zoomValue.textContent = `${zoom}x`; throttledSetZoom(zoom); });
+    zoomSlider.addEventListener('change', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+    zoomSlider.addEventListener('touchend', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+
+
+    focusSlider.addEventListener('input', () => { const focus = parseFloat(focusSlider.value); focusValue.textContent = focus; throttledSetFocus(focus); });
+    focusSlider.addEventListener('change', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+    focusSlider.addEventListener('touchend', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+
+
+    function setupCanvas() {
+        canvas = document.createElement('canvas');
+        canvas.width = streamImg.naturalWidth || 1280;
+        canvas.height = streamImg.naturalHeight || 720;
+        ctx = canvas.getContext('2d');
+        console.log('Canvas setup with dimensions:', canvas.width, 'x', canvas.height);
+    }
+
+    async function generateThumbnail(videoBlob) {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement('video');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            video.src = URL.createObjectURL(videoBlob);
+            video.muted = true;
+            video.currentTime = 1;
+            video.onloadeddata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const thumbnailDataUrl = canvas.toDataURL('image/jpeg');
+                URL.revokeObjectURL(video.src);
+                resolve(thumbnailDataUrl);
+            };
+            video.onerror = (e) => reject(e);
+        });
+    }
+
+    async function validateBlob(blob) {
+        return new Promise((resolve, reject) => {
+            const video = document.createElement('video');
+            const url = URL.createObjectURL(blob);
+            video.src = url;
+            video.onloadedmetadata = () => {
+                console.log('Blob validation: Metadata loaded. Duration:', video.duration, 'Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+                URL.revokeObjectURL(url);
+                resolve(true);
+            };
+            video.onerror = (e) => {
+                console.error('Blob validation: Error loading video:', e);
+                URL.revokeObjectURL(url);
+                reject(e);
+            };
+        });
+    }
+
+    async function addRecordingToGallery(recording, fileExtension) {
+        const thumbnailImg = document.createElement('img');
+        thumbnailImg.className = 'thumbnail';
+        thumbnailImg.src = recording.thumbnail || 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+        thumbnailImg.dataset.recordingId = recording.id;
+        thumbnailImg.title = `Recording ${new Date(parseInt(recording.id)).toLocaleString()}`;
+
+        thumbnailImg.addEventListener('click', async () => {
+            document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+            thumbnailImg.classList.add('active');
+            const blobUrl = URL.createObjectURL(recording.blob);
+            blobUrlMap.set(recording.id, blobUrl);
+            console.log('Created blob URL for playback:', blobUrl);
+            videoPlayer.src = blobUrl;
+            videoPlayer.play().catch(e => console.error('Error playing video:', e));
+            downloadBtn.disabled = false;
+            downloadBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = `recording-${recording.id}.${fileExtension}`; // Use dynamic extension
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+        });
+
+        thumbnailGallery.appendChild(thumbnailImg);
+    }
+
+    async function saveRecording(blob, recordingId, fileExtension) {
+        console.log('Saving recording - Blob size:', blob.size, 'Blob type:', blob.type);
+        try {
+            await validateBlob(blob);
+            console.log('Blob validated successfully');
+            const thumbnailDataUrl = await generateThumbnail(blob);
+            const recording = {
+                id: recordingId,
+                blob: blob,
+                thumbnail: thumbnailDataUrl
+            };
+            recordings.push(recording);
+            await addRecordingToGallery(recording, fileExtension); // Pass fileExtension
+        } catch (e) {
+            console.error('Error processing recording:', e);
+            showAlert('Failed to process recording. Check the console for details.');
+        }
+    }
+
+    function startRecording() {
+        if (!canvas) setupCanvas();
+        recordedChunks = [];
+
+        const stream = canvas.captureStream(30); // 30 FPS
+
+        // Prioritize MP4, fall back to WebM
+        let mimeType = 'video/mp4; codecs=avc1.42001E'; // H.264 baseline profile
+        let fileExtension = 'mp4';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            console.warn(`MIME type ${mimeType} not supported, falling back to WebM`);
+            mimeType = 'video/webm; codecs=vp8';
+            fileExtension = 'webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                console.error('No supported video format found');
+                showAlert('No supported video format available. Check the console.');
+                return;
+            }
+        }
+        console.log('Selected MIME type:', mimeType);
+        console.log('File extension:', fileExtension);
+
+        try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+            console.log('MediaRecorder created with MIME type:', mediaRecorder.mimeType);
+        } catch (e) {
+            console.error('Error creating MediaRecorder:', e);
+            showAlert('Failed to start recording. Check the console.');
+            return;
+        }
+
+        mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+                console.log('Data available:', event.data.size, 'bytes', 'Type:', event.data.type);
+            }
+        };
+
+        mediaRecorder.onstop = async () => {
+            console.log('MediaRecorder stopped. Total chunks:', recordedChunks.length);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const blob = new Blob(recordedChunks, { type: mimeType });
+            console.log('Blob created:', blob.size, 'bytes', 'Type:', blob.type);
+
+            const recordingId = Date.now();
+            await saveRecording(blob, recordingId, fileExtension);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            downloadBtn.disabled = true;
+        };
+
+        mediaRecorder.onerror = e => console.error('MediaRecorder error:', e);
+
+        function drawToCanvas() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                ctx.drawImage(streamImg, 0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(drawToCanvas);
+            }
+        }
+
+        try {
+            mediaRecorder.start();
+            console.log('Recording started');
+            drawToCanvas();
+        } catch (e) {
+            console.error('Error starting recording:', e);
+            showAlert('Failed to start recording. Check the console.');
+            return;
+        }
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        downloadBtn.disabled = true;
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            console.log('Stop requested');
+        } else {
+            console.warn('No active recording to stop');
+        }
+    }
+
+    startBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+
+    streamImg.onload = () => {
+        console.log('MJPEG stream loaded. Dimensions:', streamImg.naturalWidth, 'x', streamImg.naturalHeight);
+        if (!canvas) setupCanvas();
+    };
+
+    const streamStatus = document.getElementById('streamStatus');
+
+    streamImg.onerror = () => {
+        console.error('Error loading MJPEG stream');
+        streamStatus.textContent = 'Streaming stopped. Press start stream to continue streaming.';
+    };
+
+    window.addEventListener('unload', () => {
+        if (videoPlayer.src) URL.revokeObjectURL(videoPlayer.src);
+        blobUrlMap.forEach(url => URL.revokeObjectURL(url));
+        recordings.forEach(recording => URL.revokeObjectURL(recording.thumbnail));
+    });
+
 
 </script>
 
