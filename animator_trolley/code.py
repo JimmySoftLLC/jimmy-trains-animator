@@ -159,15 +159,19 @@ upd_media()
 web = cfg["serve_webpage"]
 
 # cfg_main = files.read_json_file("/mvc/main_menu.json")
-# main_m = cfg_main["main_menu"]
+main_m = []  #cfg_main["main_menu"]
 
 # cfg_web = files.read_json_file("/mvc/web_menu.json")
-# web_m = cfg_web["web_menu"]
+web_= []  #cfg_web["web_menu"]
 
 # cfg_vol = files.read_json_file("/mvc/volume_settings.json")
-# vol_set = cfg_vol["volume_settings"]
+vol_set = []  #cfg_vol["volume_settings"]
 
-cont_run = False
+add_snd = []
+
+web_m = []
+
+cont_run = cfg["cont_mode"]
 
 local_ip = ""
 
@@ -175,6 +179,8 @@ ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
+
+ts_mode = False
 
 ################################################################################
 # Setup neo pixels
@@ -806,7 +812,7 @@ async def an_light_async(f_nm):
             dur = 0
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item("time elapsed: " + str(t_past) +
-                           " Timestamp: " + ft1[0])
+                           " Timestamp: " + ft1[0] + " Command: " + ft1[1])
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
@@ -886,24 +892,33 @@ async def set_hdw_async(input_string):
     global sp, br, car_pos
     # Split the input string into segments
     segs = input_string.split(",")
-
     # Process each segment
     for seg in segs:
+        # TXXX = Train XXX throttle -100 to 100
+        if seg[0] == 'T':
+            try:   
+                v_str =  seg[1:]         
+                v = int(v_str)/100
+                print("throttle:", v)
+                train.throttle = v
+            except Exception as e:
+                print(e)
         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-        if seg == "":
+        elif seg == "":
             print("no command")
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
+        # horn MPMhorn
         if seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_a_0()
                 elif seg[1] == "W" or seg[1] == "P":
-                    stp_a_0()
+                    #stp_a_0()
                     if seg[2] == "S":
                         w0 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
                     elif seg[2] == "M":
                         w0 = audiomp3.MP3Decoder(open("/mvc/" + seg[3:] + ".mp3", "rb"))
                     if seg[1] == "W" or seg[1] == "P":
-                        mix.voice[0].play(w0, loop=False)
+                        mix.voice[1].play(w0, loop=False)
                     if seg[1] == "W":
                         wait_snd()
         # WA = Blow horn or whistle, A (H Horn, B Bell)
@@ -917,14 +932,6 @@ async def set_hdw_async(input_string):
                 fn=get_snds("/mvc","horn")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
-        elif seg[0] == 'S':
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    s_arr[i].angle = v
-            else:
-                s_arr[num-1].angle = int(v)
         # LNXXX = Lights N (0 All, 1-6) XXX 0 to 255
         elif seg[0] == 'L':  # lights
             num = int(seg[1])
@@ -957,109 +964,9 @@ async def set_hdw_async(input_string):
             seg_split = seg.split("_")
             # Process each command as an async operation
             await an_async(seg_split[1])
-        # TXXX = Train XXX throttle -100 to 100
-        elif seg[0] == 'T':
-            v = int(seg[1:])/100
-            train.throttle = v
-        # H_XXX_YY = Train XXX throttle -100 to 100 YY position 12 or 6 oclock
-        elif seg[0] == 'H':
-            seg_split = seg.split("_")
-            train.throttle = int(seg_split[1])/100
-            if seg_split[2] == "12":
-                goal = 5
-            else:
-                goal = 35
-            vl53.clear_interrupt()
-            cur_dist = vl53.distance
-            i = 0
-            while True:
-                vl53.clear_interrupt()
-                cur_dist = vl53.distance
-                if cur_dist > goal - 5 and cur_dist < goal + 5:
-                    i += 1
-                    if i > 2:
-                        train.throttle = 0
-                        break
-                print(cur_dist)
-                time.sleep(.02)  # Hold at current throttle value
-        # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, 
-        # BBB target band in decimal cm, AAA acceleration decimal cm/sec
-        elif seg[0] == 'C':
-            seg_split = seg.split("_")
-
-            spd = int(seg_split[1]) / 100
-            target_pos = float(seg_split[2])
-            target_band = float(seg_split[3])
-            acc = float(seg_split[4])
-
-            # clear out measurements
-            for _ in range(3):
-                vl53.clear_interrupt()
-                car_pos = vl53.distance
-                time.sleep(.1)
-
-            num_times_in_band = 0
-            give_up = 10
-            srt_t = time.monotonic()
-            
-            # Use current throttle state directly
-            current_speed = abs(train.throttle) if train.throttle else 0
-            current_direction = 1 if train.throttle >= 0 else -1
-            
-            while True:
-                vl53.clear_interrupt()
-                car_pos = vl53.distance
-                
-                # Calculate distance and target direction
-                distance_to_target = abs(car_pos - target_pos)
-                target_direction = 1 if car_pos < target_pos else -1  # 1 forward, -1 reverse
-                
-                # Calculate slowdown zone based on acceleration
-                slowdown_distance = target_band * 3 + (acc * 0.5)
-                
-                # Determine target speed
-                if distance_to_target < slowdown_distance:
-                    target_speed = max(0.1, spd * (distance_to_target / slowdown_distance))
-                else:
-                    target_speed = spd
-                    
-                # Handle direction change or speed adjustment
-                if current_direction != target_direction and current_speed > 0:
-                    # Decelerate to stop before changing direction
-                    current_speed -= acc * 0.05
-                    if current_speed <= 0:
-                        current_speed = 0
-                        current_direction = target_direction  # Switch direction when stopped
-                else:
-                    # Adjust speed in correct direction
-                    speed_diff = target_speed - current_speed
-                    # Apply acceleration/deceleration
-                    if speed_diff > 0:  # Need to accelerate
-                        current_speed += min(acc * 0.05, speed_diff)
-                    elif speed_diff < 0:  # Need to decelerate
-                        current_speed += max(-acc * 0.05, speed_diff)
-                    current_direction = target_direction
-                    
-                # Apply clamped speed with direction
-                current_speed = max(0, min(spd, current_speed))
-                train.throttle = current_speed * current_direction
-
-                # Check if within target band
-                if target_pos - target_band < car_pos < target_pos + target_band:
-                    num_times_in_band += 1
-                    if num_times_in_band > 2:
-                        train.throttle = 0
-                        break
-                        
-                print(f"Pos: {car_pos:.1f}, Speed: {train.throttle:.2f}, Dist: {distance_to_target:.1f}")
-                time.sleep(.05)
-                
-                t_past = time.monotonic() - srt_t
-                if t_past > give_up:
-                    train.throttle = 0
-                    break
 
 
+        
 ################################################################################
 # State Machine
 
@@ -1407,6 +1314,8 @@ st_mch.add(Snds())
 st_mch.add(AddSnds())
 st_mch.add(VolSet())
 st_mch.add(WebOpt())
+
+train.throttle = .5
 
 aud_en.value = True
 

@@ -105,8 +105,6 @@
             <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
             <button class="mui-btn mui-btn--primary" onclick="blowHorn()">Horn</button>
             <button class="mui-btn mui-btn--primary" onclick="ringBell()">Bell</button>
-            <button class="mui-btn mui-btn--primary" onclick="homeLeft()">Home Left</button>
-            <button class="mui-btn mui-btn--primary" onclick="homeRight()">Home Right</button>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -1542,16 +1540,6 @@
 
     function ringBell() {
         let newCommand = "WB";
-        testAnimationCommand(newCommand);
-    }
-
-    function homeLeft() {
-        let newCommand = "H_20_12";
-        testAnimationCommand(newCommand);
-    }
-
-    function HomeRight() {
-        let newCommand = "H_20_6";
         testAnimationCommand(newCommand);
     }
 
