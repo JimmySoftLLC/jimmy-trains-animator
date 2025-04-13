@@ -106,7 +106,8 @@ try:
     sd = sdcardio.SDCard(spi, cs)
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
-except:
+except Exception as e:
+    files.log_item(e)
     w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
@@ -125,7 +126,8 @@ except:
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
-            except:
+            except Exception as e:
+                files.log_item(e)
                 w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
@@ -316,304 +318,308 @@ if (web):
     files.log_item("Connecting to WiFi")
 
     # default for manufacturing and shows
-    SSID = "jimmytrainsguest"
-    PASS = ""
+    WIFI_SSID = "jimmytrainsguest"
+    WIFI_PASSWORD = ""
 
     try:
         env = files.read_json_file("/sd/env.json")
-        SSID = env["WIFI_SSID"]
-        PASS = env["WIFI_PASSWORD"]
+        WIFI_SSID = env["WIFI_SSID"]
+        WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
         print("Using env ssid")
-    except:
+    except Exception as e:
+        files.log_item(e)
         print("Using default ssid")
 
-    try:
-        # connect to your SSID
-        wifi.radio.connect(SSID, PASS)
-        gc_col("wifi connect")
+    for i in range(3):  
+        web = True
+        try:
+            # connect to your SSID
+            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+            gc_col("wifi connect")
 
-        # setup mdns server
-        mdns = mdns.Server(wifi.radio)
-        mdns.hostname = cfg["HOST_NAME"]
-        mdns.advertise_service(
-            service_type="_http", protocol="_tcp", port=80)
-
-        local_ip = str(wifi.radio.ipv4_address)
-
-        # files.log_items IP address to REPL
-        files.log_item("IP is" + local_ip)
-        files.log_item("Connected")
-
-        # set up server
-        pool = socketpool.SocketPool(wifi.radio)
-        server = Server(pool, "/static", debug=True)
-
-        gc_col("wifi server")
-
-        ################################################################################
-        # Setup routes
-
-        @server.route("/")
-        def base(req: HTTPRequest):
-            stp_a_0()
-            gc_col("Home page.")
-            return FileResponse(req, "index.html", "/")
-
-        @server.route("/mui.min.css")
-        def base(req: HTTPRequest):
-            stp_a_0()
-            return FileResponse(req, "/sd/mui.min.css", "/")
-
-        @server.route("/mui.min.js")
-        def base(req: HTTPRequest):
-            stp_a_0()
-            return FileResponse(req, "/sd/mui.min.js", "/")
-
-        @server.route("/animation", [POST])
-        def btn(req: Request):
-            global cfg, c_run, ts_mode
-            rq_d = req.json()
-            cfg["option_selected"] = rq_d["an"]
-            add_cmd(cfg["option_selected"])
-            if not mix.voice[0].playing:
-                files.write_json_file("/sd/cfg.json", cfg)
-            return Response(req, "Animation " + cfg["option_selected"] + " started.")
-
-        @server.route("/defaults", [POST])
-        def btn(req: Request):
-            global cfg
-            stp_a_0()
-            rq_d = req.json()
-            if rq_d["an"] == "reset_animation_timing_to_defaults":
-                for ts_fn in ts_json:
-                    ts = files.read_json_file(
-                        "/sd/t_s_def/" + ts_fn + ".json")
-                    files.write_json_file(
-                        "/sd/snd/"+ts_fn+".json", ts)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "reset_to_defaults":
-                rst_def()
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                st_mch.go_to('base_state')
-            elif rq_d["an"] == "reset_incandescent_colors":
-                rst_def_col()
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                s = files.json_stringify(
-                    {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
-                st_mch.go_to('base_state')
-                return Response(req, s)
-            elif rq_d["an"] == "reset_white_colors":
-                rst_wht_col()
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                s = files.json_stringify(
-                    {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
-                st_mch.go_to('base_state')
-                return Response(req, s)
-            return Response(req, "Utility: " + rq_d["an"])
-
-        @server.route("/mode", [POST])
-        def btn(req: Request):
-            global cfg, c_run, ts_mode
-            rq_d = req.json()
-            if rq_d["an"] == "left":
-                ovrde_sw_st["switch_value"] = "left"
-            elif rq_d["an"] == "left_held":
-                ovrde_sw_st["switch_value"] = "left_held"
-            elif rq_d["an"] == "right":
-                ovrde_sw_st["switch_value"] = "right"
-            elif rq_d["an"] == "right_held":
-                ovrde_sw_st["switch_value"] = "right_held"
-            elif rq_d["an"] == "cont_mode_on":
-                c_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif rq_d["an"] == "cont_mode_off":
-                c_run = False
-                stp_all_cmds()
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            elif rq_d["an"] == "timestamp_mode_on":
-                ts_mode = True
-                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
-                ply_a_0("/sd/mvc/timestamp_instructions.wav")
-            elif rq_d["an"] == "timestamp_mode_off":
-                ts_mode = False
-                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-            return Response(req, "Utility: " + rq_d["an"])
-
-        @server.route("/speaker", [POST])
-        def btn(req: Request):
-            global cfg
-            stp_a_0()
-            rq_d = req.json()
-            if rq_d["an"] == "speaker_test":
-                ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif rq_d["an"] == "volume_pot_off":
-                cfg["volume_pot"] = False
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "volume_pot_on":
-                cfg["volume_pot"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(req, "Utility: " + rq_d["an"])
-
-        @server.route("/lights", [POST])
-        def btn(req: Request):
-            stp_a_0()
-            rq_d = req.json()
-            v = rq_d["an"].split(",")
-            led.fill((float(v[0]), float(v[1]), float(v[2])))
-            led.show()
-            return Response(req, "OK")
-
-        @server.route("/bolt", [POST])
-        def btn(req: Request):
-            stp_a_0()
-            led.fill((int(cfg["bolts"]["r"]), int(
-                cfg["bolts"]["g"]), int(cfg["bolts"]["b"])))
-            led.show()
-            return Response(req, "OK")
-
-        @server.route("/bar", [POST])
-        def btn(req: Request):
-            stp_a_0()
-            led.fill((int(cfg["bars"]["r"]), int(
-                cfg["bars"]["g"]), int(cfg["bars"]["b"])))
-            led.show()
-            return Response(req, "OK")
-
-        @server.route("/bright", [POST])
-        def btn(req: Request):
-            rq_d = req.json()
-            stp_a_0()
-            led.brightness = float(rq_d["an"])
-            led.show()
-            return Response(req, "OK")
-
-        @server.route("/update-host-name", [POST])
-        def btn(req: Request):
-            global cfg
-            stp_a_0()
-            rq_d = req.json()
-            cfg["HOST_NAME"] = rq_d["text"]
-            files.write_json_file("/sd/cfg.json", cfg)
+            # setup mdns server
+            mdns = mdns.Server(wifi.radio)
             mdns.hostname = cfg["HOST_NAME"]
-            spk_web()
-            return Response(req, cfg["HOST_NAME"])
+            mdns.advertise_service(
+                service_type="_http", protocol="_tcp", port=80)
 
-        @server.route("/get-host-name", [POST])
-        def btn(req: Request):
-            return Response(req, cfg["HOST_NAME"])
+            # files.log_items IP address to REPL
+            local_ip = str(wifi.radio.ipv4_address)
+            files.log_item("IP is " + local_ip)
+            files.log_item("Connected")
 
-        @server.route("/update-volume", [POST])
-        def btn(req: Request):
-            global cfg
-            rq_d = req.json()
-            ch_vol(rq_d["action"])
-            return Response(req, rq_d["action"])
+            # set up server
+            pool = socketpool.SocketPool(wifi.radio)
+            server = Server(pool, "/static", debug=True)
+            server.port = 80  # Explicitly set port to 80
 
-        @server.route("/get-volume", [POST])
-        def btn(req: Request):
-            return Response(req, cfg["volume"])
+            gc_col("wifi server")
 
-        @server.route("/update-light-string", [POST])
-        def btn(req: Request):
-            global cfg
-            rq_d = req.json()
-            if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
-                cfg["light_string"] = rq_d["text"]
-                print("action: " +
-                      rq_d["action"] + " data: " + cfg["light_string"])
+            ################################################################################
+            # Setup routes
+
+            @server.route("/")
+            def base(req: HTTPRequest):
+                stp_a_0()
+                gc_col("Home page.")
+                return FileResponse(req, "index.html", "/")
+
+            @server.route("/mui.min.css")
+            def base(req: HTTPRequest):
+                stp_a_0()
+                return FileResponse(req, "/sd/mui.min.css", "/")
+
+            @server.route("/mui.min.js")
+            def base(req: HTTPRequest):
+                stp_a_0()
+                return FileResponse(req, "/sd/mui.min.js", "/")
+
+            @server.route("/animation", [POST])
+            def btn(req: Request):
+                global cfg, c_run, ts_mode
+                rq_d = req.json()
+                cfg["option_selected"] = rq_d["an"]
+                add_cmd(cfg["option_selected"])
+                if not mix.voice[0].playing:
+                    files.write_json_file("/sd/cfg.json", cfg)
+                return Response(req, "Animation " + cfg["option_selected"] + " started.")
+
+            @server.route("/defaults", [POST])
+            def btn(req: Request):
+                global cfg
+                stp_a_0()
+                rq_d = req.json()
+                if rq_d["an"] == "reset_animation_timing_to_defaults":
+                    for ts_fn in ts_json:
+                        ts = files.read_json_file(
+                            "/sd/t_s_def/" + ts_fn + ".json")
+                        files.write_json_file(
+                            "/sd/snd/"+ts_fn+".json", ts)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                elif rq_d["an"] == "reset_to_defaults":
+                    rst_def()
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                    st_mch.go_to('base_state')
+                elif rq_d["an"] == "reset_incandescent_colors":
+                    rst_def_col()
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                    s = files.json_stringify(
+                        {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
+                    st_mch.go_to('base_state')
+                    return Response(req, s)
+                elif rq_d["an"] == "reset_white_colors":
+                    rst_wht_col()
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                    s = files.json_stringify(
+                        {"bars": cfg["bars"], "bolts": cfg["bolts"], "v": cfg["v"]})
+                    st_mch.go_to('base_state')
+                    return Response(req, s)
+                return Response(req, "Utility: " + rq_d["an"])
+
+            @server.route("/mode", [POST])
+            def btn(req: Request):
+                global cfg, c_run, ts_mode
+                rq_d = req.json()
+                if rq_d["an"] == "left":
+                    ovrde_sw_st["switch_value"] = "left"
+                elif rq_d["an"] == "left_held":
+                    ovrde_sw_st["switch_value"] = "left_held"
+                elif rq_d["an"] == "right":
+                    ovrde_sw_st["switch_value"] = "right"
+                elif rq_d["an"] == "right_held":
+                    ovrde_sw_st["switch_value"] = "right_held"
+                elif rq_d["an"] == "cont_mode_on":
+                    c_run = True
+                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
+                elif rq_d["an"] == "cont_mode_off":
+                    c_run = False
+                    stp_all_cmds()
+                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+                elif rq_d["an"] == "timestamp_mode_on":
+                    ts_mode = True
+                    ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+                    ply_a_0("/sd/mvc/timestamp_instructions.wav")
+                elif rq_d["an"] == "timestamp_mode_off":
+                    ts_mode = False
+                    ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+                return Response(req, "Utility: " + rq_d["an"])
+
+            @server.route("/speaker", [POST])
+            def btn(req: Request):
+                global cfg
+                stp_a_0()
+                rq_d = req.json()
+                if rq_d["an"] == "speaker_test":
+                    ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
+                elif rq_d["an"] == "volume_pot_off":
+                    cfg["volume_pot"] = False
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                elif rq_d["an"] == "volume_pot_on":
+                    cfg["volume_pot"] = True
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                return Response(req, "Utility: " + rq_d["an"])
+
+            @server.route("/lights", [POST])
+            def btn(req: Request):
+                stp_a_0()
+                rq_d = req.json()
+                v = rq_d["an"].split(",")
+                led.fill((float(v[0]), float(v[1]), float(v[2])))
+                led.show()
+                return Response(req, "OK")
+
+            @server.route("/bolt", [POST])
+            def btn(req: Request):
+                stp_a_0()
+                led.fill((int(cfg["bolts"]["r"]), int(
+                    cfg["bolts"]["g"]), int(cfg["bolts"]["b"])))
+                led.show()
+                return Response(req, "OK")
+
+            @server.route("/bar", [POST])
+            def btn(req: Request):
+                stp_a_0()
+                led.fill((int(cfg["bars"]["r"]), int(
+                    cfg["bars"]["g"]), int(cfg["bars"]["b"])))
+                led.show()
+                return Response(req, "OK")
+
+            @server.route("/bright", [POST])
+            def btn(req: Request):
+                rq_d = req.json()
+                stp_a_0()
+                led.brightness = float(rq_d["an"])
+                led.show()
+                return Response(req, "OK")
+
+            @server.route("/update-host-name", [POST])
+            def btn(req: Request):
+                global cfg
+                stp_a_0()
+                rq_d = req.json()
+                cfg["HOST_NAME"] = rq_d["text"]
+                files.write_json_file("/sd/cfg.json", cfg)
+                mdns.hostname = cfg["HOST_NAME"]
+                spk_web()
+                return Response(req, cfg["HOST_NAME"])
+
+            @server.route("/get-host-name", [POST])
+            def btn(req: Request):
+                return Response(req, cfg["HOST_NAME"])
+
+            @server.route("/update-volume", [POST])
+            def btn(req: Request):
+                global cfg
+                rq_d = req.json()
+                ch_vol(rq_d["action"])
+                return Response(req, rq_d["action"])
+
+            @server.route("/get-volume", [POST])
+            def btn(req: Request):
+                return Response(req, cfg["volume"])
+
+            @server.route("/update-light-string", [POST])
+            def btn(req: Request):
+                global cfg
+                rq_d = req.json()
+                if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
+                    cfg["light_string"] = rq_d["text"]
+                    print("action: " +
+                        rq_d["action"] + " data: " + cfg["light_string"])
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    upd_l_str()
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                    return Response(req, cfg["light_string"])
+                if cfg["light_string"] == "":
+                    cfg["light_string"] = rq_d["text"]
+                else:
+                    cfg["light_string"] = cfg["light_string"] + \
+                        "," + rq_d["text"]
+                print("action: " + rq_d["action"] +
+                    " data: " + cfg["light_string"])
                 files.write_json_file("/sd/cfg.json", cfg)
                 upd_l_str()
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 return Response(req, cfg["light_string"])
-            if cfg["light_string"] == "":
-                cfg["light_string"] = rq_d["text"]
-            else:
-                cfg["light_string"] = cfg["light_string"] + \
-                    "," + rq_d["text"]
-            print("action: " + rq_d["action"] +
-                  " data: " + cfg["light_string"])
-            files.write_json_file("/sd/cfg.json", cfg)
-            upd_l_str()
-            ply_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(req, cfg["light_string"])
 
-        @server.route("/get-light-string", [POST])
-        def btn(req: Request):
-            return Response(req, cfg["light_string"])
+            @server.route("/get-light-string", [POST])
+            def btn(req: Request):
+                return Response(req, cfg["light_string"])
 
-        @server.route("/get-customers-sound-tracks", [POST])
-        def btn(req: Request):
-            s = files.json_stringify(cus_o)
-            return Response(req, s)
+            @server.route("/get-customers-sound-tracks", [POST])
+            def btn(req: Request):
+                s = files.json_stringify(cus_o)
+                return Response(req, s)
 
-        @server.route("/get-built-in-sound-tracks", [POST])
-        def btn(req: Request):
-            s = []
-            s.extend(snd_o)
-            s = files.json_stringify(s)
-            return Response(req, s)
+            @server.route("/get-built-in-sound-tracks", [POST])
+            def btn(req: Request):
+                s = []
+                s.extend(snd_o)
+                s = files.json_stringify(s)
+                return Response(req, s)
 
-        @server.route("/get-bar-colors", [POST])
-        def btn(req: Request):
-            s = files.json_stringify(cfg["bars"])
-            return Response(req, s)
+            @server.route("/get-bar-colors", [POST])
+            def btn(req: Request):
+                s = files.json_stringify(cfg["bars"])
+                return Response(req, s)
 
-        @server.route("/get-bolt-colors", [POST])
-        def btn(req: Request):
-            s = files.json_stringify(cfg["bolts"])
-            return Response(req, s)
+            @server.route("/get-bolt-colors", [POST])
+            def btn(req: Request):
+                s = files.json_stringify(cfg["bolts"])
+                return Response(req, s)
 
-        @server.route("/get-color-variation", [POST])
-        def btn(req: Request):
-            s = files.json_stringify(cfg["v"])
-            return Response(req, s)
+            @server.route("/get-color-variation", [POST])
+            def btn(req: Request):
+                s = files.json_stringify(cfg["v"])
+                return Response(req, s)
 
-        @server.route("/set-lights", [POST])
-        def btn(req: Request):
-            global cfg
-            rq_d = req.json()
-            if rq_d["item"] == "bars":
-                cfg["bars"] = {"r": rq_d["r"],
-                               "g": rq_d["g"], "b": rq_d["b"]}
-                bi = []
-                bi.extend(bar_arr)
-                for i in bi:
-                    led[i] = (rq_d["r"],
-                              rq_d["g"], rq_d["b"])
-                    led.show()
-            elif rq_d["item"] == "bolts":
-                cfg["bolts"] = {"r": rq_d["r"],
+            @server.route("/set-lights", [POST])
+            def btn(req: Request):
+                global cfg
+                rq_d = req.json()
+                if rq_d["item"] == "bars":
+                    cfg["bars"] = {"r": rq_d["r"],
                                 "g": rq_d["g"], "b": rq_d["b"]}
-                bi = []
-                bi.extend(bolt_arr)
-                for i in bi:
-                    led[i] = (rq_d["r"],
-                              rq_d["g"], rq_d["b"])
-                    led.show()
-            elif rq_d["item"] == "variationBolt":
-                print(rq_d)
-                cfg["v"] = {"r1": rq_d["r"], "g1": rq_d["g"], "b1": rq_d["b"],
-                            "r2": cfg["v"]["r2"], "g2": cfg["v"]["g2"], "b2": cfg["v"]["b2"]}
-            elif rq_d["item"] == "variationBar":
-                cfg["v"] = {"r1": cfg["v"]["r1"], "g1": cfg["v"]["g1"], "b1": cfg["v"]
-                            ["b1"], "r2": rq_d["r"], "g2": rq_d["g"], "b2": rq_d["b"]}
-            files.write_json_file("/sd/cfg.json", cfg)
-            return Response(req, "OK")
-        
-        @server.route("/get-local-ip", [POST])
-        def buttonpress(req: Request):
-            stp_a_0()
-            return Response(req, local_ip)
-
-    except Exception as e:
-        web = False
-        files.log_item(e)
+                    bi = []
+                    bi.extend(bar_arr)
+                    for i in bi:
+                        led[i] = (rq_d["r"],
+                                rq_d["g"], rq_d["b"])
+                        led.show()
+                elif rq_d["item"] == "bolts":
+                    cfg["bolts"] = {"r": rq_d["r"],
+                                    "g": rq_d["g"], "b": rq_d["b"]}
+                    bi = []
+                    bi.extend(bolt_arr)
+                    for i in bi:
+                        led[i] = (rq_d["r"],
+                                rq_d["g"], rq_d["b"])
+                        led.show()
+                elif rq_d["item"] == "variationBolt":
+                    print(rq_d)
+                    cfg["v"] = {"r1": rq_d["r"], "g1": rq_d["g"], "b1": rq_d["b"],
+                                "r2": cfg["v"]["r2"], "g2": cfg["v"]["g2"], "b2": cfg["v"]["b2"]}
+                elif rq_d["item"] == "variationBar":
+                    cfg["v"] = {"r1": cfg["v"]["r1"], "g1": cfg["v"]["g1"], "b1": cfg["v"]
+                                ["b1"], "r2": rq_d["r"], "g2": rq_d["g"], "b2": rq_d["b"]}
+                files.write_json_file("/sd/cfg.json", cfg)
+                return Response(req, "OK")
+            
+            @server.route("/get-local-ip", [POST])
+            def buttonpress(req: Request):
+                stp_a_0()
+                return Response(req, local_ip)           
+            break
+        except Exception as e:
+            web = False
+            files.log_item(e)
+            time.sleep(2)
 
 gc_col("web server")
 
@@ -699,7 +705,8 @@ def upd_vol(s):
     else:
         try:
             v = int(cfg["volume"]) / 100
-        except:
+        except Exception as e:
+            files.log_item(e)
             v = .5
         if v < 0 or v > 1:
             v = .5
@@ -795,7 +802,8 @@ def spk_str(str_to_speak, addLocal):
             if character == ".":
                 character = "dot"
             ply_a_0("/sd/mvc/" + character + ".wav")
-        except:
+        except Exception as e:
+            files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
         ply_a_0("/sd/mvc/dot.wav")
@@ -830,7 +838,8 @@ def spk_lght(play_intro):
             ply_a_0("/sd/mvc/" + str(index+1) + ".wav")
             ply_a_0("/sd/mvc/is.wav")
             ply_a_0("/sd/mvc/" + element + ".wav")
-    except:
+    except Exception as e:
+        files.log_item(e)
         ply_a_0("/sd/mvc/no_lights_in_light_string.wav")
         return
 
@@ -913,7 +922,8 @@ async def an_ls(fn):
         try:
             fls_t = files.read_json_file(
                 "/sd/customers_owned_music/" + fn + ".json")
-        except:
+        except Exception as e:
+            files.log_item(e)
             ply_a_0("/sd/mvc/no_timestamp_file_found.wav")
             while True:
                 l_sw.update()
@@ -1495,7 +1505,8 @@ class Snds(Ste):
                     w0 = audiocore.WaveFile(open(
                         "/sd/snd_opt/option_" + mnu_o[self.i] + ".wav", "rb"))
                     mix.voice[0].play(w0, loop=False)
-                except:
+                except Exception as e:
+                    files.log_item(e)
                     spk_sng_num(str(self.i+1))
                 self.sel_i = self.i
                 self.i += 1
@@ -1681,7 +1692,7 @@ aud_mute.value = False
 if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
     except OSError:
