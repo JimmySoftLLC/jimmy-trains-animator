@@ -111,6 +111,7 @@ mix = audiomixer.Mixer(
 aud.play(mix)
 
 mix.voice[0].level = .2
+mix.voice[1].level = .2
 
 aud_en.value = False
 
@@ -260,7 +261,6 @@ if (web):
 
             @server.route("/animation", [POST])
             def btn(request: Request):
-                global cfg, cont_run, ts_mode
                 rq_d = request.json()
                 cfg["option_selected"] = rq_d["an"]
                 add_cmd("AN_" + cfg["option_selected"])
@@ -270,7 +270,6 @@ if (web):
 
             @server.route("/defaults", [POST])
             def btn(request: Request):
-                global cfg
                 stp_a_0()
                 rq_d = request.json()
                 if rq_d["an"] == "reset_animation_timing_to_defaults":
@@ -289,7 +288,7 @@ if (web):
 
             @server.route("/mode", [POST])
             def btn(request: Request):
-                global cfg, cont_run, ts_mode
+                global cont_run, ts_mode
                 rq_d = request.json()
                 if rq_d["an"] == "left":
                     ovrde_sw_st["switch_value"] = "left"
@@ -321,7 +320,6 @@ if (web):
 
             @server.route("/speaker", [POST])
             def btn(request: Request):
-                global cfg
                 stp_a_0()
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
@@ -345,7 +343,6 @@ if (web):
 
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
-                global cfg
                 stp_a_0()
                 rq_d = request.json()
                 cfg["HOST_NAME"] = rq_d["an"]
@@ -366,7 +363,6 @@ if (web):
 
             @server.route("/update-volume", [POST])
             def btn(request: Request):
-                global cfg
                 rq_d = request.json()
                 ch_vol(rq_d["action"])
                 return Response(request, cfg["volume"])
@@ -442,7 +438,6 @@ if (web):
 
             @server.route("/get-animation", [POST])
             def btn(request: Request):
-                global cfg, cont_run, ts_mode
                 stp_a_0()
                 rq_d = request.json()
                 snd_f = rq_d["an"]
@@ -528,9 +523,8 @@ def stp_all_cmds():
 
 
 def rst_def():
-    global cfg
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-ride-on-train"
+    cfg["HOST_NAME"] = "animator-trolley"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
 
@@ -542,6 +536,7 @@ def upd_vol(s):
     if cfg["volume_pot"]:
         volume = a_in.value / 65536
         mix.voice[0].level = volume
+        mix.voice[1].level = volume
         time.sleep(s)
     else:
         try:
@@ -552,6 +547,7 @@ def upd_vol(s):
         if volume < 0 or volume > 1:
             volume = .5
         mix.voice[0].level = volume
+        mix.voice[1].level = volume
         time.sleep(s)
 
 
@@ -559,6 +555,7 @@ async def upd_vol_async(s):
     if cfg["volume_pot"]:
         v = a_in.value / 65536
         mix.voice[0].level = v
+        mix.voice[1].level = v
         await asyncio.sleep(s)
     else:
         try:
@@ -569,6 +566,7 @@ async def upd_vol_async(s):
         if v < 0 or v > 1:
             v = .5
         mix.voice[0].level = v
+        mix.voice[1].level = v
         await asyncio.sleep(s)
 
 
@@ -705,41 +703,6 @@ def get_snds(dir, typ):
     return fn
 
 ################################################################################
-# servo helpers
-
-
-p_arr = [90, 90, 90, 90, 90, 90]
-
-
-async def cyc_servo(n, s, p_up, p_dwn):
-    global p_arr
-    while mix.voice[0].playing:
-        n_p = p_up
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
-        n_p = p_dwn
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
-
-
-def m_servo(n, p):
-    global p_arr
-    if p < 0:
-        p = 0
-    if p > 180:
-        p = 180
-    s_arr[n].angle = p
-    p_arr[n][n] = p
-
-################################################################################
 # Animations
 
 
@@ -747,7 +710,7 @@ lst_opt = ""
 
 
 async def an_async(f_nm):
-    global cfg, lst_opt
+    global lst_opt, ts_mode
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
@@ -776,7 +739,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global ts_mode, cont_run
+    global cont_run
 
     stp_a_0()
 

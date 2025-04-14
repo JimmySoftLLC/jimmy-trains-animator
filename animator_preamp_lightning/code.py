@@ -205,9 +205,9 @@ bar_arr = []
 bolt_arr = []
 
 n_px = 0
+neo_pin = board.GP10
 
-# 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP15, n_px)
+led = neopixel.NeoPixel(neo_pin, n_px)
 
 
 def bld_bar():
@@ -292,8 +292,7 @@ def upd_l_str():
 
     led.deinit()
     gc_col("Deinit ledStrip")
-    # 15 on demo 17 tiny 10 on large
-    led = neopixel.NeoPixel(board.GP15, n_px)
+    led = neopixel.NeoPixel(neo_pin, n_px)
     led.auto_write = False
     led.brightness = 1.0
     l_tst()
@@ -1751,3 +1750,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
