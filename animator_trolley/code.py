@@ -267,7 +267,7 @@ if (web):
                 if not mix.voice[0].playing:
                     files.write_json_file("/cfg.json", cfg)
                 return Response(request, "Animation " + cfg["option_selected"] + " started.")
-
+            
             @server.route("/defaults", [POST])
             def btn(request: Request):
                 stp_a_0()
@@ -303,10 +303,14 @@ if (web):
                 elif rq_d["an"] == "cont_mode_on":
                     cont_run = True
                     ply_a_0("/mvc/continuous_mode_activated.mp3")
+                    cfg["cont_mode"] = cont_run
+                    files.write_json_file("/cfg.json", cfg)
                 elif rq_d["an"] == "cont_mode_off":
                     cont_run = False
                     stp_all_cmds()
                     ply_a_0("/mvc/continuous_mode_deactivated.mp3")
+                    cfg["cont_mode"] = cont_run
+                    files.write_json_file("/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
                     cont_run = False
                     stp_all_cmds()
