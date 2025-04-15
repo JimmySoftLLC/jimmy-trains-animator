@@ -186,9 +186,9 @@ ts_mode = False
 ################################################################################
 # Setup neo pixels
 
-num_px = 9
+n_px = 9
 
-led = neopixel.NeoPixel(board.GP22, num_px)
+led = neopixel.NeoPixel(board.GP22, n_px)
 
 gc_col("Neopixels setup")
 
@@ -230,9 +230,11 @@ if (web):
             mdns.hostname = cfg["HOST_NAME"]
             mdns.advertise_service(
                 service_type="_http", protocol="_tcp", port=80)
+            
+            local_ip = str(wifi.radio.ipv4_address)
 
             # files.log_items IP address to REPL
-            files.log_item("IP is" + str(wifi.radio.ipv4_address))
+            files.log_item("IP is " + local_ip)
             files.log_item("Connected")
 
             # set up server
@@ -450,8 +452,7 @@ if (web):
                 else:
                     f_n = "/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
-
-
+                
             data = []
 
             @server.route("/save-data", [POST])
@@ -898,18 +899,14 @@ async def set_hdw_async(input_string):
                 fn=get_snds("/mvc","horn")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
-        # LNXXX = Lights N (0 All, 1-6) XXX 0 to 255
-        elif seg[0] == 'L':  # lights
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    sp[i] = v
-            else:
-                sp[num-1] = int(v)
-            led[0] = (sp[1], sp[0], sp[2])
-            led[1] = (sp[4], sp[3], sp[5])
-            led.show()
+        # lights LNZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+        elif seg[:2] == 'LN':
+                segs_split = seg.split("_")
+                light_n = int(segs_split[0][2:])-1
+                r = int(segs_split[1])
+                g = int(segs_split[2])
+                b = int(segs_split[3])
+                set_neo_to(light_n, r, g, b)
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
@@ -931,7 +928,13 @@ async def set_hdw_async(input_string):
             # Process each command as an async operation
             await an_async(seg_split[1])
 
-
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):  # in range(n_px)
+            led[i] = (r, g, b)
+    else:
+        led[light_n] = (r, g, b)
+    led.show()
         
 ################################################################################
 # State Machine
@@ -1352,4 +1355,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 
