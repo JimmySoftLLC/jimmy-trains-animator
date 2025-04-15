@@ -186,10 +186,9 @@ ts_mode = False
 ################################################################################
 # Setup neo pixels
 
-num_px = 2
+num_px = 9
 
-# 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP15, num_px)
+led = neopixel.NeoPixel(board.GP22, num_px)
 
 gc_col("Neopixels setup")
 
