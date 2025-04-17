@@ -281,6 +281,7 @@
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>AN_XXX = Animation XXX filename</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
+            <div>TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder) XXX (file name)</div>
             <div>WA = Blow horn or whistle, A (H Horn, W whistle)</div>
@@ -376,6 +377,23 @@
             })
             .then(function (data) {
                 volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get throttle
+        fetch('/get-throttle', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                setThrottleValue(parseInt(data))
             })
             .catch(function (error) {
                 console.log(error);
@@ -1508,16 +1526,6 @@
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
     }
 
-
-    const knob = document.getElementById('knob');
-    const knobText = document.getElementById('knob-text');
-    let isDragging = false;
-    let previousAngle = 0;
-    let currentRotation = 0;
-    let lastSentTime = 0;
-    let throttleTimeout = null; // Prevents multiple stacked timeouts
-    const throttleTime = 500
-
     function stopTrain() {
         previousAngle = 0;
         currentRotation = 0;
@@ -1539,6 +1547,24 @@
     function ringBell() {
         let newCommand = "WB";
         testAnimationCommand(newCommand);
+    }
+
+    const knob = document.getElementById('knob');
+    const knobText = document.getElementById('knob-text');
+    let isDragging = false;
+    let previousAngle = 0;
+    let currentRotation = 0;
+    let displayValue = Math.round((currentRotation / 180) * 100);
+    let lastSentTime = 0;
+    let throttleTimeout = null; // Prevents multiple stacked timeouts
+    const throttleTime = 500
+
+    function setThrottleValue(throttle_value){
+        currentRotation = Math.max(-180, Math.min(180, throttle_value * 1.8));
+        previousAngle = currentRotation;
+        displayValue = Math.round((currentRotation / 180) * 100);
+        knob.style.transform = `rotate(${currentRotation}deg)`;
+        knobText.innerText = displayValue;
     }
 
     function getAngle(x, y, centerX, centerY) {

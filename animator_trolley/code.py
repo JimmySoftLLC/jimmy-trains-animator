@@ -129,7 +129,7 @@ pwm_a = pwmio.PWMOut(board.GP10, frequency=p_frq)
 pwm_b = pwmio.PWMOut(board.GP11, frequency=p_frq)
 train = motor.DCMotor(pwm_a, pwm_b)
 train.decay_mode = d_mde
-car_pos = 0
+current_throttle = 0
 
 ################################################################################
 # Flash data and globals
@@ -239,7 +239,7 @@ if (web):
 
             # set up server
             pool = socketpool.SocketPool(wifi.radio)
-            server = Server(pool, "/static", debug=True)
+            server = Server(pool, "/static")
             server.port = 80  # Explicitly set port to 80
 
             gc_col("wifi server")
@@ -249,7 +249,6 @@ if (web):
 
             @server.route("/")
             def base(req: HTTPRequest):
-                gc_col("Home page.")
                 return FileResponse(req, "index.html", "/")
 
             @server.route("/mui.min.css")
@@ -375,6 +374,12 @@ if (web):
             @server.route("/get-volume", [POST])
             def btn(request: Request):
                 return Response(request, cfg["volume"])
+            
+            @server.route("/get-throttle", [POST])
+            def btn(request: Request):
+                cur_throttle_str = str(current_throttle)
+                print("sending current throttle: ", cur_throttle_str)
+                return Response(request, cur_throttle_str)
 
             @server.route("/get-animations", [POST])
             def btn(request: Request):
@@ -458,7 +463,6 @@ if (web):
             @server.route("/save-data", [POST])
             def btn(request: Request):
                 global data
-                gc_col("prep save data")
                 stp_a_0()
                 rq_d = request.json()
                 try:
@@ -470,12 +474,10 @@ if (web):
                             rq_d[3] + ".json"
                         files.write_json_file(f_n, data)
                         data = []
-                        gc_col("get data")
                     upd_media()
                 except Exception as e:
                     files.log_item(e)
                     data = []
-                    gc_col("get data")
                     return Response(request, "out of memory")
                 return Response(request, "success")
             break
@@ -625,7 +627,6 @@ def wait_snd():
 def stp_a_0():
     mix.voice[0].stop()
     wait_snd()
-    gc_col("stp snd")
 
 
 def exit_early():
@@ -730,10 +731,8 @@ async def an_async(f_nm):
             print("Sound file: " + cur_opt)
         if ts_mode:
             an_ts(cur_opt)
-            gc_col("animation cleanup")
         else:
             await an_light_async(cur_opt)
-            gc_col("animation cleanup")
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -849,33 +848,49 @@ def an_ts(f_nm):
 
 ##############################
 # animation effects
-
-
-sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
-
 async def set_hdw_async(input_string):
-    global sp, br, car_pos
+    global sp, br, current_throttle
     # Split the input string into segments
     segs = input_string.split(",")
     # Process each segment
     for seg in segs:
-        # TXXX = Train XXX throttle -100 to 100
-        if seg[0] == 'T':
-            try:   
-                v_str =  seg[1:]         
-                v = int(v_str)/100
-                print("throttle:", v)
-                train.throttle = v
+        # TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100
+        if seg[:2] == 'TA':
+            try:
+                seg_split = seg.split("_")
+                v_str = seg_split[1]         
+                target_throttle = int(v_str)
+                a_str = seg_split[2]
+                acceleration = int(a_str)
+                diff = target_throttle - current_throttle
+                while diff != 0:
+                    if diff > 0:
+                        new_throttle = min(current_throttle + acceleration, target_throttle)  # Increase throttle
+                    else:
+                        new_throttle = max(current_throttle - acceleration, target_throttle)  # Decrease throttle
+                    v = new_throttle / 100
+                    train.throttle = v
+                    current_throttle = new_throttle
+                    diff = target_throttle - current_throttle
+                    await asyncio.sleep(.02)
             except Exception as e:
                 print(e)
-        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-        elif seg == "":
-            print("no command")
+        # TXXX_AAA = Train XXX throttle -100 to 100
+        elif seg[:1] == 'T':
+            try:   
+                v_str = seg[1:]         
+                target_throttle = int(v_str)
+                new_throttle = target_throttle
+                v = new_throttle / 100
+                train.throttle = v
+                current_throttle = new_throttle
+            except Exception as e:
+                print(e)
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
         # horn MPMhorn
-        if seg[0] == 'M': # play file
+        elif seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_a_0()
                 elif seg[1] == "W" or seg[1] == "P":
@@ -889,7 +904,7 @@ async def set_hdw_async(input_string):
                     if seg[1] == "W":
                         wait_snd()
         # WA = Blow horn or whistle, A (H Horn, B Bell)
-        if seg[0] == 'W': # play file
+        elif seg[0] == 'W': # play file
             stp_a_0()
             if seg[1] == "B":
                 fn=get_snds("/mvc","bell")
@@ -901,11 +916,11 @@ async def set_hdw_async(input_string):
                 mix.voice[0].play(w0, loop=False)
         # lights LNZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
         elif seg[:2] == 'LN':
-                segs_split = seg.split("_")
-                light_n = int(segs_split[0][2:])-1
-                r = int(segs_split[1])
-                g = int(segs_split[2])
-                b = int(segs_split[3])
+                seg_split = seg.split("_")
+                light_n = int(seg_split[0][2:])-1
+                r = int(seg_split[1])
+                g = int(seg_split[2])
+                b = int(seg_split[3])
                 set_neo_to(light_n, r, g, b)
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
@@ -1355,5 +1370,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
-
