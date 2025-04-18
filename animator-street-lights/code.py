@@ -33,6 +33,9 @@ import gc
 import files
 import os
 import gc
+import utilities
+import digitalio
+from adafruit_debouncer import Debouncer
 
 
 def gc_col(collection_point):
@@ -74,12 +77,34 @@ exit_set_hdw_async = False
 
 gc_col("config setup")
 
+cont_run = cfg["cont_mode"]
+
 def upd_media():
     global animations
 
     animations = files.return_directory("", "animations", ".json")
 
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
+
 upd_media()
+
+################################################################################
+# Setup hardware
+
+# Setup the switches
+l_sw = board.GP20
+r_sw = board.GP11
+
+l_sw = digitalio.DigitalInOut(l_sw)
+l_sw.direction = digitalio.Direction.INPUT
+l_sw.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw)
+
+r_sw = digitalio.DigitalInOut(r_sw)
+r_sw.direction = digitalio.Direction.INPUT
+r_sw.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw)
 
 ################################################################################
 # Setup neo pixels
@@ -433,7 +458,7 @@ if (web):
         
         @server.route("/stop", [POST])
         def btn(request: Request):
-            stop_all_commands()
+            stp_all_cmds()
             return Response(request, "Stopped all commands")
 
         @server.route("/lights", [POST])
@@ -592,6 +617,30 @@ if (web):
                 gc_col("get data")
                 return Response(request, "out of memory")
             return Response(request, "success")
+        
+        @server.route("/mode", [POST])
+        def btn(request: Request):
+            global cont_run, ts_mode
+            rq_d = request.json()
+            if rq_d["an"] == "left":
+                ovrde_sw_st["switch_value"] = "left"
+            elif rq_d["an"] == "right":
+                ovrde_sw_st["switch_value"] = "right"
+            elif rq_d["an"] == "right_held":
+                ovrde_sw_st["switch_value"] = "right_held"
+            elif rq_d["an"] == "three":
+                ovrde_sw_st["switch_value"] = "three"
+            elif rq_d["an"] == "four":
+                ovrde_sw_st["switch_value"] = "four"
+            elif rq_d["an"] == "cont_mode_on":
+                cont_run = True
+                cfg["cont_mode"] = cont_run
+                files.write_json_file("/cfg.json", cfg)
+            elif rq_d["an"] == "cont_mode_off":
+                cont_run = False
+                stp_all_cmds()
+                cfg["cont_mode"] = cont_run
+                files.write_json_file("/cfg.json", cfg)
 
     except Exception as e:
         web = False
@@ -620,7 +669,7 @@ async def process_commands():
     while command_queue:
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
-        await an_async(command)  # Process each command as an async operation
+        await set_hdw_async(command)  # Process each command as an async operation
         await asyncio.sleep(0)  # Yield control to the event loop
 
 def clear_command_queue():
@@ -628,7 +677,7 @@ def clear_command_queue():
     command_queue.clear()
     print("Command queue cleared.")
 
-def stop_all_commands():
+def stp_all_cmds():
     """Stop all commands and clear the queue."""
     global exit_set_hdw_async
     clear_command_queue()
@@ -905,10 +954,11 @@ async def set_hdw_async(input_string, dur):
             elif seg[0:] == 'ZCOLCH':
                 multi_color()
                 await asyncio.sleep(dur)
-            # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
-            if seg[0] == 'Q':
-                file_nm = seg[1:]
-                add_command(file_nm)
+            # AN_XXX = Animation XXX filename
+            elif seg[:2] == 'AN':
+                seg_split = seg.split("_")
+                # Process each command as an async operation
+                await an_async(seg_split[1])
     except Exception as e:
             files.log_item(e)
 
@@ -968,6 +1018,92 @@ def set_neo_module_to(mod_n, ind, v):
         led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
     led.show()
 
+################################################################################
+# State Machine
+
+
+class StMch(object):
+
+    def __init__(self):
+        self.state = None
+        self.states = {}
+        self.paused_state = None
+
+    def add(self, state):
+        self.states[state.name] = state
+
+    def go_to(self, state_name):
+        if self.state:
+            self.state.exit(self)
+        self.state = self.states[state_name]
+        self.state.enter(self)
+
+    def upd(self):
+        if self.state:
+            self.state.upd(self)
+
+################################################################################
+# States
+
+# Abstract parent state class.
+
+
+class Ste(object):
+
+    def __init__(self):
+        pass
+
+    @property
+    def name(self):
+        return ''
+
+    def enter(self, mch):
+        pass
+
+    def exit(self, mch):
+        pass
+
+    def upd(self, mch):
+        pass
+
+
+class BseSt(Ste):
+
+    def __init__(self):
+        pass
+
+    @property
+    def name(self):
+        return 'base_state'
+
+    def enter(self, mch):
+        files.log_item("Entered base state")
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global cont_run
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left_held":
+            if cont_run:
+                cont_run = False
+                stp_all_cmds()
+            else:
+                cont_run = True
+        elif (sw == "left" or cont_run):
+            add_command("AN_" + cfg["option_selected"])
+        elif sw == "right":
+            print("right")
+
+###############################################################################
+# Create the state machine
+
+st_mch = StMch()
+st_mch.add(BseSt())
+
 if (web):
     files.log_item("starting server...")
     try:
@@ -978,10 +1114,15 @@ if (web):
         files.log_item("restarting...")
         rst()
 
+st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
-# Main task handling
+async def state_mach_upd_task(st_mch):
+    while True:
+        st_mch.upd()
+        await asyncio.sleep(0)
+
 async def process_commands_task():
     """Task to continuously process commands."""
     while True:
@@ -1010,6 +1151,7 @@ async def main():
     tasks = [
         process_commands_task(),
         garbage_collection_task(),
+        state_mach_upd_task(st_mch)
     ]
 
     if web:
