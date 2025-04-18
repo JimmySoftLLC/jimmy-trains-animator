@@ -239,7 +239,7 @@ if (web):
 
             # set up server
             pool = socketpool.SocketPool(wifi.radio)
-            server = Server(pool, "/static")
+            server = Server(pool, "/static", debug=True)
             server.port = 80  # Explicitly set port to 80
 
             gc_col("wifi server")
@@ -1340,10 +1340,15 @@ async def server_poll_tsk(server):
     """Poll the web server."""
     while True:
         try:
-            server.poll()  # Web server polling
+            server.poll()
+        except OSError as e:
+            if e.errno == 116:
+                files.log_item("Client timeout (Errno 116)")
+            else:
+                files.log_item(f"OSError: {e}")
         except Exception as e:
-            files.log_item(e)
-        await asyncio.sleep(0)  # Yield control to other tasks
+            files.log_item(f"Poll Exception: {e}")
+        await asyncio.sleep(0)
 
 
 async def state_mach_upd_task(st_mch):
@@ -1370,3 +1375,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
