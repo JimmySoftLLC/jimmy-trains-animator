@@ -1268,6 +1268,7 @@
         }
     }
 
+
     // Helper function to remove all child nodes from an element
     function removePasteTableChildNodes(parent) {
         while (parent.firstChild) {
@@ -1559,7 +1560,7 @@
     let throttleTimeout = null; // Prevents multiple stacked timeouts
     const throttleTime = 500
 
-    function setThrottleValue(throttle_value){
+    function setThrottleValue(throttle_value) {
         currentRotation = Math.max(-180, Math.min(180, throttle_value * 1.8));
         previousAngle = currentRotation;
         displayValue = Math.round((currentRotation / 180) * 100);
