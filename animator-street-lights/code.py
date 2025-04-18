@@ -399,7 +399,8 @@ if (web):
 
     for i in range(3):
         web = True      
-
+        led.fill((0, 0, 255))
+        led.show()
         try:
             # connect to your SSID
             wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
@@ -652,6 +653,9 @@ if (web):
         except Exception as e:
             web = False
             files.log_item(e)
+            led.fill((0, 0, 75))
+            led.show()
+            time.sleep(2)
 
 gc_col("web server")
 
@@ -1110,29 +1114,89 @@ class BseSt(Ste):
             if cont_run:
                 cont_run = False
                 stp_all_cmds()
-            else:
+                led.fill((0, 255, 255))
+                led.show()
+                time.sleep(2)
+                led.fill((0, 0, 0))
+                led.show()
+            elif not is_running_an:
+                led.fill((255, 255, 255))
+                led.show()
+                time.sleep(2)
+                led.fill((0, 0, 0))
+                led.show()
                 cont_run = True
         elif (sw == "left" or cont_run and not is_running_an):
             is_running_an = True
             add_command(cfg["option_selected"])
-        elif sw == "right":
-            print("right")
+        elif sw == "right" and not is_running_an:
+            mch.go_to('main_menu')
+
+
+class Main(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'main_menu'
+
+    def enter(self, mch):
+        files.log_item('Main menu')
+        led.fill((255, 255, 0))
+        led.show()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            cfg["option_selected"] = animations[self.i]
+            print("Selected animation: ", cfg["option_selected"])
+            for x in range(self.i+1):
+                led.fill((0, 0, 255))
+                led.show()
+                time.sleep(.5)
+                led.fill((0, 0, 0))
+                led.show()
+                time.sleep(.5)
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(animations)-1:
+                self.i = 0
+        if sw == "right":
+            files.write_json_file("cfg.json", cfg)
+            mch.go_to('base_state')
+
+            
 
 ###############################################################################
 # Create the state machine
 
 st_mch = StMch()
 st_mch.add(BseSt())
+st_mch.add(Main())
 
 if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address))
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        led.fill((255, 0, 255))
+        led.show()
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
         rst()
+else:
+    led.fill((0, 255, 255))
+    led.show()
+    
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
