@@ -199,10 +199,12 @@ gc_col("config setup")
 
 bars = []
 bolts = []
+nbolts = []
 noods = []
 
 bar_arr = []
 bolt_arr = []
+nbolt_arr = []
 
 n_px = 0
 neo_pin = board.GP10
@@ -236,10 +238,22 @@ def bld_bolt():
     return i
 
 
+def bld_nbolt():
+    i = []
+    for b in nbolts:
+        for l in b:
+            si = l
+            break
+        for l in range(0, 1):
+            i.append(l+si)
+    return i
+
+
 def l_tst():
-    global bar_arr, bolt_arr
+    global bar_arr, bolt_arr, nbolt_arr
     bar_arr = bld_bar()
     bolt_arr = bld_bolt()
+    nbolt_arr = bld_nbolt()
     for b in bars:
         for l in b:
             led[l] = (50, 50, 50)
@@ -256,6 +270,13 @@ def l_tst():
         led.show()
     for n in noods:
         led[n[0]] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+    for b in nbolts:
+        for l in b:
+            led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
         led.fill((0, 0, 0))
@@ -288,6 +309,10 @@ def upd_l_str():
             elif typ == 'bolt' and qty == 4:
                 s = list(range(n_px, n_px + qty))
                 bolts.append(s)
+                n_px += qty
+            if typ == 'nbolt':
+                s = list(range(n_px, n_px + qty))
+                nbolts.append(s)
                 n_px += qty
 
     led.deinit()
@@ -596,6 +621,15 @@ if (web):
                                     "g": rq_d["g"], "b": rq_d["b"]}
                     bi = []
                     bi.extend(bolt_arr)
+                    for i in bi:
+                        led[i] = (rq_d["r"],
+                                rq_d["g"], rq_d["b"])
+                        led.show()
+                elif rq_d["item"] == "nbolts":
+                    cfg["nbolts"] = {"r": rq_d["r"],
+                                    "g": rq_d["g"], "b": rq_d["b"]}
+                    bi = []
+                    bi.extend(nbolt_arr)
                     for i in bi:
                         led[i] = (rq_d["r"],
                                 rq_d["g"], rq_d["b"])
@@ -1084,7 +1118,7 @@ def rainbow(spd, dur):
             pi = (i * 256 // n_px) + j
             led[i] = colorwheel(pi & 255)
         led.show()
-        upd_vol(spd)
+        time.sleep(spd)
         te = time.monotonic()-startTime
         if te > dur:
             return
@@ -1093,7 +1127,7 @@ def rainbow(spd, dur):
             pi = (i * 256 // n_px) + j
             led[i] = colorwheel(pi & 255)
         led.show()
-        upd_vol(spd)
+        time.sleep(spd)
         te = time.monotonic()-startTime
         if te > dur:
             return
@@ -1105,9 +1139,13 @@ def candle(dur):
 
     bari = []
     bari.extend(bar_arr)
+    bari.extend(nbolt_arr)
 
     bolti = []
     bolti.extend(bolt_arr)
+
+    nbolti = []
+    nbolti.extend(nbolt_arr)
 
     r = random.randint(0, 255)
     g = random.randint(0, 255)
@@ -1129,7 +1167,7 @@ def candle(dur):
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
             led.show()
-        upd_vol(random.uniform(0.05, 0.1))
+        time.sleep(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
             return
@@ -1172,7 +1210,7 @@ def fwrk(duration):
 
     # choose which bar none to all to fire
     bar_f = []
-    for i, arr in enumerate(bars):
+    for i in enumerate(bars):
         if i == random.randint(0, (len(bars)-1)):
             bar_f.append(i)
 
@@ -1181,6 +1219,11 @@ def fwrk(duration):
         bar_f.append(i)
 
     for b in bolts:
+        r, g, b = r_w_b()
+        for i in b:
+            led[i] = (r, g, b)
+
+    for b in nbolts:
         r, g, b = r_w_b()
         for i in b:
             led[i] = (r, g, b)
@@ -1196,7 +1239,7 @@ def fwrk(duration):
                 led[left] = (r, g, b)
                 led[right] = (r, g, b)
                 led.show()
-                upd_vol(0.1)
+                time.sleep(0.1)
                 te = time.monotonic()-st
                 if te > duration:
                     rst_bar()
@@ -1240,7 +1283,7 @@ def mlt_c(dur):
                 b1 = b
             led[i] = (r1, g1, b1)
             led.show()
-        upd_vol(random.uniform(.2, 0.3))
+        time.sleep(random.uniform(.2, 0.3))
         te = time.monotonic()-st
         if te > dur:
             return
@@ -1318,6 +1361,9 @@ def ltng():
                 led[nood[0]] = (
                     (255)*l2, (255)*l1, (255)*l3)
             for j in bolt:
+                led[j] = (
+                    bolt_r, bolt_g, bolt_b)
+            for j in nbolt:
                 led[j] = (
                     bolt_r, bolt_g, bolt_b)
             for j in bar:
