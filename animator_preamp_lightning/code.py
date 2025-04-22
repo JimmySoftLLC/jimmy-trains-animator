@@ -1228,10 +1228,15 @@ def fwrk(duration):
         i == random.randint(0, (len(bars)-1))
         bar_f.append(i)
 
-    for b in bolts:
+    for bolt in bolts:
         r, g, b = r_w_b()
-        for i in b:
-            led[i] = (r, g, b)
+        for bolt_index in bolt:
+            led[bolt_index] = (r, g, b)
+    
+    for nbolt in nbolts:
+        for nbolt_index in nbolt:
+            r, g, b = r_w_b()
+            led[nbolt_index] = (r, g, b)
 
     # Burst from center
     ext = False
