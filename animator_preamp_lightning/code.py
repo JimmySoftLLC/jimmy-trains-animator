@@ -193,6 +193,8 @@ local_ip = ""
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
 
+exit_set_hdw_async = False
+
 gc_col("config setup")
 
 ################################################################################
@@ -912,6 +914,10 @@ def spk_web():
 ################################################################################
 # animations
 
+def convert_to_new_format(my_object,my_type):
+    flash_times = my_object.get("flashTime", [])
+    return [f"{time}|{my_type}" for time in flash_times]
+
 
 async def an(fn):
     global cfg
@@ -931,15 +937,18 @@ async def an(fn):
             ts(cur)
         else:
             if "customers_owned_music_" in cur:
-                await an_ls(cur)
+                await an_ls(cur,"ZRAND")
             elif cur == "alien lightshow":
-                await an_ls(cur)
+                await an_ls(cur,"ZRAND")
             elif cur == "inspiring cinematic ambient lightshow":
-                await an_ls(cur)
+                await an_ls(cur,"ZRAND")
             elif cur == "fireworks":
-                await an_ls(cur)
+                await an_ls(cur,"FRWK")
             else:
-                await t_l(cur)
+                if ts_mode == True:
+                    await t_l(cur)
+                else:
+                    await an_ls(cur,"LIGHT")
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -948,19 +957,12 @@ async def an(fn):
     gc_col("Animation complete.")
 
 
-async def an_ls(fn):
+async def an_ls(fn,my_type):
     global ts_mode
-    il = 1
-    ih = 3
 
+    cust_f = "customers_owned_music_" in fn
 
-    if fn == "fireworks":
-        il = 4
-        ih = 4
-
-    cf = "customers_owned_music_" in fn
-
-    if cf:
+    if cust_f:
         fn = fn.replace("customers_owned_music_", "")
         try:
             fls_t = files.read_json_file(
@@ -981,58 +983,62 @@ async def an_ls(fn):
     else:
         fls_t = files.read_json_file(
             "/sd/snd/" + fn + ".json")
-    ft = fls_t["flashTime"]
 
-    ftl = len(ft)
-    fti = 0
+    flsh_t = convert_to_new_format(fls_t,my_type)
 
-    if cf:
+    if cust_f:
         w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
         w0 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
-    st = time.monotonic()
-    i = 0
+    srt_t = time.monotonic()
 
-    mlt_c(.01)
+    flsh_i = 0
+
     while True:
-        pi = 0
-        await asyncio.sleep(0)
-        te = time.monotonic()-st
-        if fti < len(ft)-2:
-            d = ft[fti+1] - \
-                ft[fti]-0.25
+        t_past = time.monotonic()-srt_t
+
+        if flsh_i < len(flsh_t)-1:
+            ft1 = flsh_t[flsh_i].split("|")
+            ft2 = flsh_t[flsh_i+1].split("|")
+            dur = float(ft2[0]) - float(ft1[0]) - 0.25
         else:
-            d = 0.25
-        if d < 0:
-            d = 0
-        if te > ft[fti] - 0.25:
-            exit_early()
-            print("TE: " + str(te) + " TS: " +
-                  str(ft[fti]) + " Dif: " + str(te-ft[fti]))
-            fti += 1
-            i = random.randint(il, ih)
-            while i == pi:
-                i = random.randint(il, ih)
-            if i == 1:
-                rainbow(.005, d)
-            elif i == 2:
-                mlt_c(.01)
-                upd_vol(d)
-            elif i == 3:
-                candle(d)
-            elif i == 4:
-                fwrk(d)
-            pi = i
-        if ftl == fti:
-            fti = 0
+            dur = 0.25
+        if dur < 0:
+            dur = 0
+        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
+            files.log_item("time elapsed: " + str(t_past) +
+                           " Timestamp: " + ft1[0])
+            if (len(ft1) == 1 or ft1[1] == ""):
+                pos = random.randint(60, 120)
+                lgt = random.randint(60, 120)
+                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
+                if result == "STOP":
+                    await asyncio.sleep(0)  # Yield control to other tasks
+                    break
+            else:
+                result = await set_hdw_async(ft1[1],dur)
+                if result == "STOP":
+                    await asyncio.sleep(0)  # Yield control to other tasks
+                    break
+            flsh_i += 1
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left" and cfg["can_cancel"]:
+            mix.voice[0].stop()
+        if sw == "left_held":
+            mix.voice[0].stop()
+            if cont_run:
+                cont_run = False
+                stp_all_cmds()
+                ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
 
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            break
+            return        
         upd_vol(.001)
 
 
@@ -1117,33 +1123,76 @@ async def t_l(file_name):
         if not mix.voice[0].playing:
             break
 
+
+async def set_hdw_async(input_string, dur):
+    global exit_set_hdw_async
+    segs = input_string.split(",")
+
+    # Process each segment
+    for seg in segs:
+        # ZRAND = Random rainbow, fire, or color change
+        if seg[0:] == 'ZRAND':
+            await random_effect(1, 3, dur)
+        # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+        elif seg[:2] == 'ZR':
+            v = float(seg[2:])
+            await rbow(v, dur)
+        # ZFIRE = Fire
+        elif seg[0:] == 'ZFIRE':
+            await fire(dur)
+        # ZCOLCH = Color change
+        elif seg[0:] == 'ZCOLCH':
+            multi_color()
+            await asyncio.sleep(dur)
+        elif seg[0:] == 'LIGHT':
+            ltng()
+        elif seg[0:] == 'FRWK':
+            await frwk(dur)
+
 ##############################
-# Led color effects
+# animation effects
+
+async def random_effect(il, ih, d):
+    i = random.randint(il, ih)
+    if i == 1:
+        await rbow(.005, d)
+    elif i == 2:
+        multi_color()
+        await asyncio.sleep(d)
+    elif i == 3:
+        await fire(d)
 
 
-def rainbow(spd, dur):
-    startTime = time.monotonic()
-    for j in range(0, 255, 1):
-        for i in range(n_px):
-            pi = (i * 256 // n_px) + j
-            led[i] = colorwheel(pi & 255)
-        led.show()
-        upd_vol(spd)
-        te = time.monotonic()-startTime
-        if te > dur:
-            return
-    for j in reversed(range(0, 255, 1)):
-        for i in range(n_px):
-            pi = (i * 256 // n_px) + j
-            led[i] = colorwheel(pi & 255)
-        led.show()
-        upd_vol(spd)
-        te = time.monotonic()-startTime
-        if te > dur:
-            return
+async def rbow(spd, dur):
+    global exit_set_hdw_async
+    st = time.monotonic()
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0, 255, 1):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
 
 
-def candle(dur):
+async def fire(dur):
     st = time.monotonic()
     led.brightness = 1.0
 
@@ -1214,7 +1263,7 @@ def r_w_b():
     return r, g, b
 
 
-def fwrk(duration):
+async def frwk(duration):
     st = time.monotonic()
     led.brightness = 1.0
 
@@ -1263,40 +1312,32 @@ def fwrk(duration):
                 break
         te = time.monotonic()-st
         if te > duration:
+            print("Time up for fireworks")
             rst_bar()
             led.show()
             return
 
 
-def mlt_c(dur):
-    st = time.monotonic()
-    led.brightness = 1.0
-
-    # Flicker, based on our initial RGB values
-    while True:
-        for i in range(0, n_px):
-            r = random.randint(128, 255)
-            g = random.randint(128, 255)
-            b = random.randint(128, 255)
-            c = random.randint(0, 2)
-            if c == 0:
-                r1 = r
-                g1 = 0
-                b1 = 0
-            elif c == 1:
-                r1 = 0
-                g1 = g
-                b1 = 0
-            elif c == 2:
-                r1 = 0
-                g1 = 0
-                b1 = b
-            led[i] = (r1, g1, b1)
-            led.show()
-        upd_vol(random.uniform(.2, 0.3))
-        te = time.monotonic()-st
-        if te > dur:
-            return
+def multi_color():
+    for i in range(0, n_px):
+        r = random.randint(128, 255)
+        g = random.randint(128, 255)
+        b = random.randint(128, 255)
+        c = random.randint(0, 2)
+        if c == 0:
+            r1 = r
+            g1 = 0
+            b1 = 0
+        elif c == 1:
+            r1 = 0
+            g1 = g
+            b1 = 0
+        elif c == 2:
+            r1 = 0
+            g1 = 0
+            b1 = b
+        led[i] = (r1, g1, b1)
+    led.show()
 
 
 def col_it(col, var):
