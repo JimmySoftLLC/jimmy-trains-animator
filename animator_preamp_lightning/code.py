@@ -207,7 +207,7 @@ bar_arr = []
 bolt_arr = []
 nbolt_arr = []
 
-n_px = 0
+n_px = 2
 neo_pin = board.GP10
 
 led = neopixel.NeoPixel(neo_pin, n_px)
@@ -245,7 +245,7 @@ def bld_nbolt():
         for l in b:
             si = l
             break
-        for l in range(0, 1):
+        for l in range(0, len(b)):
             i.append(l+si)
     return i
 
@@ -285,10 +285,11 @@ def l_tst():
 
 
 def upd_l_str():
-    global bars, bolts, noods, n_px, led
+    global bars, bolts, noods, n_px, led, nbolts
     bars = []
     bolts = []
     noods = []
+    nbolts = []
 
     n_px = 0
 
@@ -323,8 +324,6 @@ def upd_l_str():
     led.brightness = 1.0
     l_tst()
 
-
-upd_l_str()
 
 gc_col("Neopixels setup")
 
@@ -954,6 +953,8 @@ async def an_ls(fn):
     il = 1
     ih = 3
 
+    print("running filename: ", fn)
+
     if fn == "fireworks":
         il = 4
         ih = 4
@@ -1315,6 +1316,14 @@ def ltng():
         for i, arr in enumerate(bolts):
             if i == b_i:
                 bolt.extend(arr)
+
+    # choose which nbolt or no bolt to fire
+    nbolt = []
+    b_i = random.randint(-1, (len(nbolts)-1))
+    if b_i != -1:
+        for i, arr in enumerate(nbolts):
+            if i == b_i:
+                nbolt.extend(arr)            
 
     # choose which bar one to all to fire
     bar = []
@@ -1757,6 +1766,9 @@ if (web):
 else:
     led[1] = (0, 255, 0)
     led.show()
+    time.sleep(3)
+
+upd_l_str()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
