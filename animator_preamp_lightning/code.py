@@ -953,7 +953,6 @@ async def an_ls(fn):
     il = 1
     ih = 3
 
-    print("running filename: ", fn)
 
     if fn == "fireworks":
         il = 4
@@ -991,7 +990,7 @@ async def an_ls(fn):
         w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     st = time.monotonic()
@@ -1221,7 +1220,7 @@ def fwrk(duration):
 
     # choose which bar none to all to fire
     bar_f = []
-    for i in enumerate(bars):
+    for i, arr in enumerate(bars):
         if i == random.randint(0, (len(bars)-1)):
             bar_f.append(i)
 
@@ -1230,11 +1229,6 @@ def fwrk(duration):
         bar_f.append(i)
 
     for b in bolts:
-        r, g, b = r_w_b()
-        for i in b:
-            led[i] = (r, g, b)
-
-    for b in nbolts:
         r, g, b = r_w_b()
         for i in b:
             led[i] = (r, g, b)
