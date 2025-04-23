@@ -130,35 +130,6 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="settings">
-            <h2>Platform positions:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
-                    type="button">
-                    All 0
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S090" data-url="/lights"
-                    type="button">
-                    All 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S0180" data-url="/lights"
-                    type="button">
-                    All 180
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
-                    type="button">
-                    Servo 1 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
-                    type="button">
-                    Servo 2 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
-                    type="button">
-                    Servo 3 90
-            </button>
-            </div>
             <h2>Test lights:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
@@ -183,9 +154,29 @@
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L6255" data-url="/lights"
                     type="button">
-                    SpLightot 6
+                    Light 6
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,TRACK" data-url="/lights"
+                    type="button">
+                    Track
                 </button>
             </div>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="RED" data-url="/lights"
+                type="button">
+                Red
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="GREEN" data-url="/lights"
+                type="button">
+                Green
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="BLUE" data-url="/lights"
+                type="button">
+                Blue
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="WHITE" data-url="/lights"
+                type="button">
+                White
+            </button>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="B0" data-url="/lights"
                     type="button">
@@ -341,7 +332,8 @@
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>AN_XXX = Animation XXX filename</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
-            <div>C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal cm, AAA acceleration decimal cm/sec</div>
+            <div>C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal
+                cm, AAA acceleration decimal cm/sec</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder) XXX (file name)</div>
             <div>WA = Blow horn or whistle, A (H Horn, W whistle)</div>

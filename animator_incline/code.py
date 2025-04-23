@@ -206,6 +206,7 @@ pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
 car = motor.DCMotor(pwm_a, pwm_b)
 car.decay_mode = d_mde
 car_pos = 0
+car.throttle = 0
 
 ################################################################################
 # Sd card config variables
@@ -312,7 +313,7 @@ if (web):
             local_ip = str(wifi.radio.ipv4_address)
 
             # files.log_items IP address to REPL
-            files.log_item("IP is" + local_ip)
+            files.log_item("IP is " + local_ip)
             files.log_item("Connected")
 
             # set up server
@@ -1128,6 +1129,23 @@ async def set_hdw_async(input_string):
                 if t_past > give_up:
                     car.throttle = 0
                     break
+        elif seg[0] == 'RED':
+                led.fill((255, 0, 0))
+                led.show
+        elif seg[0] == 'GREEN':
+                led.fill((255, 0, 0))
+                led.show
+        elif seg[0] == 'BLU':
+                led.fill((255, 0, 0))
+                led.show
+        elif seg[0] == 'WHITE':
+                led.fill((255, 0, 0))
+                led.show
+        elif seg[0] == 'TRACK':
+                led.fill((0, 0, 0))
+                for i in range(5,48):
+                    led[i].fill((255, 0, 0))
+                led.show
 
 ################################################################################
 # State Machine
@@ -1486,7 +1504,7 @@ if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
-        led[3] = (0, 255, 0)
+        led[3] = (0, 125, 0)
         led.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
@@ -1495,7 +1513,7 @@ if (web):
         files.log_item("restarting...")
         rst()
 else:
-    led[3] = (0, 255, 0)
+    led[3] = (0, 125, 0)
     led.show()
     time.sleep(3)
 
