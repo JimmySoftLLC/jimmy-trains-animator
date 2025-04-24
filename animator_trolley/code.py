@@ -369,6 +369,7 @@ if (web):
             def btn(request: Request):
                 rq_d = request.json()
                 ch_vol(rq_d["action"])
+                files.write_json_file("/cfg.json", cfg)
                 return Response(request, cfg["volume"])
 
             @server.route("/get-volume", [POST])
@@ -889,7 +890,6 @@ async def set_hdw_async(input_string):
             except Exception as e:
                 print(e)
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
-        # horn MPMhorn
         elif seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_a_0()
@@ -914,7 +914,7 @@ async def set_hdw_async(input_string):
                 fn=get_snds("/mvc","horn")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
-        # lights LNZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+        # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
         elif seg[:2] == 'LN':
                 seg_split = seg.split("_")
                 light_n = int(seg_split[0][2:])-1
