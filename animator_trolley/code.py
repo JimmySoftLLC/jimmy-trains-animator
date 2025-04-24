@@ -755,11 +755,11 @@ async def an_light_async(f_nm):
 
     flsh_i = 0
 
-    w0_exists = f_exists("/snds/" + f_nm + ".mp3")
+    w0_exists = f_exists("/snds/" + "trolley" + ".mp3")
 
     if w0_exists:
         w0 = audiomp3.MP3Decoder(
-            open("/snds/" + f_nm + ".mp3", "rb"))
+            open("/snds/" + "trolley" + ".mp3", "rb"))
         mix.voice[0].play(w0, loop=False)
     srt_t = time.monotonic()
 
@@ -807,9 +807,7 @@ async def an_light_async(f_nm):
                 ply_a_0("/mvc/continuous_mode_deactivated.mp3")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
-            led.fill((0, 0, 0))
-            led.show()
-            add_cmd("T0")
+            add_cmd("TA_0_2")
             return
         await upd_vol_async(.1)
 
@@ -889,7 +887,7 @@ async def set_hdw_async(input_string):
                 current_throttle = new_throttle
             except Exception as e:
                 print(e)
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)  
         elif seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_a_0()
@@ -899,6 +897,14 @@ async def set_hdw_async(input_string):
                         w0 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
                     elif seg[2] == "M":
                         w0 = audiomp3.MP3Decoder(open("/mvc/" + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "T":
+                        print("this segment is: ", seg[3:])
+                        if seg[3:] == "RAND":
+                            dude = get_random_media_file("/stops")
+                            print("the result is: ", dude)
+                            w0 = audiomp3.MP3Decoder(open("/stops/" + dude + ".mp3", "rb"))
+                        else:
+                            w0 = audiomp3.MP3Decoder(open("/stops/" + seg[3:] + ".mp3", "rb"))
                     if seg[1] == "W" or seg[1] == "P":
                         mix.voice[1].play(w0, loop=False)
                     if seg[1] == "W":
@@ -950,6 +956,10 @@ def set_neo_to(light_n, r, g, b):
     else:
         led[light_n] = (r, g, b)
     led.show()
+
+def get_random_media_file(folder_to_search):
+    files = files.return_directory("", folder_to_search, ".mp3")
+    return random.choice(files) if files else None
         
 ################################################################################
 # State Machine

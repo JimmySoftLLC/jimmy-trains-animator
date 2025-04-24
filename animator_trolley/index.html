@@ -144,7 +144,7 @@
                     type="button">
                     White
                 </button>
-            </div> 
+            </div>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="B0" data-url="/lights"
                     type="button">
@@ -301,7 +301,7 @@
             <div>TXXX = Train XXX throttle -100 to 100</div>
             <div>TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
-                tracks, M mvc folder) XXX (file name)</div>
+                tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)</div>
             <div>WA = Blow horn or bell, A (H Horn, B Bell)</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
@@ -818,7 +818,7 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        showAlert('Try Again');
                     });
             });
             animationsContainer.appendChild(button);
@@ -906,7 +906,7 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    showAlert('Try Again');
                 });
         });
     });
@@ -1501,7 +1501,7 @@
                     sendBlockSequentially(index + 1);
                 })
                 .catch(function (error) {
-                    alert(error.message);
+                    showAlert(error.message);
                     // Enable the button even if an error occurs
                     saveAnimationScriptDataButton.removeAttribute('disabled');
                 });
