@@ -129,7 +129,9 @@ pwm_a = pwmio.PWMOut(board.GP10, frequency=p_frq)
 pwm_b = pwmio.PWMOut(board.GP11, frequency=p_frq)
 train = motor.DCMotor(pwm_a, pwm_b)
 train.decay_mode = d_mde
+train.throttle = 0
 current_throttle = 0
+
 
 ################################################################################
 # Flash data and globals
