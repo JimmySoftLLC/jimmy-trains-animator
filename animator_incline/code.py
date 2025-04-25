@@ -165,35 +165,35 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # setup distance sensor
 
-i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=400000)
+# i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=400000)
 
-vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
+# vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
 
-# OPTIONAL: can set non-default values
-vl53.inter_measurement = 0
-vl53.distance_mode = 1  # 1 = Short, 2 = Long
-vl53.timing_budget = 200  # 200 ms
+# # OPTIONAL: can set non-default values
+# vl53.inter_measurement = 0
+# vl53.distance_mode = 1  # 1 = Short, 2 = Long
+# vl53.timing_budget = 200  # 200 ms
 
-print("VL53L4CD Simple Test.")
-print("--------------------")
-model_id, module_type = vl53.model_info
-print("Model ID: 0x{:0X}".format(model_id))
-print("Module Type: 0x{:0X}".format(module_type))
-print("Timing Budget: {}".format(vl53.timing_budget))
-print("Inter-Measurement: {}".format(vl53.inter_measurement))
-print("--------------------")
+# print("VL53L4CD Simple Test.")
+# print("--------------------")
+# model_id, module_type = vl53.model_info
+# print("Model ID: 0x{:0X}".format(model_id))
+# print("Module Type: 0x{:0X}".format(module_type))
+# print("Timing Budget: {}".format(vl53.timing_budget))
+# print("Inter-Measurement: {}".format(vl53.inter_measurement))
+# print("--------------------")
 
-vl53.start_ranging()
+# vl53.start_ranging()
 
-while not vl53.data_ready:
-    print("data not ready")
-    time.sleep(.2)
+# while not vl53.data_ready:
+#     print("data not ready")
+#     time.sleep(.2)
 
-for _ in range(3):
-    vl53.clear_interrupt()
-    car_pos = vl53.distance
-    print("Distance is: ", car_pos)
-    time.sleep(.5)    
+# for _ in range(3):
+#     vl53.clear_interrupt()
+#     car_pos = vl53.distance
+#     print("Distance is: ", car_pos)
+#     time.sleep(.5)    
 
 ################################################################################
 # Setup motor controller
@@ -981,9 +981,9 @@ async def set_hdw_async(input_string):
 
     # Process each segment
     for seg in segs:
-        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
         if seg == "":
             print("no command")
+            return
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
         if seg[0] == 'M': # play file
                 if seg[1] == "S":
@@ -998,17 +998,7 @@ async def set_hdw_async(input_string):
                         mix.voice[0].play(w0, loop=False)
                     if seg[1] == "W":
                         wait_snd()
-        # WA = Blow horn or whistle, A (H Horn, W whistle)
-        if seg[0] == 'W': # play file
-            stp_a_0()
-            if seg[1] == "W":
-                fn=get_snds("/sd/mvc","whistle")
-                w0 = audiocore.WaveFile(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
-            elif seg[1] == "H" or seg[1] == "P":
-                fn=get_snds("/sd/mvc","horn")
-                w0 = audiocore.WaveFile(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
+         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180               
         elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
@@ -1017,18 +1007,6 @@ async def set_hdw_async(input_string):
                     s_arr[i].angle = v
             else:
                 s_arr[num-1].angle = int(v)
-        # LNXXX = Lights N (0 All, 1-6) XXX 0 to 255
-        elif seg[0] == 'L':  # lights
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    sp[i] = v
-            else:
-                sp[num-1] = int(v)
-            led[0] = (sp[1], sp[0], sp[2])
-            led[1] = (sp[4], sp[3], sp[5])
-            led.show()
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
@@ -1129,23 +1107,22 @@ async def set_hdw_async(input_string):
                 if t_past > give_up:
                     car.throttle = 0
                     break
-        elif seg[0] == 'RED':
-                led.fill((255, 0, 0))
-                led.show
-        elif seg[0] == 'GREEN':
-                led.fill((255, 0, 0))
-                led.show
-        elif seg[0] == 'BLU':
-                led.fill((255, 0, 0))
-                led.show
-        elif seg[0] == 'WHITE':
-                led.fill((255, 0, 0))
-                led.show
-        elif seg[0] == 'TRACK':
-                led.fill((0, 0, 0))
-                for i in range(5,48):
-                    led[i].fill((255, 0, 0))
-                led.show
+        # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+        elif seg[:2] == 'LN':
+                seg_split = seg.split("_")
+                light_n = int(seg_split[0][2:])-1
+                r = int(seg_split[1])
+                g = int(seg_split[2])
+                b = int(seg_split[3])
+                set_neo_to(light_n, r, g, b)
+
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(num_px):  # in range(n_px)
+            led[i] = (r, g, b)
+    else:
+        led[light_n] = (r, g, b)
+    led.show()
 
 ################################################################################
 # State Machine

@@ -103,12 +103,6 @@
                 </div>
             </div>
             <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
-            <button class="mui-btn mui-btn--primary" onclick="blowHorn()">Horn</button>
-            <button class="mui-btn mui-btn--primary" onclick="blowWhistle()">Whistle</button>
-            <button class="mui-btn mui-btn--primary" onclick="home12()">Home 12</button>
-            <button class="mui-btn mui-btn--primary" onclick="Home6()">Home 6</button>
-            <button class="mui-btn mui-btn--primary" onclick="openGates()">Open Gates</button>
-            <button class="mui-btn mui-btn--primary" onclick="closeGates()">Close Gates</button>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -132,51 +126,23 @@
         <div class="mui-tabs__pane" id="settings">
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
                     type="button">
-                    Light 1
+                    Red
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L2255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
                     type="button">
-                    Light 2
+                    Green
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L3255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
                     type="button">
-                    Light 3
+                    Blue
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L4255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
                     type="button">
-                    Light 4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L5255" data-url="/lights"
-                    type="button">
-                    Light 5
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L6255" data-url="/lights"
-                    type="button">
-                    Light 6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,TRACK" data-url="/lights"
-                    type="button">
-                    Track
+                    White
                 </button>
             </div>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="RED" data-url="/lights"
-                type="button">
-                Red
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="GREEN" data-url="/lights"
-                type="button">
-                Green
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="BLUE" data-url="/lights"
-                type="button">
-                Blue
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="WHITE" data-url="/lights"
-                type="button">
-                White
-            </button>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="B0" data-url="/lights"
                     type="button">
@@ -326,8 +292,7 @@
             <div class="mui-textfield">
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
-            <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
-            <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
+            <div>LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>AN_XXX = Animation XXX filename</div>
@@ -336,7 +301,6 @@
                 cm, AAA acceleration decimal cm/sec</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder) XXX (file name)</div>
-            <div>WA = Blow horn or whistle, A (H Horn, W whistle)</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
