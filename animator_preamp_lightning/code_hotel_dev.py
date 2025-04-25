@@ -988,7 +988,7 @@ async def an_ls(fn,my_type):
     if cust_f:
         fn = fn.replace("customers_owned_music_", "")
         try:
-            fls_t = files.read_json_file(
+            flsh_t = files.read_json_file(
                 "/sd/customers_owned_music/" + fn + ".json")
         except Exception as e:
             files.log_item(e)
@@ -1004,10 +1004,17 @@ async def an_ls(fn,my_type):
                     ply_a_1("/sd/mvc/timestamp_instructions.wav")
                     return
     else:
-        fls_t = files.read_json_file(
+        flsh_t = files.read_json_file(
             "/sd/snd/" + fn + ".json")
 
-    flsh_t = convert_to_new_format(fls_t,my_type)
+    # flsh_t = convert_to_new_format(flsh_t,my_type)
+
+    # if cust_f:
+    #     files.write_json_file(
+    #         "/sd/customers_owned_music/" + fn + ".json", flsh_t)
+    # else:
+    #     files.write_json_file(
+    #         "/sd/snd/" + fn + ".json", flsh_t)
 
     if cust_f:
         w0 = audiocore.WaveFile(
@@ -1015,6 +1022,7 @@ async def an_ls(fn,my_type):
     else:
         w0 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
+        
     mix.voice[0].play(w0, loop=False)
     srt_t = time.monotonic()
 
@@ -1600,206 +1608,206 @@ class Main(Ste):
                 mch.go_to('base_state')
 
 
-# class Snds(Ste):
+class Snds(Ste):
 
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-#     @property
-#     def name(self):
-#         return 'choose_sounds'
+    @property
+    def name(self):
+        return 'choose_sounds'
 
-#     def enter(self, mch):
-#         files.log_item('Choose sounds menu')
-#         ply_a_1("/sd/mvc/sound_selection_menu.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
+    def enter(self, mch):
+        files.log_item('Choose sounds menu')
+        ply_a_1("/sd/mvc/sound_selection_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def upd(self, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             if mix.voice[1].playing:
-#                 mix.voice[1].stop()
-#                 while mix.voice[1].playing:
-#                     pass
-#             else:
-#                 try:
-#                     w1 = audiocore.WaveFile(open(
-#                         "/sd/snd_opt/option_" + mnu_o[self.i] + ".wav", "rb"))
-#                     mix.voice[1].play(w1, loop=False)
-#                 except Exception as e:
-#                     files.log_item(e)
-#                     spk_sng_num(str(self.i+1))
-#                 self.sel_i = self.i
-#                 self.i += 1
-#                 if self.i > len(mnu_o)-1:
-#                     self.i = 0
-#                 while mix.voice[1].playing:
-#                     pass
-#         if sw == "right":
-#             if mix.voice[1].playing:
-#                 mix.voice[1].stop()
-#                 while mix.voice[1].playing:
-#                     pass
-#             else:
-#                 cfg["option_selected"] = mnu_o[self.sel_i]
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 w1 = audiocore.WaveFile(
-#                     open("/sd/mvc/option_selected.wav", "rb"))
-#                 mix.voice[1].play(w1, loop=False)
-#                 while mix.voice[1].playing:
-#                     pass
-#             mch.go_to('base_state')
-
-
-# class VolSet(Ste):
-
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
-
-#     @property
-#     def name(self):
-#         return 'volume_settings'
-
-#     def enter(self, mch):
-#         files.log_item('Set Web Options')
-#         ply_a_1("/sd/mvc/volume_settings_menu.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
-
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
-
-#     def upd(self, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_1("/sd/mvc/" + v_s[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(v_s)-1:
-#                 self.i = 0
-#         if sw == "right":
-#             sel_mnu = v_s[self.sel_i]
-#             if sel_mnu == "volume_level_adjustment":
-#                 ply_a_1("/sd/mvc/volume_adjustment_menu.wav")
-#                 done = False
-#                 while not done:
-#                     sw = utilities.switch_state(
-#                         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#                     if sw == "left":
-#                         ch_vol("lower")
-#                     elif sw == "right":
-#                         ch_vol("raise")
-#                     elif sw == "right_held":
-#                         files.write_json_file(
-#                             "/sd/cfg.json", cfg)
-#                         ply_a_1("/sd/mvc/all_changes_complete.wav")
-#                         done = True
-#                         mch.go_to('base_state')
-#                     upd_vol(0.1)
-#                     pass
-#             elif sel_mnu == "volume_pot_off":
-#                 cfg["volume_pot"] = False
-#                 if cfg["volume"] == 0:
-#                     cfg["volume"] = 10
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_1("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
-#             elif sel_mnu == "volume_pot_on":
-#                 cfg["volume_pot"] = True
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_1("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            if mix.voice[1].playing:
+                mix.voice[1].stop()
+                while mix.voice[1].playing:
+                    pass
+            else:
+                try:
+                    w1 = audiocore.WaveFile(open(
+                        "/sd/snd_opt/option_" + mnu_o[self.i] + ".wav", "rb"))
+                    mix.voice[1].play(w1, loop=False)
+                except Exception as e:
+                    files.log_item(e)
+                    spk_sng_num(str(self.i+1))
+                self.sel_i = self.i
+                self.i += 1
+                if self.i > len(mnu_o)-1:
+                    self.i = 0
+                while mix.voice[1].playing:
+                    pass
+        if sw == "right":
+            if mix.voice[1].playing:
+                mix.voice[1].stop()
+                while mix.voice[1].playing:
+                    pass
+            else:
+                cfg["option_selected"] = mnu_o[self.sel_i]
+                files.write_json_file("/sd/cfg.json", cfg)
+                w1 = audiocore.WaveFile(
+                    open("/sd/mvc/option_selected.wav", "rb"))
+                mix.voice[1].play(w1, loop=False)
+                while mix.voice[1].playing:
+                    pass
+            mch.go_to('base_state')
 
 
-# class Light(Ste):
+class VolSet(Ste):
 
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
-#         self.li = 0
-#         self.sel_li = 0
-#         self.a = False
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-#     @property
-#     def name(self):
-#         return 'light_string_setup_menu'
+    @property
+    def name(self):
+        return 'volume_settings'
 
-#     def enter(self, mch):
-#         files.log_item('Light string menu')
-#         ply_a_1("/sd/mvc/light_string_setup_menu.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        ply_a_1("/sd/mvc/volume_settings_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def upd(self, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if self.a:
-#             if sw == "left":
-#                 self.li -= 1
-#                 if self.li < 0:
-#                     self.li = len(l_opt)-1
-#                 self.sel_li = self.li
-#                 ply_a_1("/sd/mvc/" + l_opt[self.li] + ".wav")
-#             elif sw == "right":
-#                 self.li += 1
-#                 if self.li > len(l_opt)-1:
-#                     self.li = 0
-#                 self.sel_li = self.li
-#                 ply_a_1("/sd/mvc/" + l_opt[self.li] + ".wav")
-#             elif sw == "left_held":
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 upd_l_str()
-#                 ply_a_1("/sd/mvc/all_changes_complete.wav")
-#                 self.a = False
-#                 mch.go_to('base_state')
-#             elif sw == "right_held":
-#                 if cfg["light_string"] == "":
-#                     cfg["light_string"] = l_opt[self.sel_li]
-#                 else:
-#                     cfg["light_string"] = cfg["light_string"] + \
-#                         "," + l_opt[self.sel_li]
-#                 ply_a_1("/sd/mvc/" +
-#                         l_opt[self.sel_li] + ".wav")
-#                 ply_a_1("/sd/mvc/added.wav")
-#             upd_vol(0.1)
-#         elif sw == "left":
-#             ply_a_1("/sd/mvc/" + l_mnu[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(l_mnu)-1:
-#                 self.i = 0
-#         elif sw == "right":
-#             sel_mnu = l_mnu[self.sel_i]
-#             if sel_mnu == "hear_light_setup_instructions":
-#                 ply_a_1("/sd/mvc/string_instructions.wav")
-#             elif sel_mnu == "reset_lights_defaults":
-#                 rst_l_def()
-#                 ply_a_1("/sd/mvc/lights_reset_to.wav")
-#                 spk_lght(False)
-#             elif sel_mnu == "hear_current_light_settings":
-#                 spk_lght(True)
-#             elif sel_mnu == "clear_light_string":
-#                 cfg["light_string"] = ""
-#                 ply_a_1("/sd/mvc/lights_cleared.wav")
-#             elif sel_mnu == "add_lights":
-#                 ply_a_1("/sd/mvc/add_light_menu.wav")
-#                 self.a = True
-#             else:
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_1("/sd/mvc/all_changes_complete.wav")
-#                 upd_l_str()
-#                 mch.go_to('base_state')
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_1("/sd/mvc/" + v_s[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(v_s)-1:
+                self.i = 0
+        if sw == "right":
+            sel_mnu = v_s[self.sel_i]
+            if sel_mnu == "volume_level_adjustment":
+                ply_a_1("/sd/mvc/volume_adjustment_menu.wav")
+                done = False
+                while not done:
+                    sw = utilities.switch_state(
+                        l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+                    if sw == "left":
+                        ch_vol("lower")
+                    elif sw == "right":
+                        ch_vol("raise")
+                    elif sw == "right_held":
+                        files.write_json_file(
+                            "/sd/cfg.json", cfg)
+                        ply_a_1("/sd/mvc/all_changes_complete.wav")
+                        done = True
+                        mch.go_to('base_state')
+                    upd_vol(0.1)
+                    pass
+            elif sel_mnu == "volume_pot_off":
+                cfg["volume_pot"] = False
+                if cfg["volume"] == 0:
+                    cfg["volume"] = 10
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "volume_pot_on":
+                cfg["volume_pot"] = True
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+
+
+class Light(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+        self.li = 0
+        self.sel_li = 0
+        self.a = False
+
+    @property
+    def name(self):
+        return 'light_string_setup_menu'
+
+    def enter(self, mch):
+        files.log_item('Light string menu')
+        ply_a_1("/sd/mvc/light_string_setup_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if self.a:
+            if sw == "left":
+                self.li -= 1
+                if self.li < 0:
+                    self.li = len(l_opt)-1
+                self.sel_li = self.li
+                ply_a_1("/sd/mvc/" + l_opt[self.li] + ".wav")
+            elif sw == "right":
+                self.li += 1
+                if self.li > len(l_opt)-1:
+                    self.li = 0
+                self.sel_li = self.li
+                ply_a_1("/sd/mvc/" + l_opt[self.li] + ".wav")
+            elif sw == "left_held":
+                files.write_json_file("/sd/cfg.json", cfg)
+                upd_l_str()
+                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                self.a = False
+                mch.go_to('base_state')
+            elif sw == "right_held":
+                if cfg["light_string"] == "":
+                    cfg["light_string"] = l_opt[self.sel_li]
+                else:
+                    cfg["light_string"] = cfg["light_string"] + \
+                        "," + l_opt[self.sel_li]
+                ply_a_1("/sd/mvc/" +
+                        l_opt[self.sel_li] + ".wav")
+                ply_a_1("/sd/mvc/added.wav")
+            upd_vol(0.1)
+        elif sw == "left":
+            ply_a_1("/sd/mvc/" + l_mnu[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(l_mnu)-1:
+                self.i = 0
+        elif sw == "right":
+            sel_mnu = l_mnu[self.sel_i]
+            if sel_mnu == "hear_light_setup_instructions":
+                ply_a_1("/sd/mvc/string_instructions.wav")
+            elif sel_mnu == "reset_lights_defaults":
+                rst_l_def()
+                ply_a_1("/sd/mvc/lights_reset_to.wav")
+                spk_lght(False)
+            elif sel_mnu == "hear_current_light_settings":
+                spk_lght(True)
+            elif sel_mnu == "clear_light_string":
+                cfg["light_string"] = ""
+                ply_a_1("/sd/mvc/lights_cleared.wav")
+            elif sel_mnu == "add_lights":
+                ply_a_1("/sd/mvc/add_light_menu.wav")
+                self.a = True
+            else:
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                upd_l_str()
+                mch.go_to('base_state')
 
 ###############################################################################
 # Create the state machine
@@ -1808,9 +1816,9 @@ class Main(Ste):
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-# st_mch.add(Snds())
-# st_mch.add(VolSet())
-# st_mch.add(Light())
+st_mch.add(Snds())
+st_mch.add(VolSet())
+st_mch.add(Light())
 
 aud_mute.value = false_preamp
 
