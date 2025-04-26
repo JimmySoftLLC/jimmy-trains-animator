@@ -126,6 +126,40 @@
         <div class="mui-tabs__pane" id="settings">
             <h2>Test lights:</h2>
             <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN1_255_0_0" data-url="/lights"
+                    type="button">
+                    Light 1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN1_0_255_0" data-url="/lights"
+                    type="button">
+                    Light 2
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN1_0_0_255" data-url="/lights"
+                    type="button">
+                    Light 3
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN2_255_0_0" data-url="/lights"
+                    type="button">
+                    Light 4
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN2_0_255_0" data-url="/lights"
+                    type="button">
+                    Light 5
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN2_0_0_255" data-url="/lights"
+                    type="button">
+                    Light 6
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LNR_7_48_100_100_0" data-url="/lights"
+                    type="button">
+                    Track
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0" data-url="/lights"
+                    type="button">
+                    All off
+                </button>
+            </div>
+            <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
                     type="button">
                     Red
@@ -293,6 +327,7 @@
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
             <div>LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start (1 to 999), EEE end (1 to 999), RGB 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>AN_XXX = Animation XXX filename</div>

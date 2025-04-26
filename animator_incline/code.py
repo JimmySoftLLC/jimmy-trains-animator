@@ -997,7 +997,7 @@ async def set_hdw_async(input_string):
                     if seg[1] == "W" or seg[1] == "P":
                         mix.voice[0].play(w0, loop=False)
                     if seg[1] == "W":
-                        wait_snd()
+                        wait_snd()          
          # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180               
         elif seg[0] == 'S':
             num = int(seg[1])
@@ -1107,6 +1107,15 @@ async def set_hdw_async(input_string):
                 if t_past > give_up:
                     car.throttle = 0
                     break
+        # lights LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start (1 to 999), EEE end (1 to 999), RGB 0 to 255
+        elif seg[:3] == 'LNR':
+                seg_split = seg.split("_")
+                start = int(seg_split[1]) - 1
+                end = int(seg_split[2]) - 1
+                r = int(seg_split[3])
+                g = int(seg_split[4])
+                b = int(seg_split[5])
+                set_neo_range(start, end, r, g, b)
         # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
         elif seg[:2] == 'LN':
                 seg_split = seg.split("_")
@@ -1116,12 +1125,18 @@ async def set_hdw_async(input_string):
                 b = int(seg_split[3])
                 set_neo_to(light_n, r, g, b)
 
+
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
         for i in range(num_px):  # in range(n_px)
             led[i] = (r, g, b)
     else:
         led[light_n] = (r, g, b)
+    led.show()
+
+def set_neo_range(start, end, r, g, b):
+    for i in range(start, end+1):  # set values to indexes start to end
+        led[i] = (r, g, b)
     led.show()
 
 ################################################################################

@@ -965,7 +965,7 @@ async def an_ls(fn,my_type):
     if cust_f:
         fn = fn.replace("customers_owned_music_", "")
         try:
-            fls_t = files.read_json_file(
+            flsh_t = files.read_json_file(
                 "/sd/customers_owned_music/" + fn + ".json")
         except Exception as e:
             files.log_item(e)
@@ -981,10 +981,8 @@ async def an_ls(fn,my_type):
                     ply_a_1("/sd/mvc/timestamp_instructions.wav")
                     return
     else:
-        fls_t = files.read_json_file(
+        flsh_t = files.read_json_file(
             "/sd/snd/" + fn + ".json")
-
-    flsh_t = convert_to_new_format(fls_t,my_type)
 
     if cust_f:
         w0 = audiocore.WaveFile(
