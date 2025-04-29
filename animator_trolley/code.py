@@ -757,16 +757,27 @@ async def an_light_async(f_nm):
 
     flsh_i = 0
 
-    w0_exists = f_exists("/snds/" + "trolley" + ".mp3")
+    if flsh_i < len(flsh_t)-1:
+        ft1 = flsh_t[flsh_i].split("|")
+        result = await set_hdw_async(ft1[1])
+        print("Result is: ", result)
+        if result:
+            w0_exists = f_exists("/snds/" + result + ".mp3")
+            if w0_exists:
+                w0 = audiomp3.MP3Decoder(
+                    open("/snds/" + result + ".mp3", "rb"))
+                mix.voice[0].play(w0, loop=False) 
+            else:
+                return
+            srt_t = time.monotonic()
 
-    if w0_exists:
-        w0 = audiomp3.MP3Decoder(
-            open("/snds/" + "trolley" + ".mp3", "rb"))
-        mix.voice[0].play(w0, loop=False)
-    srt_t = time.monotonic()
-
-    ft1 = []
-    ft2 = []
+            ft1 = []
+            ft2 = []
+        else:
+            return
+        flsh_i += 1
+    else:
+        return
 
     while True:
         t_past = time.monotonic()-srt_t
@@ -783,9 +794,7 @@ async def an_light_async(f_nm):
             files.log_item("time elapsed: " + str(t_past) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
             if (len(ft1) == 1 or ft1[1] == ""):
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
-                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
+                result = await set_hdw_async("")
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -889,6 +898,10 @@ async def set_hdw_async(input_string):
                 current_throttle = new_throttle
             except Exception as e:
                 print(e)
+        # MBXXX = Play background file, XXX (file name)  
+        elif seg[:2] == 'MB': # play file
+            file_nm = seg[2:]
+            return file_nm
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)  
         elif seg[0] == 'M': # play file
                 if seg[1] == "S":

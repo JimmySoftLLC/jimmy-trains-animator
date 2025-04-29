@@ -280,247 +280,251 @@ if (web):
         print("Using default ssid and password")
 
     try:
-        # connect to your SSID
-        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
-        gc_col("wifi connect")
+        for i in range(3):
+            web = True
 
-        # setup mdns server
-        mdns_server = mdns.Server(wifi.radio)
-        mdns_server.hostname = cfg["HOST_NAME"]
-        mdns_server.advertise_service(
-            service_type="_http", protocol="_tcp", port=80)
+            # connect to your SSID
+            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+            gc_col("wifi connect")
 
-        # files.log_items MAC address to REPL
-        mystring = [hex(i) for i in wifi.radio.mac_address]
-        files.log_item("My MAC addr:" + str(mystring))
-
-        local_ip = str(wifi.radio.ipv4_address)
-
-        # files.log_items IP address to REPL
-        files.log_item("My IP address is" + local_ip)
-        files.log_item("Connected to WiFi")
-
-        # set up server
-        pool = socketpool.SocketPool(wifi.radio)
-        server = Server(pool, "/static", debug=True)
-        gc_col("wifi server")
-
-        ################################################################################
-        # Setup routes
-
-        @server.route("/")
-        def base(request: HTTPRequest):
-            gc_col("Home page.")
-            stp_all_cmds()
-            return FileResponse(request, "index.html", "/")
-
-        @server.route("/mui.min.css")
-        def base(request: HTTPRequest):
-            stp_all_cmds()
-            return FileResponse(request, "/sd/mui.min.css", "/")
-
-        @server.route("/mui.min.js")
-        def base(request: HTTPRequest):
-            stp_all_cmds()
-            return FileResponse(request, "/sd/mui.min.js", "/")
-
-        @server.route("/animation", [POST])
-        def buttonpress(request: Request):
-            rq_d = request.json()
-            add_cmd(rq_d["an"])
-            return Response(request, "Animation " + rq_d["an"] + " started.")
-
-        @server.route("/feller", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            global f_mov_typ
-            stp_all_cmds()
-            rq_d = request.json()
-            if rq_d["an"] == "feller_rest_pos":
-                f_mov_typ = "feller_rest_pos"
-                m_f_spd(cfg[f_mov_typ], 0.01)
-                return Response(request, "Moved feller to rest position.")
-            elif rq_d["an"] == "feller_chop_pos":
-                f_mov_typ = "feller_chop_pos"
-                m_f_spd(cfg[f_mov_typ], 0.01)
-                return Response(request, "Moved feller to chop position.")
-            elif rq_d["an"] == "feller_adjust":
-                f_mov_typ = "feller_rest_pos"
-                m_f_spd(cfg[f_mov_typ], 0.01)
-                return Response(request, "Redirected to feller-adjust page.")
-            elif rq_d["an"] == "feller_home":
-                return Response(request, "Redirected to home page.")
-            elif rq_d["an"] == "feller_clockwise":
-                cal_l_but(
-                    f_s, f_mov_typ, 1, f_min, f_max)
-                return Response(request, "Moved feller clockwise.")
-            elif rq_d["an"] == "feller_counter_clockwise":
-                cal_r_but(
-                    f_s, f_mov_typ, 1, f_min, f_max)
-                return Response(request, "Moved feller counter clockwise.")
-            elif rq_d["an"] == "feller_cal_saved":
-                wrt_cal()
-                st_mch.go_to('base_state')
-                return Response(request, "Feller " + f_mov_typ + " cal saved.")
-
-        @server.route("/tree", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            global t_mov_typ
-            stp_all_cmds()
-            rq_d = request.json()
-            if rq_d["an"] == "tree_up_pos":
-                t_mov_typ = "tree_up_pos"
-                m_t_spd(cfg[t_mov_typ], 0.01)
-                return Response(request, "Moved tree to up position.")
-            elif rq_d["an"] == "tree_down_pos":
-                t_mov_typ = "tree_down_pos"
-                m_t_spd(cfg[t_mov_typ], 0.01)
-                return Response(request, "Moved tree to fallen position.")
-            elif rq_d["an"] == "tree_adjust":
-                t_mov_typ = "tree_up_pos"
-                m_t_spd(cfg[t_mov_typ], 0.01)
-                return Response(request, "Redirected to tree-adjust page.")
-            elif rq_d["an"] == "tree_home":
-                return Response(request, "Redirected to home page.")
-            elif rq_d["an"] == "tree_up":
-                cal_l_but(
-                    t_s, t_mov_typ, -1, t_min, t_max)
-                return Response(request, "Moved tree up.")
-            elif rq_d["an"] == "tree_down":
-                cal_r_but(
-                    t_s, t_mov_typ, -1, t_min, t_max)
-                return Response(request, "Moved tree down.")
-            elif rq_d["an"] == "tree_cal_saved":
-                wrt_cal()
-                st_mch.go_to('base_state')
-                return Response(request, "Tree " + t_mov_typ + " cal saved.")
-
-        @server.route("/dialog", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            rq_d = request.json()
-            if "opening_dialog_on":
-                cfg["opening_dialog"] = True
-
-            elif "opening_dialog_off":
-                cfg["opening_dialog"] = False
-
-            elif "feller_advice_on":
-                cfg["feller_advice"] = True
-
-            elif "feller_advice_off":
-                cfg["feller_advice"] = False
-
-            files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_0("/sd/mvc/all_changes_complete.wav")
-
-            return Response(request, "Dialog option cal saved.")
-
-        @server.route("/utilities", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            rq_d = request.json()
-            if rq_d["an"] == "speaker_test":
-                ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif rq_d["an"] == "volume_pot_off":
-                cfg["volume_pot"] = False
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "volume_pot_on":
-                cfg["volume_pot"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "reset_to_defaults":
-                reset_to_defaults()
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                st_mch.go_to('base_state')
-
-            return Response(request, "Dialog option cal saved.")
-
-        @server.route("/update-host-name", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            stp_all_cmds()
-            data_object = request.json()
-            cfg["HOST_NAME"] = data_object["text"]
-            files.write_json_file("/sd/cfg.json", cfg)
+            # setup mdns server
+            mdns_server = mdns.Server(wifi.radio)
             mdns_server.hostname = cfg["HOST_NAME"]
-            speak_webpage()
-            return Response(request, cfg["HOST_NAME"])
+            mdns_server.advertise_service(
+                service_type="_http", protocol="_tcp", port=80)
 
-        @server.route("/get-host-name", [POST])
-        def buttonpress(request: Request):
-            return Response(request, cfg["HOST_NAME"])
+            # files.log_items MAC address to REPL
+            mystring = [hex(i) for i in wifi.radio.mac_address]
+            files.log_item("My MAC addr:" + str(mystring))
 
-        @server.route("/get-local-ip", [POST])
-        def buttonpress(req: Request):
-            return Response(req, local_ip)
+            local_ip = str(wifi.radio.ipv4_address)
 
-        @server.route("/update-volume", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            data_object = request.json()
-            ch_vol(data_object["action"])
-            return Response(request, cfg["volume"])
+            # files.log_items IP address to REPL
+            files.log_item("My IP address is" + local_ip)
+            files.log_item("Connected to WiFi")
 
-        @server.route("/get-volume", [POST])
-        def buttonpress(request: Request):
-            return Response(request, cfg["volume"])
+            # set up server
+            pool = socketpool.SocketPool(wifi.radio)
+            server = Server(pool, "/static", debug=True)
+            gc_col("wifi server")
 
-        @server.route("/mode", [POST])
-        def buttonpress(req: Request):
-            global cfg, cont_run
-            rq_d = req.json()
-            if rq_d["an"] == "left":
-                ovrde_sw_st["switch_value"] = "left"
-            elif rq_d["an"] == "right":
-                ovrde_sw_st["switch_value"] = "right"
-            elif rq_d["an"] == "right_held":
-                ovrde_sw_st["switch_value"] = "right_held"
-            elif rq_d["an"] == "three":
-                ovrde_sw_st["switch_value"] = "three"
-            elif rq_d["an"] == "four":
-                ovrde_sw_st["switch_value"] = "four"
-            elif "cont_mode_on" == rq_d["an"]:
-                cont_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif "cont_mode_off" == rq_d["an"]:
+            ################################################################################
+            # Setup routes
+
+            @server.route("/")
+            def base(request: HTTPRequest):
+                gc_col("Home page.")
                 stp_all_cmds()
-                cont_run = False
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            return Response(req, "Mode set")
+                return FileResponse(request, "index.html", "/")
 
-        @server.route("/update-min-chops", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            data_object = request.json()
-            cfg["min_chops"] = bndMinChp(
-                int(data_object["text"]), int(cfg["max_chops"]))
-            files.write_json_file("/sd/cfg.json", cfg)
-            spk_str(cfg["min_chops"], False)
-            return Response(request, cfg["min_chops"])
+            @server.route("/mui.min.css")
+            def base(request: HTTPRequest):
+                stp_all_cmds()
+                return FileResponse(request, "/sd/mui.min.css", "/")
 
-        @server.route("/get-min-chops", [POST])
-        def buttonpress(request: Request):
-            print(cfg["min_chops"])
-            return Response(request, cfg["min_chops"])
+            @server.route("/mui.min.js")
+            def base(request: HTTPRequest):
+                stp_all_cmds()
+                return FileResponse(request, "/sd/mui.min.js", "/")
 
-        @server.route("/update-max-chops", [POST])
-        def buttonpress(request: Request):
-            global cfg
-            data_object = request.json()
-            cfg["max_chops"] = bndMaxChp(
-                int(cfg["min_chops"]), int(data_object["text"]))
-            files.write_json_file("/sd/cfg.json", cfg)
-            spk_str(cfg["max_chops"], False)
-            return Response(request, cfg["max_chops"])
+            @server.route("/animation", [POST])
+            def buttonpress(request: Request):
+                rq_d = request.json()
+                add_cmd(rq_d["an"])
+                return Response(request, "Animation " + rq_d["an"] + " started.")
 
-        @server.route("/get-max-chops", [POST])
-        def buttonpress(request: Request):
-            print(cfg["max_chops"])
-            return Response(request, cfg["max_chops"])
+            @server.route("/feller", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                global f_mov_typ
+                stp_all_cmds()
+                rq_d = request.json()
+                if rq_d["an"] == "feller_rest_pos":
+                    f_mov_typ = "feller_rest_pos"
+                    m_f_spd(cfg[f_mov_typ], 0.01)
+                    return Response(request, "Moved feller to rest position.")
+                elif rq_d["an"] == "feller_chop_pos":
+                    f_mov_typ = "feller_chop_pos"
+                    m_f_spd(cfg[f_mov_typ], 0.01)
+                    return Response(request, "Moved feller to chop position.")
+                elif rq_d["an"] == "feller_adjust":
+                    f_mov_typ = "feller_rest_pos"
+                    m_f_spd(cfg[f_mov_typ], 0.01)
+                    return Response(request, "Redirected to feller-adjust page.")
+                elif rq_d["an"] == "feller_home":
+                    return Response(request, "Redirected to home page.")
+                elif rq_d["an"] == "feller_clockwise":
+                    cal_l_but(
+                        f_s, f_mov_typ, 1, f_min, f_max)
+                    return Response(request, "Moved feller clockwise.")
+                elif rq_d["an"] == "feller_counter_clockwise":
+                    cal_r_but(
+                        f_s, f_mov_typ, 1, f_min, f_max)
+                    return Response(request, "Moved feller counter clockwise.")
+                elif rq_d["an"] == "feller_cal_saved":
+                    wrt_cal()
+                    st_mch.go_to('base_state')
+                    return Response(request, "Feller " + f_mov_typ + " cal saved.")
+
+            @server.route("/tree", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                global t_mov_typ
+                stp_all_cmds()
+                rq_d = request.json()
+                if rq_d["an"] == "tree_up_pos":
+                    t_mov_typ = "tree_up_pos"
+                    m_t_spd(cfg[t_mov_typ], 0.01)
+                    return Response(request, "Moved tree to up position.")
+                elif rq_d["an"] == "tree_down_pos":
+                    t_mov_typ = "tree_down_pos"
+                    m_t_spd(cfg[t_mov_typ], 0.01)
+                    return Response(request, "Moved tree to fallen position.")
+                elif rq_d["an"] == "tree_adjust":
+                    t_mov_typ = "tree_up_pos"
+                    m_t_spd(cfg[t_mov_typ], 0.01)
+                    return Response(request, "Redirected to tree-adjust page.")
+                elif rq_d["an"] == "tree_home":
+                    return Response(request, "Redirected to home page.")
+                elif rq_d["an"] == "tree_up":
+                    cal_l_but(
+                        t_s, t_mov_typ, -1, t_min, t_max)
+                    return Response(request, "Moved tree up.")
+                elif rq_d["an"] == "tree_down":
+                    cal_r_but(
+                        t_s, t_mov_typ, -1, t_min, t_max)
+                    return Response(request, "Moved tree down.")
+                elif rq_d["an"] == "tree_cal_saved":
+                    wrt_cal()
+                    st_mch.go_to('base_state')
+                    return Response(request, "Tree " + t_mov_typ + " cal saved.")
+
+            @server.route("/dialog", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                rq_d = request.json()
+                if "opening_dialog_on":
+                    cfg["opening_dialog"] = True
+
+                elif "opening_dialog_off":
+                    cfg["opening_dialog"] = False
+
+                elif "feller_advice_on":
+                    cfg["feller_advice"] = True
+
+                elif "feller_advice_off":
+                    cfg["feller_advice"] = False
+
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+
+                return Response(request, "Dialog option cal saved.")
+
+            @server.route("/utilities", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                rq_d = request.json()
+                if rq_d["an"] == "speaker_test":
+                    ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
+                elif rq_d["an"] == "volume_pot_off":
+                    cfg["volume_pot"] = False
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                elif rq_d["an"] == "volume_pot_on":
+                    cfg["volume_pot"] = True
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                elif rq_d["an"] == "reset_to_defaults":
+                    reset_to_defaults()
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                    st_mch.go_to('base_state')
+
+                return Response(request, "Dialog option cal saved.")
+
+            @server.route("/update-host-name", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                stp_all_cmds()
+                data_object = request.json()
+                cfg["HOST_NAME"] = data_object["text"]
+                files.write_json_file("/sd/cfg.json", cfg)
+                mdns_server.hostname = cfg["HOST_NAME"]
+                speak_webpage()
+                return Response(request, cfg["HOST_NAME"])
+
+            @server.route("/get-host-name", [POST])
+            def buttonpress(request: Request):
+                return Response(request, cfg["HOST_NAME"])
+
+            @server.route("/get-local-ip", [POST])
+            def buttonpress(req: Request):
+                return Response(req, local_ip)
+
+            @server.route("/update-volume", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                data_object = request.json()
+                ch_vol(data_object["action"])
+                return Response(request, cfg["volume"])
+
+            @server.route("/get-volume", [POST])
+            def buttonpress(request: Request):
+                return Response(request, cfg["volume"])
+
+            @server.route("/mode", [POST])
+            def buttonpress(req: Request):
+                global cfg, cont_run
+                rq_d = req.json()
+                if rq_d["an"] == "left":
+                    ovrde_sw_st["switch_value"] = "left"
+                elif rq_d["an"] == "right":
+                    ovrde_sw_st["switch_value"] = "right"
+                elif rq_d["an"] == "right_held":
+                    ovrde_sw_st["switch_value"] = "right_held"
+                elif rq_d["an"] == "three":
+                    ovrde_sw_st["switch_value"] = "three"
+                elif rq_d["an"] == "four":
+                    ovrde_sw_st["switch_value"] = "four"
+                elif "cont_mode_on" == rq_d["an"]:
+                    cont_run = True
+                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
+                elif "cont_mode_off" == rq_d["an"]:
+                    stp_all_cmds()
+                    cont_run = False
+                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+                return Response(req, "Mode set")
+
+            @server.route("/update-min-chops", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                data_object = request.json()
+                cfg["min_chops"] = bndMinChp(
+                    int(data_object["text"]), int(cfg["max_chops"]))
+                files.write_json_file("/sd/cfg.json", cfg)
+                spk_str(cfg["min_chops"], False)
+                return Response(request, cfg["min_chops"])
+
+            @server.route("/get-min-chops", [POST])
+            def buttonpress(request: Request):
+                print(cfg["min_chops"])
+                return Response(request, cfg["min_chops"])
+
+            @server.route("/update-max-chops", [POST])
+            def buttonpress(request: Request):
+                global cfg
+                data_object = request.json()
+                cfg["max_chops"] = bndMaxChp(
+                    int(cfg["min_chops"]), int(data_object["text"]))
+                files.write_json_file("/sd/cfg.json", cfg)
+                spk_str(cfg["max_chops"], False)
+                return Response(request, cfg["max_chops"])
+
+            @server.route("/get-max-chops", [POST])
+            def buttonpress(request: Request):
+                print(cfg["max_chops"])
+                return Response(request, cfg["max_chops"])
+            break
 
     except Exception as e:
         web = False
