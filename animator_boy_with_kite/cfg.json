@@ -1,1 +1,10 @@
-{"can_cancel": true, "wind": false, "volume_pot": true, "timer": false, "volume": "50", "timer_val": "10", "random": true}
+{
+  "can_cancel": true,
+  "wind": false,
+  "servo": 90,
+  "volume_pot": false,
+  "timer": false,
+  "volume": "70",
+  "timer_val": "1",
+  "random": true
+}
