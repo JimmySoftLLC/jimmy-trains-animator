@@ -1,27 +1,3 @@
-# MIT License
-#
-# Copyright (c) 2024 JimmySoftLLC
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-#######################################################
-
 import utilities
 from adafruit_debouncer import Debouncer
 import time
@@ -58,7 +34,6 @@ kite_min = 0
 kite_max = 180
 kill_process = False
 async_running = False
-cont_run = False
 rand_timer = 0
 
 ################################################################################
@@ -107,7 +82,7 @@ coil_B_2.direction = digitalio.Direction.OUTPUT
 # Setup pin for vol on 5v aud board
 a_in = AnalogIn(board.A2)
 
-# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+# setup pin for audio enable 21 on 5v aud board
 aud_en = digitalio.DigitalInOut(board.GP21)
 aud_en.direction = digitalio.Direction.OUTPUT
 
@@ -346,7 +321,6 @@ async def rotate_kite_async():
         center_servo_pos = int(cfg["servo"])
         rand_pos_1 = random.randint(center_servo_pos - 70, center_servo_pos - 70)
         rand_pos_2 = random.randint(center_servo_pos + 70, center_servo_pos + 70)
-        print(center_servo_pos, rand_pos_1, rand_pos_2)
         sign = 1
         if lst_kite_rot_pos > rand_pos_1:
             sign = -1
@@ -425,7 +399,6 @@ def rnd_prob(c):
 
 def an():
     global kill_process
-    down = True
     kill_process = False
     w0 = audiomp3.MP3Decoder(open("mp3/wind_effect.mp3", "rb"))
     cycles = 8
@@ -462,6 +435,7 @@ def home_motors():
     servo_m(kite_ang)
     if lst_kite_deploy_pos > 0:
         direction = "down"
+    ply_a_0("homming")
     total_steps = abs(0 - lst_kite_deploy_pos)
     asyncio.run(rn_home(total_steps, direction))
 
@@ -536,23 +510,23 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, rand_timer
+        global rand_timer
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
             if cfg["timer"] == True:
                 cfg["timer"] = False
-                cont_run = False
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 spk_sentence("timer_mode_off")
                 return
-            if cont_run:
-                cont_run = False
-                spk_sentence("continuous_mode_off")
-            elif cfg["timer"] == False:
-                cont_run = True
-                spk_sentence("continuous_mode_on")
+            else:
+                cfg["timer"] = True
+                aud_en.value = False
+                files.write_json_file("cfg.json", cfg)
+                aud_en.value = True
+                spk_sentence("timer_mode_on")
+                return
         elif cfg["timer"] == True:
             if rand_timer <= 0:
                 an()
@@ -562,7 +536,7 @@ class BseSt(Ste):
             else:
                 upd_vol(1)
                 rand_timer -= 1
-        elif sw == "left" or cont_run:
+        elif sw == "left":
             an()
             print("an done")
         elif sw == "right":
@@ -792,3 +766,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
+
