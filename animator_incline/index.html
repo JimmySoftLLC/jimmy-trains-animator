@@ -126,32 +126,32 @@
         <div class="mui-tabs__pane" id="settings">
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN1_255_0_0" data-url="/lights"
-                    type="button">
-                    Light 1
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN1_255_0_0"
+                    data-url="/lights" type="button">
+                    Right Car
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN1_0_255_0" data-url="/lights"
-                    type="button">
-                    Light 2
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN1_0_255_0"
+                    data-url="/lights" type="button">
+                    Left Car
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN1_0_0_255" data-url="/lights"
-                    type="button">
-                    Light 3
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN1_0_0_255"
+                    data-url="/lights" type="button">
+                    Lower Building
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN2_255_0_0" data-url="/lights"
-                    type="button">
-                    Light 4
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN2_255_0_0"
+                    data-url="/lights" type="button">
+                    Stairs chase
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN2_0_255_0" data-url="/lights"
-                    type="button">
-                    Light 5
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN2_0_255_0"
+                    data-url="/lights" type="button">
+                    Upper Building
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN2_0_0_255" data-url="/lights"
-                    type="button">
-                    Light 6
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN2_0_0_255"
+                    data-url="/lights" type="button">
+                    Balcony Lamps
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LNR_7_48_100_100_0" data-url="/lights"
-                    type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LNR_3_48_100_100_0"
+                    data-url="/lights" type="button">
                     Track
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0" data-url="/lights"
@@ -336,24 +336,24 @@
                 cm, AAA acceleration decimal cm/sec</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder) XXX (file name)</div>
-            <div>
-                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
-                    Animations</button>
-                <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-                <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
-                <table id="dataTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>TimeStamp</th>
-                            <th>TimeCode</th>
-                            <th>Animation</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+            <div>QXXXX = Add command XXXX any command ie AN_filename to add new animation</div>
+            <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
+                Animations</button>
+            <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
+            <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
+            <table id="dataTable" class="mui-table">
+                <thead>
+                    <tr>
+                        <th>TimeStamp</th>
+                        <th>TimeCode</th>
+                        <th>Animation</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
+    </div>
     </div>
 </body>
 

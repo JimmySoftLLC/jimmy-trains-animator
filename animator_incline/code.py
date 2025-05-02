@@ -166,35 +166,35 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # setup distance sensor
 
-# i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=400000)
+i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=400000)
 
-# vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
+vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
 
-# # OPTIONAL: can set non-default values
-# vl53.inter_measurement = 0
-# vl53.distance_mode = 1  # 1 = Short, 2 = Long
-# vl53.timing_budget = 200  # 200 ms
+# OPTIONAL: can set non-default values
+vl53.inter_measurement = 0
+vl53.distance_mode = 1  # 1 = Short, 2 = Long
+vl53.timing_budget = 200  # 200 ms
 
-# print("VL53L4CD Simple Test.")
-# print("--------------------")
-# model_id, module_type = vl53.model_info
-# print("Model ID: 0x{:0X}".format(model_id))
-# print("Module Type: 0x{:0X}".format(module_type))
-# print("Timing Budget: {}".format(vl53.timing_budget))
-# print("Inter-Measurement: {}".format(vl53.inter_measurement))
-# print("--------------------")
+print("VL53L4CD Simple Test.")
+print("--------------------")
+model_id, module_type = vl53.model_info
+print("Model ID: 0x{:0X}".format(model_id))
+print("Module Type: 0x{:0X}".format(module_type))
+print("Timing Budget: {}".format(vl53.timing_budget))
+print("Inter-Measurement: {}".format(vl53.inter_measurement))
+print("--------------------")
 
-# vl53.start_ranging()
+vl53.start_ranging()
 
-# while not vl53.data_ready:
-#     print("data not ready")
-#     time.sleep(.2)
+while not vl53.data_ready:
+    print("data not ready")
+    time.sleep(.2)
 
-# for _ in range(3):
-#     vl53.clear_interrupt()
-#     car_pos = vl53.distance
-#     print("Distance is: ", car_pos)
-#     time.sleep(.5)    
+for _ in range(3):
+    vl53.clear_interrupt()
+    car_pos = vl53.distance
+    print("Distance is: ", car_pos)
+    time.sleep(.5)    
 
 ################################################################################
 # Setup motor controller
@@ -1133,7 +1133,9 @@ async def set_hdw_async(input_string):
                 g = int(seg_split[2])
                 b = int(seg_split[3])
                 set_neo_to(light_n, r, g, b)
-
+        # QXXXX = Add command XXXX any command ie AN_filename to add new animation
+        elif seg[0] == 'Q':
+            add_cmd(seg[1:])
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -1332,157 +1334,157 @@ class Snds(Ste):
             mch.go_to('base_state')
 
 
-# class AddSnds(Ste):
+class AddSnds(Ste):
 
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-#     @property
-#     def name(self):
-#         return 'add_sounds_animate'
+    @property
+    def name(self):
+        return 'add_sounds_animate'
 
-#     def enter(self, mch):
-#         files.log_item('Add sounds animate')
-#         ply_a_0("/sd/mvc/add_sounds_animate.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
+    def enter(self, mch):
+        files.log_item('Add sounds animate')
+        ply_a_0("/sd/mvc/add_sounds_animate.wav")
+        l_r_but()
+        Ste.enter(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def upd(self, mch):
-#         global ts_mode
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_0(
-#                 "/sd/mvc/" + add_snd[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(add_snd)-1:
-#                 self.i = 0
-#         if sw == "right":
-#             sel_mnu = add_snd[self.sel_i]
-#             if sel_mnu == "hear_instructions":
-#                 ply_a_0("/sd/mvc/create_sound_track_files.wav")
-#             elif sel_mnu == "timestamp_mode_on":
-#                 ts_mode = True
-#                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
-#                 ply_a_0("/sd/mvc/timestamp_instructions.wav")
-#                 mch.go_to('base_state')
-#             elif sel_mnu == "timestamp_mode_off":
-#                 ts_mode = False
-#                 ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-#             else:
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
-
-
-# class VolSet(Ste):
-
-#     def __init__(s):
-#         s.i = 0
-#         s.sel_i = 0
-#         s.vol_adj_mode = False
-
-#     @property
-#     def name(s):
-#         return 'volume_settings'
-
-#     def enter(s, mch):
-#         files.log_item('Set Web Options')
-#         ply_a_0("/sd/mvc/volume_settings_menu.wav")
-#         l_r_but()
-#         s.vol_adj_mode = False
-#         Ste.enter(s, mch)
-
-#     def exit(s, mch):
-#         Ste.exit(s, mch)
-
-#     def upd(s, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left" and not s.vol_adj_mode:
-#             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
-#             s.sel_i = s.i
-#             s.i += 1
-#             if s.i > len(vol_set)-1:
-#                 s.i = 0
-#         if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
-#             if sw == "right":
-#                 s.vol_adj_mode = True
-#                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
-#         elif sw == "left" and s.vol_adj_mode:
-#             ch_vol("lower")
-#         elif sw == "right" and s.vol_adj_mode:
-#             ch_vol("raise")
-#         elif sw == "right_held" and s.vol_adj_mode:
-#             files.write_json_file("/sd/cfg.json", cfg)
-#             ply_a_0("/sd/mvc/all_changes_complete.wav")
-#             s.vol_adj_mode = False
-#             mch.go_to('base_state')
-#             upd_vol(0.1)
-#         if sw == "right" and vol_set[s.sel_i] == "volume_pot_off":
-#             cfg["volume_pot"] = False
-#             if cfg["volume"] == 0:
-#                 cfg["volume"] = 10
-#             files.write_json_file("/sd/cfg.json", cfg)
-#             ply_a_0("/sd/mvc/all_changes_complete.wav")
-#             mch.go_to('base_state')
-#         if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
-#             cfg["volume_pot"] = True
-#             files.write_json_file("/sd/cfg.json", cfg)
-#             ply_a_0("/sd/mvc/all_changes_complete.wav")
-#             mch.go_to('base_state')
+    def upd(self, mch):
+        global ts_mode
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0(
+                "/sd/mvc/" + add_snd[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(add_snd)-1:
+                self.i = 0
+        if sw == "right":
+            sel_mnu = add_snd[self.sel_i]
+            if sel_mnu == "hear_instructions":
+                ply_a_0("/sd/mvc/create_sound_track_files.wav")
+            elif sel_mnu == "timestamp_mode_on":
+                ts_mode = True
+                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+                ply_a_0("/sd/mvc/timestamp_instructions.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "timestamp_mode_off":
+                ts_mode = False
+                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+            else:
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 
-# class WebOpt(Ste):
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+class VolSet(Ste):
 
-#     @property
-#     def name(self):
-#         return 'web_options'
+    def __init__(s):
+        s.i = 0
+        s.sel_i = 0
+        s.vol_adj_mode = False
 
-#     def enter(self, mch):
-#         files.log_item('Set Web Options')
-#         sel_web()
-#         Ste.enter(self, mch)
+    @property
+    def name(s):
+        return 'volume_settings'
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
+    def enter(s, mch):
+        files.log_item('Set Web Options')
+        ply_a_0("/sd/mvc/volume_settings_menu.wav")
+        l_r_but()
+        s.vol_adj_mode = False
+        Ste.enter(s, mch)
 
-#     def upd(self, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(web_m)-1:
-#                 self.i = 0
-#         if sw == "right":
-#             selected_menu_item = web_m[self.sel_i]
-#             if selected_menu_item == "web_on":
-#                 cfg["serve_webpage"] = True
-#                 opt_sel()
-#                 sel_web()
-#             elif selected_menu_item == "web_off":
-#                 cfg["serve_webpage"] = False
-#                 opt_sel()
-#                 sel_web()
-#             elif selected_menu_item == "hear_url":
-#                 spk_str(cfg["HOST_NAME"], True)
-#                 sel_web()
-#             elif selected_menu_item == "hear_instr_web":
-#                 ply_a_0("/sd/mvc/web_instruct.wav")
-#                 sel_web()
-#             else:
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
+    def exit(s, mch):
+        Ste.exit(s, mch)
+
+    def upd(s, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left" and not s.vol_adj_mode:
+            ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
+            s.sel_i = s.i
+            s.i += 1
+            if s.i > len(vol_set)-1:
+                s.i = 0
+        if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
+            if sw == "right":
+                s.vol_adj_mode = True
+                ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
+        elif sw == "left" and s.vol_adj_mode:
+            ch_vol("lower")
+        elif sw == "right" and s.vol_adj_mode:
+            ch_vol("raise")
+        elif sw == "right_held" and s.vol_adj_mode:
+            files.write_json_file("/sd/cfg.json", cfg)
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
+            s.vol_adj_mode = False
+            mch.go_to('base_state')
+            upd_vol(0.1)
+        if sw == "right" and vol_set[s.sel_i] == "volume_pot_off":
+            cfg["volume_pot"] = False
+            if cfg["volume"] == 0:
+                cfg["volume"] = 10
+            files.write_json_file("/sd/cfg.json", cfg)
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
+            mch.go_to('base_state')
+        if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
+            cfg["volume_pot"] = True
+            files.write_json_file("/sd/cfg.json", cfg)
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
+            mch.go_to('base_state')
+
+
+class WebOpt(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'web_options'
+
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        sel_web()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(web_m)-1:
+                self.i = 0
+        if sw == "right":
+            selected_menu_item = web_m[self.sel_i]
+            if selected_menu_item == "web_on":
+                cfg["serve_webpage"] = True
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "web_off":
+                cfg["serve_webpage"] = False
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "hear_url":
+                spk_str(cfg["HOST_NAME"], True)
+                sel_web()
+            elif selected_menu_item == "hear_instr_web":
+                ply_a_0("/sd/mvc/web_instruct.wav")
+                sel_web()
+            else:
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 ###############################################################################
 # Create the state machine
@@ -1492,9 +1494,9 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
-# st_mch.add(AddSnds())
-# st_mch.add(VolSet())
-# st_mch.add(WebOpt())
+st_mch.add(AddSnds())
+st_mch.add(VolSet())
+st_mch.add(WebOpt())
 
 aud_en.value = True
 
