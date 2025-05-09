@@ -29,7 +29,6 @@ gc_col("Imports gc, files")
 # globals
 
 kill_process = False
-cont_run = False
 rand_timer = 0
 flag_deploy_max = 1100
 lst_flag_deploy_pos = flag_deploy_max
@@ -73,10 +72,10 @@ r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
 
 # Define the pins connected to the stepper motor driver
-coil_A_1 = digitalio.DigitalInOut(board.GP4)
-coil_A_2 = digitalio.DigitalInOut(board.GP5)
-coil_B_1 = digitalio.DigitalInOut(board.GP6)
-coil_B_2 = digitalio.DigitalInOut(board.GP7)
+coil_A_1 = digitalio.DigitalInOut(board.GP7)
+coil_A_2 = digitalio.DigitalInOut(board.GP6)
+coil_B_1 = digitalio.DigitalInOut(board.GP5)
+coil_B_2 = digitalio.DigitalInOut(board.GP4)
 
 # Set the pins as outputs
 coil_A_1.direction = digitalio.Direction.OUTPUT
@@ -87,7 +86,7 @@ coil_B_2.direction = digitalio.Direction.OUTPUT
 # Setup pin for vol on 5v aud board
 a_in = AnalogIn(board.A2)
 
-# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+# setup pin for audio enable 21 on 5v aud board
 aud_en = digitalio.DigitalInOut(board.GP21)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = True
@@ -465,6 +464,7 @@ def an():
             return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("reveille")
         move_motor(flag_deploy_max)  # Flag up
         move_motor(flag_deploy_max + flag_up_extra, False)  # Flag up dont keep track
@@ -481,8 +481,10 @@ def an():
             return
         move_motor(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps":
+            coils_off()
             ply_a_0("taps")
         led.duty_cycle = 0
         move_motor(0)  # Flag down
@@ -494,6 +496,7 @@ def an():
             return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("reveille")
         move_motor(flag_deploy_max + flag_up_extra)  # Flag up
         if kill_process:
@@ -507,8 +510,10 @@ def an():
                 return
         move_motor(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps":
+            coils_off()
             ply_a_0("taps")
         led.duty_cycle = 0
         move_motor(0)  # Flag down
@@ -605,23 +610,16 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, rand_timer
+        global rand_timer, kill_process
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
             if cfg["timer"] == True:
                 cfg["timer"] = False
-                cont_run = False
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 spk_sentence("timer_mode_off")
                 return
-            if cont_run:
-                cont_run = False
-                spk_sentence("continuous_mode_off")
-            elif cfg["timer"] == False:
-                cont_run = True
-                spk_sentence("continuous_mode_on")
         elif cfg["timer"] == True:
             if rand_timer <= 0:
                 an()
@@ -631,7 +629,7 @@ class BseSt(Ste):
             else:
                 upd_vol(1)
                 rand_timer -= 1
-        elif sw == "left" or cont_run:
+        elif sw == "left":
             an()
             kill_process = False
             reset_motors()
@@ -869,6 +867,7 @@ aud_en.value = True
 
 upd_vol(0.01)
 
+ply_a_0("homming")
 reset_motors()
 
 flash_led()

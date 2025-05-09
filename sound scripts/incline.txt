@@ -1,0 +1,13 @@
+The animator incline is our most elaborate animator yet.
+It features computer controlled car motion.
+It has 48 individually addressable lights.
+It has stereo sound.
+There are lights in the left and right car.
+There are lights in the upper and lower house.
+There are lights on the balcony.
+There are lights in the balcony stair chase.
+There are colored lights on the track bed.
+The cars are counterbalanced using a cable and driven by pulleys and a motor.
+A laser distance sensor is used to precisely located the cars.  In the house.  And down the track.
+You animate your incline using scripts which this demo is just one of many.
+Have fun animating with Jimmy Trains animators.

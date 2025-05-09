@@ -64,10 +64,17 @@ gc_col("Imports gc, files")
 # Setup pin for v
 a_in = AnalogIn(board.A0)
 
+false_preamp = False
+true_preamp = True
+
+# for animator demo coding use the following
+# false_preamp = True
+# true_preamp = False
+
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
 aud_mute = digitalio.DigitalInOut(board.GP22)
 aud_mute.direction = digitalio.Direction.OUTPUT
-aud_mute.value = True
+aud_mute.value = true_preamp
 
 # Setup the switches
 l_sw = digitalio.DigitalInOut(board.GP6)
@@ -88,7 +95,6 @@ i2s_din = board.GP20  # DIN on MAX98357A
 aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 
 # Setup sdCard
-aud_mute.value = False
 sck = board.GP2
 si = board.GP3
 so = board.GP4
@@ -108,6 +114,7 @@ try:
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
 except Exception as e:
+    aud_mute.value = false_preamp
     files.log_item(e)
     w1 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
     mix.voice[1].play(w1, loop=False)
@@ -134,7 +141,7 @@ except Exception as e:
                 while mix.voice[1].playing:
                     pass
 
-aud_mute.value = True
+aud_mute.value = true_preamp
 
 # Setup time
 r = rtc.RTC()
@@ -683,7 +690,7 @@ async def process_cmd():
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
         # Process each command as an async operation
-        await an(command)
+        await an_async(command)
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -828,9 +835,9 @@ def exit_early():
     sw = utilities.switch_state(
         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
     if sw == "left" and cfg["can_cancel"]:
-        mix.voice[1].stop()
+        mix.voice[0].stop()
     if sw == "left_held":
-        mix.voice[1].stop()
+        mix.voice[0].stop()
         c_run = False
         stp_all_cmds()
         ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
@@ -918,37 +925,53 @@ def convert_to_new_format(my_object,my_type):
     flash_times = my_object.get("flashTime", [])
     return [f"{time}|{my_type}" for time in flash_times]
 
+lst_opt = ""
 
-async def an(fn):
-    global cfg
+async def an_async(fn):
+    global lst_opt, ts_mode
     print("Filename: " + fn)
-    cur = fn
+    cur_opt = fn
     try:
         if fn == "random built in":
             hi = len(snd_o) - 1
-            cur = snd_o[random.randint(0, hi)]
+            cur_opt = snd_o[random.randint(0, hi)]
+            while lst_opt == cur_opt and len(snd_o) > 1:
+                cur_opt = snd_o[random.randint(0, hi)]
+            lst_opt = cur_opt
+            print("Random sound option: " + fn)
+            print("Sound file: " + cur_opt)
         elif fn == "random my":
             hi = len(cus_o) - 1
-            cur = cus_o[random.randint(0, hi)]
+            cur_opt = cus_o[random.randint(0, hi)]
+            while lst_opt == cur_opt and len(cus_o) > 1:
+                cur_opt = cus_o[random.randint(0, hi)]
+            lst_opt = cur_opt
+            print("Random sound option: " + fn)
+            print("Sound file: " + cur_opt)
         elif fn == "random all":
             hi = len(all_o) - 1
-            cur = all_o[random.randint(0, hi)]
+            cur_opt = all_o[random.randint(0, hi)]
+            while lst_opt == cur_opt and len(all_o) > 1:
+                cur_opt = all_o[random.randint(0, hi)]
+            lst_opt = cur_opt
+            print("Random sound option: " + fn)
+            print("Sound file: " + cur_opt)
         if ts_mode:
-            ts(cur)
+            ts(cur_opt)
         else:
-            if "customers_owned_music_" in cur:
-                await an_ls(cur,"ZRAND")
-            elif cur == "alien lightshow":
-                await an_ls(cur,"ZRAND")
-            elif cur == "inspiring cinematic ambient lightshow":
-                await an_ls(cur,"ZRAND")
-            elif cur == "fireworks":
-                await an_ls(cur,"FRWK")
+            if "customers_owned_music_" in cur_opt:
+                await an_ls(cur_opt,"ZRAND")
+            elif cur_opt == "alien lightshow":
+                await an_ls(cur_opt,"ZRAND")
+            elif cur_opt == "inspiring cinematic ambient lightshow":
+                await an_ls(cur_opt,"ZRAND")
+            elif cur_opt == "fireworks":
+                await an_ls(cur_opt,"FRWK")
             else:
                 if ts_mode == True:
-                    await t_l(cur)
+                    await t_l(cur_opt)
                 else:
-                    await an_ls(cur,"LIGHT")
+                    await an_ls(cur_opt,"LIGHT")
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -984,12 +1007,22 @@ async def an_ls(fn,my_type):
         flsh_t = files.read_json_file(
             "/sd/snd/" + fn + ".json")
 
+    # flsh_t = convert_to_new_format(flsh_t,my_type)
+
+    # if cust_f:
+    #     files.write_json_file(
+    #         "/sd/customers_owned_music/" + fn + ".json", flsh_t)
+    # else:
+    #     files.write_json_file(
+    #         "/sd/snd/" + fn + ".json", flsh_t)
+
     if cust_f:
         w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w1 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
+        
     mix.voice[0].play(w0, loop=False)
     srt_t = time.monotonic()
 
@@ -1033,7 +1066,7 @@ async def an_ls(fn,my_type):
                 stp_all_cmds()
                 ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
 
-        if not mix.voice[1].playing:
+        if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
             return        
@@ -1053,12 +1086,12 @@ def ts(fn):
     fn = fn.replace("customers_owned_music_", "")
 
     if cf:
-        w1 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w1 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
-    mix.voice[1].play(w1, loop=False)
+    mix.voice[0].play(w0, loop=False)
 
     st = time.monotonic()
     upd_vol(.1)
@@ -1069,7 +1102,7 @@ def ts(fn):
         if r_sw.fell:
             ts["flashTime"].append(te)
             print(te)
-        if not mix.voice[1].playing:
+        if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
             ts["flashTime"].append(5000)
@@ -1098,9 +1131,9 @@ async def t_l(file_name):
     ftl = len(ft)
     fti = 0
 
-    w1 = audiocore.WaveFile(
+    w0 = audiocore.WaveFile(
         open("/sd/snd/" + file_name + ".wav", "rb"))
-    mix.voice[1].play(w1, loop=False)
+    mix.voice[0].play(w0, loop=False)
     st = time.monotonic()
 
     while True:
@@ -1118,7 +1151,7 @@ async def t_l(file_name):
         if ftl == fti:
             fti = 0
         exit_early()
-        if not mix.voice[1].playing:
+        if not mix.voice[0].playing:
             break
 
 
@@ -1517,7 +1550,7 @@ class BseSt(Ste):
         global c_run
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held" and not mix.voice[1].playing:
+        if sw == "left_held" and not mix.voice[0].playing:
             if c_run:
                 c_run = False
                 stp_all_cmds()
@@ -1787,7 +1820,7 @@ st_mch.add(Snds())
 st_mch.add(VolSet())
 st_mch.add(Light())
 
-aud_mute.value = False
+aud_mute.value = false_preamp
 
 if (web):
     files.log_item("starting server...")

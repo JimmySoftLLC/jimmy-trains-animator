@@ -129,7 +129,9 @@ pwm_a = pwmio.PWMOut(board.GP10, frequency=p_frq)
 pwm_b = pwmio.PWMOut(board.GP11, frequency=p_frq)
 train = motor.DCMotor(pwm_a, pwm_b)
 train.decay_mode = d_mde
+train.throttle = 0
 current_throttle = 0
+
 
 ################################################################################
 # Flash data and globals
@@ -369,6 +371,7 @@ if (web):
             def btn(request: Request):
                 rq_d = request.json()
                 ch_vol(rq_d["action"])
+                files.write_json_file("/cfg.json", cfg)
                 return Response(request, cfg["volume"])
 
             @server.route("/get-volume", [POST])
@@ -754,16 +757,27 @@ async def an_light_async(f_nm):
 
     flsh_i = 0
 
-    w0_exists = f_exists("/snds/" + f_nm + ".mp3")
+    if flsh_i < len(flsh_t)-1:
+        ft1 = flsh_t[flsh_i].split("|")
+        result = await set_hdw_async(ft1[1])
+        print("Result is: ", result)
+        if result:
+            w0_exists = f_exists("/snds/" + result + ".mp3")
+            if w0_exists:
+                w0 = audiomp3.MP3Decoder(
+                    open("/snds/" + result + ".mp3", "rb"))
+                mix.voice[0].play(w0, loop=False) 
+            else:
+                return
+            srt_t = time.monotonic()
 
-    if w0_exists:
-        w0 = audiomp3.MP3Decoder(
-            open("/snds/" + f_nm + ".mp3", "rb"))
-        mix.voice[0].play(w0, loop=False)
-    srt_t = time.monotonic()
-
-    ft1 = []
-    ft2 = []
+            ft1 = []
+            ft2 = []
+        else:
+            return
+        flsh_i += 1
+    else:
+        return
 
     while True:
         t_past = time.monotonic()-srt_t
@@ -780,9 +794,7 @@ async def an_light_async(f_nm):
             files.log_item("time elapsed: " + str(t_past) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
             if (len(ft1) == 1 or ft1[1] == ""):
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
-                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
+                result = await set_hdw_async("")
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -806,9 +818,7 @@ async def an_light_async(f_nm):
                 ply_a_0("/mvc/continuous_mode_deactivated.mp3")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
-            led.fill((0, 0, 0))
-            led.show()
-            add_cmd("T0")
+            add_cmd("TA_0_2")
             return
         await upd_vol_async(.1)
 
@@ -888,8 +898,11 @@ async def set_hdw_async(input_string):
                 current_throttle = new_throttle
             except Exception as e:
                 print(e)
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
-        # horn MPMhorn
+        # MBXXX = Play background file, XXX (file name)  
+        elif seg[:2] == 'MB': # play file
+            file_nm = seg[2:]
+            return file_nm
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)  
         elif seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_a_0()
@@ -899,6 +912,14 @@ async def set_hdw_async(input_string):
                         w0 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
                     elif seg[2] == "M":
                         w0 = audiomp3.MP3Decoder(open("/mvc/" + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "T":
+                        print("this segment is: ", seg[3:])
+                        if seg[3:] == "RAND":
+                            dude = get_random_media_file("/stops")
+                            print("the result is: ", dude)
+                            w0 = audiomp3.MP3Decoder(open("/stops/" + dude + ".mp3", "rb"))
+                        else:
+                            w0 = audiomp3.MP3Decoder(open("/stops/" + seg[3:] + ".mp3", "rb"))
                     if seg[1] == "W" or seg[1] == "P":
                         mix.voice[1].play(w0, loop=False)
                     if seg[1] == "W":
@@ -914,7 +935,7 @@ async def set_hdw_async(input_string):
                 fn=get_snds("/mvc","horn")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
-        # lights LNZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+        # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
         elif seg[:2] == 'LN':
                 seg_split = seg.split("_")
                 light_n = int(seg_split[0][2:])-1
@@ -950,6 +971,10 @@ def set_neo_to(light_n, r, g, b):
     else:
         led[light_n] = (r, g, b)
     led.show()
+
+def get_random_media_file(folder_to_search):
+    files = files.return_directory("", folder_to_search, ".mp3")
+    return random.choice(files) if files else None
         
 ################################################################################
 # State Machine
