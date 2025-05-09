@@ -73,10 +73,10 @@ r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
 
 # Define the pins connected to the stepper motor driver
-coil_A_1 = digitalio.DigitalInOut(board.GP4)
-coil_A_2 = digitalio.DigitalInOut(board.GP5)
-coil_B_1 = digitalio.DigitalInOut(board.GP6)
-coil_B_2 = digitalio.DigitalInOut(board.GP7)
+coil_A_1 = digitalio.DigitalInOut(board.GP7)
+coil_A_2 = digitalio.DigitalInOut(board.GP6)
+coil_B_1 = digitalio.DigitalInOut(board.GP5)
+coil_B_2 = digitalio.DigitalInOut(board.GP4)
 
 # Set the pins as outputs
 coil_A_1.direction = digitalio.Direction.OUTPUT
@@ -87,7 +87,7 @@ coil_B_2.direction = digitalio.Direction.OUTPUT
 # Setup pin for vol on 5v aud board
 a_in = AnalogIn(board.A2)
 
-# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+# setup pin for audio enable 21 on 5v aud board
 aud_en = digitalio.DigitalInOut(board.GP21)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = True
