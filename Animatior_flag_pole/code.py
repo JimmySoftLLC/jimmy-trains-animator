@@ -465,6 +465,7 @@ def an():
             return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("reveille")
         move_motor(flag_deploy_max)  # Flag up
         move_motor(flag_deploy_max + flag_up_extra, False)  # Flag up dont keep track
@@ -481,8 +482,10 @@ def an():
             return
         move_motor(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps":
+            coils_off()
             ply_a_0("taps")
         led.duty_cycle = 0
         move_motor(0)  # Flag down
@@ -494,6 +497,7 @@ def an():
             return
         led.duty_cycle = 65000
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("reveille")
         move_motor(flag_deploy_max + flag_up_extra)  # Flag up
         if kill_process:
@@ -507,8 +511,10 @@ def an():
                 return
         move_motor(half_mast_pos)  # Flag down
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            coils_off()
             ply_a_0("retreat")
         if cfg_temp["sound"] == "sound_otaps":
+            coils_off()
             ply_a_0("taps")
         led.duty_cycle = 0
         move_motor(0)  # Flag down
@@ -869,6 +875,7 @@ aud_en.value = True
 
 upd_vol(0.01)
 
+ply_a_0("homming")
 reset_motors()
 
 flash_led()
