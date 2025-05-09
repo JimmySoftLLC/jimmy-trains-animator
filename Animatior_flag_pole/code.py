@@ -29,7 +29,6 @@ gc_col("Imports gc, files")
 # globals
 
 kill_process = False
-cont_run = False
 rand_timer = 0
 flag_deploy_max = 1100
 lst_flag_deploy_pos = flag_deploy_max
@@ -611,23 +610,16 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, rand_timer
+        global rand_timer, kill_process
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
         if sw == "left_held":
             if cfg["timer"] == True:
                 cfg["timer"] = False
-                cont_run = False
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 spk_sentence("timer_mode_off")
                 return
-            if cont_run:
-                cont_run = False
-                spk_sentence("continuous_mode_off")
-            elif cfg["timer"] == False:
-                cont_run = True
-                spk_sentence("continuous_mode_on")
         elif cfg["timer"] == True:
             if rand_timer <= 0:
                 an()
@@ -637,7 +629,7 @@ class BseSt(Ste):
             else:
                 upd_vol(1)
                 rand_timer -= 1
-        elif sw == "left" or cont_run:
+        elif sw == "left":
             an()
             kill_process = False
             reset_motors()
