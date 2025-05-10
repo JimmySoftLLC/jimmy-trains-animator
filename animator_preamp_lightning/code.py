@@ -828,9 +828,9 @@ def exit_early():
     sw = utilities.switch_state(
         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
     if sw == "left" and cfg["can_cancel"]:
-        mix.voice[0].stop()
+        mix.voice[1].stop()
     if sw == "left_held":
-        mix.voice[0].stop()
+        mix.voice[1].stop()
         c_run = False
         stp_all_cmds()
         ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
@@ -988,7 +988,7 @@ async def an_ls(fn,my_type):
         w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w0 = audiocore.WaveFile(
+        w1 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     srt_t = time.monotonic()
@@ -1033,7 +1033,7 @@ async def an_ls(fn,my_type):
                 stp_all_cmds()
                 ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
 
-        if not mix.voice[0].playing:
+        if not mix.voice[1].playing:
             led.fill((0, 0, 0))
             led.show()
             return        
@@ -1053,12 +1053,12 @@ def ts(fn):
     fn = fn.replace("customers_owned_music_", "")
 
     if cf:
-        w0 = audiocore.WaveFile(
+        w1 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w0 = audiocore.WaveFile(
+        w1 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
-    mix.voice[0].play(w0, loop=False)
+    mix.voice[1].play(w1, loop=False)
 
     st = time.monotonic()
     upd_vol(.1)
@@ -1069,7 +1069,7 @@ def ts(fn):
         if r_sw.fell:
             ts["flashTime"].append(te)
             print(te)
-        if not mix.voice[0].playing:
+        if not mix.voice[1].playing:
             led.fill((0, 0, 0))
             led.show()
             ts["flashTime"].append(5000)
@@ -1098,9 +1098,9 @@ async def t_l(file_name):
     ftl = len(ft)
     fti = 0
 
-    w0 = audiocore.WaveFile(
+    w1 = audiocore.WaveFile(
         open("/sd/snd/" + file_name + ".wav", "rb"))
-    mix.voice[0].play(w0, loop=False)
+    mix.voice[1].play(w1, loop=False)
     st = time.monotonic()
 
     while True:
@@ -1118,7 +1118,7 @@ async def t_l(file_name):
         if ftl == fti:
             fti = 0
         exit_early()
-        if not mix.voice[0].playing:
+        if not mix.voice[1].playing:
             break
 
 
@@ -1517,7 +1517,7 @@ class BseSt(Ste):
         global c_run
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held" and not mix.voice[0].playing:
+        if sw == "left_held" and not mix.voice[1].playing:
             if c_run:
                 c_run = False
                 stp_all_cmds()
