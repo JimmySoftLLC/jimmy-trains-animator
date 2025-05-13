@@ -185,6 +185,9 @@ gc_col("config setup")
 
 ts_mode = False
 
+flsh_i = 0
+flsh_t = []
+
 ################################################################################
 # Setup neo pixels
 
@@ -272,7 +275,7 @@ if (web):
             
             @server.route("/defaults", [POST])
             def btn(request: Request):
-                stp_a_0()
+                stop_all_cmds()
                 rq_d = request.json()
                 if rq_d["an"] == "reset_animation_timing_to_defaults":
                     for ts_fn in ts_jsons:
@@ -308,14 +311,12 @@ if (web):
                     cfg["cont_mode"] = cont_run
                     files.write_json_file("/cfg.json", cfg)
                 elif rq_d["an"] == "cont_mode_off":
-                    cont_run = False
-                    stp_all_cmds()
+                    stop_all_cmds()
                     ply_a_0("/mvc/continuous_mode_deactivated.mp3")
                     cfg["cont_mode"] = cont_run
                     files.write_json_file("/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
-                    cont_run = False
-                    stp_all_cmds()
+                    stop_all_cmds()
                     ts_mode = True
                     ply_a_0("/mvc/timestamp_mode_on.mp3")
                     ply_a_0("/mvc/timestamp_instructions.mp3")
@@ -326,7 +327,7 @@ if (web):
 
             @server.route("/speaker", [POST])
             def btn(request: Request):
-                stp_a_0()
+                stop_all_cmds()
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
                     ply_a_0("/mvc/left_speaker_right_speaker.mp3")
@@ -342,14 +343,25 @@ if (web):
 
             @server.route("/lights", [POST])
             def btn(request: Request):
-                stp_a_0()
+                stop_all_cmds()
                 rq_d = request.json()
                 add_cmd(rq_d["an"])
                 return Response(request, "Utility: " + "Utility: set lights")
-
+            
+            @server.route("/set-item-lights", [POST])
+            def btn(request: Request):
+                rq_d = request.json()
+                command = "LN0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+                # add_command_to_ts(command)
+                set_hdw(command)
+                cfg["neo_changes"] = [
+                        rq_d["r"], rq_d["g"], rq_d["b"]]
+                return Response(request, "Utility: " + "Utility: set lights")
+            
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
-                stp_a_0()
+                stop_all_cmds()
                 rq_d = request.json()
                 cfg["HOST_NAME"] = rq_d["an"]
                 files.write_json_file("/cfg.json", cfg)
@@ -359,12 +371,12 @@ if (web):
 
             @server.route("/get-host-name", [POST])
             def btn(request: Request):
-                stp_a_0()
+                stop_all_cmds()
                 return Response(request, cfg["HOST_NAME"])
 
             @server.route("/get-local-ip", [POST])
             def buttonpress(req: Request):
-                stp_a_0()
+                stop_all_cmds()
                 return Response(req, local_ip)
 
             @server.route("/update-volume", [POST])
@@ -386,7 +398,7 @@ if (web):
 
             @server.route("/get-animations", [POST])
             def btn(request: Request):
-                stp_a_0()
+                stop_all_cmds()
                 sounds = []
                 sounds.extend(snd_opt)
                 my_string = files.json_stringify(sounds)
@@ -451,7 +463,7 @@ if (web):
 
             @server.route("/get-animation", [POST])
             def btn(request: Request):
-                stp_a_0()
+                stop_all_cmds()
                 rq_d = request.json()
                 snd_f = rq_d["an"]
                 if (f_exists("/snds/" + snd_f + ".json") == True):
@@ -466,7 +478,7 @@ if (web):
             @server.route("/save-data", [POST])
             def btn(request: Request):
                 global data
-                stp_a_0()
+                stop_all_cmds()
                 rq_d = request.json()
                 try:
                     if rq_d[0] == 0:
@@ -521,11 +533,20 @@ def clr_cmd_queue():
     print("Command queue cleared.")
 
 
-def stp_all_cmds():
-    global exit_set_hdw_async
+def stop_all_cmds():
+    global exit_set_hdw_async,cont_run
+    cont_run = False
     clr_cmd_queue()
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
+
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
 
 ################################################################################
 # Misc Methods
@@ -625,7 +646,6 @@ def wait_snd():
     while mix.voice[0].playing:
         exit_early()
         pass
-
 
 def stp_a_0():
     mix.voice[0].stop()
@@ -745,7 +765,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global cont_run
+    global cont_run, flsh_i, flsh_t
 
     stp_a_0()
 
@@ -814,7 +834,7 @@ async def an_light_async(f_nm):
             flsh_i = len(flsh_t) - 1
             if cont_run:
                 cont_run = False
-                stp_all_cmds()
+                stop_all_cmds()
                 ply_a_0("/mvc/continuous_mode_deactivated.mp3")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
@@ -859,6 +879,107 @@ def an_ts(f_nm):
 ##############################
 # animation effects
 br = 0
+
+
+def set_hdw(input_string):
+    global sp, br, current_throttle
+    # Split the input string into segments
+    segs = input_string.split(",")
+    # Process each segment
+    for seg in segs:
+        # TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100
+        if seg[:2] == 'TA':
+            try:
+                seg_split = seg.split("_")
+                v_str = seg_split[1]         
+                target_throttle = int(v_str)
+                a_str = seg_split[2]
+                acceleration = int(a_str)
+                diff = target_throttle - current_throttle
+                while diff != 0:
+                    if diff > 0:
+                        new_throttle = min(current_throttle + acceleration, target_throttle)  # Increase throttle
+                    else:
+                        new_throttle = max(current_throttle - acceleration, target_throttle)  # Decrease throttle
+                    v = new_throttle / 100
+                    train.throttle = v
+                    current_throttle = new_throttle
+                    diff = target_throttle - current_throttle
+                    time.sleep(.02)
+            except Exception as e:
+                print(e)
+        # TXXX_AAA = Train XXX throttle -100 to 100
+        elif seg[:1] == 'T':
+            try:   
+                v_str = seg[1:]         
+                target_throttle = int(v_str)
+                new_throttle = target_throttle
+                v = new_throttle / 100
+                train.throttle = v
+                current_throttle = new_throttle
+            except Exception as e:
+                print(e)
+        # MBXXX = Play background file, XXX (file name)  
+        elif seg[:2] == 'MB': # play file
+            file_nm = seg[2:]
+            return file_nm
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)  
+        elif seg[0] == 'M': # play file
+                if seg[1] == "S":
+                    stp_a_0()
+                elif seg[1] == "W" or seg[1] == "P":
+                    #stp_a_0()
+                    if seg[2] == "S":
+                        w0 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "M":
+                        w0 = audiomp3.MP3Decoder(open("/mvc/" + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "T":
+                        print("this segment is: ", seg[3:])
+                        if seg[3:] == "RAND":
+                            dude = get_random_media_file("/stops")
+                            print("the result is: ", dude)
+                            w0 = audiomp3.MP3Decoder(open("/stops/" + dude + ".mp3", "rb"))
+                        else:
+                            w0 = audiomp3.MP3Decoder(open("/stops/" + seg[3:] + ".mp3", "rb"))
+                    if seg[1] == "W" or seg[1] == "P":
+                        mix.voice[1].play(w0, loop=False)
+                    if seg[1] == "W":
+                        wait_snd()
+        # WA = Blow horn or whistle, A (H Horn, B Bell)
+        elif seg[0] == 'W': # play file
+            stp_a_0()
+            if seg[1] == "B":
+                fn=get_snds("/mvc","bell")
+                w0 = audiomp3.MP3Decoder(open(fn, "rb"))
+                mix.voice[0].play(w0, loop=False)
+            elif seg[1] == "H":
+                fn=get_snds("/mvc","horn")
+                w0 = audiomp3.MP3Decoder(open(fn, "rb"))
+                mix.voice[0].play(w0, loop=False)
+        # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+        elif seg[:2] == 'LN':
+                seg_split = seg.split("_")
+                light_n = int(seg_split[0][2:])-1
+                r = int(seg_split[1])
+                g = int(seg_split[2])
+                b = int(seg_split[3])
+                set_neo_to(light_n, r, g, b)
+        # BXXX = Brightness XXX 0 to 100
+        elif seg[0] == 'B':
+            br = int(seg[1:])
+            led.brightness = float(br/100)
+        # FXXX = Fade brightness in or out XXX 0 to 100
+        elif seg[0] == 'F':
+            v = int(seg[1:])
+            while not br == v:
+                if br < v:
+                    br += 1
+                    led.brightness = float(br/100)
+                else:
+                    br -= 1
+                    led.brightness = float(br/100)
+                upd_vol(.01)
+
 
 async def set_hdw_async(input_string):
     global sp, br, current_throttle
@@ -1049,7 +1170,7 @@ class BseSt(Ste):
         if sw == "left_held":
             if cont_run:
                 cont_run = False
-                stp_all_cmds()
+                stop_all_cmds()
                 ply_a_0("/mvc/continuous_mode_deactivated.mp3")
             else:
                 cont_run = True

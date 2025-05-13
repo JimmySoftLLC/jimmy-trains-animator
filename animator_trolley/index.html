@@ -170,6 +170,8 @@
                     type="button">
                     100
                 </button>
+                <h2>Neo pixel colors:</h2>
+                <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
             </div>
             <h2>Volume:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
@@ -254,6 +256,7 @@
                     Change
                 </button>
             </div>
+            <a id="ipLink" href="" style="margin-left: 10px; text-decoration: underline; color: #0078d7;">Visit IP</a>
 
             <p>
                 Use alphanumerics and dashes only. All names are automatically
@@ -326,6 +329,7 @@
 
 <script>
     local_ip = ""
+    let isRequestInProgress = false;
 
     function removeChildNodes(myDiv) {
         // Remove all child nodes
@@ -430,6 +434,9 @@
             .then(function (data) {
                 local_ip = data; // Set the value of the input field with the received data
                 settingsIpAddress.value = local_ip
+                const ipLinkButton = document.getElementById('ipLinkButton');
+                const ipLink = document.getElementById('ipLink');
+                ipLink.href = `http://${local_ip}`; // Set the link's href
             })
             .catch(function (error) {
                 console.log(error);
@@ -871,6 +878,60 @@
             animationScriptsContainer.appendChild(button);
         });
     }
+
+    function hexToRgb(hex) {
+        hex = hex.replace(/^#/, '');
+        const bigint = parseInt(hex, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b };
+    }
+
+    function rgbToHex(r, g, b) {
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase()}`;
+    }
+
+    function sendRGBValues(item, r, g, b) {
+        console.log(r)
+        console.log(g)
+        console.log(b)
+        const endpoint = "/set-item-lights";
+        const data = {
+            item: item,
+            r: r,
+            g: g,
+            b: b
+        };
+
+        fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data)
+                isRequestInProgress = false; // Reset the flag after the request is completed
+            })
+            .catch(error => {
+                console.error('Error:', error)
+                isRequestInProgress = false; // Reset the flag in case of an error
+            });
+    }
+
+    const colorPickerNeo = document.getElementById('colorPickerNeo');
+    colorPickerNeo.addEventListener('input', function () {
+        const color = colorPickerNeo.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("neo", rgb.r, rgb.g, rgb.b);
+        }
+    });
 
     // Get all buttons with the 'animator-action' class
     // Add click event listener to each button
