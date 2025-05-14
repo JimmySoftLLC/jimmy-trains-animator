@@ -188,6 +188,9 @@ ts_mode = False
 flsh_i = 0
 flsh_t = []
 
+t_s = []
+t_elsp = 0.0
+
 ################################################################################
 # Setup neo pixels
 
@@ -224,7 +227,8 @@ if (web):
 
     for i in range(3):
         web = True
-
+        led[0] = (0, 0, 255)
+        led.show()
         try:
             # connect to your SSID
             wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
@@ -343,9 +347,10 @@ if (web):
 
             @server.route("/lights", [POST])
             def btn(request: Request):
-                stop_all_cmds()
                 rq_d = request.json()
-                add_cmd(rq_d["an"])
+                command = rq_d["an"]
+                add_command_to_ts(command)
+                set_hdw(command)
                 return Response(request, "Utility: " + "Utility: set lights")
             
             @server.route("/set-item-lights", [POST])
@@ -353,10 +358,8 @@ if (web):
                 rq_d = request.json()
                 command = "LN0_" + str(rq_d["r"]) + "_" + \
                 str(rq_d["g"]) + "_" + str(rq_d["b"])
-                # add_command_to_ts(command)
+                add_command_to_ts(command)
                 set_hdw(command)
-                cfg["neo_changes"] = [
-                        rq_d["r"], rq_d["g"], rq_d["b"]]
                 return Response(request, "Utility: " + "Utility: set lights")
             
             @server.route("/update-host-name", [POST])
@@ -499,6 +502,8 @@ if (web):
         except Exception as e:
             web = False
             files.log_item(e)
+            led[0] = (0, 0, 75)
+            led.show()
             time.sleep(2)
 
 gc_col("web server")
@@ -695,17 +700,20 @@ def spk_sng_num(song_number):
     spk_str(song_number, False)
 
 
-def no_trk():
+async def no_trk():
     ply_a_0("/mvc/no_user_soundtrack_found.mp3")
     while True:
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         l_sw.update()
         r_sw.update()
-        if l_sw.fell:
+        if sw == "left":
             break
-        if r_sw.fell:
+        if sw == "right":
             ply_a_0("/mvc/create_sound_track_files.mp3")
             break
-
+        await asyncio.sleep(.1)
+        
 
 def spk_web():
     ply_a_0("/mvc/animator_available_on_network.mp3")
@@ -753,12 +761,12 @@ async def an_async(f_nm):
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
         if ts_mode:
-            an_ts(cur_opt)
+            await an_ts(cur_opt)
         else:
             await an_light_async(cur_opt)
     except Exception as e:
         files.log_item(e)
-        no_trk()
+        await no_trk()
         cfg["option_selected"] = "random all"
         return
     gc_col("Animation complete.")
@@ -842,17 +850,33 @@ async def an_light_async(f_nm):
             return
         await upd_vol_async(.1)
 
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
 
-def an_ts(f_nm):
+async def an_ts(f_nm):
     print("time stamp mode")
-    global ts_mode
+    global t_s, t_elsp, ts_mode, ovrde_sw_st
 
     t_s = []
 
-    f_nm = f_nm.replace("customers_owned_music_", "")
-
-    w0 = audiomp3.MP3Decoder(
+    try:
+        w0 = audiomp3.MP3Decoder(
         open("/snds/" + f_nm + ".mp3", "rb"))
+    except:
+        if (f_exists("/snds/" + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(
+                "/snds/" + f_nm + ".json")
+            ft1 = flsh_t[flsh_i].split("|")
+            w0_nm = await set_hdw_async(ft1[1])
+            print("Result is: ", w0_nm)
+            w0 = audiomp3.MP3Decoder(
+                open("/snds/" + w0_nm + ".mp3", "rb"))
+        
     mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
@@ -861,20 +885,25 @@ def an_ts(f_nm):
     while True:
         t_elsp = round(time.monotonic()-startTime, 1)
         r_sw.update()
-        if r_sw.fell:
-            t_s.append(str(t_elsp) + "|")
-            files.log_item(t_elsp)
+        if r_sw.fell or ovrde_sw_st["switch_value"]:
+            add_command_to_ts("")
+            ovrde_sw_st["switch_value"] = ""
         if not mix.voice[0].playing:
+            add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
                 "/snds/" + f_nm + ".json", t_s)
             break
+        await asyncio.sleep(.1)
 
     ts_mode = False
+
     ply_a_0("/mvc/timestamp_saved.mp3")
     ply_a_0("/mvc/timestamp_mode_off.mp3")
     ply_a_0("/mvc/animations_are_now_active.mp3")
+
+
 
 ##############################
 # animation effects
@@ -1454,6 +1483,7 @@ if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
+        led[1] = (0, 255, 0)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
     except Exception as e:
@@ -1461,6 +1491,10 @@ if (web):
         time.sleep(5)
         files.log_item("restarting...")
         rst()
+else:
+    led[1] = (0, 255, 0)
+    led.show()
+    time.sleep(3)
 
 # initialize items
 upd_vol(.5)
