@@ -1797,7 +1797,8 @@ if (web):
         led.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
-    except OSError:
+    except Exception as e:
+        files.log_item(e)
         time.sleep(5)
         files.log_item("restarting...")
         rst()
