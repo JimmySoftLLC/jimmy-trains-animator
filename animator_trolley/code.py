@@ -1492,7 +1492,7 @@ if (web):
         files.log_item("restarting...")
         rst()
 else:
-    led[1] = (0, 255, 0)
+    led[1] = (255, 0, 0)
     led.show()
     time.sleep(3)
 
