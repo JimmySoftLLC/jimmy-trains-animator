@@ -161,18 +161,18 @@ upd_media()
 
 web = cfg["serve_webpage"]
 
-# cfg_main = files.read_json_file("/mvc/main_menu.json")
-main_m = []  #cfg_main["main_menu"]
+cfg_main = files.read_json_file("main_menu.json")
+main_m = cfg_main["main_menu"]
 
-# cfg_web = files.read_json_file("/mvc/web_menu.json")
-web_= []  #cfg_web["web_menu"]
+cfg_vol = files.read_json_file("volume_settings.json")
+vol_set = cfg_vol["volume_settings"]
 
-# cfg_vol = files.read_json_file("/mvc/volume_settings.json")
-vol_set = []  #cfg_vol["volume_settings"]
+cfg_web = files.read_json_file("web_menu.json")
+web_m = cfg_web["web_menu"]
 
-add_snd = []
-
-web_m = []
+cfg_add_song = files.read_json_file(
+    "add_sounds_animate.json")
+add_snd = cfg_add_song["add_sounds_animate"]
 
 cont_run = cfg["cont_mode"]
 
@@ -1242,12 +1242,12 @@ class Main(Ste):
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
+            elif sel_mnu == "volume_settings":
+                mch.go_to('volume_settings')
             elif sel_mnu == "add_sounds_animate":
                 mch.go_to('add_sounds_animate')
             elif sel_mnu == "web_options":
                 mch.go_to('web_options')
-            elif sel_mnu == "volume_settings":
-                mch.go_to('volume_settings')
             else:
                 ply_a_0("/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
@@ -1283,7 +1283,7 @@ class Snds(Ste):
             else:
                 try:
                     w0 = audiomp3.MP3Decoder(open(
-                        "/o_snds/" + menu_snd_opt[self.i] + ".mp3", "rb"))
+                        "/snd_opt/" + menu_snd_opt[self.i] + ".mp3", "rb"))
                     mix.voice[0].play(w0, loop=False)
                 except Exception as e:
                     files.log_item(e)
