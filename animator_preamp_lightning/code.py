@@ -409,7 +409,7 @@ if (web):
                 rq_d = req.json()
                 cfg["option_selected"] = rq_d["an"]
                 add_cmd(cfg["option_selected"])
-                if not mix.voice[1].playing:
+                if not mix.voice[0].playing:
                     files.write_json_file("/sd/cfg.json", cfg)
                 return Response(req, "Animation " + cfg["option_selected"] + " started.")
 
@@ -668,8 +668,8 @@ command_queue = []
 
 
 def add_cmd(command, to_start=False):
-    global ex_hdw
-    ex_hdw = False
+    global exit_set_hdw_async
+    exit_set_hdw_async = False
     if to_start:
         command_queue.insert(0, command)  # Add to the front
         print("Command added to the start:", command)
@@ -693,9 +693,9 @@ def clr_cmd_queue():
 
 
 def stp_all_cmds():
-    global ex_hdw
+    global exit_set_hdw_async
     clr_cmd_queue()
-    ex_hdw = True
+    exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
@@ -799,7 +799,7 @@ def ch_vol(action):
         v = 1
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
-    if not mix.voice[1].playing:
+    if not mix.voice[0].playing:
         files.write_json_file("/sd/cfg.json", cfg)
         ply_a_1("/sd/mvc/volume.wav")
         spk_str(cfg["volume"], False)
@@ -828,9 +828,9 @@ def exit_early():
     sw = utilities.switch_state(
         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
     if sw == "left" and cfg["can_cancel"]:
-        mix.voice[1].stop()
+        mix.voice[0].stop()
     if sw == "left_held":
-        mix.voice[1].stop()
+        mix.voice[0].stop()
         c_run = False
         stp_all_cmds()
         ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
@@ -958,7 +958,7 @@ async def an(fn):
 
 
 async def an_ls(fn, my_type):
-    global ts_mode
+    global ts_mode, cont_run, ovrde_sw_st
 
     cust_f = "customers_owned_music_" in fn
 
@@ -983,8 +983,6 @@ async def an_ls(fn, my_type):
     else:
         flsh_t = files.read_json_file(
             "/sd/snd/" + fn + ".json")
-        
-    print(flsh_t)
 
     if cust_f:
         w0 = audiocore.WaveFile(
@@ -1035,12 +1033,11 @@ async def an_ls(fn, my_type):
                 cont_run = False
                 stp_all_cmds()
                 ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
-
-        if not mix.voice[1].playing:
+        if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
             return        
-        upd_vol(.001)
+        await upd_vol_async(.1)
 
 
 def ts(fn):
@@ -1056,12 +1053,12 @@ def ts(fn):
     fn = fn.replace("customers_owned_music_", "")
 
     if cf:
-        w1 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w1 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
-    mix.voice[1].play(w1, loop=False)
+    mix.voice[0].play(w1, loop=False)
 
     st = time.monotonic()
     upd_vol(.1)
@@ -1072,7 +1069,7 @@ def ts(fn):
         if r_sw.fell:
             ts["flashTime"].append(te)
             print(te)
-        if not mix.voice[1].playing:
+        if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
             ts["flashTime"].append(5000)
@@ -1101,9 +1098,9 @@ async def t_l(file_name):
     ftl = len(ft)
     fti = 0
 
-    w1 = audiocore.WaveFile(
+    w0 = audiocore.WaveFile(
         open("/sd/snd/" + file_name + ".wav", "rb"))
-    mix.voice[1].play(w1, loop=False)
+    mix.voice[0].play(w0, loop=False)
     st = time.monotonic()
 
     while True:
@@ -1121,7 +1118,7 @@ async def t_l(file_name):
         if ftl == fti:
             fti = 0
         exit_early()
-        if not mix.voice[1].playing:
+        if not mix.voice[0].playing:
             break
 
 
@@ -1194,6 +1191,7 @@ async def rbow(spd, dur):
 
 
 async def fire(dur):
+    global exit_set_hdw_async
     st = time.monotonic()
     led.brightness = 1.0
 
@@ -1221,6 +1219,8 @@ async def fire(dur):
     # Flicker, based on our initial RGB values
     while True:
         for i in bari:
+            if exit_set_hdw_async:
+                return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
@@ -1265,6 +1265,7 @@ def r_w_b():
 
 
 async def frwk(duration):
+    global exit_set_hdw_async
     st = time.monotonic()
     led.brightness = 1.0
 
@@ -1312,6 +1313,8 @@ async def frwk(duration):
                 led.show()
                 break
         te = time.monotonic()-st
+        if exit_set_hdw_async:
+            return
         if te > duration:
             print("Time up for fireworks")
             rst_bar()
@@ -1350,6 +1353,7 @@ def col_it(col, var):
 
 
 def ltng():
+    global exit_set_hdw_async
     # choose which bolt or no bolt to fire
     bolt = []
     b_i = random.randint(-1, (len(bolts)-1))
@@ -1405,6 +1409,8 @@ def ltng():
             l3 = random.randint(0, 1)
 
     for i in range(0, f_num):
+        if exit_set_hdw_async:
+            return
         # set bolt base color
         bolt_r = col_it(cfg["bolts"]["r"], cfg["v"]["r1"])
         bolt_g = col_it(cfg["bolts"]["g"], cfg["v"]["g1"])
@@ -1417,6 +1423,8 @@ def ltng():
 
         led.brightness = random.randint(150, 255) / 255
         for _ in range(4):
+            if exit_set_hdw_async:
+                return
             if len(nood) > 0:
                 led[nood[0]] = (
                     (255)*l2, (255)*l1, (255)*l3)
@@ -1520,7 +1528,7 @@ class BseSt(Ste):
         global c_run
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held" and not mix.voice[1].playing:
+        if sw == "left_held" and not mix.voice[0].playing:
             if c_run:
                 c_run = False
                 stp_all_cmds()
@@ -1863,3 +1871,14 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
+
+    # Run all tasks concurrently
+    await asyncio.gather(*tasks)
+
+# Run the asyncio event loop
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    pass
+
