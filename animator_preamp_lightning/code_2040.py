@@ -107,6 +107,7 @@ try:
     vfs = storage.VfsFat(sd)
     storage.mount(vfs, "/sd")
 except:
+    aud_mute.value = False
     w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
@@ -568,15 +569,6 @@ if (web):
                     led[i] = (rq_d["r"],
                               rq_d["g"], rq_d["b"])
                     led.show()
-            # elif rq_d["item"] == "bolts":
-            #     cfg["bolts"] = {"r": rq_d["r"],
-            #                     "g": rq_d["g"], "b": rq_d["b"]}
-            #     bi = []
-            #     bi.extend(bolt_arr)
-            #     for i in bi:
-            #         led[i] = (rq_d["r"],
-            #                   rq_d["g"], rq_d["b"])
-            #         led.show()
             elif rq_d["item"] == "nbolts":
                     cfg["nbolts"] = {"r": rq_d["r"],
                                      "g": rq_d["g"], "b": rq_d["b"]}
@@ -888,7 +880,7 @@ async def an(fn):
 
 
 async def an_ls(fn):
-    global ts_mode
+    global ts_mode, ovrde_sw_st
     il = 1
     ih = 3
 
@@ -918,9 +910,8 @@ async def an_ls(fn):
     else:
         fls_t = files.read_json_file(
             "/sd/snd/" + fn + ".json")
+    
     ft = fls_t["flashTime"]
-
-    print("flshtimes: ", ft)
 
     ftl = len(ft)
     fti = 0
@@ -967,7 +958,16 @@ async def an_ls(fn):
             pi = i
         if ftl == fti:
             fti = 0
-
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left" and cfg["can_cancel"]:
+            mix.voice[0].stop()
+        if sw == "left_held":
+            mix.voice[0].stop()
+            if cont_run:
+                cont_run = False
+                stp_all_cmds()
+                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
@@ -1163,11 +1163,6 @@ def fwrk(duration):
         i == random.randint(0, (len(bars)-1))
         bar_f.append(i)
 
-    # for b in bolts:
-    #     r, g, b = r_w_b()
-    #     for i in b:
-    #         led[i] = (r, g, b)
-
     for nbolt in nbolts:
         for nbolt_index in nbolt:
             r, g, b = r_w_b()
@@ -1243,14 +1238,6 @@ def col_it(col, var):
 
 
 def ltng():
-    # # choose which bolt or no bolt to fire
-    # bolt = []
-    # b_i = random.randint(-1, (len(bolts)-1))
-    # if b_i != -1:
-    #     for i, arr in enumerate(bolts):
-    #         if i == b_i:
-    #             bolt.extend(arr)
-
     # choose which nbolt or no bolt to fire
     nbolt = []
     b_i = random.randint(-1, (len(nbolts)-1))
