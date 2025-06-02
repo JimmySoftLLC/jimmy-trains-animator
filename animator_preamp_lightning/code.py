@@ -914,7 +914,7 @@ def spk_web():
 ################################################################################
 # animations
 
-def convert_to_new_format(my_object,my_type):
+def convert_to_new_format(my_object, my_type):
     flash_times = my_object.get("flashTime", [])
     return [f"{time}|{my_type}" for time in flash_times]
 
@@ -957,7 +957,7 @@ async def an(fn):
     gc_col("Animation complete.")
 
 
-async def an_ls(fn,my_type):
+async def an_ls(fn, my_type):
     global ts_mode
 
     cust_f = "customers_owned_music_" in fn
@@ -983,14 +983,17 @@ async def an_ls(fn,my_type):
     else:
         flsh_t = files.read_json_file(
             "/sd/snd/" + fn + ".json")
+        
+    print(flsh_t)
 
     if cust_f:
         w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w1 = audiocore.WaveFile(
+        w0 = audiocore.WaveFile(
             open("/sd/snd/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
+
     srt_t = time.monotonic()
 
     flsh_i = 0
