@@ -1872,13 +1872,3 @@ try:
 except KeyboardInterrupt:
     pass
 
-
-    # Run all tasks concurrently
-    await asyncio.gather(*tasks)
-
-# Run the asyncio event loop
-try:
-    asyncio.run(main())
-except KeyboardInterrupt:
-    pass
-
