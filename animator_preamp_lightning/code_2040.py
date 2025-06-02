@@ -197,12 +197,9 @@ gc_col("config setup")
 # Setup neo pixels
 
 bars = []
-# bolts = []
 nbolts = []
-noods = []
 
 bar_arr = []
-# bolt_arr = []
 nbolt_arr = []
 
 n_px = 2
@@ -219,21 +216,6 @@ def bld_bar():
         for l in range(0, 10):
             i.append(l+si)
     return i
-
-
-# def bld_bolt():
-#     i = []
-#     for b in bolts:
-#         for l in b:
-#             si = l
-#             break
-#         if len(b) == 4:
-#             for l in range(0, 4):
-#                 i.append(l+si)
-#         if len(b) == 1:
-#             for l in range(0, 1):
-#                 i.append(l+si)
-#     return i
 
 def bld_nbolt():
     i = []
@@ -256,19 +238,6 @@ def l_tst():
         time.sleep(.3)
         led.fill((0, 0, 0))
         led.show()
-    # for b in bolts:
-    #     for l in b:
-    #         led[l] = (50, 50, 50)
-    #     led.show()
-    #     time.sleep(.3)
-    #     led.fill((0, 0, 0))
-    #     led.show()
-    for n in noods:
-        led[n[0]] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
     for b in nbolts:
         for l in b:
             led[l] = (50, 50, 50)
@@ -279,10 +248,8 @@ def l_tst():
 
 
 def upd_l_str():
-    global bars, noods, n_px, led, nbolts #bolts,
+    global bars,  n_px, led, nbolts
     bars = []
-    # bolts = []
-    noods = []
     nbolts = []
 
     n_px = 0
@@ -298,14 +265,6 @@ def upd_l_str():
                 s = list(range(n_px, n_px + qty))
                 bars.append(s)
                 n_px += qty
-            elif typ == 'bolt' and qty < 4:
-                s = [n_px, qty]
-                noods.append(s)
-                n_px += 1
-            # elif typ == 'bolt' and qty == 4:
-            #     s = list(range(n_px, n_px + qty))
-            #     bolts.append(s)
-            #     n_px += qty
             elif typ == 'nbolt':
                 s = list(range(n_px, n_px + qty))
                 nbolts.append(s)
@@ -961,6 +920,8 @@ async def an_ls(fn):
             "/sd/snd/" + fn + ".json")
     ft = fls_t["flashTime"]
 
+    print("flshtimes: ", ft)
+
     ftl = len(ft)
     fti = 0
 
@@ -1303,37 +1264,8 @@ def ltng():
         if i == random.randint(0, (len(bars)-1)):
             bar.extend(arr)
 
-    # choose which nood or no nood to fire
-    nood = []
-    nood_i = random.randint(-1, (len(noods)-1))
-    if nood_i != -1:
-        for i, arr in enumerate(noods):
-            if i == nood_i:
-                nood.extend(arr)
-
-    if len(nood) > 0 and len(bolt) > 0:
-        b_i = random.randint(0, 1)
-        if b_i == 0:
-            bolt = []
-        else:
-            nood = []
-
     # number of flashes
     f_num = random.randint(5, 10)
-
-    if len(nood) > 0:
-        if nood[1] == 1:
-            l1 = 1
-            l2 = 0
-            l3 = 0
-        if nood[1] == 2:
-            l1 = random.randint(0, 1)
-            l2 = 0
-            l3 = random.randint(0, 1)
-        if nood[1] == 3:
-            l1 = random.randint(0, 1)
-            l2 = random.randint(0, 1)
-            l3 = random.randint(0, 1)
 
     for i in range(0, f_num):
         # set bolt base color
@@ -1348,12 +1280,6 @@ def ltng():
 
         led.brightness = random.randint(150, 255) / 255
         for _ in range(4):
-            if len(nood) > 0:
-                led[nood[0]] = (
-                    (255)*l2, (255)*l1, (255)*l3)
-            # for j in bolt:
-            #     led[j] = (
-            #         bolt_r, bolt_g, bolt_b)
             for j in nbolt:
                 led[j] = (
                     bolt_r, bolt_g, bolt_b)
