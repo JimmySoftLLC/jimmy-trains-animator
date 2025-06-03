@@ -185,7 +185,7 @@ c_a_s = files.read_json_file(
     "/sd/mvc/add_sounds_animate.json")
 a_s = c_a_s["add_sounds_animate"]
 
-c_run = False
+cont_run = False
 ts_mode = False
 
 local_ip = ""
@@ -194,6 +194,7 @@ ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
 
 exit_set_hdw_async = False
+is_running_an = False
 
 gc_col("config setup")
 
@@ -234,6 +235,7 @@ def bld_bar():
             i.append(l+si)
     return i
 
+
 def bld_bolt():
     i = []
     for b in bolts:
@@ -248,6 +250,7 @@ def bld_bolt():
                 i.append(l+si)
     return i
 
+
 def bld_nbolt():
     i = []
     for b in nbolts:
@@ -257,6 +260,7 @@ def bld_nbolt():
         for l in range(0, len(b)):
             i.append(l+si)
     return i
+
 
 def bld_witch():
     i = []
@@ -268,6 +272,7 @@ def bld_witch():
             i.append(l+si)
     return i
 
+
 def bld_saucer():
     i = []
     for b in saucers:
@@ -277,6 +282,7 @@ def bld_saucer():
         for l in range(0, len(b)):
             i.append(l+si)
     return i
+
 
 def bld_ghost():
     i = []
@@ -288,6 +294,7 @@ def bld_ghost():
             i.append(l+si)
     return i
 
+
 def bld_jet():
     i = []
     for b in jets:
@@ -297,6 +304,7 @@ def bld_jet():
         for l in range(0, len(b)):
             i.append(l+si)
     return i
+
 
 def bld_star():
     i = []
@@ -391,6 +399,7 @@ def l_tst():
         time.sleep(.3)
         led.fill((0, 0, 0))
         led.show()
+
 
 def upd_l_str():
     global n_px, led, bars, bolts, noods, nbolts, witches, saucers, ghosts, jets, stars
@@ -536,7 +545,7 @@ if (web):
 
             @server.route("/animation", [POST])
             def btn(req: Request):
-                global cfg, c_run, ts_mode
+                global cfg, cont_run, ts_mode
                 rq_d = req.json()
                 cfg["option_selected"] = rq_d["an"]
                 add_cmd(cfg["option_selected"])
@@ -581,7 +590,7 @@ if (web):
 
             @server.route("/mode", [POST])
             def btn(req: Request):
-                global cfg, c_run, ts_mode
+                global cfg, cont_run, ts_mode
                 rq_d = req.json()
                 if rq_d["an"] == "left":
                     ovrde_sw_st["switch_value"] = "left"
@@ -592,10 +601,10 @@ if (web):
                 elif rq_d["an"] == "right_held":
                     ovrde_sw_st["switch_value"] = "right_held"
                 elif rq_d["an"] == "cont_mode_on":
-                    c_run = True
+                    cont_run = True
                     ply_a_1("/sd/mvc/continuous_mode_activated.wav")
                 elif rq_d["an"] == "cont_mode_off":
-                    c_run = False
+                    cont_run = False
                     stp_all_cmds()
                     ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
                 elif rq_d["an"] == "timestamp_mode_on":
@@ -814,7 +823,7 @@ async def process_cmd():
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
         # Process each command as an async operation
-        await an(command)
+        await an_async(command)
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -955,14 +964,14 @@ def stp_a_1():
 
 
 def exit_early():
-    global c_run
+    global cont_run
     sw = utilities.switch_state(
         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
     if sw == "left" and cfg["can_cancel"]:
         mix.voice[0].stop()
     if sw == "left_held":
         mix.voice[0].stop()
-        c_run = False
+        cont_run = False
         stp_all_cmds()
         ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
 
@@ -1051,8 +1060,8 @@ def convert_to_new_format(my_object, my_type):
     return [f"{time}|{my_type}" for time in flash_times]
 
 
-async def an(fn):
-    global cfg
+async def an_async(fn):
+    global is_running_an, cfg
     print("Filename: " + fn)
     cur = fn
     try:
@@ -1086,6 +1095,7 @@ async def an(fn):
         no_trk()
         cfg["option_selected"] = "random built in"
         return
+    is_running_an = False
     gc_col("Animation complete.")
 
 
@@ -1220,7 +1230,7 @@ def ts(fn):
 
 
 async def t_l(file_name):
-    global c_run
+    global cont_run
 
     ftd = files.read_json_file(
         "/sd/snd/" + file_name + ".json")
@@ -1260,6 +1270,8 @@ async def set_hdw_async(input_string, dur):
 
     # Process each segment
     for seg in segs:
+        if exit_set_hdw_async:
+            return
         # ZRAND = Random rainbow, fire, or color change
         if seg[0:] == 'ZRAND':
             await random_effect(1, 3, dur)
@@ -1284,6 +1296,8 @@ async def set_hdw_async(input_string, dur):
 
 
 async def random_effect(il, ih, d):
+    if exit_set_hdw_async:
+        return
     i = random.randint(il, ih)
     if i == 1:
         await rbow(.005, d)
@@ -1404,7 +1418,7 @@ async def frwk(duration):
 
     # choose which bar none to all to fire
     bar_f = []
-    for i, arr in enumerate(bars):
+    for i in enumerate(bars):
         if i == random.randint(0, (len(bars)-1)):
             bar_f.append(i)
 
@@ -1658,20 +1672,20 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global c_run
+        global cont_run, is_running_an
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held" and not mix.voice[0].playing:
-            if c_run:
-                c_run = False
+        if sw == "left_held":
+            if cont_run:
+                cont_run = False
                 stp_all_cmds()
                 ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
-            else:
-                c_run = True
+            elif not is_running_an:
+                cont_run = True
                 ply_a_1("/sd/mvc/continuous_mode_activated.wav")
-        elif (sw == "left" or c_run) and not mix.voice[0].playing:
+        elif sw == "left" or cont_run and not is_running_an:
             add_cmd(cfg["option_selected"])
-        elif sw == "right":
+        elif sw == "right" and not is_running_an:
             mch.go_to('main_menu')
 
 
