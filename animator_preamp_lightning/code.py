@@ -42,6 +42,7 @@ import neopixel
 from rainbowio import colorwheel
 from adafruit_debouncer import Debouncer
 import asyncio
+import os
 
 
 def gc_col(c_p):
@@ -50,6 +51,13 @@ def gc_col(c_p):
     files.log_item("Point " + c_p +
                    " Available memory: {} bytes".format(start_mem))
 
+def f_exists(filename):
+    try:
+        _ = os.stat(filename)
+        f_exists = True
+    except OSError:
+        f_exists = False
+    return f_exists
 
 def rst():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -145,7 +153,7 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 cfg = files.read_json_file("/sd/cfg.json")
 
-snd_o = files.return_directory("", "/sd/snd", ".wav")
+snd_o = files.return_directory("", "/sd/snds", ".wav")
 
 cus_o = files.return_directory(
     "customers_owned_music_", "/sd/customers_owned_music", ".wav")
@@ -563,7 +571,7 @@ if (web):
                         ts = files.read_json_file(
                             "/sd/t_s_def/" + ts_fn + ".json")
                         files.write_json_file(
-                            "/sd/snd/"+ts_fn+".json", ts)
+                            "/sd/snds/"+ts_fn+".json", ts)
                     ply_a_1("/sd/mvc/all_changes_complete.wav")
                 elif rq_d["an"] == "reset_to_defaults":
                     rst_def()
@@ -731,7 +739,39 @@ if (web):
                 s.extend(snd_o)
                 s = files.json_stringify(s)
                 return Response(req, s)
-
+            
+            @server.route("/test-animation", [POST])
+            def btn(request: Request):
+                stp_a_0()
+                rq_d = request.json()
+                print(rq_d["an"])
+                gc_col("Save Data.")
+                add_cmd(rq_d["an"])
+                return Response(request, "success")
+            
+            @server.route("/get-animation", [POST])
+            def btn(request: Request):
+                global cfg, cont_run, ts_mode
+                stp_a_0()
+                rq_d = request.json()
+                snd_f = rq_d["an"]
+                if "customers_owned_music_" in snd_f:
+                    snd_f = snd_f.replace("customers_owned_music_", "")
+                    if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
+                        f_n = "/sd/customers_owned_music/" + snd_f + ".json"
+                        print(f_n)
+                        return FileResponse(request, f_n, "/")
+                    else:
+                        f_n = "/sd/t_s_def/timestamp mode.json"
+                        return FileResponse(request, f_n, "/")
+                else:
+                    if (f_exists("/sd/snds/" + snd_f + ".json") == True):
+                        f_n = "/sd/snds/" + snd_f + ".json"
+                        return FileResponse(request, f_n, "/")
+                    else:
+                        f_n = "/sd/t_s_def/timestamp mode.json"
+                        return FileResponse(request, f_n, "/")
+                    
             @server.route("/get-bar-colors", [POST])
             def btn(req: Request):
                 s = files.json_stringify(cfg["bars"])
@@ -792,6 +832,35 @@ if (web):
             def buttonpress(req: Request):
                 stp_a_1()
                 return Response(req, local_ip)
+            
+            @server.route("/save-data", [POST])
+            def btn(request: Request):
+                global data
+                gc_col("prep save data")
+                stp_a_0()
+                rq_d = request.json()
+                try:
+                    if rq_d[0] == 0:
+                        data = []
+                    data.extend(rq_d[2])
+                    if rq_d[0] == rq_d[1]:
+                        f_n = ""
+                        if "customers_owned_music_" in rq_d[3]:
+                            snd_f = rq_d[3].replace("customers_owned_music_", "")
+                            f_n = "/sd/customers_owned_music/" + \
+                                snd_f + ".json"
+                        else:
+                            f_n = "/sd/snds/" + \
+                                rq_d[3] + ".json"
+                        files.write_json_file(f_n, data)
+                        data = []
+                        gc_col("get data")
+                except Exception as e:
+                    files.log_item(e)
+                    data = []
+                    gc_col("get data")
+                    return Response(request, "out of memory")
+                return Response(request, "success")
             break
         except Exception as e:
             web = False
@@ -962,6 +1031,11 @@ def stp_a_1():
     while mix.voice[1].playing:
         pass
 
+def stp_a_0():
+    mix.voice[0].stop()
+    while mix.voice[0].playing:
+        pass
+
 
 def exit_early():
     global cont_run, ovrde_sw_st, is_running_an, exit_set_hdw_async
@@ -1128,14 +1202,14 @@ async def an_ls(fn, my_type):
                     return
     else:
         flsh_t = files.read_json_file(
-            "/sd/snd/" + fn + ".json")
+            "/sd/snds/" + fn + ".json")
 
     if cust_f:
         w0 = audiocore.WaveFile(
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
         w0 = audiocore.WaveFile(
-            open("/sd/snd/" + fn + ".wav", "rb"))
+            open("/sd/snds/" + fn + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
 
     srt_t = time.monotonic()
@@ -1194,7 +1268,7 @@ def ts(fn):
             open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
         w0 = audiocore.WaveFile(
-            open("/sd/snd/" + fn + ".wav", "rb"))
+            open("/sd/snds/" + fn + ".wav", "rb"))
     mix.voice[0].play(w1, loop=False)
 
     st = time.monotonic()
@@ -1215,7 +1289,7 @@ def ts(fn):
                     "/sd/customers_owned_music/" + fn + ".json", ts)
             else:
                 files.write_json_file(
-                    "/sd/snd/" + fn + ".json", ts)
+                    "/sd/snds/" + fn + ".json", ts)
             break
 
     ts_mode = False
@@ -1228,7 +1302,7 @@ async def t_l(file_name):
     global cont_run
 
     ftd = files.read_json_file(
-        "/sd/snd/" + file_name + ".json")
+        "/sd/snds/" + file_name + ".json")
 
     ft = ftd["flashTime"]
 
@@ -1236,7 +1310,7 @@ async def t_l(file_name):
     fti = 0
 
     w0 = audiocore.WaveFile(
-        open("/sd/snd/" + file_name + ".wav", "rb"))
+        open("/sd/snds/" + file_name + ".wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     st = time.monotonic()
 
@@ -1959,7 +2033,7 @@ if (web):
 else:
     led[1] = (0, 255, 0)
     led.show()
-    time.sleep(3)
+    time.sleep(1.5)
 
 upd_l_str()
 
