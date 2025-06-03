@@ -202,16 +202,25 @@ gc_col("config setup")
 
 bars = []
 bolts = []
-nbolts = []
 noods = []
+nbolts = []
+witches = []
+saucers = []
+ghosts = []
+jets = []
+stars = []
 
 bar_arr = []
 bolt_arr = []
 nbolt_arr = []
+witch_arr = []
+saucer_arr = []
+ghost_arr = []
+jet_arr = []
+star_arr = []
 
 n_px = 2
 neo_pin = board.GP10
-
 led = neopixel.NeoPixel(neo_pin, n_px)
 
 
@@ -224,7 +233,6 @@ def bld_bar():
         for l in range(0, 10):
             i.append(l+si)
     return i
-
 
 def bld_bolt():
     i = []
@@ -240,7 +248,6 @@ def bld_bolt():
                 i.append(l+si)
     return i
 
-
 def bld_nbolt():
     i = []
     for b in nbolts:
@@ -251,14 +258,71 @@ def bld_nbolt():
             i.append(l+si)
     return i
 
+def bld_witch():
+    i = []
+    for b in witches:
+        for l in b:
+            si = l
+            break
+        for l in range(0, len(b)):
+            i.append(l+si)
+    return i
+
+def bld_saucer():
+    i = []
+    for b in saucers:
+        for l in b:
+            si = l
+            break
+        for l in range(0, len(b)):
+            i.append(l+si)
+    return i
+
+def bld_ghost():
+    i = []
+    for b in ghosts:
+        for l in b:
+            si = l
+            break
+        for l in range(0, len(b)):
+            i.append(l+si)
+    return i
+
+def bld_jet():
+    i = []
+    for b in jets:
+        for l in b:
+            si = l
+            break
+        for l in range(0, len(b)):
+            i.append(l+si)
+    return i
+
+def bld_star():
+    i = []
+    for b in stars:
+        for l in b:
+            si = l
+            break
+        for l in range(0, len(b)):
+            i.append(l+si)
+    return i
+
 
 def l_tst():
-    global bar_arr, bolt_arr, nbolt_arr
+    global bar_arr, bolt_arr, nbolt_arr, witch_arr, saucer_arr, ghost_arr, jet_arr, star_arr
     bar_arr = bld_bar()
     bolt_arr = bld_bolt()
     nbolt_arr = bld_nbolt()
+    witch_arr = bld_witch()
+    saucer_arr = bld_saucer()
+    ghost_arr = bld_ghost()
+    jet_arr = bld_jet()
+    star_arr = bld_saucer()
+
     for b in bars:
         for l in b:
+            print("Bar id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -266,12 +330,14 @@ def l_tst():
         led.show()
     for b in bolts:
         for l in b:
+            print("Bolt id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
         led.fill((0, 0, 0))
         led.show()
     for n in noods:
+        print("Nood id: ", n[0])
         led[n[0]] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -279,19 +345,64 @@ def l_tst():
         led.show()
     for b in nbolts:
         for l in b:
+            print("NBolt id: ", l)
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+    for b in witches:
+        for l in b:
+            print("Witch id: ", l)
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+    for b in saucers:
+        for l in b:
+            print("Saucer id: ", l)
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+    for b in ghosts:
+        for l in b:
+            print("Ghost id: ", l)
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+    for b in jets:
+        for l in b:
+            print("Jet id: ", l)
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+    for b in stars:
+        for l in b:
+            print("Star id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
         led.fill((0, 0, 0))
         led.show()
 
-
 def upd_l_str():
-    global bars, bolts, noods, n_px, led, nbolts
+    global n_px, led, bars, bolts, noods, nbolts, witches, saucers, ghosts, jets, stars
     bars = []
     bolts = []
     noods = []
     nbolts = []
+    witches = []
+    saucers = []
+    ghosts = []
+    jets = []
+    stars = []
 
     n_px = 0
 
@@ -317,6 +428,26 @@ def upd_l_str():
             elif typ == 'nbolt':
                 s = list(range(n_px, n_px + qty))
                 nbolts.append(s)
+                n_px += qty
+            elif typ == 'witch':
+                s = list(range(n_px, n_px + qty))
+                witches.append(s)
+                n_px += qty
+            elif typ == 'saucer':
+                s = list(range(n_px, n_px + qty))
+                saucers.append(s)
+                n_px += qty
+            elif typ == 'ghost':
+                s = list(range(n_px, n_px + qty))
+                ghosts.append(s)
+                n_px += qty
+            elif typ == 'jet':
+                s = list(range(n_px, n_px + qty))
+                jets.append(s)
+                n_px += qty
+            elif typ == 'star':
+                s = list(range(n_px, n_px + qty))
+                stars.append(s)
                 n_px += qty
 
     led.deinit()
@@ -914,6 +1045,7 @@ def spk_web():
 ################################################################################
 # animations
 
+
 def convert_to_new_format(my_object, my_type):
     flash_times = my_object.get("flashTime", [])
     return [f"{time}|{my_type}" for time in flash_times]
@@ -937,18 +1069,18 @@ async def an(fn):
             ts(cur)
         else:
             if "customers_owned_music_" in cur:
-                await an_ls(cur,"ZRAND")
+                await an_ls(cur, "ZRAND")
             elif cur == "alien lightshow":
-                await an_ls(cur,"ZRAND")
+                await an_ls(cur, "ZRAND")
             elif cur == "inspiring cinematic ambient lightshow":
-                await an_ls(cur,"ZRAND")
+                await an_ls(cur, "ZRAND")
             elif cur == "fireworks":
-                await an_ls(cur,"FRWK")
+                await an_ls(cur, "FRWK")
             else:
                 if ts_mode == True:
                     await t_l(cur)
                 else:
-                    await an_ls(cur,"LIGHT")
+                    await an_ls(cur, "LIGHT")
     except Exception as e:
         files.log_item(e)
         no_trk()
@@ -1018,7 +1150,7 @@ async def an_ls(fn, my_type):
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1],dur)
+                result = await set_hdw_async(ft1[1], dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -1036,7 +1168,7 @@ async def an_ls(fn, my_type):
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
-            return        
+            return
         await upd_vol_async(.1)
 
 
@@ -1149,6 +1281,7 @@ async def set_hdw_async(input_string, dur):
 
 ##############################
 # animation effects
+
 
 async def random_effect(il, ih, d):
     i = random.randint(il, ih)
@@ -1283,7 +1416,7 @@ async def frwk(duration):
         r, g, b = r_w_b()
         for bolt_index in bolt:
             led[bolt_index] = (r, g, b)
-    
+
     for nbolt in nbolts:
         for nbolt_index in nbolt:
             r, g, b = r_w_b()
@@ -1368,7 +1501,7 @@ def ltng():
     if b_i != -1:
         for i, arr in enumerate(nbolts):
             if i == b_i:
-                nbolt.extend(arr)            
+                nbolt.extend(arr)
 
     # choose which bar one to all to fire
     bar = []
@@ -1871,4 +2004,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
