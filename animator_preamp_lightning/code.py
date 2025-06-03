@@ -964,12 +964,15 @@ def stp_a_1():
 
 
 def exit_early():
-    global cont_run
+    global cont_run, ovrde_sw_st, is_running_an, exit_set_hdw_async
     sw = utilities.switch_state(
         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
     if sw == "left" and cfg["can_cancel"]:
+        exit_set_hdw_async = True
         mix.voice[0].stop()
-    if sw == "left_held":
+        sw = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+    if sw == "left" or sw == "left_held":
         mix.voice[0].stop()
         cont_run = False
         stp_all_cmds()
@@ -1064,6 +1067,7 @@ async def an_async(fn):
     global is_running_an, cfg
     print("Filename: " + fn)
     cur = fn
+    is_running_an = True
     try:
         if fn == "random built in":
             hi = len(snd_o) - 1
@@ -1165,16 +1169,7 @@ async def an_ls(fn, my_type):
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left" and cfg["can_cancel"]:
-            mix.voice[0].stop()
-        if sw == "left_held":
-            mix.voice[0].stop()
-            if cont_run:
-                cont_run = False
-                stp_all_cmds()
-                ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
+        exit_early()
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
@@ -1673,21 +1668,22 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global cont_run, is_running_an
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held":
-            if cont_run:
-                cont_run = False
-                stp_all_cmds()
-                ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
-            elif not is_running_an:
-                cont_run = True
-                ply_a_1("/sd/mvc/continuous_mode_activated.wav")
-        elif sw == "left" or cont_run and not is_running_an:
-            add_cmd(cfg["option_selected"])
-        elif sw == "right" and not is_running_an:
-            mch.go_to('main_menu')
-
+        if not is_running_an:
+            sw = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            if sw == "left_held":
+                if cont_run:
+                    cont_run = False
+                    stp_all_cmds()
+                    ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
+                else:
+                    cont_run = True
+                    ply_a_1("/sd/mvc/continuous_mode_activated.wav")
+            elif sw == "left" or cont_run:
+                if not is_running_an:
+                    add_cmd(cfg["option_selected"])
+            elif sw == "right":
+                mch.go_to('main_menu')
 
 class Main(Ste):
 
