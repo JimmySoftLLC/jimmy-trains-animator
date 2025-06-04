@@ -1486,7 +1486,6 @@ def r_w_b():
         b = 255
     return r, g, b
 
-
 async def frwk(duration):
     global exit_set_hdw_async
     st = time.monotonic()
@@ -1494,7 +1493,7 @@ async def frwk(duration):
 
     # choose which bar none to all to fire
     bar_f = []
-    for i in enumerate(bars):
+    for i, arr in enumerate(bars):
         if i == random.randint(0, (len(bars)-1)):
             bar_f.append(i)
 
@@ -1506,7 +1505,7 @@ async def frwk(duration):
         r, g, b = r_w_b()
         for bolt_index in bolt:
             led[bolt_index] = (r, g, b)
-
+    
     for nbolt in nbolts:
         for nbolt_index in nbolt:
             r, g, b = r_w_b()
@@ -1539,11 +1538,10 @@ async def frwk(duration):
         if exit_set_hdw_async:
             return
         if te > duration:
-            print("Time up for fireworks")
             rst_bar()
             led.show()
             return
-
+        
 
 def multi_color():
     for i in range(0, n_px):
