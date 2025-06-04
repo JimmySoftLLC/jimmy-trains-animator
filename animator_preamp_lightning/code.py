@@ -556,7 +556,7 @@ if (web):
                 global cfg, cont_run, ts_mode
                 rq_d = req.json()
                 cfg["option_selected"] = rq_d["an"]
-                add_cmd(cfg["option_selected"])
+                add_cmd("AN_" + cfg["option_selected"])
                 if not mix.voice[0].playing:
                     files.write_json_file("/sd/cfg.json", cfg)
                 return Response(req, "Animation " + cfg["option_selected"] + " started.")
@@ -892,7 +892,7 @@ async def process_cmd():
         command = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", command)
         # Process each command as an async operation
-        await an_async(command)
+        await set_hdw_async(command)
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -1333,10 +1333,9 @@ async def t_l(file_name):
             break
 
 
-async def set_hdw_async(input_string, dur):
+async def set_hdw_async(input_string, dur=0):
     global exit_set_hdw_async
     segs = input_string.split(",")
-
     # Process each segment
     for seg in segs:
         if exit_set_hdw_async:
@@ -1359,6 +1358,14 @@ async def set_hdw_async(input_string, dur):
             ltng()
         elif seg[0:] == 'FRWK':
             await frwk(dur)
+        # AN_XXX = Animation XXX filename
+        elif seg[:2] == 'AN':
+            seg_split = seg.split("_")
+            # Process each command as an async operation
+            if seg_split[1] == "customers":
+                await an_async(seg_split[1]+"_"+seg_split[2]+"_"+seg_split[3]+"_"+seg_split[4])
+            else:
+                await an_async(seg_split[1])
 
 ##############################
 # animation effects
@@ -1755,7 +1762,7 @@ class BseSt(Ste):
                     ply_a_1("/sd/mvc/continuous_mode_activated.wav")
             elif sw == "left" or cont_run:
                 if not is_running_an:
-                    add_cmd(cfg["option_selected"])
+                    add_cmd("AN_" + cfg["option_selected"])
             elif sw == "right":
                 mch.go_to('main_menu')
 
