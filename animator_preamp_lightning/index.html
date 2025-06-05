@@ -854,7 +854,7 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    showAlert('Try Again');
+                    showAlert('Error:'+ error.message);
                 });
         });
     });
