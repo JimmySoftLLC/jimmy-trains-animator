@@ -191,6 +191,12 @@
                 <h2>Neo pixel colors:</h2>
                 <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
             </div>
+            <h2>Track Voltage:</h2>
+            <input class="input" id="trackVoltage" type="number" disabled>
+            <button class="mui-btn mui-btn--primary" onclick="getTrackVoltage()"
+                type="button">
+                Get Voltage
+            </button>
             <h2>Volume:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
                 type="button">
@@ -388,6 +394,15 @@
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
+        getWebSiteUrl()
+        getLocalIp()
+        getThrottle()
+        getVolume()
+        getAnimations()
+        getTrackVoltage()
+    });
+
+    function getWebSiteUrl(){
         // get website url
         fetch('/get-host-name', {
             method: 'POST',
@@ -404,8 +419,29 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-        // get volume
+    function getTrackVoltage() {
+        fetch('/get-track-voltage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                trackVoltage.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+
+    function getVolume() {
         fetch('/get-volume', {
             method: 'POST',
             headers: {
@@ -420,8 +456,11 @@
             })
             .catch(function (error) {
                 console.log(error);
+                showAlert(error);
             });
+    }
 
+    function getThrottle() {
         // get throttle
         fetch('/get-throttle', {
             method: 'POST',
@@ -438,7 +477,9 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
+    function getLocalIp() {
         // get local ip
         fetch('/get-local-ip', {
             method: 'POST',
@@ -460,9 +501,7 @@
                 console.log(error);
                 showAlert(error);
             });
-
-        getAnimations()
-    });
+    }
 
     function getAnimations() {
         // get Animations
@@ -484,6 +523,8 @@
                 console.log(error);
             });
     }
+
+
 
 
     function createAnimationDialog() {

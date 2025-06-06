@@ -75,6 +75,8 @@ a_in = AnalogIn(board.A0)
 
 track_a_in = AnalogIn(board.A2)
 
+
+
 # setup pin for audio enable 21 on 5v aud board, 22 on motor board
 aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -121,6 +123,7 @@ aud_en.value = False
 # Setup time
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
+
 
 ################################################################################
 # Setup motor controller
@@ -396,6 +399,11 @@ if (web):
             def btn(request: Request):
                 return Response(request, cfg["volume"])
             
+            @server.route("/get-track-voltage", [POST])
+            def btn(request: Request):
+                track_voltage = get_track_voltage()
+                return Response(request, str(track_voltage))
+            
             @server.route("/get-throttle", [POST])
             def btn(request: Request):
                 cur_throttle_str = str(current_throttle)
@@ -559,6 +567,15 @@ def add_command_to_ts(command):
 ################################################################################
 # Misc Methods
 
+def get_track_voltage():
+    """Get the track voltage from the analog input."""
+    if track_a_in.value is None:
+        return 0.0
+    # Convert the analog value to a voltage (0-3.3V) and scale it for the track voltage
+    # Assuming a 14.7:1 scaling factor for the track voltage
+    return track_a_in.value / 65536 * 3.3 * 14.7
+
+print("Track voltage: ", get_track_voltage())
 
 def rst_def():
     cfg["volume_pot"] = True
