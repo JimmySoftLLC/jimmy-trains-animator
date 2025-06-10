@@ -347,6 +347,32 @@
 <script>
     local_ip = ""
 
+    function showAlert(message) {
+        var alertModal = document.createElement('div');
+        alertModal.className = 'mui-container';
+        alertModal.style.width = '400px';
+        alertModal.style.margin = '100px auto'; // Center horizontally with top margin
+        alertModal.style.backgroundColor = '#fff';
+        alertModal.style.borderRadius = '5px';
+        alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+
+        alertModal.innerHTML = `
+            <div class="mui-form" style="padding: 20px;">
+                <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
+                <div style="margin: 10px 0; font-size: 1em; color: #333;">
+                    ${message}
+                </div>
+                <button class="mui-btn mui-btn--primary" onclick="closeAlert()" style="margin-top: 15px;">OK</button>
+            </div>`;
+
+        mui.overlay('on', alertModal);
+    }
+
+
+    function closeAlert() {
+        mui.overlay('off');
+    }
+
     function removeChildNodes(myDiv) {
         // Remove all child nodes
         while (myDiv.firstChild) {
@@ -790,18 +816,18 @@
         } else if (target.classList.contains("add-row-btn")) {
             addRow(target.parentNode.parentNode);
         } else if (target.classList.contains("test-row-btn")) {
-            testAnimation(target)
+            const rowElement = target.parentNode.parentNode;
+            const commandInput = getTextOfInput(rowElement, 3);
+            testAnimation(target, commandInput)
         }
     });
 
-    function testAnimation(target) {
-        const rowElement = target.parentNode.parentNode;
-        const thirdInput = getTextOfInput(rowElement, 3);
-        target.setAttribute("disabled", "true");
+    function testAnimation(target, commandInput) {
         var url = "/test-animation";
+        if (target) target.setAttribute("disabled", "true");
 
         var data = {
-            an: thirdInput,
+            an: commandInput,
         };
 
         fetch(url, {
@@ -816,11 +842,11 @@
             })
             .then(function (data) {
                 console.log(data);
-                target.removeAttribute('disabled')
+                if (target) target.removeAttribute('disabled')
             })
             .catch(function (error) {
                 console.log(error);
-                target.removeAttribute('disabled')
+                if (target) target.removeAttribute('disabled')
             });
     }
 
@@ -900,10 +926,11 @@
         console.log("Row Index:", globalRowIndex);
     }
 
+
     function editPasteTableDialog() {
         var modalEl = document.getElementById("modalEl");
         removeChildNodes(modalEl);
-        modalEl.style.width = '400px';
+        modalEl.style.width = '600px';
         modalEl.style.height = 'auto';
         modalEl.style.margin = '100px auto';
         modalEl.style.backgroundColor = '#fff';
@@ -913,6 +940,62 @@
         form.className = 'mui-form';
         form.style.padding = '20px';
         form.style.margin = '20px';
+
+        var legend1 = document.createElement('legend');
+        legend1.textContent = 'Commands';
+        form.appendChild(legend1);
+
+        // Create sliders container
+        var slidersContainer = document.createElement('div');
+        slidersContainer.style.marginBottom = '20px';
+        slidersContainer.style.padding = '10px';
+
+        // Create sliders for S1-S6 (0-180)
+        var sSliderGrid = document.createElement('div');
+        sSliderGrid.style.display = 'flex';
+        sSliderGrid.style.flexWrap = 'wrap';
+        sSliderGrid.style.gap = '5px';
+        for (let i = 1; i <= 6; i++) {
+            var sliderDiv = document.createElement('div');
+            sliderDiv.className = 'mui-textfield';
+            sliderDiv.style.width = 'calc(16.66% - 5px)';
+            sliderDiv.innerHTML = `
+                <label style="display: inline-block; ">S${i}: <span id="S${i}Value">0</span></label>
+                <input type="range" id="S${i}" min="0" max="180" value="0" style="width: calc(100% - 5px); vertical-align: middle;">
+            `;
+            sSliderGrid.appendChild(sliderDiv);
+        }
+        slidersContainer.appendChild(sSliderGrid);
+
+        // Create sliders for L1-L6 (0-255)
+        var lSliderGrid = document.createElement('div');
+        lSliderGrid.style.display = 'flex';
+        lSliderGrid.style.flexWrap = 'wrap';
+        lSliderGrid.style.gap = '5px';
+        for (let i = 1; i <= 6; i++) {
+            var sliderDiv = document.createElement('div');
+            sliderDiv.className = 'mui-textfield';
+            sliderDiv.style.width = 'calc(16.66% - 5px)';
+            sliderDiv.innerHTML = `
+                <label style="display: inline-block; ">L${i}: <span id="L${i}Value">0</span></label>
+                <input type="range" id="L${i}" min="0" max="255" value="0" style="width: calc(100% - 5px); vertical-align: middle;">
+            `;
+            lSliderGrid.appendChild(sliderDiv);
+        }
+        slidersContainer.appendChild(lSliderGrid);
+
+        var settingsField = document.createElement('div');
+        settingsField.className = 'mui-textfield';
+        var input = document.createElement('input');
+        input.id = "sliderSettings"
+        input.type = 'text';
+        input.placeholder = 'Enter value';
+        input.value = '';
+        settingsField.appendChild(input);
+
+        slidersContainer.appendChild(settingsField);
+
+        form.appendChild(slidersContainer);
 
         var legend = document.createElement('legend');
         legend.textContent = 'Paste table';
@@ -944,9 +1027,9 @@
         saveBtn.textContent = 'Save';
         saveBtn.addEventListener('click', function () {
             var data = collectTableData();
-            globalPasteTable = data; // Save data globally
-            globalPasteTableNumRows = data.length; // Save the number of rows globally
-            mui.overlay('off', modalEl); // Close modal after saving
+            globalPasteTable = data;
+            globalPasteTableNumRows = data.length;
+            mui.overlay('off', modalEl);
         });
         form.appendChild(saveBtn);
 
@@ -956,7 +1039,14 @@
         clearBtn.className = 'mui-btn mui-btn--secondary';
         clearBtn.textContent = 'Clear';
         clearBtn.addEventListener('click', function () {
-            clearTableData(); // Clear input values but keep the table structure
+            clearTableData();
+            document.getElementById('sliderSettings').value = '';
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById(`S${i}`).value = 0;
+                document.getElementById(`S${i}Value`).textContent = '0';
+                document.getElementById(`L${i}`).value = 0;
+                document.getElementById(`L${i}Value`).textContent = '0';
+            }
         });
         form.appendChild(clearBtn);
 
@@ -975,22 +1065,73 @@
         // Show modal
         mui.overlay('on', modalEl);
 
+        // Add event listeners for sliders
+        function updateSliderSettings(sliderId, value) {
+            var settingsField = document.getElementById('sliderSettings');
+            var currentValue = settingsField.value;
+            var prefix = sliderId.startsWith('S') ? 'S' : 'L';
+            var setting = `${prefix}${sliderId.slice(1)}${value}`;
+
+            testAnimation(null,setting)
+
+            if (sliderId === 'S1') {
+                if (currentValue.startsWith('S1')) {
+                    currentValue = currentValue.replace(/S1\d+/, setting);
+                    settingsField.value = currentValue;
+                } else {
+                    settingsField.value = setting + (currentValue ? ',' + currentValue.replace(/^S1\d+,?/, '') : '');
+                }
+            } else {
+                var regex = new RegExp(`${prefix}${sliderId.slice(1)}\\d+`);
+                if (regex.test(currentValue)) {
+                    settingsField.value = currentValue.replace(regex, setting);
+                } else {
+                    settingsField.value = currentValue ? `${currentValue},${setting}` : setting;
+                }
+            }
+        }
+
+        for (let i = 1; i <= 6; i++) {
+            // S1-S6 sliders
+            let sSlider = document.getElementById(`S${i}`);
+            let sValue = document.getElementById(`S${i}Value`);
+            if (sSlider && sValue) {
+                sSlider.addEventListener('input', function () {
+                    sValue.textContent = this.value;
+                });
+                sSlider.addEventListener('mouseup', function () {
+                    updateSliderSettings(`S${i}`, this.value);
+                });
+            }
+
+            // L1-L6 sliders
+            let lSlider = document.getElementById(`L${i}`);
+            let lValue = document.getElementById(`L${i}Value`);
+            if (lSlider && lValue) {
+                lSlider.addEventListener('input', function () {
+                    lValue.textContent = this.value;
+                });
+                lSlider.addEventListener('mouseup', function () {
+                    updateSliderSettings(`L${i}`, this.value);
+                });
+            }
+        }
+
         // Populate fields if there's existing data
         document.getElementById('numRows').value = globalPasteTableNumRows;
         if (globalPasteTableNumRows > 0) {
-            generateTable(globalPasteTable); // Generate the table with existing data
+            generateTable(globalPasteTable);
         }
 
         // Function to generate the table
         function generateTable(data) {
             var numRows = parseInt(document.getElementById('numRows').value, 10) || globalPasteTableNumRows;
             var tableContainer = document.getElementById('tableContainer');
-            removePasteTableChildNodes(tableContainer); // Clear existing table if any
+            removePasteTableChildNodes(tableContainer);
 
             if (numRows > 0) {
                 var table = document.createElement('table');
                 table.className = 'mui-table';
-                // Create rows
                 for (var i = 0; i < numRows; i++) {
                     var row = table.insertRow();
                     var myCell = row.insertCell(0);
@@ -1000,11 +1141,21 @@
                     var input = document.createElement('input');
                     input.type = 'text';
                     input.placeholder = 'Enter value';
-                    input.value = data[i] || ''; // Populate with existing data if available
+                    input.value = data[i] || '';
                     textFieldDiv.appendChild(input);
                     myCell.appendChild(textFieldDiv);
-                }
 
+                    var buttonCell = row.insertCell(1);
+                    buttonCell.style.padding = '0';
+                    buttonCell.style.textAlign = 'center';
+                    var testButton = createTestButton();
+                    buttonCell.appendChild(testButton);
+                    testButton.addEventListener('click', function (event) {
+                        var target = event.target;
+                        var commandInput = this.parentNode.parentNode.cells[0].querySelector('input').value;
+                        testAnimation(target, commandInput);
+                    });
+                }
                 tableContainer.appendChild(table);
             } else {
                 showAlert("Please enter a valid number of rows.");
@@ -1015,14 +1166,12 @@
         function collectTableData() {
             var table = document.querySelector('#tableContainer table');
             var data = [];
-
             if (table) {
                 for (var i = 0; i < table.rows.length; i++) {
                     var rowData = table.rows[i].cells[0].querySelector('input').value;
                     data.push(rowData);
                 }
             }
-
             return data;
         }
 
@@ -1077,9 +1226,16 @@
 
         if (myRowDataSplit[1]) {
             var anCell = createEditableCell(myRowDataSplit[1], "500px");
+            anCell.addEventListener('click', function (event) {
+                animationCellClicked(event);
+            });
         } else {
             var anCell = createEditableCell("", "500px");
+            anCell.addEventListener('click', function (event) {
+                animationCellClicked(event);
+            });
         }
+
         row.appendChild(anCell);
 
         var actionCell = document.createElement("td");
