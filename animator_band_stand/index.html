@@ -21,8 +21,8 @@
             data-url="/mode">Left</button>
         <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
             data-url="/mode">Right</button>
-        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button"
-            data-value="right_held" data-url="/mode">Right Held</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right_held"
+            data-url="/mode">Right Held</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -321,9 +321,11 @@
             <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
-            <div>AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use "customers_owned_music_filename"</div>
+            <div>AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use
+                "customers_owned_music_filename"</div>
             <div>
-                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
+                    Animations</button>
                 <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
                 <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
                 <table id="dataTable" class="mui-table">
@@ -357,6 +359,14 @@
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
+        getHostName()
+        getVolume()
+        getLocalIp()
+        getBuiltInSoundTracks()
+        getCustomersSoundTracks()
+    })
+
+    function getHostName() {
         // get website url
         fetch('/get-host-name', {
             method: 'POST',
@@ -373,8 +383,9 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-        // get volume
+    function getVolume() {
         fetch('/get-volume', {
             method: 'POST',
             headers: {
@@ -390,8 +401,9 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-        // get local ip
+    function getLocalIp() {
         fetch('/get-local-ip', {
             method: 'POST',
             headers: {
@@ -410,8 +422,9 @@
                 console.log(error);
                 showAlert(error);
             });
+    }
 
-        // get built in sound tracks
+    function getBuiltInSoundTracks() {
         fetch('/get-built-in-sound-tracks', {
             method: 'POST',
             headers: {
@@ -429,8 +442,9 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-        // get customers sound tracks
+    function getCustomersSoundTracks() {
         fetch('/get-customers-sound-tracks', {
             method: 'POST',
             headers: {
@@ -448,7 +462,7 @@
             .catch(function (error) {
                 console.log(error);
             });
-    });
+    }
 
     function setBuiltInSoundTrackButtons(my_data) {
         // Loop through the data and create a button for each item
@@ -753,7 +767,7 @@
     var animationTableBody = document.querySelector("#dataTable tbody");
 
     saveAnimationScriptDataButton.addEventListener("click", function () {
-        saveData();
+        saveAnimationScriptData();
     });
 
     function populateAnimationsTable(data) {
@@ -836,7 +850,7 @@
         setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
     }
 
-        // Global variables to store number of rows and data
+    // Global variables to store number of rows and data
     var globalPasteTableNumRows = 0;
     var globalPasteTable = [];
     var globalRowIndex = 0; // Index for data
@@ -1175,7 +1189,7 @@
         populateAnimationsTable(combinedData)
     }
 
-    function saveData() {
+    function saveAnimationScriptData() {
         saveAnimationScriptDataButton.setAttribute("disabled", "true");
         var rows = Array.from(animationTableBody.querySelectorAll("tr"));
 
