@@ -199,6 +199,8 @@ add_snd = c_a_s["add_sounds_animate"]
 
 cont_run = False
 ts_mode = False
+t_s = []
+t_elsp = 0.0
 
 local_ip = ""
 
@@ -1103,16 +1105,17 @@ def play_number(number):
         ply_a_1(wav_path)
 
 
-def no_trk():
+async def no_trk():
+    global ovrde_sw_st
     ply_a_1("/sd/mvc/no_user_soundtrack_found.wav")
     while True:
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
+        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left" or cont_run:
             break
-        if r_sw.fell:
+        elif sw == "right":
             ply_a_1("/sd/mvc/create_sound_track_files.wav")
             break
+        await upd_vol_async(.1)
 
 
 def spk_web():
@@ -1151,7 +1154,7 @@ async def an_async(fn):
             hi = len(all_o) - 1
             cur = all_o[random.randint(0, hi)]
         if ts_mode:
-            ts(cur)
+            an_ts(cur)
         else:
             if "customers_owned_music_" in cur:
                 await an_ls(cur, "ZRAND")
@@ -1163,12 +1166,12 @@ async def an_async(fn):
                 await an_ls(cur, "FRWK")
             else:
                 if ts_mode == True:
-                    await t_l(cur)
+                    await an_lightning(cur)
                 else:
                     await an_ls(cur, "LIGHT")
     except Exception as e:
         files.log_item(e)
-        no_trk()
+        await no_trk()
         cfg["option_selected"] = "random built in"
         return
     is_running_an = False
@@ -1253,16 +1256,21 @@ async def an_ls(fn, my_type):
             return
         await upd_vol_async(.1)
 
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
 
-def ts(fn):
+def an_ts(fn):
     print("Time stamp mode:")
-    global ts_mode
+    global t_s, t_elsp, ts_mode
 
     cf = "customers_owned_music_" in fn
 
-    ts = files.read_json_file(
-        "/sd/t_s_def/timestamp mode.json")
-    ts["flashTime"] = []
+    t_s= []
 
     fn = fn.replace("customers_owned_music_", "")
 
@@ -1272,27 +1280,26 @@ def ts(fn):
     else:
         w0 = audiocore.WaveFile(
             open("/sd/snds/" + fn + ".wav", "rb"))
-    mix.voice[0].play(w1, loop=False)
+    mix.voice[0].play(w0, loop=False)
 
     st = time.monotonic()
     upd_vol(.1)
 
     while True:
-        te = time.monotonic()-st
+        t_elsp = time.monotonic()-st
         r_sw.update()
         if r_sw.fell:
-            ts["flashTime"].append(te)
-            print(te)
+            add_command_to_ts("")
         if not mix.voice[0].playing:
+            add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
-            ts["flashTime"].append(5000)
             if cf:
                 files.write_json_file(
-                    "/sd/customers_owned_music/" + fn + ".json", ts)
+                    "/sd/customers_owned_music/" + fn + ".json", t_s)
             else:
                 files.write_json_file(
-                    "/sd/snds/" + fn + ".json", ts)
+                    "/sd/snds/" + fn + ".json", t_s)
             break
 
     ts_mode = False
@@ -1301,7 +1308,7 @@ def ts(fn):
     ply_a_1("/sd/mvc/animations_are_now_active.wav")
 
 
-async def t_l(file_name):
+async def an_lightning(file_name):
     global cont_run
 
     ftd = files.read_json_file(
