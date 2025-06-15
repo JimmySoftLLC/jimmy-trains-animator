@@ -51,6 +51,7 @@ def gc_col(c_p):
     files.log_item("Point " + c_p +
                    " Available memory: {} bytes".format(start_mem))
 
+
 def f_exists(filename):
     try:
         _ = os.stat(filename)
@@ -58,6 +59,7 @@ def f_exists(filename):
     except OSError:
         f_exists = False
     return f_exists
+
 
 def rst():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -153,6 +155,8 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 cfg = files.read_json_file("/sd/cfg.json")
 
+cfg_backup = files.read_json_file("/sd/cfg.json")
+
 snd_o = files.return_directory("", "/sd/snds", ".wav")
 
 cus_o = files.return_directory(
@@ -177,7 +181,7 @@ c_m = files.read_json_file("/sd/mvc/main_menu.json")
 m_mnu = c_m["main_menu"]
 
 c_w = files.read_json_file("/sd/mvc/web_menu.json")
-w_mnu = c_w["web_menu"]
+web_m = c_w["web_menu"]
 
 c_l = files.read_json_file(
     "/sd/mvc/light_string_menu.json")
@@ -191,7 +195,7 @@ v_s = c_v["volume_settings"]
 
 c_a_s = files.read_json_file(
     "/sd/mvc/add_sounds_animate.json")
-a_s = c_a_s["add_sounds_animate"]
+add_snd = c_a_s["add_sounds_animate"]
 
 cont_run = False
 ts_mode = False
@@ -338,7 +342,6 @@ def l_tst():
 
     for b in bars:
         for l in b:
-            print("Bar id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -346,14 +349,12 @@ def l_tst():
         led.show()
     for b in bolts:
         for l in b:
-            print("Bolt id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
         led.fill((0, 0, 0))
         led.show()
     for n in noods:
-        print("Nood id: ", n[0])
         led[n[0]] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -361,7 +362,6 @@ def l_tst():
         led.show()
     for b in nbolts:
         for l in b:
-            print("NBolt id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -369,7 +369,6 @@ def l_tst():
         led.show()
     for b in witches:
         for l in b:
-            print("Witch id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -377,7 +376,6 @@ def l_tst():
         led.show()
     for b in saucers:
         for l in b:
-            print("Saucer id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -385,7 +383,6 @@ def l_tst():
         led.show()
     for b in ghosts:
         for l in b:
-            print("Ghost id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -393,7 +390,6 @@ def l_tst():
         led.show()
     for b in jets:
         for l in b:
-            print("Jet id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -401,7 +397,6 @@ def l_tst():
         led.show()
     for b in stars:
         for l in b:
-            print("Star id: ", l)
             led[l] = (50, 50, 50)
         led.show()
         time.sleep(.3)
@@ -739,7 +734,7 @@ if (web):
                 s.extend(snd_o)
                 s = files.json_stringify(s)
                 return Response(req, s)
-            
+
             @server.route("/test-animation", [POST])
             def btn(request: Request):
                 stp_a_0()
@@ -748,7 +743,7 @@ if (web):
                 gc_col("Save Data.")
                 add_cmd(rq_d["an"])
                 return Response(request, "success")
-            
+
             @server.route("/get-animation", [POST])
             def btn(request: Request):
                 global cfg, cont_run, ts_mode
@@ -771,7 +766,7 @@ if (web):
                     else:
                         f_n = "/sd/t_s_def/timestamp mode.json"
                         return FileResponse(request, f_n, "/")
-                    
+
             @server.route("/get-bar-colors", [POST])
             def btn(req: Request):
                 s = files.json_stringify(cfg["bars"])
@@ -799,25 +794,17 @@ if (web):
                     for i in bi:
                         led[i] = (rq_d["r"],
                                   rq_d["g"], rq_d["b"])
-                        led.show()
+                    led.show()
                 elif rq_d["item"] == "bolts":
                     cfg["bolts"] = {"r": rq_d["r"],
                                     "g": rq_d["g"], "b": rq_d["b"]}
                     bi = []
                     bi.extend(bolt_arr)
-                    for i in bi:
-                        led[i] = (rq_d["r"],
-                                  rq_d["g"], rq_d["b"])
-                        led.show()
-                elif rq_d["item"] == "nbolts":
-                    cfg["nbolts"] = {"r": rq_d["r"],
-                                     "g": rq_d["g"], "b": rq_d["b"]}
-                    bi = []
                     bi.extend(nbolt_arr)
                     for i in bi:
                         led[i] = (rq_d["r"],
                                   rq_d["g"], rq_d["b"])
-                        led.show()
+                    led.show()
                 elif rq_d["item"] == "variationBolt":
                     print(rq_d)
                     cfg["v"] = {"r1": rq_d["r"], "g1": rq_d["g"], "b1": rq_d["b"],
@@ -832,7 +819,7 @@ if (web):
             def buttonpress(req: Request):
                 stp_a_1()
                 return Response(req, local_ip)
-            
+
             @server.route("/save-data", [POST])
             def btn(request: Request):
                 global data
@@ -846,7 +833,8 @@ if (web):
                     if rq_d[0] == rq_d[1]:
                         f_n = ""
                         if "customers_owned_music_" in rq_d[3]:
-                            snd_f = rq_d[3].replace("customers_owned_music_", "")
+                            snd_f = rq_d[3].replace(
+                                "customers_owned_music_", "")
                             f_n = "/sd/customers_owned_music/" + \
                                 snd_f + ".json"
                         else:
@@ -913,7 +901,7 @@ def stp_all_cmds():
 
 def rst_l_def():
     global cfg
-    cfg["light_string"] = "bar-10,bolt-1,bar-10,bolt-1,bar-10,bolt-1"
+    cfg["light_string"] = "nbolt-1,bar-10,bar-10,nbolt-2,bar-10,nbolt-3,bar-10,nbolt-2,bar-10,nbolt-1,bar-10"
 
 
 def rst_def_col():
@@ -1031,22 +1019,24 @@ def stp_a_1():
     while mix.voice[1].playing:
         pass
 
+
 def stp_a_0():
     mix.voice[0].stop()
     while mix.voice[0].playing:
         pass
 
 
-def exit_early():
+def exit_early(wait_time=3.0):
     global cont_run, ovrde_sw_st, is_running_an, exit_set_hdw_async
     sw = utilities.switch_state(
-        l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        l_sw, r_sw, time.sleep, wait_time, ovrde_sw_st)
     if sw == "left" and cfg["can_cancel"]:
         exit_set_hdw_async = True
         mix.voice[0].stop()
-        sw = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-    if sw == "left" or sw == "left_held":
+        l_sw.update()
+        r_sw.update()
+    if sw == "left_held":
+        exit_set_hdw_async = True
         mix.voice[0].stop()
         cont_run = False
         stp_all_cmds()
@@ -1096,13 +1086,21 @@ def spk_lght(play_intro):
             ply_a_1("/sd/mvc/current_light_settings_are.wav")
         for index, element in enumerate(elements):
             ply_a_1("/sd/mvc/position.wav")
-            ply_a_1("/sd/mvc/" + str(index+1) + ".wav")
+            play_number(index+1)
             ply_a_1("/sd/mvc/is.wav")
             ply_a_1("/sd/mvc/" + element + ".wav")
     except Exception as e:
         files.log_item(e)
         ply_a_1("/sd/mvc/no_lights_in_light_string.wav")
         return
+    
+def play_number(number):
+    # Convert number to string to process each digit
+    digits = str(number)
+    for digit in digits:
+        # Construct path for single-digit WAV file
+        wav_path = f"/sd/mvc/{digit}.wav"
+        ply_a_1(wav_path)
 
 
 def no_trk():
@@ -1174,6 +1172,7 @@ async def an_async(fn):
         cfg["option_selected"] = "random built in"
         return
     is_running_an = False
+    cfg = files.read_json_file("/sd/cfg.json")
     gc_col("Animation complete.")
 
 
@@ -1203,6 +1202,10 @@ async def an_ls(fn, my_type):
     else:
         flsh_t = files.read_json_file(
             "/sd/snds/" + fn + ".json")
+        
+    ft_last = flsh_t[len(flsh_t)-1].split("|")
+    tm_last = float(ft_last[0]) + 1
+    flsh_t.append(str(tm_last) + "|")
 
     if cust_f:
         w0 = audiocore.WaveFile(
@@ -1334,7 +1337,7 @@ async def t_l(file_name):
 
 
 async def set_hdw_async(input_string, dur=0):
-    global exit_set_hdw_async
+    global exit_set_hdw_async, cfg, cfg_backup
     segs = input_string.split(",")
     # Process each segment
     for seg in segs:
@@ -1353,11 +1356,33 @@ async def set_hdw_async(input_string, dur=0):
         # ZCOLCH = Color change
         elif seg[0:] == 'ZCOLCH':
             multi_color()
-            await asyncio.sleep(dur)
+            await asyncio.sleep(dur)  
+        # LIGHT = Lightning  
         elif seg[0:] == 'LIGHT':
             ltng()
+        # FRWK = Fireworks
         elif seg[0:] == 'FRWK':
             await frwk(dur)
+        # BOLT_R_G_B = Bolt color, R = red, G = green, B = blue
+        elif seg[:4] == 'BOLT':
+            seg_split = seg.split("_")
+            cfg["bolts"]["r"] = int(seg_split[1])
+            cfg["bolts"]["g"] = int(seg_split[2])
+            cfg["bolts"]["b"] = int(seg_split[3])
+        # BAR_R_G_B = Bolt color, R = red, G = green, B = blue
+        elif seg[:3] == 'BAR':
+            seg_split = seg.split("_")
+            cfg["bars"]["r"] = int(seg_split[1])
+            cfg["bars"]["g"] = int(seg_split[2])
+            cfg["bars"]["b"] = int(seg_split[3])
+        # RESET_COLORS = Reset colors to config file
+        elif seg[:12] == 'RESET_COLORS':
+            cfg["bolts"]["r"] = cfg_backup["bolts"]["r"]
+            cfg["bolts"]["g"] = cfg_backup["bolts"]["g"]
+            cfg["bolts"]["b"] = cfg_backup["bolts"]["b"]
+            cfg["bars"]["r"] = cfg_backup["bars"]["r"]
+            cfg["bars"]["g"] = cfg_backup["bars"]["g"]
+            cfg["bars"]["b"] = cfg_backup["bars"]["b"]
         # AN_XXX = Animation XXX filename
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
@@ -1486,26 +1511,30 @@ def r_w_b():
         b = 255
     return r, g, b
 
+
 async def frwk(duration):
     global exit_set_hdw_async
     st = time.monotonic()
     led.brightness = 1.0
 
-    # choose which bar none to all to fire
+    
     bar_f = []
-    for i, arr in enumerate(bars):
-        if i == random.randint(0, (len(bars)-1)):
-            bar_f.append(i)
 
-    if len(bar_f) == 0:
-        i == random.randint(0, (len(bars)-1))
-        bar_f.append(i)
+    if len(bars) > 0:
+        # choose which bar or more to fire
+        for i, arr in enumerate(bars):
+            if i == random.randint(0, (len(bars)-1)):
+                bar_f.append(i)
+        # always fire at least one bar
+        if len(bar_f) == 0:
+            i == random.randint(0, (len(bars)-1))
+            bar_f.append(i)
 
     for bolt in bolts:
         r, g, b = r_w_b()
         for bolt_index in bolt:
             led[bolt_index] = (r, g, b)
-    
+
     for nbolt in nbolts:
         for nbolt_index in nbolt:
             r, g, b = r_w_b()
@@ -1541,7 +1570,7 @@ async def frwk(duration):
             rst_bar()
             led.show()
             return
-        
+
 
 def multi_color():
     for i in range(0, n_px):
@@ -1764,6 +1793,7 @@ class BseSt(Ste):
             elif sw == "right":
                 mch.go_to('main_menu')
 
+
 class Main(Ste):
 
     def __init__(self):
@@ -1864,6 +1894,51 @@ class Snds(Ste):
                     pass
             mch.go_to('base_state')
 
+class AddSnds(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'add_sounds_animate'
+
+    def enter(self, mch):
+        files.log_item('Add sounds animate')
+        ply_a_1("/sd/mvc/add_sounds_animate.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global ts_mode
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_1(
+                "/sd/mvc/" + add_snd[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(add_snd)-1:
+                self.i = 0
+        if sw == "right":
+            sel_mnu = add_snd[self.sel_i]
+            if sel_mnu == "hear_instructions":
+                ply_a_1("/sd/mvc/create_sound_track_files.wav")
+            elif sel_mnu == "timestamp_mode_on":
+                ts_mode = True
+                ply_a_1("/sd/mvc/timestamp_mode_on.wav")
+                ply_a_1("/sd/mvc/timestamp_instructions.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "timestamp_mode_off":
+                ts_mode = False
+                ply_a_1("/sd/mvc/timestamp_mode_off.wav")
+            else:
+                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 class VolSet(Ste):
 
@@ -2009,6 +2084,54 @@ class Light(Ste):
                 upd_l_str()
                 mch.go_to('base_state')
 
+class WebOpt(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'web_options'
+
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        sel_web()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_1("/sd/mvc/" + web_m[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(web_m)-1:
+                self.i = 0
+        if sw == "right":
+            selected_menu_item = web_m[self.sel_i]
+            if selected_menu_item == "web_on":
+                cfg["serve_webpage"] = True
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "web_off":
+                cfg["serve_webpage"] = False
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "hear_url":
+                spk_str(cfg["HOST_NAME"], True)
+                sel_web()
+            elif selected_menu_item == "hear_instr_web":
+                ply_a_1("/sd/mvc/web_instruct.wav")
+                sel_web()
+            else:
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
+
+
 ###############################################################################
 # Create the state machine
 
@@ -2017,8 +2140,10 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
+st_mch.add(AddSnds())
 st_mch.add(VolSet())
 st_mch.add(Light())
+st_mch.add(WebOpt())
 
 aud_mute.value = False
 
