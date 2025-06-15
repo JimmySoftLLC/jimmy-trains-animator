@@ -1193,15 +1193,15 @@ async def an_ls(fn, my_type):
             files.log_item(e)
             ply_a_1("/sd/mvc/no_timestamp_file_found.wav")
             while True:
-                l_sw.update()
-                r_sw.update()
-                if l_sw.fell:
+                sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+                if sw == "left":
                     ts_mode = False
                     return
-                if r_sw.fell:
+                elif sw == "right":
                     ts_mode = True
                     ply_a_1("/sd/mvc/timestamp_instructions.wav")
                     return
+                await upd_vol_async(.1)
     else:
         flsh_t = files.read_json_file(
             "/sd/snds/" + fn + ".json")
