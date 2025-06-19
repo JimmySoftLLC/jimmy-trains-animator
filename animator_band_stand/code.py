@@ -177,7 +177,7 @@ cfg = files.read_json_file("/sd/cfg.json")
 snd_opt = files.return_directory("", "/sd/snds", ".wav")
 
 cust_snd_opt = files.return_directory(
-    "customers_owned_music_", "/sd/customers_owned_music", ".wav")
+    "c_", "/sd/customers_owned_music", ".wav")
 
 all_snd_opt = []
 all_snd_opt.extend(snd_opt)
@@ -443,8 +443,8 @@ if (web):
             stp_a_0()
             rq_d = request.json()
             snd_f = rq_d["an"]
-            if "customers_owned_music_" in snd_f:
-                snd_f = snd_f.replace("customers_owned_music_", "")
+            if "c_" in snd_f:
+                snd_f = snd_f.replace("c_", "")
                 if (f_exists("/sd/customers_owned_music/" + snd_f + ".json") == True):
                     f_n = "/sd/customers_owned_music/" + snd_f + ".json"
                     print(f_n)
@@ -460,20 +460,6 @@ if (web):
                     f_n = "/sd/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
 
-        @server.route("/delete-file", [POST])
-        def btn(request: Request):
-            stp_a_0()
-            rq_d = request.json()
-            f_n = ""
-            if "customers_owned_music_" in rq_d["an"]:
-                snd_f = rq_d["an"].replace("customers_owned_music_", "")
-                f_n = "/sd/customers_owned_music/" + snd_f + ".json"
-            else:
-                f_n = "/sd/snds/" + rq_d["an"] + ".json"
-            os.remove(f_n)
-            gc_col("get data")
-            return JSONResponse(request, "file deleted")
-
         data = []
 
         @server.route("/save-data", [POST])
@@ -488,8 +474,8 @@ if (web):
                 data.extend(rq_d[2])
                 if rq_d[0] == rq_d[1]:
                     f_n = ""
-                    if "customers_owned_music_" in rq_d[3]:
-                        snd_f = rq_d[3].replace("customers_owned_music_", "")
+                    if "c_" in rq_d[3]:
+                        snd_f = rq_d[3].replace("c_", "")
                         f_n = "/sd/customers_owned_music/" + \
                             snd_f + ".json"
                     else:
@@ -804,12 +790,12 @@ async def an_async(f_nm):
 async def an_light_async(f_nm):
     global ts_mode, cont_run
 
-    cust_f = "customers_owned_music_" in f_nm
+    cust_f = "c_" in f_nm
 
     flsh_t = []
 
     if cust_f:
-        f_nm = f_nm.replace("customers_owned_music_", "")
+        f_nm = f_nm.replace("c_", "")
         if (f_exists("/sd/customers_owned_music/" + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
                 "/sd/customers_owned_music/" + f_nm + ".json")
@@ -866,12 +852,12 @@ async def an_light_async(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
+                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos),dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1])
+                result = await set_hdw_async(ft1[1],dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -898,11 +884,11 @@ def an_ts(f_nm):
     print("time stamp mode")
     global ts_mode
 
-    cust_f = "customers_owned_music_" in f_nm
+    cust_f = "c_" in f_nm
 
     t_s = []
 
-    f_nm = f_nm.replace("customers_owned_music_", "")
+    f_nm = f_nm.replace("c_", "")
 
     if cust_f:
         w0 = audiocore.WaveFile(
@@ -945,7 +931,7 @@ sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
 
-async def set_hdw_async(input_string):
+async def set_hdw_async(input_string, dur=0):
     global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
@@ -987,13 +973,12 @@ async def set_hdw_async(input_string):
                 else:
                     br -= 1
                     led.brightness = float(br/100)
-                upd_vol_async(.01)
-        # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use "customers_owned_music_filename"
+                upd_vol_async(.02)
+        # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others in the customers folder use "c_filename"
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
-            # Process each command as an async operation
-            if seg_split[1] == "customers":
-                await an_async(seg_split[1]+"_"+seg_split[2]+"_"+seg_split[3]+"_"+seg_split[4])
+            if seg_split[1] == "c":
+                await an_async(seg_split[1]+"_"+seg_split[2])
             else:
                 await an_async(seg_split[1])
 
