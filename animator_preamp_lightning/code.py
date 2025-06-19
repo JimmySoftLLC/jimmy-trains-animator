@@ -1390,7 +1390,7 @@ async def set_hdw_async(input_string, dur=0):
             cfg["bars"]["r"] = cfg_backup["bars"]["r"]
             cfg["bars"]["g"] = cfg_backup["bars"]["g"]
             cfg["bars"]["b"] = cfg_backup["bars"]["b"]
-        # AN_XXX = Animation XXX filename
+        # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others use "customers_owned_music_filename"
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
             # Process each command as an async operation

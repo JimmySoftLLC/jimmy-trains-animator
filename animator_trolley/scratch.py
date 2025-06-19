@@ -944,7 +944,10 @@ async def set_hdw_async(input_string):
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
             # Process each command as an async operation
-            await an_async(seg_split[1])
+            if seg_split[1] == "customers":
+                await an_async(seg_split[1]+"_"+seg_split[2]+"_"+seg_split[3]+"_"+seg_split[4])
+            else:
+                await an_async(seg_split[1])
         # TXXX = Train XXX throttle -100 to 100
         elif seg[0] == 'T':
             v = int(seg[1:])/100
