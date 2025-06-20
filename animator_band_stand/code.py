@@ -25,6 +25,7 @@
 import utilities
 from adafruit_debouncer import Debouncer
 import neopixel
+from rainbowio import colorwheel
 from analogio import AnalogIn
 import asyncio
 from adafruit_motor import servo
@@ -220,10 +221,10 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 
-num_px = 2
+n_px = 2
 
 # 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP17, num_px)
+led = neopixel.NeoPixel(board.GP17, n_px)
 
 gc_col("Neopixels setup")
 
@@ -931,7 +932,7 @@ sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
 
-async def set_hdw_async(input_string, dur=0):
+async def set_hdw_async(input_string, dur=3):
     global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
@@ -974,6 +975,10 @@ async def set_hdw_async(input_string, dur=0):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.02)
+        # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+        elif seg[:2] == 'ZR':
+            v = float(seg[2:])
+            await rbow(v, dur)
         # AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others in the customers folder use "c_filename"
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
@@ -981,6 +986,34 @@ async def set_hdw_async(input_string, dur=0):
                 await an_async(seg_split[1]+"_"+seg_split[2])
             else:
                 await an_async(seg_split[1])
+
+async def rbow(spd, dur):
+    global exit_set_hdw_async
+    st = time.monotonic()
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0, 255, 1):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
 
 ################################################################################
 # State Machine
@@ -1098,10 +1131,10 @@ class Main(Ste):
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
-            elif sel_mnu == "add_sounds_animate":
-                mch.go_to('add_sounds_animate')
-            elif sel_mnu == "web_options":
-                mch.go_to('web_options')
+            # elif sel_mnu == "add_sounds_animate":
+            #     mch.go_to('add_sounds_animate')
+            # elif sel_mnu == "web_options":
+            #     mch.go_to('web_options')
             elif sel_mnu == "volume_settings":
                 mch.go_to('volume_settings')
             else:
@@ -1166,51 +1199,51 @@ class Snds(Ste):
             mch.go_to('base_state')
 
 
-class AddSnds(Ste):
+# class AddSnds(Ste):
 
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
+#     def __init__(self):
+#         self.i = 0
+#         self.sel_i = 0
 
-    @property
-    def name(self):
-        return 'add_sounds_animate'
+#     @property
+#     def name(self):
+#         return 'add_sounds_animate'
 
-    def enter(self, mch):
-        files.log_item('Add sounds animate')
-        ply_a_0("/sd/mvc/add_sounds_animate.wav")
-        l_r_but()
-        Ste.enter(self, mch)
+#     def enter(self, mch):
+#         files.log_item('Add sounds animate')
+#         ply_a_0("/sd/mvc/add_sounds_animate.wav")
+#         l_r_but()
+#         Ste.enter(self, mch)
 
-    def exit(self, mch):
-        Ste.exit(self, mch)
+#     def exit(self, mch):
+#         Ste.exit(self, mch)
 
-    def upd(self, mch):
-        global ts_mode
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left":
-            ply_a_0(
-                "/sd/mvc/" + add_snd[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(add_snd)-1:
-                self.i = 0
-        if sw == "right":
-            sel_mnu = add_snd[self.sel_i]
-            if sel_mnu == "hear_instructions":
-                ply_a_0("/sd/mvc/create_sound_track_files.wav")
-            elif sel_mnu == "timestamp_mode_on":
-                ts_mode = True
-                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
-                ply_a_0("/sd/mvc/timestamp_instructions.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "timestamp_mode_off":
-                ts_mode = False
-                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-            else:
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
+#     def upd(self, mch):
+#         global ts_mode
+#         sw = utilities.switch_state(
+#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+#         if sw == "left":
+#             ply_a_0(
+#                 "/sd/mvc/" + add_snd[self.i] + ".wav")
+#             self.sel_i = self.i
+#             self.i += 1
+#             if self.i > len(add_snd)-1:
+#                 self.i = 0
+#         if sw == "right":
+#             sel_mnu = add_snd[self.sel_i]
+#             if sel_mnu == "hear_instructions":
+#                 ply_a_0("/sd/mvc/create_sound_track_files.wav")
+#             elif sel_mnu == "timestamp_mode_on":
+#                 ts_mode = True
+#                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+#                 ply_a_0("/sd/mvc/timestamp_instructions.wav")
+#                 mch.go_to('base_state')
+#             elif sel_mnu == "timestamp_mode_off":
+#                 ts_mode = False
+#                 ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+#             else:
+#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
+#                 mch.go_to('base_state')
 
 
 class VolSet(Ste):
@@ -1271,7 +1304,7 @@ class VolSet(Ste):
             mch.go_to('base_state')
 
 
-class WebOpt(Ste):
+# class WebOpt(Ste):
     def __init__(self):
         self.i = 0
         self.sel_i = 0
@@ -1326,9 +1359,9 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
-st_mch.add(AddSnds())
+# st_mch.add(AddSnds())
 st_mch.add(VolSet())
-st_mch.add(WebOpt())
+# st_mch.add(WebOpt())
 
 aud_en.value = True
 
