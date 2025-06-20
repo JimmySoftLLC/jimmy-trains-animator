@@ -1,39 +1,76 @@
-#Jimmy Trains show manifest
-Badge
-6 table cloths
-2 Transformers
-Hand truck
-Square POS
-Business cards, cups, pens, clipboards
-Card stock paper
-Show units
-Feller
-Outhouse
-Flag
-Boy with kite
-Lightning
-Clamps
-Short bridges inside
-Mounting boards inside
-City lights kiosk prototype
-Davenport store
-Bar
-Movie theater
-Modules, injector, neo-6, neo-6 hv
-Mini keyboard
-Fabric tent and associated fitting tube etc.
-Christmas in the park
-Bandstand
-Drive in
-Any lighting products
-Mini Keyboard
-Video car prototype
-Mini keyboard
-Snowman car prototype
-Camera car prototype
-Christmas on wheels, tree, 2 candy canes, 2 logo cars
-Casting person prototype
+# Jimmy Trains show manifest
+
+## Office
+
+* Badge
+* Business cards
+* cups
+* pens
+* clipboards
+* cardstock
+* normal paper
+* notebook
+
+## Product
+
+* Drive in (3)
+* Lightning (?)
+* Outhouse (2)
+* Feller (2)
+* Bandstand (1)
+* Flag (3)
+* Kite (3)
+* Big foot O (2)
+* Fly O (2)
+
+## Display JACKSONVILLE
+
+* 8 foot table cloths (3)
+* 6 foot table cloths (3) for covers
+* drive in
+* bandstand (bumper short track)
+* lightning (turn track)
+* outhouse (then large track)
+* big foot
+* flag (then short track)
+* feller (then large track)
+* fly (then short track)
+* kite
+* transformer
+* city lights with bumper
+* transformer
+* trolley track
+
+## Show units
+
+* drive in
+* bandstand
+* lightning
+* outhouse
+* big foot
+* flag
+* feller
+* fly
+* kite
+* city lights
+* trolley track
+* transformer lionel (2)
+* power supplys 5v (9)
+* large bridges (2)
+* short bridges (3)
+* curved bridges (4)
+* city lights modules (3)
+* trolley
+* camera car
+* video car
+* snowman car
+* nessy ?
+* street lights ?
+* price frames
+
+
 4 power strips
+
 Microfiber towels
 Mac and power supply
 Surface pro and power supply
@@ -67,14 +104,11 @@ Banner with elbows, pipes, flanges and clamps
 HD Tv, remote, cables, batteries
 Tv tripod
 Jimmy trains floor mat
-Product
-Drive in
-Lightning
-Outhouse
-Feller
-Bandstand
-Christmas in the park?
-Flag
+
 Boy with kite
 Pillow for naps in car
 Check mix, apples, coke for caffeine
+
+2 Transformers
+Hand truck
+Square POS
