@@ -321,7 +321,8 @@
             <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
-            <div>AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others in the customers folder use
+            <div>AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others in the customers
+                folder use
                 "c_filename"</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
@@ -529,7 +530,7 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        showAlert('Try Again');
                     });
             });
             builtInTracksContainer.appendChild(button);
@@ -622,7 +623,7 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        showAlert('Try Again');
                     });
             });
             myTracksContainer.appendChild(button);
@@ -710,7 +711,7 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    showAlert('Try Again');
                 });
         });
     });
@@ -819,6 +820,12 @@
             const rowElement = target.parentNode.parentNode;
             const commandInput = getTextOfInput(rowElement, 3);
             testAnimation(target, commandInput)
+        } else if (target.classList.contains("edit-row-btn")) {
+            var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
+            rowIndex = Array.prototype.indexOf.call(clickedRow.parentNode.children, clickedRow);
+            const rowElement = target.parentNode.parentNode;
+            const commandInput = getTextOfInput(rowElement, 3);
+            editPasteTableDialog(1, commandInput, rowIndex)
         }
     });
 
@@ -926,7 +933,7 @@
         console.log("Row Index:", globalRowIndex);
     }
 
-    function editPasteTableDialog(type) {
+    function editPasteTableDialog(type, commandsText = "", rowIndex = 0) {
         var modalEl = document.getElementById("modalEl");
         removeChildNodes(modalEl);
         modalEl.style.width = '600px';
@@ -990,7 +997,7 @@
             input.id = "sliderSettings"
             input.type = 'text';
             input.placeholder = 'Enter value';
-            input.value = '';
+            input.value = commandsText;
             settingsField.appendChild(input);
 
             slidersContainer.appendChild(settingsField);
@@ -998,28 +1005,31 @@
             form.appendChild(slidersContainer);
         }
 
-        var legend = document.createElement('legend');
-        legend.textContent = 'Paste table';
-        form.appendChild(legend);
 
-        // Input for number of rows
-        var numberRowsInput = document.createElement('div');
-        numberRowsInput.className = 'mui-textfield';
-        numberRowsInput.innerHTML = '<input type="number" id="numRows" placeholder="Number of rows" min="1" />';
-        form.appendChild(numberRowsInput);
+        if (type == 0) {
+            var legend = document.createElement('legend');
+            legend.textContent = 'Paste table';
+            form.appendChild(legend);
 
-        // Button to generate the table
-        var generateBtn = document.createElement('button');
-        generateBtn.type = 'button';
-        generateBtn.className = 'mui-btn mui-btn--primary';
-        generateBtn.textContent = 'Generate Table';
-        generateBtn.addEventListener('click', generateTable);
-        form.appendChild(generateBtn);
+            // Input for number of rows
+            var numberRowsInput = document.createElement('div');
+            numberRowsInput.className = 'mui-textfield';
+            numberRowsInput.innerHTML = '<input type="number" id="numRows" placeholder="Number of rows" min="1" />';
+            form.appendChild(numberRowsInput);
 
-        // Container for the table
-        var tableContainer = document.createElement('div');
-        tableContainer.id = 'tableContainer';
-        form.appendChild(tableContainer);
+            // Button to generate the table
+            var generateBtn = document.createElement('button');
+            generateBtn.type = 'button';
+            generateBtn.className = 'mui-btn mui-btn--primary';
+            generateBtn.textContent = 'Generate Table';
+            generateBtn.addEventListener('click', generateTable);
+            form.appendChild(generateBtn);
+
+            // Container for the table
+            var tableContainer = document.createElement('div');
+            tableContainer.id = 'tableContainer';
+            form.appendChild(tableContainer);
+        }
 
         // Save button
         var saveBtn = document.createElement('button');
@@ -1027,9 +1037,15 @@
         saveBtn.className = 'mui-btn mui-btn--primary';
         saveBtn.textContent = 'Save';
         saveBtn.addEventListener('click', function () {
-            var data = collectTableData();
-            globalPasteTable = data;
-            globalPasteTableNumRows = data.length;
+            if (type == 0) {
+                var data = collectTableData();
+                globalPasteTable = data;
+                globalPasteTableNumRows = data.length;
+            }
+            if (type == 1) {
+                let inputValue = document.getElementById("sliderSettings").value;
+                changeCommandCell(rowIndex, 2, inputValue)
+            }
             mui.overlay('off', modalEl);
         });
         form.appendChild(saveBtn);
@@ -1040,7 +1056,7 @@
         clearBtn.className = 'mui-btn mui-btn--secondary';
         clearBtn.textContent = 'Clear';
         clearBtn.addEventListener('click', function () {
-            if (type==0){
+            if (type == 0) {
                 clearTableData();
             }
             if (type == 1) {
@@ -1077,22 +1093,19 @@
             var prefix = sliderId.startsWith('S') ? 'S' : 'L';
             var setting = `${prefix}${sliderId.slice(1)}${value}`;
 
-            testAnimation(null, setting)
+            testAnimation(null, setting);
 
-            if (sliderId === 'S1') {
-                if (currentValue.startsWith('S1')) {
-                    currentValue = currentValue.replace(/S1\d+/, setting);
-                    settingsField.value = currentValue;
-                } else {
-                    settingsField.value = setting + (currentValue ? ',' + currentValue.replace(/^S1\d+,?/, '') : '');
-                }
+            // Create regex for matching the specific slider setting (e.g., S1\d+ or L1\d+)
+            var regex = new RegExp(`${prefix}${sliderId.slice(1)}\\d+`);
+
+            if (regex.test(currentValue)) {
+                // Replace existing setting if it exists
+                settingsField.value = currentValue.replace(regex, setting);
             } else {
-                var regex = new RegExp(`${prefix}${sliderId.slice(1)}\\d+`);
-                if (regex.test(currentValue)) {
-                    settingsField.value = currentValue.replace(regex, setting);
-                } else {
-                    settingsField.value = currentValue ? `${currentValue},${setting}` : setting;
-                }
+                // Append new setting, removing any existing duplicate setting with same prefix and number
+                settingsField.value = currentValue
+                    ? `${currentValue.replace(new RegExp(`${prefix}${sliderId.slice(1)}\\d+,?`), '')}${currentValue ? ',' : ''}${setting}`
+                    : setting;
             }
         }
 
@@ -1196,6 +1209,11 @@
         }
     }
 
+    function changeCommandCell(rowY, colX, newValue) {
+        const tbody = document.getElementById("dataTable").querySelector("tbody");
+        const input = tbody.rows[rowY].cells[colX].querySelector("div.mui-textfield input");
+        input.value = newValue;
+    }
 
     // Helper function to remove all child nodes from an element
     function removePasteTableChildNodes(parent) {
@@ -1321,7 +1339,7 @@
     function createEditButton() {
         var button = document.createElement("button");
         button.type = "button";
-        button.className = "mui-btn mui-btn--primary add-row-btn";
+        button.className = "mui-btn mui-btn--primary edit-row-btn";
         button.innerHTML = 'E';
         return button;
     }
@@ -1422,7 +1440,7 @@
                     sendBlockSequentially(index + 1);
                 })
                 .catch(function (error) {
-                    alert(error.message);
+                    showAlert(error.message);
                     // Enable the button even if an error occurs
                     saveAnimationScriptDataButton.removeAttribute('disabled');
                 });
