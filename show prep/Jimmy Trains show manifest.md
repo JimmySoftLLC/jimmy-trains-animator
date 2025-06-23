@@ -68,7 +68,6 @@
 * street lights ?
 * price frames
 
-
 4 power strips
 
 Microfiber towels
