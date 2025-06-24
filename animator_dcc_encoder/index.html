@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Animator - Base3</title>
+    <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/mui.min.css" />
+    <script src="/mui.min.js"></script>
+    <style>
+        #progressContainer {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            width: 0;
+            height: 30px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 100px;
+            background-color: #ffffff;
+            border: 3px solid #000;
+            display: inline-block;
+        }
+
+        .bottom-gap {
+            height: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="modalEl"></div>
+    <div class="mui-container">
+        <h1>Animator - Base3</h1>
+        <p style="padding-top:0.5rem;">
+            Use this web app to control and setup your Animator - Base3
+            product. Have fun animating.
+        </p>
+        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            data-url="/mode">Left</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            data-url="/mode">Right</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right_held"
+            data-url="/mode">Right Held</button>
+        <ul class="mui-tabs__bar">
+            <li class="mui--is-active">
+                <a data-mui-toggle="tab" data-mui-controls="animators">Animator Devices</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="lighting">lights</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
+            </li>
+        </ul>
+        <div class="mui-tabs__pane mui--is-active" id="animators">
+            <h2>Animator setup:</h2>
+            <p>Follow these steps to setup animators to be controlled by Lionel Legacy/TMCC remotes:</p>
+            <ol>
+                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
+                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
+                    corresponding buttons to duplicate, rename, or delete it.</li>
+            </ol>
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="tmccVoiceCheckbox" data-url="/set-tmcc-voice-enabled">
+                    Enable command voice
+                </label>
+            </div>
+            <button class="mui-btn mui-btn--primary" onclick="createAnimatorDialog()">Create
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimatorDialog()">Duplicate
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="renameAnimatorDialog()">Rename
+                Animator</button>
+            <button class="mui-btn mui-btn--primary" onclick="deleteAnimatorDialog()">Delete
+                Animator</button>
+            <h2>Animators:</h2>
+            <div id="animatorContainer"></div>
+            <h2>Animator commands:</h2>
+            <div>USB connect to base3 usb port</div>
+            <div>SW_XXXX = Switch XXXX (left,right,three,four,leftheld,rightheld)</div>
+            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
+            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
+            <div>BXYYY = Brightness (Lifx lights) YYY 000 to 100</div>
+            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
+                between
+                transitions in decimal seconds
+            </div>
+            <div>ZRAND = Random rainbow, fire, or color change</div>
+            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+            <div>ZFIRE = Fire</div>
+            <div>ZCOLCH = Color change</div>
+            <div>ZJ = Joke</div>
+            <div id="neoInstructionsContainer"></div>
+            <div id="sceneInstructionsContainer"></div>
+            <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
+            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                data_object}</div>
+            <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object
+                i.e. {"an":data_object}</div>
+            <div>TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
+                ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
+                AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED, FORWARD, REVERSE, HORN2, LETOFF) VALUE is only for (KNOB 1-9, SPEED 0-31)</div>
+            <div>E = End script</div>
+            <h2>Animator settings:</h2>
+            <form class="mui-form">
+                <div class="mui-textfield">
+                    <label>Animator Name:</label>
+                    <input class="input" id="animatorName" type="text" disabled
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>Device Type:</label>
+                    <input type="text" id="animatorDevice" placeholder="Enter Device Type"
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>Address:</label>
+                    <input type="text" id="animatorAddress" placeholder="Enter Address"
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>Base url:</label>
+                    <input type="text" id="animatorBaseUrl" placeholder="Enter Base Url"
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+                <div class="mui-textfield">
+                    <label>IP Address:</label>
+                    <input class="input" id="animatorIpAddress" type="text" disabled
+                        style="width: 300px; padding: 5px; margin: 5px;">
+                </div>
+            </form>
+            <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
+                <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP Address
+                    Animator</button>
+                <table id="animatorTable" class="mui-table">
+                    <thead>
+                        <tr>
+                            <th>Button</th>
+                            <th>Commands</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+        </div>
+        <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="lifxCheckbox" data-url="/set-lifx-enabled">
+                    Enable Lifx lights
+                </label>
+            </div>
+            <div id="lifxDiv">
+                <h2>Test lifx lights:</h2>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
+                        type="button">
+                        Red
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
+                        type="button">
+                        Green
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
+                        type="button">
+                        Blue
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255"
+                        data-url="/lights" type="button">
+                        White
+                    </button>
+                </div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_OFF" data-url="/lights"
+                        type="button">
+                        All Off
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_ON" data-url="/lights"
+                        type="button">
+                        All On
+                    </button>
+                </div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP1_ON" data-url="/lights"
+                        type="button">
+                        1 On
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP2_ON" data-url="/lights"
+                        type="button">
+                        2 On
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP3_ON" data-url="/lights"
+                        type="button">
+                        3 On
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP4_ON" data-url="/lights"
+                        type="button">
+                        4 On
+                    </button>
+                </div>
+                <h2>Scene colors:</h2>
+                <div id="sceneButtonContainer"></div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="reset_scene_to_defaults"
+                        data-url="/defaults" type="button">
+                        Reset scene colors to defaults
+                    </button>
+                </div>
+                <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
+            </div>
+            <div class="bottom-gap"></div>
+        </div>
+        <div class="mui-tabs__pane" id="settings">
+            <div class="mui-textfield">
+                <input class="input" id="volume" type="number" disabled>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume10">
+                    Volume 10
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume20">
+                    Volume 20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume30">
+                    Volume 30
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume40">
+                    Volume 40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume50">
+                    Volume 50
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume60">
+                    Volume 60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume70">
+                    Volume 70
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume80">
+                    Volume 80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume90">
+                    Volume 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume100">
+                    Volume 100
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="lower1">
+                    Lower Volume by 1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="raise1">
+                    Raise Volume by 1
+                </button>
+            </div>
+
+            <p>
+                Valid volume levels are from 1 to 100
+            </p>
+
+            <h2>Animator web page name and ip address:</h2>
+
+            <div class="mui-textfield">
+                <label>Base url:</label>
+                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div class="mui-textfield">
+                <label>IP Address:</label>
+                <input class="input" id="settingsIpAddress" type="text" disabled
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div>
+                <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/update-host-name">
+                    Change
+                </button>
+            </div>
+
+            <p>
+                Use alphanumerics and dashes only. All names are automatically
+                appended with .local:8083. So your website url will be something like
+                "website-name.local:8083 and the ip address will be xx.xx.xx.xx:8083."
+            </p>
+
+            <h2>Utilities:</h2>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
+                type="button">
+                Speaker Test
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
+                type="button">
+                Reset to defaults
+            </button>
+        </div>
+    </div>
+</body>
+
+<script>
+    let isRequestInProgress = false;
+
+    // Load initial data after webpage loads
+    document.addEventListener('DOMContentLoaded', function () {
+        getLocalIp()
+        getWebSiteUrl()
+        getVolume()
+        getAnimators()
+        getSceneChanges()
+        getLifxEnabled()
+        getTmccVoiceEnabled()
+    });
+
+    function getMedia() {
+        fetch('/get-all-media', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setMediaButtons(my_data)
+                setMediaScriptButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getSceneChanges() {
+        fetch('/get-scene-changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setSceneChangeButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getNeoChanges() {
+        fetch('/get-neo-changes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setNeoChangeButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getWebSiteUrl() {
+        fetch('/get-host-name', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    local_ip = ""
+
+    function getLocalIp() {
+        fetch('/get-local-ip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                local_ip = data; // Set the value of the input field with the received data
+                data = data.replace(/^"|"$/g, '');
+                settingsIpAddress.value = data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getVolume() {
+        fetch('/get-volume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getLifxEnabled() {
+        fetch('/get-lifx-enabled', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                lifx_enabled = (data === 'true'); // Convert to Boolean
+                setLifxCheckboxState(lifx_enabled)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getTmccVoiceEnabled() {
+        fetch('/get-tmcc-voice-enabled', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                tmcc_voice_enabled = (data === 'true'); // Convert to Boolean
+                setTmccVoiceCheckboxState(tmcc_voice_enabled)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getAnimators() {
+        fetch('/get-scripts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setAnimatorConfigButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function setAnimatorConfigButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animator");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        animatorName.value = animation
+                        animatorDevice.value = myData["device"]
+                        animatorAddress.value = myData["address"]
+                        animatorBaseUrl.value = myData["baseUrl"]
+                        animatorIpAddress.value = myData["animatorIpAddress"]
+                        populateAnimatorTable(myData["table_data"])
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        button.removeAttribute('disabled')
+                        console.log(error);
+                        showAlert(error);
+                    });
+            });
+            animatorContainer.appendChild(button);
+        });
+    }
+
+    function setSceneChangeButtons(my_data) {
+        // Clear the existing buttons (if needed)
+        const sceneButtonContainer = document.getElementById("sceneButtonContainer");
+        sceneButtonContainer.innerHTML = '';
+
+        // Clear the existing buttons (if needed)
+        const sceneInstructionsContainer = document.getElementById("sceneInstructionsContainer");
+        sceneInstructionsContainer.innerHTML = '';
+
+        instructions = ""
+
+        // Loop through scene in my_data
+        Object.keys(my_data).forEach((scene) => {
+            // Create and add a button for the scene and add to the instructions string
+            instructions += scene + ", "
+            const sceneButton = document.createElement("button");
+            sceneButton.textContent = scene;
+            sceneButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            sceneButton.setAttribute("data-value", scene);
+            sceneButton.setAttribute("data-url", "/lights-scene");
+            sceneButton.setAttribute("type", "button");
+            sceneButton.addEventListener('click', function () {
+                var url = sceneButton.getAttribute('data-url');
+                var animation = sceneButton.getAttribute('data-value');
+                var redirectUrl = sceneButton.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                sceneButton.setAttribute('disabled', 'true');
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        colorPickerLifx.value = rgbToHex(data[0], data[1], data[2]);
+                        sceneButton.removeAttribute('disabled');
+                    })
+                    .catch(error => {
+                        sceneButton.removeAttribute('disabled');
+                        console.error('Error fetching default color:', error);
+                    });
+            });
+
+            // Append the topic button to the topic button container
+            sceneButtonContainer.appendChild(sceneButton);
+        });
+
+        instructions = instructions.slice(0, -2);
+
+        sceneInstructionsContainer.innerHTML = 'ZL_S_E_T_I = Lifx scene change S start E end using(' + instructions + '), time, increments';
+    }
+
+    // Get all buttons with the 'animator-action' class
+    // Add click event listener to each button
+    var actionButtons = document.querySelectorAll('.animator-action');
+    actionButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = button.getAttribute('data-url');
+            var animation = button.getAttribute('data-value');
+            var redirectUrl = button.getAttribute('data-redirect');
+
+            // Create an object with the data to be sent in the request
+            var data = {
+                an: animation,
+            };
+
+            button.setAttribute('disabled', 'true')
+
+            // Make a POST request using fetch
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    // Handle the response from the server
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                    } else {
+                        button.removeAttribute('disabled');
+                    }
+                })
+                .catch(function (error) {
+                    button.removeAttribute('disabled');
+                    alert('Try Again');
+                });
+        });
+    });
+
+    // Get all buttons with the 'animator-light-update' class
+    // Add click event listener to each button
+    var lightUpdateButtons = document.querySelectorAll('.animator-light-update');
+    lightUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            var data = {}
+            if (action == "save" || action == "clear" || action == "defaults") {
+                var lightStringElement = document.getElementById('lightString');
+                lightStringValue = lightStringElement.value
+                if (action == "defaults") lightStringValue = "projector-1, concession-6, sign-4"
+                if (action == "clear") lightStringValue = ""
+                data = {
+                    text: lightStringValue,
+                    action: action
+                }
+            } else {
+                data = {
+                    text: action,
+                    action: action
+                }
+            }
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    lightString.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    // Get all buttons with the 'animator-volume-update' class
+    // Add click event listener to each button
+    var volumeUpdateButtons = document.querySelectorAll('.animator-volume-update');
+    volumeUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            data = {
+                action: action
+            }
+
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    volume.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
+    });
+
+    // Add click event listener to website submit button
+    var websiteSubmitButton = document.getElementById('websiteSubmitButton');
+    websiteSubmitButton.addEventListener('click', function () {
+        var settingsWebsiteUrl = document.getElementById('settingsWebsiteUrl');
+        var websiteUrlText = settingsWebsiteUrl.value;
+        var url = this.getAttribute('data-url');
+
+        var data = {
+            text: websiteUrlText,
+        };
+
+        websiteSubmitButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                settingsWebsiteUrl.value = data; // Set the value of the input field with the received data
+                websiteSubmitButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                websiteSubmitButton.removeAttribute('disabled')
+            });
+    });
+
+    // Restrict input to letters, numbers, and hyphens only
+    settingsWebsiteUrl.addEventListener('input', function () {
+        var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
+        this.value = validatedValue;
+    });
+
+    function editPasteTableDialog() {
+        var modalEl = document.getElementById("modalEl");
+        removeChildNodes(modalEl);
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px';
+        form.style.margin = '20px';
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Paste table';
+        form.appendChild(legend);
+
+        // Input for number of rows
+        var numberRowsInput = document.createElement('div');
+        numberRowsInput.className = 'mui-textfield';
+        numberRowsInput.innerHTML = '<input type="number" id="numRows" placeholder="Number of rows" min="1" />';
+        form.appendChild(numberRowsInput);
+
+        // Button to generate the table
+        var generateBtn = document.createElement('button');
+        generateBtn.type = 'button';
+        generateBtn.className = 'mui-btn mui-btn--primary';
+        generateBtn.textContent = 'Generate Table';
+        generateBtn.addEventListener('click', generateTable);
+        form.appendChild(generateBtn);
+
+        // Container for the table
+        var tableContainer = document.createElement('div');
+        tableContainer.id = 'tableContainer';
+        form.appendChild(tableContainer);
+
+        // Save button
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', function () {
+            var data = collectTableData();
+            globalPasteTable = data; // Save data globally
+            globalPasteTableNumRows = data.length; // Save the number of rows globally
+            mui.overlay('off', modalEl); // Close modal after saving
+        });
+        form.appendChild(saveBtn);
+
+        // Clear button
+        var clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.className = 'mui-btn mui-btn--secondary';
+        clearBtn.textContent = 'Clear';
+        clearBtn.addEventListener('click', function () {
+            clearTableData(); // Clear input values but keep the table structure
+        });
+        form.appendChild(clearBtn);
+
+        // Cancel button
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+
+        // Populate fields if there's existing data
+        document.getElementById('numRows').value = globalPasteTableNumRows;
+        if (globalPasteTableNumRows > 0) {
+            generateTable(globalPasteTable); // Generate the table with existing data
+        }
+
+        // Function to generate the table
+        function generateTable(data) {
+            var numRows = parseInt(document.getElementById('numRows').value, 10) || globalPasteTableNumRows;
+            var tableContainer = document.getElementById('tableContainer');
+            removePasteTableChildNodes(tableContainer); // Clear existing table if any
+
+            if (numRows > 0) {
+                var table = document.createElement('table');
+                table.className = 'mui-table';
+                // Create rows
+                for (var i = 0; i < numRows; i++) {
+                    var row = table.insertRow();
+                    var myCell = row.insertCell(0);
+                    myCell.style.padding = '0';
+                    var textFieldDiv = document.createElement('div');
+                    textFieldDiv.className = 'mui-textfield';
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.placeholder = 'Enter value';
+                    input.value = data[i] || ''; // Populate with existing data if available
+                    textFieldDiv.appendChild(input);
+                    myCell.appendChild(textFieldDiv);
+                }
+
+                tableContainer.appendChild(table);
+            } else {
+                showAlert("Please enter a valid number of rows.");
+            }
+        }
+
+        // Function to collect data from the table
+        function collectTableData() {
+            var table = document.querySelector('#tableContainer table');
+            var data = [];
+
+            if (table) {
+                for (var i = 0; i < table.rows.length; i++) {
+                    var rowData = table.rows[i].cells[0].querySelector('input').value;
+                    data.push(rowData);
+                }
+            }
+
+            return data;
+        }
+
+        // Function to clear input values from the table
+        function clearTableData() {
+            var table = document.querySelector('#tableContainer table');
+            if (table) {
+                for (var i = 0; i < table.rows.length; i++) {
+                    table.rows[i].cells[0].querySelector('input').value = '';
+                }
+            }
+        }
+    }
+
+    // Helper function to remove all child nodes from an element
+    function removePasteTableChildNodes(parent) {
+        while (parent.firstChild) {
+            parent.removeChild(parent.firstChild);
+        }
+    }
+
+    function createAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Create Animator';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', createAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function createAnimator() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fn: filenameInput,
+            };
+
+            fetch("/create-animator", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updateAnimators()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function duplicateAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Duplicate Animator';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', duplicateAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function duplicateAnimator() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            saveAnimatorData(filenameInput + ".json", true);
+            updateAnimators()
+            var modalEl = document.getElementById("modalEl")
+            mui.overlay('off', modalEl)
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function renameAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Rename Animator';
+        form.appendChild(legend);
+
+        var filenameInput = document.createElement('div');
+        filenameInput.className = 'mui-textfield';
+        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
+        form.appendChild(filenameInput);
+
+        // Error message container
+        var errorMessage = document.createElement('div');
+        errorMessage.className = 'mui--text-danger mui--text-caption';
+        form.appendChild(errorMessage);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', renameAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function renameAnimator() {
+        var filenameInput = document.getElementById('filename').value.trim();
+        var errorMessage = document.querySelector('.mui--text-danger');
+
+        if (filenameInput) {
+            console.log('Filename:', filenameInput);
+            var data = {
+                fo: animatorName.value,
+                fn: filenameInput,
+            };
+
+            fetch("/rename-animator", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text();
+                })
+                .then(function (data) {
+                    updateAnimators()
+                    var modalEl = document.getElementById("modalEl")
+                    mui.overlay('off', modalEl)
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    showAlert(error);
+                });
+        } else {
+            errorMessage.textContent = 'Please enter a filename.';
+        }
+    }
+
+    function deleteAnimatorDialog() {
+        var modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        var form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        var legend = document.createElement('legend');
+        legend.textContent = 'Delete Animator';
+        form.appendChild(legend);
+
+        var message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.textContent = "Are you sure your want to delete " + animatorName.value + " this is irreversible.";
+        form.appendChild(message);
+
+        var saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.textContent = 'Delete';
+        saveBtn.addEventListener('click', deleteAnimator);
+        form.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    function updateAnimators() {
+        const myAnimatorDiv = document.getElementById("animatorContainer");
+        removeChildNodes(myAnimatorDiv)
+        getAnimators()
+    }
+
+    function removeChildNodes(myDiv) {
+        // Remove all child nodes
+        while (myDiv.firstChild) {
+            myDiv.removeChild(myDiv.firstChild);
+        }
+        // Remove all event listeners attached to the div
+        const clonedDiv = myDiv.cloneNode(true);
+        myDiv.parentNode.replaceChild(clonedDiv, myDiv);
+    }
+
+
+    function showAlert(message) {
+        var alertModal = document.createElement('div');
+        alertModal.className = 'mui-container';
+        alertModal.style.width = '400px';
+        alertModal.style.margin = '100px auto'; // Center horizontally with top margin
+        alertModal.style.backgroundColor = '#fff';
+        alertModal.style.borderRadius = '5px';
+        alertModal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+
+        alertModal.innerHTML = `
+            <div class="mui-form" style="padding: 20px;">
+                <legend style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">Alert</legend>
+                <div style="margin: 10px 0; font-size: 1em; color: #333;">
+                    ${message}
+                </div>
+                <button class="mui-btn mui-btn--primary" onclick="closeAlert()" style="margin-top: 15px;">OK</button>
+            </div>`;
+
+        mui.overlay('on', alertModal);
+    }
+
+
+    function closeAlert() {
+        mui.overlay('off');
+    }
+
+    // Table component
+    var saveAnimatorButton = document.getElementById("saveAnimatorButton");
+    var getAnimatorIpAddressButton = document.getElementById("getAnimatorIpAddressButton");
+    var animatorTableBody = document.querySelector("#animatorTable tbody");
+
+    saveAnimatorButton.addEventListener("click", function () {
+        saveAnimatorData(animatorName.value, false);
+        updateAnimators()
+        var modalEl = document.getElementById("modalEl")
+        mui.overlay('off', modalEl)
+    });
+
+    getAnimatorIpAddressButton.addEventListener("click", function () {
+        getAnimatorIpAddress(animatorBaseUrl.value);
+    });
+
+    function getAnimatorIpAddress(baseUrl) {
+        const thirdInput = "API_" + baseUrl + "_get-local-ip_{}"
+        getAnimatorIpAddressButton.setAttribute("disabled", "true");
+
+        var url = "/test-animation";
+
+        var data = {
+            an: thirdInput,
+        };
+
+        portPartSplit = baseUrl.split(":")
+
+        port = ""
+
+        if (portPartSplit.length == 2) {
+            port = ":" + portPartSplit[1]
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                data = data.replace(/^"|"$/g, '');
+                animatorIpAddress.value = data + port
+                getAnimatorIpAddressButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                getAnimatorIpAddressButton.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function deleteAnimator() {
+        var data = {
+            fn: animatorName.value,
+        };
+
+        fetch("/delete-animator", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                updateAnimators()
+                console.log("file deleted")
+                var modalEl = document.getElementById("modalEl")
+                mui.overlay('off', modalEl)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function populateAnimatorTable(data) {
+        // Clear existing table rows
+        animatorTableBody.innerHTML = "";
+
+        // Populate table with new data
+        data.forEach(function (rowData, index) {
+            var row = createAnimatorDataRow(rowData, index);
+            animatorTableBody.appendChild(row);
+        });
+    }
+
+    animatorTableBody.addEventListener("click", function (event) {
+        var target = event.target;
+        if (target.classList.contains("animator-insert-row-btn")) {
+            animatorInsertRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animator-delete-row-btn")) {
+            animatorDeleteRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animator-add-row-btn")) {
+            animatorAddRow(target.parentNode.parentNode);
+        } else if (target.classList.contains("animator-test-row-btn")) {
+            animatorTestAnimation(target)
+        }
+    });
+
+    function getTextOfInput(rowElement, elNum) {
+        const inputElements = rowElement.querySelectorAll('input');
+        if (inputElements.length >= elNum) {
+            return inputElements[elNum - 1].value;
+        } else {
+            return "";
+        }
+    }
+
+    function setTextOfInput(rowElement, elNum, textVal) {
+        const inputElements = rowElement.querySelectorAll('input');
+        if (inputElements.length >= elNum) {
+            inputElements[elNum - 1].value = textVal;
+        }
+    }
+
+    function createAnimatorDataRow(rowData, rowIndex) {
+        var row = document.createElement("tr");
+
+        var anCell = createEditableCell(rowData[0], "50px");
+        row.appendChild(anCell);
+
+        var anCell = createEditableCell(rowData[1], "600px");
+        row.appendChild(anCell);
+
+        var actionCell = document.createElement("td");
+        actionCell.style.paddingTop = "0px";  // Adjust top padding
+        actionCell.style.paddingBottom = "0px";  // Adjust bottom padding
+
+        var testButton = createAnimatorTestButton();
+        actionCell.appendChild(testButton);
+
+        var insertButton = createAnimatorInsertButton();
+        actionCell.appendChild(insertButton);
+
+        var addButton = createAnimatorAddButton();
+        actionCell.appendChild(addButton);
+
+        var deleteButton = createAnimatorDeleteButton();
+        actionCell.appendChild(deleteButton);
+
+        row.appendChild(actionCell);
+
+        return row;
+    }
+
+    function createEditableCell(value, widthVal) {
+        var cell = document.createElement("td");
+        cell.style.paddingTop = "0px";  // Adjust top padding
+        cell.style.paddingBottom = "0px";  // Adjust bottom padding
+        var input = document.createElement("input");
+        input.type = "text";
+        input.className = "pure-input-rounded";
+        input.value = value;
+        input.style.width = widthVal
+        input.style.whiteSpace = "pre-wrap";
+        input.style.overflow = "visible";
+        var div = document.createElement("div");
+        div.className = "mui-textfield";
+        div.appendChild(input);
+        cell.appendChild(div);
+        return cell;
+    }
+
+    function createAnimatorTestButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animator-test-row-btn";
+        button.innerHTML = 'Tst';
+        return button;
+    }
+
+    function createAnimatorDeleteButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animator-delete-row-btn";
+        button.innerHTML = 'Del';
+        return button;
+    }
+
+    function createAnimatorInsertButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animator-insert-row-btn";
+        button.innerHTML = 'Ins';
+        return button;
+    }
+
+    function createAnimatorAddButton() {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.className = "mui-btn mui-btn--primary animator-add-row-btn";
+        button.innerHTML = 'Add';
+        return button;
+    }
+
+    function animatorDeleteRow(row) {
+        row.parentNode.removeChild(row);
+    }
+
+    function animatorAddRow(row) {
+        var newRow = createAnimatorDataRow("");
+        animatorTableBody.insertBefore(newRow, row.nextSibling);
+    }
+
+    function animatorInsertRow(row) {
+        var newRow = createAnimatorDataRow("");
+        animatorTableBody.insertBefore(newRow, row);
+    }
+
+    function animatorTestAnimation(target) {
+        const rowElement = target.parentNode.parentNode;
+        const secondInput = getTextOfInput(rowElement, 2);
+        target.setAttribute("disabled", "true");
+        var url = "/test-animation";
+
+        var data = {
+            an: secondInput,
+            ip: animatorIpAddress.value
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                console.log(data);
+                target.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                target.removeAttribute('disabled')
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function saveAnimatorData(file_name) {
+        saveAnimatorButton.setAttribute("disabled", "true");
+        var rows = Array.from(animatorTableBody.querySelectorAll("tr"));
+
+        // Extract data from table rows
+        var buttonMappingTable = rows.map(function (row) {
+            var cells = Array.from(row.querySelectorAll("td"));
+            var values = cells.map(function (cell) {
+                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
+                return cellValue;
+            });
+            return values;
+        });
+
+        // Create an object with the data to be sent in the request
+        var data = {
+            fn: file_name,
+            device: animatorDevice.value,
+            address: animatorAddress.value,
+            baseUrl: animatorBaseUrl.value,
+            animatorIpAddress: animatorIpAddress.value,
+            table_data: buttonMappingTable
+        };
+
+        fetch("/save-animator-data", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                saveAnimatorButton.removeAttribute('disabled');
+                var modalEl = document.getElementById("modalEl")
+                mui.overlay('off', modalEl)
+                return response.text();
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    const colorPickerLifx = document.getElementById('colorPickerLifx');
+    colorPickerLifx.addEventListener('input', function () {
+        const color = colorPickerLifx.value;
+        const rgb = hexToRgb(color);
+        // Send RGB values to the server only if no request is in progress
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("lifx", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
+    function hexToRgb(hex) {
+        hex = hex.replace(/^#/, '');
+        const bigint = parseInt(hex, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return { r, g, b };
+    }
+
+    function rgbToHex(r, g, b) {
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase()}`;
+    }
+
+    function sendRGBValues(item, r, g, b) {
+        console.log(r)
+        console.log(g)
+        console.log(b)
+        const endpoint = "/set-item-lights";
+        const data = {
+            item: item,
+            r: r,
+            g: g,
+            b: b
+        };
+
+        fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log(data)
+                isRequestInProgress = false; // Reset the flag after the request is completed
+            })
+            .catch(error => {
+                console.error('Error:', error)
+                isRequestInProgress = false; // Reset the flag in case of save-Animator-data error
+            });
+    }
+
+    // Function to enable or disable elements in lifxDiv
+    function toggleLifxDiv() {
+        const isChecked = document.getElementById("lifxCheckbox").checked;
+        const lifxDiv = document.getElementById("lifxDiv");
+        lifxDiv.style.display = isChecked ? "block" : "none";
+    }
+
+    var lifxCheckbox = document.getElementById("lifxCheckbox");
+
+    // Flag to indicate programmatic changes
+    let programmaticChange = false;
+
+    // Function to change checkbox state programmatically
+    function setLifxCheckboxState(newState) {
+        programmaticChange = true;
+        lifxCheckbox.checked = newState;
+        toggleLifxDiv()
+        programmaticChange = false;
+    }
+
+    // Combined event listener for checkbox change
+    lifxCheckbox.addEventListener('change', function () {
+        // Skip fetch request if this is a programmatic change
+        if (programmaticChange) return;
+
+        const url = this.getAttribute('data-url');
+        const isChecked = this.checked;
+
+        toggleLifxDiv()
+
+        const data = {
+            enabled: isChecked
+        };
+
+        lifxCheckbox.setAttribute('disabled', 'true');
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Response:', data);
+                lifxCheckbox.removeAttribute('disabled');
+            })
+            .catch(error => {
+                console.log(error);
+                lifxCheckbox.removeAttribute('disabled');
+            });
+    });
+
+    var tmccVoiceCheckbox = document.getElementById("tmccVoiceCheckbox");
+
+    // Function to change checkbox state programmatically
+    function setTmccVoiceCheckboxState(newState) {
+        programmaticChange = true;
+        tmccVoiceCheckbox.checked = newState;
+        programmaticChange = false;
+    }
+
+    // Combined event listener for checkbox change
+    tmccVoiceCheckbox.addEventListener('change', function () {
+        // Skip fetch request if this is a programmatic change
+        if (programmaticChange) return;
+
+        const url = this.getAttribute('data-url');
+        const isChecked = this.checked;
+
+        toggleLifxDiv()
+
+        const data = {
+            enabled: isChecked
+        };
+
+        tmccVoiceCheckbox.setAttribute('disabled', 'true');
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Response:', data);
+                tmccVoiceCheckbox.removeAttribute('disabled');
+            })
+            .catch(error => {
+                console.log(error);
+                tmccVoiceCheckbox.removeAttribute('disabled');
+            });
+    });
+
+</script>
+
+</html>
