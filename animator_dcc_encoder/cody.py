@@ -760,6 +760,7 @@ def read_command():
                                 locomotives[addr] = Locomotive(addr)
                             loco = locomotives[addr]
                             if loco.update_speed(speed, direction, speed_steps):
+                                run_hardware_matches(loco)
                                 print(f"Speed changed: {loco}")
                         elif cmd_type == "func_update":
                             _, addr, function_string = command
@@ -767,6 +768,7 @@ def read_command():
                                 locomotives[addr] = Locomotive(addr)
                             loco = locomotives[addr]
                             if loco.update_functions(function_string):
+                                run_hardware_matches(loco)
                                 print(f"Functions changed: {loco}")
                         elif cmd_type == "cv_ack":
                             print(
@@ -774,6 +776,26 @@ def read_command():
         except Exception as e:
             print(f"Comms issue: {e}")
             time.sleep(1)
+
+
+def run_hardware_matches(loco):
+
+    matched_commands = animator_command_matches(loco)
+
+    # Check if there are any matches
+    if matched_commands:
+        for matched_command, animator_command_rows in matched_commands:
+            # Print each matched command and animators command rows
+            # print(matched_command, command_object)
+            if matched_command:
+                exit_set_hdw = False
+                set_hdw(matched_command[1], 1,
+                        animator_command_rows["animatorIpAddress"])
+    else:
+        print("No matches found")
+    
+
+
 
 
 ################################################################################
