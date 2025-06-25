@@ -963,11 +963,16 @@ async def set_hdw_async(input_string):
 
     # Process each segment
     for seg in segs:
-        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
         if seg == "":
             print("no command")
+        # OPEN open gate
+        elif seg[:4] == 'OPEN':
+            s_arr[0].angle = 90
+        # CLOSE close gate
+        elif seg[:5] == 'CLOSE':
+            s_arr[0].angle = 10
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
-        if seg[0] == 'M': # play file
+        elif seg[0] == 'M': # play file
                 if seg[1] == "S":
                     stp_a_0()
                 elif seg[1] == "W" or seg[1] == "P":
@@ -981,7 +986,7 @@ async def set_hdw_async(input_string):
                     if seg[1] == "W":
                         wait_snd()
         # WA = Blow horn or whistle, A (H Horn, W whistle)
-        if seg[0] == 'W': # play file
+        elif seg[0] == 'W': # play file
             stp_a_0()
             if seg[1] == "W":
                 fn=get_snds("/sd/mvc","whistle")
@@ -991,6 +996,7 @@ async def set_hdw_async(input_string):
                 fn=get_snds("/sd/mvc","horn")
                 w0 = audiocore.WaveFile(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
+        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
         elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
