@@ -627,13 +627,13 @@ def send_animator_post(url, endpoint, new_data=None):
     try:
         new_url = "http://" + url
         api_client = ApiClient(new_url)
-
+        
         if new_data is not None:
             new_data_loads = json.loads(new_data)
             created_data = api_client.post(endpoint, data=new_data_loads)
         else:
             created_data = api_client.post(endpoint)
-
+        
         print("POST response:", created_data)
         return created_data
     except Exception as e:
@@ -668,18 +668,8 @@ def get_usb_ports():
 ################################################################################
 # Read and write serial commands connected to dcc
 
-
 # Dictionary to store locomotives by address
 locomotives = {}
-
-
-# Serial port setup (adjust port as needed)
-ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
-print(f"Connected to {ser.name}")
-
-# Dictionary to store locomotives by address
-locomotives = {}
-
 
 class Locomotive:
     def __init__(self, address):
@@ -687,8 +677,7 @@ class Locomotive:
         self.speed = 0
         self.direction = "Forward"
         self.speed_steps = 128
-        # Dictionary for f0-f28
-        self.functions = {f"f{i}": False for i in range(29)}
+        self.functions = [False] * 29
 
     def update_speed(self, speed, direction, speed_steps):
         """Update speed, direction, and speed steps, return True if changed."""
@@ -708,23 +697,26 @@ class Locomotive:
         for func_num, state in function_matches:
             func_num = int(func_num)
             if 0 <= func_num <= 28:
-                self.functions[f"f{func_num}"] = (state == "ON")
+                self.functions[func_num] = (state == "ON")
         changed = old_functions != self.functions
         if changed:
-            print(f"Functions updated: {[f'{key}={'ON' if self.functions[key] else 'OFF'}' for key in sorted(self.functions.keys())]}")
+            print(f"Functions updated: {['F{}={}'.format(i, 'ON' if self.functions[i] else 'OFF') for i in range(29)]}")
         return changed
 
     def __str__(self):
         return (f"Locomotive: Addr={self.address}, Speed={self.speed}, "
                 f"Dir={self.direction}, Steps={self.speed_steps}")
 
+    def __str__(self):
+        return (f"Locomotive: Addr={self.address}, "
+                f"Speed={self.speed}, Dir={self.direction}, Steps={self.speed_steps}, "
+                f"Functions={self.functions}")
 
 def parse_serial_line(line):
     """Parse a serial line and return command data."""
     line = line.strip()
     # Speed Update
-    speed_match = re.match(
-        r"notifyDccSpeed: Addr=(\d+), Speed=(\d+), Dir=(Forward|Reverse), Steps=(\d+)", line)
+    speed_match = re.match(r"notifyDccSpeed: Addr=(\d+), Speed=(\d+), Dir=(Forward|Reverse), Steps=(\d+)", line)
     if speed_match:
         addr = int(speed_match.group(1))
         speed = int(speed_match.group(2))
@@ -750,7 +742,7 @@ def read_command():
             if ser.in_waiting > 0:
                 line = ser.readline().decode('utf-8').strip()
                 if line:
-                    print(f"Received: {line}")
+                    # print(f"Received: {line}")
                     command = parse_serial_line(line)
                     if command:
                         cmd_type = command[0]
@@ -760,7 +752,6 @@ def read_command():
                                 locomotives[addr] = Locomotive(addr)
                             loco = locomotives[addr]
                             if loco.update_speed(speed, direction, speed_steps):
-                                run_hardware_matches(loco)
                                 print(f"Speed changed: {loco}")
                         elif cmd_type == "func_update":
                             _, addr, function_string = command
@@ -768,94 +759,451 @@ def read_command():
                                 locomotives[addr] = Locomotive(addr)
                             loco = locomotives[addr]
                             if loco.update_functions(function_string):
-                                run_hardware_matches(loco)
                                 print(f"Functions changed: {loco}")
                         elif cmd_type == "cv_ack":
-                            print(
-                                f"CV Ack at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+                            print(f"CV Ack at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
             print(f"Comms issue: {e}")
             time.sleep(1)
 
 
-def run_hardware_matches(loco):
+def send_command(system, device, address, button, value):
+    word1, word2, word3 = get_command_binary_words(system, device, address, button, value)
 
-    matched_commands = animator_command_matches(loco)
+    byte1 = int(word1, 2).to_bytes(1, 'big')
+    byte2 = int(word2, 2).to_bytes(1, 'big')
+    byte3 = int(word3, 2).to_bytes(1, 'big')
 
-    # Check if there are any matches
-    if matched_commands:
-        for matched_command, animator_command_rows in matched_commands:
-            # Print each matched command and animators command rows
-            # print(matched_command, command_object)
-            if matched_command:
-                exit_set_hdw = False
-                set_hdw(matched_command[1], 1,
-                        animator_command_rows["animatorIpAddress"])
-    else:
-        print("No matches found")
-    
+    command = byte1 + byte2 + byte3
 
-
-
+    try:
+        ser.write(command)
+        print(f"Sent command: {word1} {word2} {word3}")
+        return True
+    except Exception as e:
+        print(f"Error sending command: {e}")
+        return False
 
 ################################################################################
 # Command decoding
 
-def animator_command_matches(loco):
-    global animator_configs
-    loco = {
-        "address": 3,
-        "speed": 20,
-        "direction": "Forward",
-        "speed_steps": 128,
-        "functions": {
-            "f0": True,
-            "f1": True,
-            "f2": False,
-            "f3": False,
-            "f4": False,
-            "f5": False,
-            "f6": False,
-            "f7": False,
-            "f8": False,
-            "f9": False,
-            "f10": False,
-            "f11": False,
-            "f12": False,
-            "f13": False,
-            "f14": False,
-            "f15": False,
-            "f16": False,
-            "f17": False,
-            "f18": False,
-            "f19": False,
-            "f20": False,
-            "f21": False,
-            "f22": False,
-            "f23": False,
-            "f24": False,
-            "f25": False,
-            "f26": False,
-            "f27": False,
-            "f28": True
-        }
+def get_command_object(binary_word1, binary_word2, binary_word3):
+    command_object = {}
+    command_object["system"] = get_system(binary_word1)
+    if binary_word1 == "11111110" and binary_word2 == "11111111" and binary_word3 == "11111111":
+        command_object["system"] = "halt"
+        command_object["device"] = "halt"
+        command_object["address"] = "0000"
+        command_object["button"] = "HALT"
+        command_object["command"] = "absolute"
+        command_object["value"] = "11"
+        command_object["data"] = "11111"
+        return command_object
+    elif command_object["system"] == "tmcc":
+        command = binary_word2[0:2]
+        if command == "01":  # Switch command
+            command_object["device"] = "switch"
+            command_object["address"] = str(
+                get_address(binary_word2, binary_word3, 7))
+        elif command == "00":  # Engine command
+            command_object["device"] = "engine"
+            command_object["address"] = str(
+                get_address(binary_word2, binary_word3, 7))
+        elif command == "10":  # Accessory command
+            command_object["device"] = "accessory"
+            command_object["address"] = str(
+                get_address(binary_word2, binary_word3, 7))
+        elif command == "11":  # Route, train or group command
+            command = binary_word2[0:4]
+            if command == "1101":  # Route command
+                command_object["device"] = "route"
+            else:
+                command = binary_word2[0:5]
+                if command == "11001":  # Train command
+                    command_object["device"] = "train"
+                elif command == "11000":  # Group command
+                    command_object["device"] = "group"
+        command_object["command"] = get_command(binary_word3)
+        command_object["data"] = get_data(binary_word3)
+    command_object = get_button(command_object)
+    return command_object
+
+
+def get_system(binary_word1):
+    bits_to_system = {
+        "11111110": "tmcc",
+        "11111000": "legacy_engine",
+        "11111001": "legacy_train",
+        "11111011": "parameter"
     }
+    
+    if binary_word1 not in bits_to_system:
+        raise ValueError(f"Invalid binary_word1: {binary_word1}. Must be one of {list(bits_to_system.keys())}.")
+    
+    return bits_to_system[binary_word1]
+
+
+def get_command(binary_word3):
+    bits_to_command = {
+        "00": "action",
+        "01": "extended",
+        "10": "relative",
+        "11": "absolute"
+    }
+    
+    command = binary_word3[1:3]
+    
+    if command not in bits_to_command:
+        raise ValueError(f"Invalid command bits: {command}. Must be one of {list(bits_to_command.keys())}.")
+    
+    return bits_to_command[command]
+
+
+def get_data(binary_word3):
+    return binary_word3[3:8]
+    
+def get_address(binary_word2, binary_word3, number_bits):
+    whole_word = binary_word2 + binary_word3
+    start = 9 - number_bits
+    end = start + number_bits
+    binary_number = whole_word[start:end]
+    int_returned = int(binary_number, 2)
+    return int_returned
+
+
+def get_button(command_object):
+    global cfg
+    speak_commands = cfg["tmcc_voice_enabled"]
+    command_object["value"] = 0
+    command_object["button"] = ""
+    if command_object["device"] == "accessory" or command_object["device"] == "engine":
+        if command_object["command"] != "extended" and command_object["data"] != "01011" and speak_commands:
+            play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+            spk_str(str(command_object["address"]), False)
+        if command_object["command"] == "extended" and command_object["data"] == "01011":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                play_mix(code_folder + "mvc/set_to_id.wav")
+                spk_str(str(command_object["address"]), False)
+            command_object["button"] = "SET"
+        elif command_object["command"] == "extended" and command_object["data"] == "01000":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                spk_str(str(command_object["address"]), False)
+                play_mix(code_folder + "mvc/low_momentum.wav")
+            command_object["button"] = "LOWM"
+        elif command_object["command"] == "extended" and command_object["data"] == "01001":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                spk_str(str(command_object["address"]), False)
+                play_mix(code_folder + "mvc/medium_momentum.wav")
+            command_object["button"] = "MEDM"
+        elif command_object["command"] == "extended" and command_object["data"] == "01010":
+            if speak_commands:
+                play_mix(code_folder + "mvc/" + command_object["device"] + ".wav")
+                spk_str(str(command_object["address"]), False)
+                play_mix(code_folder + "mvc/high_momentum.wav")
+            command_object["button"] = "HIGHM"
+        elif command_object["command"] == "relative":
+            # Relative Speed “D”
+            # D = 0xA => +5
+            # D = 0x9 => +4
+            # .....
+            # D = 0x5 => 0 (no change) 
+            # .....
+            # D = 0x1 => -4 
+            # D = 0x0 => -5
+            binary_number = command_object["data"][1:5]
+            decimal_number = int(binary_number, 2)
+            command_object["button"] = "KNOB"
+            command_object["value"] = 0
+            if decimal_number > 5:
+                command_object["value"] = decimal_number - 5
+                print("throttle up :" + str(command_object["value"]))
+                if speak_commands:
+                    play_mix(code_folder + "mvc/trottle_up.wav")
+                    spk_str(str(command_object["value"]), False)
+            elif decimal_number < 5 :
+                command_object["value"] = decimal_number - 5
+                print("throttle down :" + str(command_object["value"]))
+                if speak_commands:
+                    play_mix(code_folder + "mvc/trottle_down.wav")
+                    spk_str(str(command_object["value"]), False)
+        elif command_object["command"] == "action" and command_object["data"] == "00001":
+            if speak_commands:
+                play_mix(code_folder + "mvc/direction.wav")
+            command_object["button"] = "DIR"
+        elif command_object["command"] == "action" and command_object["data"] == "11100":
+            if speak_commands:
+                play_mix(code_folder + "mvc/horn.wav")
+            command_object["button"] = "HORN"
+        elif command_object["command"] == "action" and command_object["data"] == "11101":
+            if speak_commands:
+                play_mix(code_folder + "mvc/bell.wav")
+            command_object["button"] = "BELL"
+        elif command_object["command"] == "action" and command_object["data"] == "00100":
+            if speak_commands:
+                play_mix(code_folder + "mvc/boost.wav")
+            command_object["button"] = "BOOST"
+        elif command_object["command"] == "action" and command_object["data"] == "00111":
+            if speak_commands:
+                play_mix(code_folder + "mvc/brake.wav")
+            command_object["button"] = "BRAKE"
+        elif command_object["command"] == "action" and command_object["data"] == "00101":
+            if speak_commands:
+                play_mix(code_folder + "mvc/front_coupler.wav")
+            command_object["button"] = "FCOUPLER"
+        elif command_object["command"] == "action" and command_object["data"] == "00110":
+            if speak_commands:
+                play_mix(code_folder + "mvc/rear_coupler.wav")
+            command_object["button"] = "RCOUPLER"
+        elif command_object["command"] == "action" and command_object["data"] == "01001":
+            if speak_commands:
+                play_mix(code_folder + "mvc/aux_1.wav")
+            command_object["button"] = "AUX1"
+        elif command_object["command"] == "action" and command_object["data"] == "01101":
+            if speak_commands:
+                play_mix(code_folder + "mvc/aux_2.wav")
+            command_object["button"] = "AUX2"
+        elif command_object["command"] == "action" and command_object["data"][0:1] == "1":
+            binary_number = command_object["data"][1:5]
+            decimal_number = int(binary_number, 2)
+            if speak_commands:
+                play_mix(code_folder + "mvc/numeric_button.wav")
+                spk_str(str(decimal_number), False)
+            command_object["button"] = str(decimal_number)
+
+    if command_object["device"] == "switch":
+        if command_object["command"] != "extended" and command_object["data"] != "01011" and speak_commands:
+            play_mix(code_folder + "mvc/switch.wav")
+            spk_str(str(command_object["address"]), False)
+        if command_object["command"] == "extended" and command_object["data"] == "01011":
+            if speak_commands:
+                play_mix(code_folder + "mvc/switch.wav")
+                play_mix(code_folder + "mvc/set_to_id.wav")
+                spk_str(str(command_object["address"]), False)
+            command_object["button"] = "SET"
+        elif command_object["command"] == "action" and command_object["data"][0:5] == "00000":
+            if speak_commands:
+                play_mix(code_folder + "mvc/through.wav")
+            command_object["button"] = "THROUGH"
+        elif command_object["command"] == "action" and command_object["data"][0:5] == "11111":
+            if speak_commands:
+                play_mix(code_folder + "mvc/out.wav")
+            command_object["button"] = "OUT"
+
+    if command_object["device"] == "halt":
+        if speak_commands:
+            play_mix(code_folder + "mvc/halt.wav")
+        command_object["button"] = "HALT"
+    return command_object
+
+
+def scale_number(num, exponent):
+    return int((num if num >= 0 else -(-num)) ** exponent)
+
+
+def animator_command_matches(command_object):
+    global animator_configs
+    # command_object = {
+    # "system": "tmcc",
+    # "device": "engine",
+    # "address": 1,
+    # "command": "action",
+    # "data": "01001",
+    # "button": "AUX1",
+    # "value": 0
+    # }
     matches = []  # Initialize an empty list to store matches
 
     for animator_config in animator_configs:
-        if animator_config["address"] == loco["address"]:
+        if animator_config["device"] == command_object["device"] and animator_config["address"] == command_object["address"] or command_object["device"] == "halt":
             for row in animator_config['table_data']:
-                # Check for speed match
-                if row[0] == loco["speed"]:
+                if row[0] == command_object["button"]:
+                    # Append the matched row and item to the list
                     matches.append((row, animator_config))
-                # Check for direction match
-                if row[0] == loco["direction"]:
-                    matches.append((row, animator_config))
-                # Check for function key match (e.g., "f0", "f1")
-                if row[0] in loco["functions"]:
-                    matches.append((row, animator_config))
-    return matches
+    return matches  # Return all matches
 
+
+################################################################################
+# Command encoding
+
+def get_command_binary_words(system, device, address, button, value=0):
+    address = int(address)
+    
+    if button == "HALT":
+        binary_word1 = "11111110"
+        binary_word2 = "11111111"
+        binary_word3 = "11111111"
+        return binary_word1, binary_word2, binary_word3
+
+    binary_word1 = set_system(system)
+    binary_word2 = set_device("00000000", device)
+    binary_word3 = get_command_and_data(button, "00000000", value)
+    binary_word2, binary_word3 = set_address(binary_word2, binary_word3, 7, address)
+    return binary_word1, binary_word2, binary_word3
+
+def set_system(command):
+    system_to_bits = {
+        "tmcc": "11111110",
+        "legacy_engine": "11111000",
+        "legacy_train": "11111001",
+        "parameter": "11111011"
+    }
+    
+    if command not in system_to_bits:
+        raise ValueError(f"Invalid command: {command}. Must be one of {list(system_to_bits.keys())}.")
+    
+    return system_to_bits[command]
+
+def set_device(binary_word2, device):
+    # Device-to-command mapping
+    device_command_mapping = {
+        "engine": "00",      # 2 bits (index 0-1)
+        "switch": "01",      # 2 bits (index 0-1)
+        "accessory": "10",   # 2 bits (index 0-1)
+        "route": "1101",     # 4 bits (index 0-3)
+        "train": "11001",    # 5 bits (index 0-4)
+        "group": "11000"     # 5 bits (index 0-4)
+    }
+
+    # Check if binary_word2 is exactly 8 bits
+    if len(binary_word2) != 8:
+        print(f"Error: binary_word2 '{binary_word2}' must be exactly 8 bits")
+        return binary_word2  # Return unchanged word on error
+
+    # Check if device is valid
+    if device not in device_command_mapping:
+        print(f"Warning: Device '{device}' not recognized")
+        return binary_word2  # Return unchanged word
+
+    # Get the command bits for the device
+    new_command = device_command_mapping[device]
+    command_length = len(new_command)
+
+    # Extract the unchanged portion of binary_word2 (bits after the command)
+    remaining_bits = binary_word2[command_length:]
+
+    # Construct new word with updated command bits and unchanged remaining bits
+    new_word = new_command + remaining_bits
+
+    # Ensure the new word is exactly 8 bits (should always be true with this mapping)
+    if len(new_word) != 8:
+        print(f"Error: New word '{new_word}' is not 8 bits after modification")
+        return binary_word2  # Return unchanged word on error
+
+    return new_word
+
+def set_address(binary_word2, binary_word3, number_bits, id):
+    binary_int = bin(id)[2:]
+    binary_int = binary_int.zfill(number_bits)
+    
+    max_value = 2 ** number_bits - 1
+    if id > max_value:
+        raise ValueError(f"int_supplied ({id}) is too large to fit in {number_bits} bits. Max value is {max_value}.")
+    
+    whole_word = binary_word2 + binary_word3
+    
+    start = 9 - number_bits
+    end = start + number_bits
+    
+    new_whole_word = whole_word[:start] + binary_int + whole_word[end:]
+
+    new_binary_word2 = new_whole_word[:8]
+    new_binary_word3 = new_whole_word[8:]
+    
+    return new_binary_word2, new_binary_word3
+
+def get_command_and_data(button, binary_word3, value=0):
+    # Command mapping
+    command_mapping = {
+        "action": "00",
+        "extended": "01",
+        "relative": "10",
+        "absolute": "11"
+    }
+
+    # Named button mappings for accessory/engine
+    accessory_engine_buttons = {
+        "SET": ("extended", "01011"),
+        "LOWM": ("extended", "01000"),
+        "MEDM": ("extended", "01001"),
+        "HIGHM": ("extended", "01010"),
+        "DIR": ("action", "00001"),
+        "HORN": ("action", "11100"),  # Checked before numeric buttons
+        "BELL": ("action", "11101"),  # Checked before numeric buttons
+        "BOOST": ("action", "00100"),
+        "BRAKE": ("action", "00111"),
+        "FCOUPLER": ("action", "00101"),
+        "RCOUPLER": ("action", "00110"),
+        "AUX1": ("action", "01001"),
+        "AUX2": ("action", "01101"),
+        "KNOB": ("relative", None),  # Data will be set based on value
+        "SPEED": ("absolute", None),  # Data will be set based on value (0-31)
+        "FORWARD": ("action", "00000"),
+        "REVERSE": ("action", "00011"),
+        "HORN2": ("action", "11111"),
+        "LETOFF": ("action", "11110")
+    }
+
+    # Named button mappings for switch
+    switch_buttons = {
+        "SET": ("extended", "01011"),
+        "THROUGH": ("action", "00000"),
+        "OUT": ("action", "11111")
+    }
+
+    # Check if binary_word3 is exactly 8 bits
+    if len(binary_word3) != 8:
+        print(f"Error: binary_word3 '{binary_word3}' must be exactly 8 bits")
+        return binary_word3  # Return unchanged word on error
+
+    # Extract prefix (index 0, unchanged)
+    prefix = binary_word3[0]  # Index 0 (1 bit, unchanged)
+
+    # Check named buttons (accessory/engine)
+    if button in accessory_engine_buttons:
+        command_type, default_data = accessory_engine_buttons[button]
+        new_command = command_mapping[command_type]
+        if button == "KNOB":
+            # Map value (-5 to +5) to data field
+            if not -5 <= value <= 5:
+                print(f"Warning: Value {value} for KNOB must be between -5 and 5")
+                return binary_word3  # Return unchanged word
+            decimal_number = value + 5  # Shift to 0-10 (0x0 to 0xA)
+            new_data = "0" + format(decimal_number, "04b")  # 00000 to 01010 (data[0] = 0)
+        elif button == "SPEED":
+            # Map value (0 to 31) to data field
+            if not 0 <= value <= 31:
+                print(f"Warning: Value {value} for SPEED must be between 0 and 31")
+                return binary_word3  # Return unchanged word
+            new_data = format(value, "05b")  # 00000 to 11111 (direct 5-bit encoding)
+        else:
+            new_data = default_data
+        new_word = prefix + new_command + new_data
+        return new_word
+
+    # Check named buttons (switch)
+    if button in switch_buttons:
+        command_type, new_data = switch_buttons[button]
+        new_command = command_mapping[command_type]
+        new_word = prefix + new_command + new_data
+        return new_word
+
+    # Handle numeric buttons (0 through 9 only)
+    if button.isdigit():
+        num = int(button)
+        if 0 <= num <= 9:  # Only consider values 0 through 9
+            new_data = "1" + format(num, "04b")  # 10000 to 11001
+            new_command = command_mapping["action"]
+            new_word = prefix + new_command + new_data
+            return new_word
+        else:
+            print(f"Warning: Numeric button {button} is invalid (must be 0-9)")
+            return binary_word3  # Return unchanged word
+
+    print(f"Warning: Button {button} not found")
+    return binary_word3  # Return unchanged word
 
 ################################################################################
 # Setup wifi and web server
@@ -1806,42 +2154,34 @@ def set_hdw(cmd, dur, url):
                 print(seg_split)
                 if len(seg_split) == 3:
                     print("three params")
-                    response = send_animator_post(
-                        url, seg_split[1], seg_split[2])
+                    response = send_animator_post(url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
                     print("four params")
                     max_retries = 2
                     attempts = 0
                     while attempts < max_retries:
-                        ip_from_mdns = get_ip_from_mdns(
-                            seg_split[1], overwrite=(attempts > 0))
-                        print(
-                            f"Attempt {attempts + 1}: Resolved {seg_split[1]} to {ip_from_mdns}")
+                        ip_from_mdns = get_ip_from_mdns(seg_split[1], overwrite=(attempts > 0))
+                        print(f"Attempt {attempts + 1}: Resolved {seg_split[1]} to {ip_from_mdns}")
                         if ip_from_mdns:
                             try:
-                                response = send_animator_post(
-                                    ip_from_mdns, seg_split[2], seg_split[3])
+                                response = send_animator_post(ip_from_mdns, seg_split[2], seg_split[3])
                                 if response is not None:  # Assuming None indicates failure
                                     return response
-                                print(
-                                    f"send_animator_post failed with {ip_from_mdns}, retrying...")
+                                print(f"send_animator_post failed with {ip_from_mdns}, retrying...")
                             except Exception as e:
-                                print(
-                                    f"Error with {ip_from_mdns}: {e}, retrying...")
+                                print(f"Error with {ip_from_mdns}: {e}, retrying...")
                         else:
-                            print(
-                                f"Failed to resolve {seg_split[1]} to an IP, retrying...")
+                            print(f"Failed to resolve {seg_split[1]} to an IP, retrying...")
                         attempts += 1
-
+                    
                     # If all retries fail, assume the mDNS entry no longer exists and clean up
                     if attempts >= max_retries:
                         if seg_split[1] in mdns_to_ip:
                             del mdns_to_ip[seg_split[1]]
-                            print(
-                                f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
+                            print(f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
                         return "host not found after retries"
-            # TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"),
+            # TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
             # ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
             # AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED) VALUE is optional (KNOB 1-9, SPEED 0-31)
             if seg[:4] == 'TMCC':
@@ -1883,17 +2223,14 @@ def split_string(seg):
 
     return parts
 
-
 def get_ip_address(hostname):
     response = send_animator_post(hostname, "get-local-ip")
     return response
 
-
 def get_ip_from_mdns(mdns_name, overwrite=False):
     # Check if mdns_name itself looks like an IP address (with or without port)
     ip_part = mdns_name.split(':')[0] if ':' in mdns_name else mdns_name
-    is_ip = '.' in ip_part and all(part.isdigit()
-                                   for part in ip_part.split('.'))
+    is_ip = '.' in ip_part and all(part.isdigit() for part in ip_part.split('.'))
 
     if is_ip:
         # If it's already an IP, return it as-is without adding to dictionary
@@ -1920,11 +2257,9 @@ def get_ip_from_mdns(mdns_name, overwrite=False):
                 # Append the original port to the IP if it exists
                 ip_with_port = f"{ip_address}:{port}" if port else ip_address
                 mdns_to_ip[mdns_name] = ip_with_port
-                print(
-                    f"Resolved and added {mdns_name}: {ip_with_port} to the dictionary")
+                print(f"Resolved and added {mdns_name}: {ip_with_port} to the dictionary")
             else:
-                print(
-                    f"Resolved {mdns_name} to {ip_address}, but it doesn't look like an IP - not adding to dictionary")
+                print(f"Resolved {mdns_name} to {ip_address}, but it doesn't look like an IP - not adding to dictionary")
                 ip_with_port = None
 
         return ip_with_port
