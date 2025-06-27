@@ -45,6 +45,7 @@ import gc
 import files
 import os
 import adafruit_vl53l4cd
+from rainbowio import colorwheel
 
 
 def gc_col(collection_point):
@@ -210,11 +211,15 @@ cfg = files.read_json_file("/sd/cfg.json")
 snd_opt = []
 menu_snd_opt = []
 ts_jsons = []
+rand_opt = []
+
 
 def upd_media():
-    global snd_opt, menu_snd_opt, ts_jsons
+    global snd_opt, menu_snd_opt, ts_jsons, rand_opt
 
     snd_opt = files.return_directory("", "/sd/snds", ".json")
+
+    rand_opt = [item for item in snd_opt if item not in ["depart", "board", "scratch"]]
 
     menu_snd_opt = []
     menu_snd_opt.extend(snd_opt)
@@ -223,6 +228,7 @@ def upd_media():
 
     ts_jsons = files.return_directory(
         "", "/sd/t_s_def", ".json")
+
 
 upd_media()
 
@@ -250,10 +256,10 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 
-num_px = 2
+n_px = 7
 
 # 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP15, num_px)
+led = neopixel.NeoPixel(board.GP15, n_px)
 
 gc_col("Neopixels setup")
 
@@ -451,7 +457,7 @@ if (web):
             sounds.extend(snd_opt)
             my_string = files.json_stringify(sounds)
             return Response(request, my_string)
-        
+
         @server.route("/create-animation", [POST])
         def btn(request: Request):
             try:
@@ -467,7 +473,7 @@ if (web):
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error creating animation.")
-        
+
         @server.route("/rename-animation", [POST])
         def btn(request: Request):
             try:
@@ -481,7 +487,7 @@ if (web):
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.")
-            
+
         @server.route("/delete-animation", [POST])
         def btn(request: Request):
             try:
@@ -507,7 +513,6 @@ if (web):
             except Exception as e:
                 print(e)
                 return Response(request, "error")
-        
 
         @server.route("/get-animation", [POST])
         def btn(request: Request):
@@ -521,7 +526,6 @@ if (web):
             else:
                 f_n = "/sd/t_s_def/timestamp mode.json"
                 return FileResponse(request, f_n, "/")
-
 
         data = []
 
@@ -760,6 +764,7 @@ def spk_web():
         spk_str(cfg["HOST_NAME"], True)
     ply_a_0("/sd/mvc/in_your_browser.wav")
 
+
 def get_snds(dir, typ):
     sds = []
     s = files.return_directory("", dir, ".wav")
@@ -820,11 +825,11 @@ async def an_async(f_nm):
     cur_opt = f_nm
     try:
         if f_nm == "random all":
-            h_i = len(snd_opt) - 1
-            cur_opt = snd_opt[random.randint(
+            h_i = len(rand_opt) - 1
+            cur_opt = rand_opt[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(snd_opt) > 1:
-                cur_opt = snd_opt[random.randint(
+            while lst_opt == cur_opt and len(rand_opt) > 1:
+                cur_opt = rand_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
@@ -952,12 +957,110 @@ def an_ts(f_nm):
 # animation effects
 
 
-sp = [0, 0, 0, 0, 0, 0]
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):  # in range(n_px)
+            led[i] = (r, g, b)
+    else:
+        led[light_n] = (r, g, b)
+    led.show()
+
+async def random_effect(il, ih, d):
+    if exit_set_hdw_async:
+        return
+    i = random.randint(il, ih)
+    if i == 1:
+        await rbow(.005, d)
+    elif i == 2:
+        multi_color()
+        await asyncio.sleep(d)
+    elif i == 3:
+        await fire(d)
+
+
+async def rbow(spd, dur):
+    global exit_set_hdw_async
+    st = time.monotonic()
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0, 255, 1):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+            
+def multi_color():
+    for i in range(0, n_px):
+        r = random.randint(128, 255)
+        g = random.randint(128, 255)
+        b = random.randint(128, 255)
+        c = random.randint(0, 2)
+        if c == 0:
+            r1 = r
+            g1 = 0
+            b1 = 0
+        elif c == 1:
+            r1 = 0
+            g1 = g
+            b1 = 0
+        elif c == 2:
+            r1 = 0
+            g1 = 0
+            b1 = b
+        led[i] = (r1, g1, b1)
+    led.show()
+
+async def fire(dur):
+    st = time.monotonic()
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+
+    # Flicker, based on our initial RGB values
+    while True:
+        for i in range(n_px):
+            if exit_set_hdw_async:
+                return
+            f = random.randint(0, 110)
+            r1 = bnd(r-f, 0, 255)
+            g1 = bnd(g-f, 0, 255)
+            b1 = bnd(b-f, 0, 255)
+            led[i] = (r1, g1, b1)
+            led.show()
+        upd_vol(random.uniform(0.05, 0.1))
+        te = time.monotonic()-st
+        if te > dur:
+            return
+        
+def bnd(c, l, u):
+    if (c < l):
+        c = l
+    if (c > u):
+        c = u
+    return c
+
 br = 0
 
 
-async def set_hdw_async(input_string):
-    global sp, br, car_pos
+async def set_hdw_async(input_string, dur = 3):
+    global br, car_pos
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -965,37 +1068,61 @@ async def set_hdw_async(input_string):
     for seg in segs:
         if seg == "":
             print("no command")
+        # WXXX = Wait XXX decimal seconds
+        elif seg[0] == 'W':  # wait time
+            s = float(seg[1:])
+            await asyncio.sleep(s)
+        # ZRAND = Random rainbow, fire, or color change
+        elif seg[0:] == 'ZRAND':
+            await random_effect(1, 3, dur)
+        # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+        elif seg[:2] == 'ZR':
+            v = float(seg[2:])
+            await rbow(v, dur)
+        # ZFIRE = Fire
+        elif seg[0:] == 'ZFIRE':
+            await fire(dur)
+        # ZCOLCH = Color change
+        elif seg[0:] == 'ZCOLCH':
+            multi_color()
+            await asyncio.sleep(dur)  
         # OPEN open gate
         elif seg[:4] == 'OPEN':
             s_arr[0].angle = 90
         # CLOSE close gate
         elif seg[:5] == 'CLOSE':
-            s_arr[0].angle = 10
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
-        elif seg[0] == 'M': # play file
-                if seg[1] == "S":
-                    stp_a_0()
-                elif seg[1] == "W" or seg[1] == "P":
-                    stp_a_0()
-                    if seg[2] == "S":
-                        w0 = audiocore.WaveFile(open("/sd/snds/" + seg[3:] + ".wav", "rb"))
-                    elif seg[2] == "M":
-                        w0 = audiocore.WaveFile(open("/sd/mvc/" + seg[3:] + ".wav", "rb"))
-                    if seg[1] == "W" or seg[1] == "P":
-                        mix.voice[0].play(w0, loop=False)
-                    if seg[1] == "W":
-                        wait_snd()
-        # WA = Blow horn or whistle, A (H Horn, W whistle)
-        elif seg[0] == 'W': # play file
+            s_arr[0].angle = 5
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)
+        elif seg[0] == 'M':  # play file
+            if seg[1] == "S":
+                stp_a_0()
+            elif seg[1] == "W" or seg[1] == "P":
+                stp_a_0()
+                if seg[2] == "S":
+                    w0 = audiocore.WaveFile(
+                        open("/sd/snds/" + seg[3:] + ".wav", "rb"))
+                elif seg[2] == "M":
+                    w0 = audiocore.WaveFile(
+                        open("/sd/mvc/" + seg[3:] + ".wav", "rb"))
+                if seg[1] == "W" or seg[1] == "P":
+                    mix.voice[0].play(w0, loop=False)
+                if seg[1] == "W":
+                    wait_snd()
+        # HORN = Blow horn
+        elif seg[:4] == 'HORN':  # play file
+            wait_snd()
             stp_a_0()
-            if seg[1] == "W":
-                fn=get_snds("/sd/mvc","whistle")
-                w0 = audiocore.WaveFile(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
-            elif seg[1] == "H" or seg[1] == "P":
-                fn=get_snds("/sd/mvc","horn")
-                w0 = audiocore.WaveFile(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
+            fn = get_snds("/sd/mvc", "horn")
+            w0 = audiocore.WaveFile(open(fn, "rb"))
+            mix.voice[0].play(w0, loop=False)
+            
+        # BELL = Ring bell
+        elif seg[:4] == 'BELL':  # play file
+            wait_snd()
+            stp_a_0()
+            fn = get_snds("/sd/mvc", "bell")
+            w0 = audiocore.WaveFile(open(fn, "rb"))
+            mix.voice[0].play(w0, loop=False)
         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
         elif seg[0] == 'S':
             num = int(seg[1])
@@ -1005,18 +1132,14 @@ async def set_hdw_async(input_string):
                     s_arr[i].angle = v
             else:
                 s_arr[num-1].angle = int(v)
-        # LNXXX = Lights N (0 All, 1-6) XXX 0 to 255
-        elif seg[0] == 'L':  # lights
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(6):
-                    sp[i] = v
-            else:
-                sp[num-1] = int(v)
-            led[0] = (sp[1], sp[0], sp[2])
-            led[1] = (sp[4], sp[3], sp[5])
-            led.show()
+        # LNZZZ_R_G_B = Neopixels ZZZ (0 All, 1 to 999) RGB 0 to 255
+        elif seg[:2] == 'LN':
+            segs_split = seg.split("_")
+            light_n = int(segs_split[0][2:])-1
+            r = int(segs_split[1])
+            g = int(segs_split[2])
+            b = int(segs_split[3])
+            set_neo_to(light_n, r, g, b)
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
@@ -1044,28 +1167,27 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'T':
             v = int(seg[1:])/100
             train.throttle = v
-        # H_XXX_YY = Train XXX throttle -100 to 100 YY position 12 or 6 oclock
+        # H_XXX_GGG_TTT = Home train XXX throttle -100 to 100, GGG decimal position, TTT decimal tolerance
         elif seg[0] == 'H':
             seg_split = seg.split("_")
             train.throttle = int(seg_split[1])/100
-            if seg_split[2] == "12":
-                goal = 5
-            else:
-                goal = 35
-            vl53.clear_interrupt()
-            cur_dist = vl53.distance
+            goal = float(seg_split[2])
+            tol = float(seg_split[3])
+            for _ in range(3):
+                vl53.clear_interrupt()
+                cur_dist = vl53.distance
             i = 0
             while True:
                 vl53.clear_interrupt()
                 cur_dist = vl53.distance
-                if cur_dist > goal - 5 and cur_dist < goal + 5:
+                if cur_dist > goal - tol and cur_dist < goal + tol:
                     i += 1
                     if i > 2:
                         train.throttle = 0
                         break
                 print(cur_dist)
-                time.sleep(.02)  # Hold at current throttle value
-        # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, 
+                time.sleep(.1)  # Hold at current throttle value
+        # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm,
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec
         elif seg[0] == 'C':
             seg_split = seg.split("_")
@@ -1084,28 +1206,29 @@ async def set_hdw_async(input_string):
             num_times_in_band = 0
             give_up = 10
             srt_t = time.monotonic()
-            
+
             # Use current throttle state directly
             current_speed = abs(train.throttle) if train.throttle else 0
             current_direction = 1 if train.throttle >= 0 else -1
-            
+
             while True:
                 vl53.clear_interrupt()
                 car_pos = vl53.distance
-                
+
                 # Calculate distance and target direction
                 distance_to_target = abs(car_pos - target_pos)
                 target_direction = 1 if car_pos < target_pos else -1  # 1 forward, -1 reverse
-                
+
                 # Calculate slowdown zone based on acceleration
                 slowdown_distance = target_band * 3 + (acc * 0.5)
-                
+
                 # Determine target speed
                 if distance_to_target < slowdown_distance:
-                    target_speed = max(0.1, spd * (distance_to_target / slowdown_distance))
+                    target_speed = max(
+                        0.1, spd * (distance_to_target / slowdown_distance))
                 else:
                     target_speed = spd
-                    
+
                 # Handle direction change or speed adjustment
                 if current_direction != target_direction and current_speed > 0:
                     # Decelerate to stop before changing direction
@@ -1122,7 +1245,7 @@ async def set_hdw_async(input_string):
                     elif speed_diff < 0:  # Need to decelerate
                         current_speed += max(-acc * 0.05, speed_diff)
                     current_direction = target_direction
-                    
+
                 # Apply clamped speed with direction
                 current_speed = max(0, min(spd, current_speed))
                 train.throttle = current_speed * current_direction
@@ -1133,10 +1256,11 @@ async def set_hdw_async(input_string):
                     if num_times_in_band > 2:
                         train.throttle = 0
                         break
-                        
-                print(f"Pos: {car_pos:.1f}, Speed: {train.throttle:.2f}, Dist: {distance_to_target:.1f}")
+
+                print(
+                    f"Pos: {car_pos:.1f}, Speed: {train.throttle:.2f}, Dist: {distance_to_target:.1f}")
                 time.sleep(.05)
-                
+
                 t_past = time.monotonic() - srt_t
                 if t_past > give_up:
                     train.throttle = 0
@@ -1259,10 +1383,10 @@ class Main(Ste):
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
-            elif sel_mnu == "add_sounds_animate":
-                mch.go_to('add_sounds_animate')
-            elif sel_mnu == "web_options":
-                mch.go_to('web_options')
+            # elif sel_mnu == "add_sounds_animate":
+            #     mch.go_to('add_sounds_animate')
+            # elif sel_mnu == "web_options":
+            #     mch.go_to('web_options')
             elif sel_mnu == "volume_settings":
                 mch.go_to('volume_settings')
             else:
@@ -1327,51 +1451,51 @@ class Snds(Ste):
             mch.go_to('base_state')
 
 
-class AddSnds(Ste):
+# class AddSnds(Ste):
 
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
+#     def __init__(self):
+#         self.i = 0
+#         self.sel_i = 0
 
-    @property
-    def name(self):
-        return 'add_sounds_animate'
+#     @property
+#     def name(self):
+#         return 'add_sounds_animate'
 
-    def enter(self, mch):
-        files.log_item('Add sounds animate')
-        ply_a_0("/sd/mvc/add_sounds_animate.wav")
-        l_r_but()
-        Ste.enter(self, mch)
+#     def enter(self, mch):
+#         files.log_item('Add sounds animate')
+#         ply_a_0("/sd/mvc/add_sounds_animate.wav")
+#         l_r_but()
+#         Ste.enter(self, mch)
 
-    def exit(self, mch):
-        Ste.exit(self, mch)
+#     def exit(self, mch):
+#         Ste.exit(self, mch)
 
-    def upd(self, mch):
-        global ts_mode
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left":
-            ply_a_0(
-                "/sd/mvc/" + add_snd[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(add_snd)-1:
-                self.i = 0
-        if sw == "right":
-            sel_mnu = add_snd[self.sel_i]
-            if sel_mnu == "hear_instructions":
-                ply_a_0("/sd/mvc/create_sound_track_files.wav")
-            elif sel_mnu == "timestamp_mode_on":
-                ts_mode = True
-                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
-                ply_a_0("/sd/mvc/timestamp_instructions.wav")
-                mch.go_to('base_state')
-            elif sel_mnu == "timestamp_mode_off":
-                ts_mode = False
-                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-            else:
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
+#     def upd(self, mch):
+#         global ts_mode
+#         sw = utilities.switch_state(
+#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+#         if sw == "left":
+#             ply_a_0(
+#                 "/sd/mvc/" + add_snd[self.i] + ".wav")
+#             self.sel_i = self.i
+#             self.i += 1
+#             if self.i > len(add_snd)-1:
+#                 self.i = 0
+#         if sw == "right":
+#             sel_mnu = add_snd[self.sel_i]
+#             if sel_mnu == "hear_instructions":
+#                 ply_a_0("/sd/mvc/create_sound_track_files.wav")
+#             elif sel_mnu == "timestamp_mode_on":
+#                 ts_mode = True
+#                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+#                 ply_a_0("/sd/mvc/timestamp_instructions.wav")
+#                 mch.go_to('base_state')
+#             elif sel_mnu == "timestamp_mode_off":
+#                 ts_mode = False
+#                 ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+#             else:
+#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
+#                 mch.go_to('base_state')
 
 
 class VolSet(Ste):
@@ -1432,52 +1556,52 @@ class VolSet(Ste):
             mch.go_to('base_state')
 
 
-class WebOpt(Ste):
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
+# class WebOpt(Ste):
+#     def __init__(self):
+#         self.i = 0
+#         self.sel_i = 0
 
-    @property
-    def name(self):
-        return 'web_options'
+#     @property
+#     def name(self):
+#         return 'web_options'
 
-    def enter(self, mch):
-        files.log_item('Set Web Options')
-        sel_web()
-        Ste.enter(self, mch)
+#     def enter(self, mch):
+#         files.log_item('Set Web Options')
+#         sel_web()
+#         Ste.enter(self, mch)
 
-    def exit(self, mch):
-        Ste.exit(self, mch)
+#     def exit(self, mch):
+#         Ste.exit(self, mch)
 
-    def upd(self, mch):
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left":
-            ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(web_m)-1:
-                self.i = 0
-        if sw == "right":
-            selected_menu_item = web_m[self.sel_i]
-            if selected_menu_item == "web_on":
-                cfg["serve_webpage"] = True
-                opt_sel()
-                sel_web()
-            elif selected_menu_item == "web_off":
-                cfg["serve_webpage"] = False
-                opt_sel()
-                sel_web()
-            elif selected_menu_item == "hear_url":
-                spk_str(cfg["HOST_NAME"], True)
-                sel_web()
-            elif selected_menu_item == "hear_instr_web":
-                ply_a_0("/sd/mvc/web_instruct.wav")
-                sel_web()
-            else:
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
+#     def upd(self, mch):
+#         sw = utilities.switch_state(
+#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+#         if sw == "left":
+#             ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
+#             self.sel_i = self.i
+#             self.i += 1
+#             if self.i > len(web_m)-1:
+#                 self.i = 0
+#         if sw == "right":
+#             selected_menu_item = web_m[self.sel_i]
+#             if selected_menu_item == "web_on":
+#                 cfg["serve_webpage"] = True
+#                 opt_sel()
+#                 sel_web()
+#             elif selected_menu_item == "web_off":
+#                 cfg["serve_webpage"] = False
+#                 opt_sel()
+#                 sel_web()
+#             elif selected_menu_item == "hear_url":
+#                 spk_str(cfg["HOST_NAME"], True)
+#                 sel_web()
+#             elif selected_menu_item == "hear_instr_web":
+#                 ply_a_0("/sd/mvc/web_instruct.wav")
+#                 sel_web()
+#             else:
+#                 files.write_json_file("/sd/cfg.json", cfg)
+#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
+#                 mch.go_to('base_state')
 
 ###############################################################################
 # Create the state machine
@@ -1487,9 +1611,9 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
-st_mch.add(AddSnds())
+# st_mch.add(AddSnds())
 st_mch.add(VolSet())
-st_mch.add(WebOpt())
+# st_mch.add(WebOpt())
 
 aud_en.value = True
 
@@ -1509,8 +1633,8 @@ if (web):
         rst()
 
 # initialize items
-add_cmd("S090")
-add_cmd("H_20_12")
+add_cmd("CLOSE")
+add_cmd("H_20_5_3")
 upd_vol(.5)
 
 st_mch.go_to('base_state')
@@ -1564,4 +1688,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-

@@ -104,9 +104,8 @@
             </div>
             <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
             <button class="mui-btn mui-btn--primary" onclick="blowHorn()">Horn</button>
-            <button class="mui-btn mui-btn--primary" onclick="blowWhistle()">Whistle</button>
-            <button class="mui-btn mui-btn--primary" onclick="home12()">Home 12</button>
-            <button class="mui-btn mui-btn--primary" onclick="Home6()">Home 6</button>
+            <button class="mui-btn mui-btn--primary" onclick="ringBell()">Bell</button>
+            <button class="mui-btn mui-btn--primary" onclick="home()">Home</button>
             <button class="mui-btn mui-btn--primary" onclick="openGates()">Open Gates</button>
             <button class="mui-btn mui-btn--primary" onclick="closeGates()">Close Gates</button>
         </div>
@@ -157,33 +156,25 @@
                 <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
                     type="button">
                     Servo 3 90
-            </button>
+                </button>
             </div>
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L1255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
                     type="button">
-                    Light 1
+                    Red
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L2255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
                     type="button">
-                    Light 2
+                    Green
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L3255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
                     type="button">
-                    Light 3
+                    Blue
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L4255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
                     type="button">
-                    Light 4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L5255" data-url="/lights"
-                    type="button">
-                    Light 5
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="L00,L6255" data-url="/lights"
-                    type="button">
-                    Light 6
+                    White
                 </button>
             </div>
             <div>
@@ -336,7 +327,7 @@
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
             <div>SNXXX = Servo N (0 All, 1-6) XXX 0 to 180</div>
-            <div>LNXXX = Lights N (0 All, 1-6) XXX 0 to 255</div>
+            <div>LNZZZ_R_G_B = Neopixels ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>AN_XXX = Animation XXX filename</div>
@@ -344,9 +335,16 @@
             <div>H_XXX_YY = Home train XXX throttle -100 to 100 YY position 12 or 6 o'clock</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder) XXX (file name)</div>
-            <div>WA = Blow horn or whistle, A (H Horn, W whistle)</div>
+            <div>HORN = Blow horn</div>
+            <div>BELL = Ring bell</div>
             <div>CLOSE close gate</div>
-            <div>OPEN open gate</div>   
+            <div>OPEN open gate</div>
+            <div>ZRAND = Random rainbow, fire, or color change</div>
+            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+            <div>ZFIRE = Fire</div>
+            <div>ZCOLCH = Color change</div>
+            <div>H_XXX_GGG_TTT = Home train XXX throttle -100 to 100, GGG decimal position, TTT decimal tolerance</div>
+            <div>WXXX = Wait XXX decimal seconds</div> 
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
@@ -1595,32 +1593,27 @@
     }
 
     function blowHorn() {
-        let newCommand = "WH";
+        let newCommand = "HORN";
         testAnimationCommand(newCommand);
     }
 
-    function blowWhistle() {
-        let newCommand = "WW";
+    function ringBell() {
+        let newCommand = "BELL";
         testAnimationCommand(newCommand);
     }
 
-    function home12() {
-        let newCommand = "H_20_12";
-        testAnimationCommand(newCommand);
-    }
-
-    function Home6() {
-        let newCommand = "H_20_6";
+    function home() {
+        let newCommand = "H_20_5_3";
         testAnimationCommand(newCommand);
     }
 
     function openGates() {
-        let newCommand = "S190";
+        let newCommand = "OPEN";
         testAnimationCommand(newCommand);
     }
 
     function closeGates() {
-        let newCommand = "S10";
+        let newCommand = "CLOSE";
         testAnimationCommand(newCommand);
     }
 
