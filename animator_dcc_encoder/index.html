@@ -66,7 +66,7 @@
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="animators">
             <h2>Animator setup:</h2>
-            <p>Follow these steps to setup animators to be controlled by Lionel Legacy/TMCC remotes:</p>
+            <p>Follow these steps to setup animators to be controlled by DCC remotes:</p>
             <ol>
                 <li><strong>Create:</strong> Click the create button to add a new animator.</li>
                 <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
@@ -153,7 +153,8 @@
                     <thead>
                         <tr>
                             <th>Button</th>
-                            <th>Commands</th>
+                            <th>Commands ON/FWD</th>
+                            <th>Commands OFF/REV</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -1381,7 +1382,10 @@
         var anCell = createEditableCell(rowData[0], "50px");
         row.appendChild(anCell);
 
-        var anCell = createEditableCell(rowData[1], "600px");
+        var anCell = createEditableCell(rowData[1], "300px");
+        row.appendChild(anCell);
+
+        var anCell = createEditableCell(rowData[2], "300px");
         row.appendChild(anCell);
 
         var actionCell = document.createElement("td");
@@ -1427,7 +1431,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary animator-test-row-btn";
-        button.innerHTML = 'Tst';
+        button.innerHTML = 'T';
         return button;
     }
 
@@ -1435,7 +1439,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary animator-delete-row-btn";
-        button.innerHTML = 'Del';
+        button.innerHTML = 'D';
         return button;
     }
 
@@ -1443,7 +1447,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary animator-insert-row-btn";
-        button.innerHTML = 'Ins';
+        button.innerHTML = 'I';
         return button;
     }
 
@@ -1451,7 +1455,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary animator-add-row-btn";
-        button.innerHTML = 'Add';
+        button.innerHTML = 'A';
         return button;
     }
 
