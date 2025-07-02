@@ -738,18 +738,22 @@ def find_matches(loco, animator_configs, changed_item):
     for animator_config in animator_configs:
         if str(animator_config["address"]) == str(loco.address):
             for row in animator_config['table_data']:
-                if row[0].lower() == changed_item.lower():  # Match key (e.g., "speed", "f0", "f2")
+                if row[0].lower() == changed_item.lower():
                     if changed_item.lower() == "speed":
-                        if hasattr(loco, 'direction') and loco.direction.lower() == "forward":
-                            matches.append({"command": row[1], "url":animator_config["baseUrl"]})
-                        else:
-                            matches.append({"command": row[2], "url":animator_config["baseUrl"]})
+                        # Scale speed from 1-128 to 0-100
+                        speed = loco.speed if hasattr(loco, 'speed') else 1
+                        scaled_speed = int(((speed - 1) / 127.0) * 100)  # Scale 1-128 to 0-100
+                        direction = "" if hasattr(loco, 'direction') and loco.direction.lower() == "forward" else "-"
+                        # Replace SSS with scaled speed and DDD with direction
+                        command = row[1].replace("SSS", str(scaled_speed)).replace("DDD", direction)
+                        matches.append({"command": command, "url": animator_config["baseUrl"]})
                     elif changed_item.lower().startswith("f"):
-                        func_num = int(changed_item.lower()[1:]) 
+                        func_num = int(changed_item.lower()[1:])
+                        # Check if function is active
                         if hasattr(loco, 'functions') and len(loco.functions) > func_num and loco.functions[func_num]:
-                            matches.append({"command": row[1], "url":animator_config["baseUrl"]})
+                            matches.append({"command": row[1], "url": animator_config["baseUrl"]})
                         else:
-                            matches.append({"command": row[2], "url":animator_config["baseUrl"]})
+                            matches.append({"command": row[2], "url": animator_config["baseUrl"]})
     return matches
 
 def read_command():
