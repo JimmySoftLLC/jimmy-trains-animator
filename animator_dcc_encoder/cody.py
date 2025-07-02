@@ -741,15 +741,15 @@ def find_matches(loco, animator_configs, changed_item):
                 if row[0].lower() == changed_item.lower():  # Match key (e.g., "speed", "f0", "f2")
                     if changed_item.lower() == "speed":
                         if hasattr(loco, 'direction') and loco.direction.lower() == "forward":
-                            matches.append(row[1])
+                            matches.append({"command": row[1], "url":animator_config["baseUrl"]})
                         else:
-                            matches.append(row[2])
+                            matches.append({"command": row[2], "url":animator_config["baseUrl"]})
                     elif changed_item.lower().startswith("f"):
                         func_num = int(changed_item.lower()[1:]) 
                         if hasattr(loco, 'functions') and len(loco.functions) > func_num and loco.functions[func_num]:
-                            matches.append(row[1])
+                            matches.append({"command": row[1], "url":animator_config["baseUrl"]})
                         else:
-                            matches.append(row[2])
+                            matches.append({"command": row[2], "url":animator_config["baseUrl"]})
     return matches
 
 def read_command():
@@ -779,6 +779,9 @@ def read_command():
                                     matches += find_matches(loco, animator_configs, "speed")
                                 if matches:
                                     print(matches)
+                                    for match in matches:
+                                        set_hdw(match["command"], 0, match["url"])
+                                    
                         elif cmd_type == "func_update":
                             _, addr, function_string = command
                             if addr not in locomotives:
@@ -802,6 +805,8 @@ def read_command():
                                         matches += find_matches(loco, animator_configs, changed_item)
                                 if matches:
                                     print(matches)
+                                    for match in matches:
+                                        set_hdw(match["command"], 0, match["url"])
                         elif cmd_type == "cv_ack":
                             print(f"CV Ack at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
