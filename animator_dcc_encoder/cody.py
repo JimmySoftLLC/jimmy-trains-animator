@@ -671,10 +671,8 @@ def get_usb_ports():
 ################################################################################
 # Read and write serial commands connected to dcc
 
-
 # Dictionary to store locomotives by address
 locomotives = {}
-
 
 class Locomotive:
     def __init__(self, address):
@@ -695,7 +693,6 @@ class Locomotive:
 
     def update_functions(self, function_string):
         old_functions = self.functions.copy()
-        # Parse function states (e.g., F0=ON, F1=OFF)
         function_matches = re.findall(r"F(\d+)=(ON|OFF)", function_string)
         for func_num, state in function_matches:
             func_num = int(func_num)
@@ -716,7 +713,7 @@ class Locomotive:
 
 def parse_serial_line(line):
     line = line.strip()
-    # Speed Update
+
     speed_match = re.match(
         r"notifyDccSpeed: Addr=(\d+), Speed=(\d+), Dir=(Forward|Reverse), Steps=(\d+)", line)
     if speed_match:
@@ -725,30 +722,37 @@ def parse_serial_line(line):
         direction = speed_match.group(3)
         speed_steps = int(speed_match.group(4))
         return ("speed_update", addr, speed, direction, speed_steps)
-    # Function Update (extract function string after parentheses)
+    
     func_update_match = re.match(r"notifyDccFunc: Addr=(\d+) \((.+)\)", line)
     if func_update_match:
         addr = int(func_update_match.group(1))
         function_string = func_update_match.group(2)
         return ("func_update", addr, function_string)
-    # CV Ack
+
     if line == "notifyCVAck":
         return ("cv_ack",)
     return None
 
 def find_matches(loco, animator_configs, changed_item):
-    """Find matches in animator_configs for the specific changed item."""
     matches = []
     for animator_config in animator_configs:
         if str(animator_config["address"]) == str(loco.address):
             for row in animator_config['table_data']:
-                if row[0].lower() == changed_item.lower():
-                    # For functions, match regardless of ON (True) or OFF (False) state
-                    matches.append((row, animator_config))
+                if row[0].lower() == changed_item.lower():  # Match key (e.g., "speed", "f0", "f2")
+                    if changed_item.lower() == "speed":
+                        if hasattr(loco, 'direction') and loco.direction.lower() == "forward":
+                            matches.append(row[1])
+                        else:
+                            matches.append(row[2])
+                    elif changed_item.lower().startswith("f"):
+                        func_num = int(changed_item.lower()[1:]) 
+                        if hasattr(loco, 'functions') and len(loco.functions) > func_num and loco.functions[func_num]:
+                            matches.append(row[1])
+                        else:
+                            matches.append(row[2])
     return matches
 
 def read_command():
-    """Read and process serial commands, updating locomotive objects."""
     while True:
         try:
             if ser.in_waiting > 0:
@@ -769,19 +773,12 @@ def read_command():
                             old_direction = loco.direction
                             if loco.update_speed(speed, direction, speed_steps):
                                 matches = []
-                                # Check for changed items
-                                if old_speed != speed:
-                                    print(line)
-                                    print(command)
+                                if old_speed != speed or old_direction != direction:
                                     matches += find_matches(loco, animator_configs, "speed")
-                                if old_direction != direction:
-                                    matches += find_matches(loco, animator_configs, "direction")
-                                # Startup case: new loco, include speed and direction
                                 if is_new_loco:
                                     matches += find_matches(loco, animator_configs, "speed")
-                                    matches += find_matches(loco, animator_configs, "direction")
                                 if matches:
-                                    print(f"Matches: {matches}")
+                                    print(matches)
                         elif cmd_type == "func_update":
                             _, addr, function_string = command
                             if addr not in locomotives:
@@ -793,23 +790,18 @@ def read_command():
                             old_functions = loco.functions.copy()
                             if loco.update_functions(function_string):
                                 matches = []
-                                # Identify changed functions (ON or OFF)
                                 function_matches = re.findall(r"F(\d+)=(ON|OFF)", function_string)
                                 for func_num, state in function_matches:
                                     func_num = int(func_num)
                                     if 0 <= func_num <= 28 and loco.functions[func_num] != old_functions[func_num]:
                                         changed_item = f"f{func_num}"
-                                        print(line)
-                                        print(command)
-                                        print(changed_item)
-                                    #    matches += find_matches(loco, animator_configs, changed_item)
-                                # Startup case: new loco, match any non-default functions (ON or OFF)
+                                        matches += find_matches(loco, animator_configs, changed_item)        
                                 if is_new_loco:
                                     for func_num in range(29):
-                                        # Match any function that differs from default (False)
-                                        if loco.functions[func_num] != False:  # True (ON) or changed to OFF explicitly
-                                            changed_item = f"f{func_num}"
-                                            matches += find_matches(loco, animator_configs, changed_item)
+                                        changed_item = f"f{func_num}"
+                                        matches += find_matches(loco, animator_configs, changed_item)
+                                if matches:
+                                    print(matches)
                         elif cmd_type == "cv_ack":
                             print(f"CV Ack at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:
