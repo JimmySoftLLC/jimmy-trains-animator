@@ -322,9 +322,6 @@
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-            <div>AN_XXX = Animation XXX filename, for builtin tracks use the "filename" for others in the customers
-                folder use
-                "c_filename"</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
@@ -589,7 +586,7 @@
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
-            button.textContent = item.replace("c_", "");
+            button.textContent = item.replace("customers_owned_music_", "");
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
             button.setAttribute("data-url", "/animation");
@@ -635,7 +632,7 @@
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
-            button.textContent = item.replace("c_", "");
+            button.textContent = item.replace("customers_owned_music_", "");
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
             button.setAttribute("data-url", "/get-animation");
