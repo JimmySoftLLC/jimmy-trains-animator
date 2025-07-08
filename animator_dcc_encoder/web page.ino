@@ -30,180 +30,158 @@
 const char* ssid = "YOUR_SSID";
 const char* password = "YOUR_PASSWORD";
 
-// Set web server port number to 80
 WiFiServer server(80);
-
-// Variable to store the HTTP request
 String header;
-
-// Variable to store onboard LED state
 String picoLEDState = "off";
 
-// Timing
-unsigned long currentTime = millis();
+unsigned long currentTime = 0;
 unsigned long previousTime = 0;
 const long timeoutTime = 2000;
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
 
-  if (!LittleFS.begin())
-  {
+  if (!LittleFS.begin()) {
     Serial.println("LittleFS Mount Failed");
     return;
   }
   Serial.println("LittleFS Mounted Successfully");
 
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
 
   Serial.println();
-  Serial.print("WiFi connected at IP Address ");
+  Serial.print("WiFi connected. IP address: ");
   Serial.println(WiFi.localIP());
+
   server.begin();
 }
 
-void loop()
-{
+void streamFile(WiFiClient& client, const char* path, const char* contentType) {
+  File file = LittleFS.open(path, "r");
+  if (!file) {
+    client.println("HTTP/1.1 404 Not Found");
+    client.println("Content-type: text/html");
+    client.println("Connection: close");
+    client.println();
+    client.println("<html><body><h1>404 File Not Found</h1></body></html>");
+    return;
+  }
+
+  size_t totalSize = file.size();
+  Serial.println(String("Serving ") + path + " (" + totalSize + " bytes)");
+
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-type: " + String(contentType));
+  client.println("Connection: close");
+  client.println("Content-Length: " + String(totalSize));
+  client.println();
+
+  uint8_t buffer[256];
+  size_t bytesSent = 0;
+  int chunkCount = 0;
+
+  while (file.available()) {
+    size_t len = file.read(buffer, sizeof(buffer));
+    client.write(buffer, len);
+    bytesSent += len;
+
+    // Yield every 2 chunks to avoid TCP buffer overflow
+    if (++chunkCount % 2 == 0) {
+      delay(1); // brief yield for network stack
+    }
+  }
+
+  file.close();
+  client.flush();
+  delay(1);
+
+  Serial.println("Finished sending file. Bytes sent: " + String(bytesSent));
+}
+
+void sendJson(WiFiClient& client, const char* state) {
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-type: application/json");
+  client.println("Connection: close");
+  client.println();
+  client.print("{\"status\":\"success\",\"ledState\":\"");
+  client.print(state);
+  client.println("\"}");
+  client.flush();
+  delay(1);
+}
+
+void loop() {
   WiFiClient client = server.available();
-  if (client)
-  {
+  if (client) {
     currentTime = millis();
     previousTime = currentTime;
     Serial.println("New Client.");
     String currentLine = "";
+    header = "";
 
-    while (client.connected() && currentTime - previousTime <= timeoutTime)
-    {
+    while (client.connected() && currentTime - previousTime <= timeoutTime) {
       currentTime = millis();
-      if (client.available())
-      {
+      if (client.available()) {
         char c = client.read();
         Serial.write(c);
-        header += c;
-        if (c == '\n')
-        {
-          if (currentLine.length() == 0)
-          {
-            String contentType = "text/html";
-            String responseBody = "";
+        if (header.length() < 512) header += c;
+
+        if (c == '\n') {
+          if (currentLine.length() == 0) {
             bool handled = false;
 
-            if (header.indexOf("GET / ") >= 0 || header.indexOf("GET /index.html") >= 0)
-            {
-              File file = LittleFS.open("/index.html", "r");
-              if (file)
-              {
-                client.println("HTTP/1.1 200 OK");
-                client.println("Content-type: text/html");
-                client.println("Connection: close");
-                client.println("Content-Length: " + String(file.size()));
-                client.println();
-
-                while (file.available())
-                  client.write(file.read());
-                file.close();
-                handled = true;
-              }
-            }
-            else if (header.indexOf("GET /mui.min.css") >= 0)
-            {
-              File file = LittleFS.open("/mui.min.css", "r");
-              if (file)
-              {
-                client.println("HTTP/1.1 200 OK");
-                client.println("Content-type: text/css");
-                client.println("Connection: close");
-                client.println("Content-Length: " + String(file.size()));
-                client.println();
-
-                while (file.available())
-                  client.write(file.read());
-                file.close();
-                handled = true;
-              }
-            }
-            else if (header.indexOf("GET /mui.min.js") >= 0)
-            {
-              File file = LittleFS.open("/mui.min.js", "r");
-              if (file)
-              {
-                client.println("HTTP/1.1 200 OK");
-                client.println("Content-type: text/javascript");
-                client.println("Connection: close");
-                client.println("Content-Length: " + String(file.size()));
-                client.println();
-
-                while (file.available())
-                  client.write(file.read());
-                file.close();
-                handled = true;
-              }
-            }
-            else if (header.indexOf("GET /api/led/on") >= 0)
-            {
+            if (header.indexOf("GET / ") >= 0 || header.indexOf("GET /index.html") >= 0) {
+              streamFile(client, "/index.html", "text/html");
+              handled = true;
+            } else if (header.indexOf("GET /mui.min.css") >= 0) {
+              streamFile(client, "/mui.min.css", "text/css");
+              handled = true;
+            } else if (header.indexOf("GET /mui.min.js") >= 0) {
+              streamFile(client, "/mui.min.js", "text/javascript");
+              handled = true;
+            } else if (header.indexOf("GET /api/led/on") >= 0) {
               picoLEDState = "on";
               digitalWrite(LED_BUILTIN, HIGH);
-              responseBody = "{\"status\":\"success\",\"ledState\":\"on\"}";
-              contentType = "application/json";
+              sendJson(client, "on");
               handled = true;
-            }
-            else if (header.indexOf("GET /api/led/off") >= 0)
-            {
+            } else if (header.indexOf("GET /api/led/off") >= 0) {
               picoLEDState = "off";
               digitalWrite(LED_BUILTIN, LOW);
-              responseBody = "{\"status\":\"success\",\"ledState\":\"off\"}";
-              contentType = "application/json";
+              sendJson(client, "off");
               handled = true;
-            }
-            else if (header.indexOf("GET /api/led/state") >= 0)
-            {
-              responseBody = "{\"status\":\"success\",\"ledState\":\"" + picoLEDState + "\"}";
-              contentType = "application/json";
+            } else if (header.indexOf("GET /api/led/state") >= 0) {
+              sendJson(client, picoLEDState.c_str());
               handled = true;
             }
 
-            if (!handled)
-            {
+            if (!handled) {
               client.println("HTTP/1.1 404 Not Found");
-              contentType = "text/html";
-              responseBody = "<!DOCTYPE html><html><body><h1>404 Not Found</h1></body></html>";
-            }
-
-            if (responseBody != "")
-            {
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-type: " + contentType);
+              client.println("Content-type: text/html");
               client.println("Connection: close");
-              client.println("Content-Length: " + String(responseBody.length()));
               client.println();
-              client.println(responseBody);
+              client.println("<html><body><h1>404 Not Found</h1></body></html>");
+              client.flush();
+              delay(1);
             }
 
-            break;
-          }
-          else
-          {
+            break;  // Exit client-handling loop after one request
+          } else {
             currentLine = "";
           }
-        }
-        else if (c != '\r')
-        {
+        } else if (c != '\r') {
           currentLine += c;
         }
       }
     }
-    header = "";
+
     client.stop();
-    Serial.println("Client disconnected.");
-    Serial.println();
+    Serial.println("Client disconnected.\n");
   }
 }
