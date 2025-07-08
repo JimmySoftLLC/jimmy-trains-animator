@@ -8,5 +8,9 @@
   },
   "[cpp]": {
     "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
+  "files.associations": {
+    "fstream": "cpp",
+    "locale": "cpp"
   }
 }

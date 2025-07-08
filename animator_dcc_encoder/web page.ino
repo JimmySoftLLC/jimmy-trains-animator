@@ -1,17 +1,30 @@
 /*
-  Pico W Web Interface Demo
-  picow-web-control-demo.ino
-  Web Interface & WiFi Connection
-  Control the onboard LED with Pico W
-
-  Adapted from ESP32 example by Rui Santos - https://randomnerdtutorials.com
-
-  DroneBot Workshop 2022
-  https://dronebotworkshop.com
+# MIT License
+#
+# Copyright (c) 2024 JimmySoftLLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 */
 
-// Load Wi-Fi library
+// Load Wi-Fi and LittleFS libraries
 #include <WiFi.h>
+#include <LittleFS.h>
 
 // Replace with your network credentials
 const char* ssid = "YOUR_SSID";
@@ -26,126 +39,171 @@ String header;
 // Variable to store onboard LED state
 String picoLEDState = "off";
 
-// Current time
+// Timing
 unsigned long currentTime = millis();
-// Previous time
 unsigned long previousTime = 0;
-// Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 
-void setup() {
-
-  // Start Serial Monitor
+void setup()
+{
   Serial.begin(115200);
 
-  // Initialize the LED as an output
   pinMode(LED_BUILTIN, OUTPUT);
-
-  // Set LED off
   digitalWrite(LED_BUILTIN, LOW);
 
-  // Connect to Wi-Fi network with SSID and password
-  WiFi.begin(ssid, password);
+  if (!LittleFS.begin())
+  {
+    Serial.println("LittleFS Mount Failed");
+    return;
+  }
+  Serial.println("LittleFS Mounted Successfully");
 
-  // Display progress on Serial monitor
-  while (WiFi.status() != WL_CONNECTED) {
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
 
-  // Print local IP address and start web server
-  Serial.println("");
+  Serial.println();
   Serial.print("WiFi connected at IP Address ");
   Serial.println(WiFi.localIP());
-
-  // Start Server
   server.begin();
 }
 
-void loop() {
-
-  WiFiClient client = server.available();   // Listen for incoming clients
-
-  if (client) {                             // If a new client connects,
+void loop()
+{
+  WiFiClient client = server.available();
+  if (client)
+  {
     currentTime = millis();
     previousTime = currentTime;
-    Serial.println("New Client.");          // print a message out in the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
-      currentTime = millis();
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        header += c;
-        if (c == '\n') {                    // if the byte is a newline character
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println("Connection: close");
-            client.println();
+    Serial.println("New Client.");
+    String currentLine = "";
 
-            // Switch the LED on and off
-            if (header.indexOf("GET /led/on") >= 0) {
-              Serial.println("LED on");
+    while (client.connected() && currentTime - previousTime <= timeoutTime)
+    {
+      currentTime = millis();
+      if (client.available())
+      {
+        char c = client.read();
+        Serial.write(c);
+        header += c;
+        if (c == '\n')
+        {
+          if (currentLine.length() == 0)
+          {
+            String contentType = "text/html";
+            String responseBody = "";
+            bool handled = false;
+
+            if (header.indexOf("GET / ") >= 0 || header.indexOf("GET /index.html") >= 0)
+            {
+              File file = LittleFS.open("/index.html", "r");
+              if (file)
+              {
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-type: text/html");
+                client.println("Connection: close");
+                client.println("Content-Length: " + String(file.size()));
+                client.println();
+
+                while (file.available())
+                  client.write(file.read());
+                file.close();
+                handled = true;
+              }
+            }
+            else if (header.indexOf("GET /mui.min.css") >= 0)
+            {
+              File file = LittleFS.open("/mui.min.css", "r");
+              if (file)
+              {
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-type: text/css");
+                client.println("Connection: close");
+                client.println("Content-Length: " + String(file.size()));
+                client.println();
+
+                while (file.available())
+                  client.write(file.read());
+                file.close();
+                handled = true;
+              }
+            }
+            else if (header.indexOf("GET /mui.min.js") >= 0)
+            {
+              File file = LittleFS.open("/mui.min.js", "r");
+              if (file)
+              {
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-type: text/javascript");
+                client.println("Connection: close");
+                client.println("Content-Length: " + String(file.size()));
+                client.println();
+
+                while (file.available())
+                  client.write(file.read());
+                file.close();
+                handled = true;
+              }
+            }
+            else if (header.indexOf("GET /api/led/on") >= 0)
+            {
               picoLEDState = "on";
               digitalWrite(LED_BUILTIN, HIGH);
-            } else if (header.indexOf("GET /led/off") >= 0) {
-              Serial.println("LED off");
+              responseBody = "{\"status\":\"success\",\"ledState\":\"on\"}";
+              contentType = "application/json";
+              handled = true;
+            }
+            else if (header.indexOf("GET /api/led/off") >= 0)
+            {
               picoLEDState = "off";
               digitalWrite(LED_BUILTIN, LOW);
+              responseBody = "{\"status\":\"success\",\"ledState\":\"off\"}";
+              contentType = "application/json";
+              handled = true;
+            }
+            else if (header.indexOf("GET /api/led/state") >= 0)
+            {
+              responseBody = "{\"status\":\"success\",\"ledState\":\"" + picoLEDState + "\"}";
+              contentType = "application/json";
+              handled = true;
             }
 
-            // Display the HTML web page
-            client.println("<!DOCTYPE html><html>");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<link rel=\"icon\" href=\"data:,\">");
-
-            // CSS to style the on/off buttons
-            client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}");
-            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;");
-            client.println("text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}");
-            client.println(".button2 {background-color: #F23A3A;}</style></head>");
-
-            // Web Page Heading
-            client.println("<body><h1>Pico W LED Control</h1>");
-
-            // Display current state, and ON/OFF buttons for Onboard LED
-            client.println("<p>Onboard LED is " + picoLEDState + "</p>");
-            
-            // Set buttons
-            if (picoLEDState == "off") {
-              
-              //picoLEDState is off, display the ON button
-              client.println("<p><a href=\"/led/on\"><button class=\"button\">ON</button></a></p>");
-            } else {
-
-              //picoLEDState is on, display the OFF button
-              client.println("<p><a href=\"/led/off\"><button class=\"button button2\">OFF</button></a></p>");
+            if (!handled)
+            {
+              client.println("HTTP/1.1 404 Not Found");
+              contentType = "text/html";
+              responseBody = "<!DOCTYPE html><html><body><h1>404 Not Found</h1></body></html>";
             }
 
-            client.println("</body></html>");
+            if (responseBody != "")
+            {
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-type: " + contentType);
+              client.println("Connection: close");
+              client.println("Content-Length: " + String(responseBody.length()));
+              client.println();
+              client.println(responseBody);
+            }
 
-            // The HTTP response ends with another blank line
-            client.println();
-            // Break out of the while loop
             break;
-          } else { // if you got a newline, then clear currentLine
+          }
+          else
+          {
             currentLine = "";
           }
-        } else if (c != '\r') {  // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
+        }
+        else if (c != '\r')
+        {
+          currentLine += c;
         }
       }
     }
-    // Clear the header variable
     header = "";
-    // Close the connection
     client.stop();
     Serial.println("Client disconnected.");
-    Serial.println("");
+    Serial.println();
   }
 }

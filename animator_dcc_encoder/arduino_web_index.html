@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <style>
+    html {
+      font-family: Helvetica;
+      display: inline-block;
+      margin: 0px auto;
+      text-align: center;
+    }
+
+    .button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 16px 40px;
+      text-decoration: none;
+      font-size: 30px;
+      margin: 2px;
+      cursor: pointer;
+    }
+
+    .button2 {
+      background-color: #F23A3A;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Pico W LED Control</h1>
+  <p>Onboard LED is <span id="ledState">unknown</span></p>
+  <p>
+    <button class="button" onclick="setLED('on')">ON</button>
+    <button class="button button2" onclick="setLED('off')">OFF</button>
+  </p>
+
+  <script>
+    // Fetch LED state on page load
+    fetch('/api/led/state')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('ledState').innerText = data.ledState;
+      })
+      .catch(error => console.error('Error fetching LED state:', error));
+
+    // Function to set LED state
+    function setLED(state) {
+      fetch('/api/led/' + state)
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('ledState').innerText = data.ledState;
+        })
+        .catch(error => console.error('Error setting LED state:', error));
+    }
+  </script>
+</body>
+
+</html>
