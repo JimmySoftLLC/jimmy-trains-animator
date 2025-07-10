@@ -799,7 +799,10 @@ def an_light(f_nm):
         if l_sw.fell and cfg["can_cancel"]:
             mix.voice[0].stop()
         if not mix.voice[0].playing:
+            set_hdw("F0",0)
+            time.sleep(2)
             led.fill((0, 0, 0))
+            led.brightness=1
             led.show()
             return
         upd_vol(.1)
@@ -909,12 +912,16 @@ async def set_hdw_async(input_string, dur):
             v = float(seg[2:])
             await rbow(v, dur)
 
+lst_j = 0
+
 async def rbow(spd, dur):
+    global lst_j
     st = time.monotonic()
     te = time.monotonic()-st
     print("Rbw dur: " + str(dur))
     while te < dur:
-        for j in range(0, 255, 1):
+        for j in range(lst_j, 255, 1):
+            lst_j = j
             for i in range(num_px):
                 pixel_index = (i * 256 // num_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -923,7 +930,9 @@ async def rbow(spd, dur):
             te = time.monotonic()-st
             if te > dur:
                 return
-        for j in reversed(range(0, 255, 1)):
+        lst_j = 0
+        for j in reversed(range(0, lst_j, 1)):
+            lst_j = 255 - j
             for i in range(num_px):
                 pixel_index = (i * 256 // num_px) + j
                 led[i] = colorwheel(pixel_index & 255)
@@ -932,6 +941,8 @@ async def rbow(spd, dur):
             te = time.monotonic()-st
             if te > dur:
                 return
+        lst_j = 0
+    
 
 ################################################################################
 # State Machine
