@@ -2740,9 +2740,9 @@ def set_hdw(cmd, dur, url):
                 power = segs_split[1]
                 set_light_power(light_n, power)
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            elif seg[0] == 'N':
+            elif seg[:2] == 'NM':
                 segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])
+                mod_n = int(segs_split[0][2:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
