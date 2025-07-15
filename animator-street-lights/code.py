@@ -1126,6 +1126,8 @@ class BseSt(Ste):
                 led.fill((0, 0, 0))
                 led.show()
                 cont_run = True
+            cfg["cont_mode"] = cont_run
+            files.write_json_file("/cfg.json", cfg)
         elif (sw == "left" or cont_run and not is_running_an):
             is_running_an = True
             add_command(cfg["option_selected"])
