@@ -757,10 +757,13 @@ def find_matches(loco, animator_configs, changed_item):
     return matches
 
 def read_command():
+    start_t = time.monotonic()
+
     while True:
         try:
             if ser.in_waiting > 0:
                 line = ser.readline().decode('utf-8').strip()
+                elasped_t = time.monotonic()-start_t
                 if line:
                     command = parse_serial_line(line)
                     if command:
@@ -784,7 +787,8 @@ def read_command():
                                 if matches:
                                     print(matches)
                                     for match in matches:
-                                        set_hdw(match["command"], 0, match["url"])
+                                        if elasped_t > 5:
+                                            set_hdw(match["command"], 0, match["url"])
                                     
                         elif cmd_type == "func_update":
                             _, addr, function_string = command
@@ -810,7 +814,8 @@ def read_command():
                                 if matches:
                                     print(matches)
                                     for match in matches:
-                                        set_hdw(match["command"], 0, match["url"])
+                                        if elasped_t > 5:
+                                            set_hdw(match["command"], 0, match["url"])
                         elif cmd_type == "cv_ack":
                             print(f"CV Ack at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         except Exception as e:

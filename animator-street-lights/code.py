@@ -444,6 +444,7 @@ if (web):
                 global cfg
                 rq_d = request.json()
                 cfg["option_selected"] = rq_d["an"]
+                if cont_run: clear_command_queue()
                 add_command(cfg["option_selected"])
                 files.write_json_file("cfg.json", cfg)
                 return Response(request, "Animation " + cfg["option_selected"] + " started.")

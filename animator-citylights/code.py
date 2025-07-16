@@ -1511,7 +1511,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
 
     def get_animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg
         snd_f = rq_d["an"]
         snd_f = snd_f.replace(".mp4", "")
         snd_f = snd_f.replace(".wav", "")
@@ -1525,7 +1525,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             return
 
     def get_animator_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg
         if (f_exists(animators_folder + rq_d["an"]) == True):
             f_n = animators_folder + rq_d["an"]
             self.handle_serve_file_name(f_n)
@@ -1608,8 +1608,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             play_mix(code_folder + "mvc/continuous_mode_activated.wav")
             cont_run = True
         elif rq_d["an"] == "cont_mode_off":
+            stop_all_commands()
             play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
-            cont_run = False
         elif rq_d["an"] == "timestamp_mode_on":
             play_mix(code_folder + "mvc/timestamp_mode_on.wav")
             play_mix(code_folder + "mvc/timestamp_instructions.wav")
@@ -1646,7 +1646,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg
         cfg["option_selected"] = rq_d["an"]
         add_command(cfg["option_selected"])
         files.write_json_file(code_folder + "cfg.json", cfg)
@@ -2371,7 +2371,7 @@ def logo_when_idle():
 
 
 def check_switches(stop_event):
-    global cont_run, running_mode, mix_is_paused, exit_set_hdw, override_switch_state
+    global running_mode, mix_is_paused, exit_set_hdw, override_switch_state
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
@@ -2380,11 +2380,8 @@ def check_switches(stop_event):
             rst_an()
         elif switch_state == "left_held" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
-            clear_command_queue()
-            rst_an()
-            if cont_run:
-                cont_run = False
-                play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
+            stop_all_commands()
+            play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
                 if media_player.is_playing():
@@ -2435,7 +2432,7 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
 
 
 def an(f_nm):
-    global cfg, lst_opt, running_mode
+    global cfg
     print("Filename: " + f_nm)
     try:
         cur_opt = return_file_to_use(f_nm)
@@ -2457,7 +2454,7 @@ def an(f_nm):
 
 
 def return_file_to_use(f_nm):
-    global cfg, lst_opt, running_mode
+    global lst_opt
     cur_opt = f_nm
     if f_nm == "random_all":
         h_i = len(media_list_all_no_intermission) - 1
@@ -2486,7 +2483,7 @@ def return_file_to_use(f_nm):
 
 
 def an_light(f_nm):
-    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
+    global running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
     exit_set_hdw = False
     current_media_playing = f_nm
     plylst_f = "plylst_" in f_nm
@@ -3121,8 +3118,7 @@ class BseSt(Ste):
                 l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left_held":
                 if cont_run:
-                    cont_run = False
-                    play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
+                    stop_all_commands()
                 else:
                     cont_run = True
                     play_mix(code_folder + "mvc/continuous_mode_activated.wav")
