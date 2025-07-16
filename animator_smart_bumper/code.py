@@ -751,6 +751,24 @@ async def set_hdw_async(input_string, dur):
                         files.log_item(
                             f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
                     return "host not found after retries"
+                
+            # TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
+            # ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
+            # AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED) VALUE is optional (KNOB 1-9, SPEED 0-31)
+            if seg[:4] == 'TMCC':
+                seg_split = split_string(seg)
+                device = seg_split[1]  # "engine", "switch", "accessory", "route", "train", "group"
+                ii = int(seg_split[2])  # ID 1 to 99
+                button = seg_split[3]   # Button type
+                value = None            # Initialize value as None
+                if button in ["KNOB", "SPEED"]:
+                    value = int(seg_split[4])  # Value for KNOB (1-9) or SPEED (0-31)
+                # Construct the command string
+                command = f"API_animator-base3.local:8083_test-animation_{{\"an\":\"TMCC_{device}_{ii}_{button}"
+                if value is not None:
+                    command += f"_{value}"  # Append value if applicable
+                command += "\"}"
+                await set_hdw_async(command, 0)
 
             # POS_II_PPP_GL_DDD_SSS_TT = Position car, II of engine (1-99),  PPP pos (decimal cm), GL G greater or L less than, DDD direction (FORWARD, REVERSE) SSS speed(1-31), TT timeout in seconds
             elif seg[:3] == 'POS':
@@ -791,7 +809,7 @@ async def set_hdw_async(input_string, dur):
                     t_past = time.monotonic() - srt_t
                     if t_past > time_out:
                         break
-                    time.sleep(0.2)
+                    time.sleep(0.1)
                 print("got to target")
                 # set speed to 0 to stop train
                 button = "SPEED"
