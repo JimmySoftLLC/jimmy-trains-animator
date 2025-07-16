@@ -707,6 +707,15 @@ async def set_hdw_async(input_string, dur):
             elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
+            # WAIT_SSS = Wait SSS seconds in decimal
+            elif seg[:4] == 'WAIT':
+                seg_split = split_string(seg)
+                wait_sec = float(seg_split[1])
+                srt_t = time.monotonic()
+                while True:
+                    t_past = time.monotonic() - srt_t
+                    if t_past > wait_sec:
+                        break 
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":data_object}
             elif seg[:3] == 'API':
                 seg_split = split_string(seg)
@@ -758,70 +767,61 @@ async def set_hdw_async(input_string, dur):
                 if value is not None:
                     command += f"_{value}"  # Append value if applicable
                 command += "\"}"
-                result == await set_hdw_async(command, 0)
-                if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
-                    return "STOP"
+                await set_hdw_async(command, 0)
 
             # POS_II_PPP_GL_DDD_SSS_TT = Position car, II of engine (1-99),  PPP pos (decimal cm), GL G greater or L less than, DDD direction (FORWARD, REVERSE) SSS speed(1-31), TT timeout in seconds
             elif seg[:3] == 'POS':
-                result = None
+                seg_split = seg.split("_")
+                ii = int(seg_split[1])
+                position = float(seg_split[2])
+                gl = seg_split[3]
+                button = seg_split[4] # set direction
+                speed = int(seg_split[5])
+                time_out = float(seg_split[6])  # Timeout in seconds
+                
+                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
+                    ii) + "_" + button + "\"}"
+                await set_hdw_async(command, 0)
+                # Clear initial measurements
+                for _ in range(3):
+                    vl53.clear_interrupt()
+                    time.sleep(0.1)
+                # set speed
+                button = "SPEED"
+                
+                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
+                    ii) + "_" + button + "_" + str(speed) + "\"}"
+                await set_hdw_async(command, 0)
+                # check distance
+
+                srt_t = time.monotonic()
                 while True:
-                    seg_split = seg.split("_")
-                    ii = int(seg_split[1])
-                    position = float(seg_split[2])
-                    gl = seg_split[3]
-                    button = seg_split[4] # set direction
-                    speed = int(seg_split[5])
-                    time_out = float(seg_split[6])  # Timeout in seconds
-                    
-                    command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
-                        ii) + "_" + button + "\"}"
-                    result = await set_hdw_async(command, 0)
-                    if result == "STOP":
-                        await asyncio.sleep(0)  # Yield control to other tasks
-                        break
-                    # Clear initial measurements
-                    for _ in range(3):
-                        vl53.clear_interrupt()
-                        await asyncio.sleep(0.1)
-                    # set speed
-                    button = "SPEED"
-                    
-                    command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
-                        ii) + "_" + button + "_" + str(speed) + "\"}"
-                    result = await set_hdw_async(command, 0)
-                    if result == "STOP":
-                        await asyncio.sleep(0)  # Yield control to other tasks
-                        break
-
-                    # check distance
-                    srt_t = time.monotonic()
-                    while True:
-                        vl53.clear_interrupt()
-                        train_pos = vl53.distance
-                        print("train pos: ", train_pos)
-                        if gl == "L":
-                            if train_pos < position:
-                                break
-                        else:
-                            if train_pos > position:
-                                break
-                        t_past = time.monotonic() - srt_t
-                        if t_past > time_out:
+                    vl53.clear_interrupt()
+                    train_pos = vl53.distance
+                    print("train pos: ", train_pos)
+                    if gl == "L":
+                        if train_pos < position:
+                            print ("target found")
                             break
-                        await asyncio.sleep(0.1)
-                        if exit_set_hdw_async == False:
+                    else:
+                        if train_pos > position:
+                            print ("target found")
                             break
-
-                    print("got to target")
-
-                    # set speed to 0 to stop train
-                    exit_set_hdw_async = False
-                    button = "SPEED"
-                    speed = 0
-                    command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(ii) + "_" + button + "_" + str(speed) + "\"}"
-                    await set_hdw_async(command, 0)
+                    t_past = time.monotonic() - srt_t
+                    if t_past > time_out:
+                        print("target timeout exceeded")
+                        break
+                    if exit_set_hdw_async:
+                        print("aborting target stop pressed")
+                        break
+                    await asyncio.sleep(0.1)
+                
+                # set speed to 0 to stop train
+                exit_set_hdw_async = False
+                button = "SPEED"
+                speed = 0
+                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(ii) + "_" + button + "_" + str(speed) + "\"}"
+                await set_hdw_async(command, 0)
 
     except Exception as e:
         files.log_item(e)
@@ -903,6 +903,8 @@ if web:
 else:
     set_red()
 
+# Main task handling
+
 
 async def process_commands_task():
     """Task to continuously process commands."""
@@ -948,5 +950,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
 
