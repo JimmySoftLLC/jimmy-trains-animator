@@ -752,13 +752,16 @@ async def set_hdw_async(input_string, dur):
                             f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
                     return "host not found after retries"
 
-            # POS_II_PPP_DDD_SSS = Position car, II of engine (1-99),  PPP pos (decimal cm), DDD direction (FORWARD, REVERSE) SSS speed(1-31)
+            # POS_II_PPP_GL_DDD_SSS_TT = Position car, II of engine (1-99),  PPP pos (decimal cm), GL G greater or L less than, DDD direction (FORWARD, REVERSE) SSS speed(1-31), TT timeout in seconds
             elif seg[:3] == 'POS':
                 seg_split = seg.split("_")
                 ii = int(seg_split[1])
                 position = float(seg_split[2])
-                # set direction
-                button = seg_split[3]
+                gl = seg_split[3]
+                button = seg_split[4] # set direction
+                speed = int(seg_split[5])
+                time_out = float(seg_split[6])  # Timeout in seconds
+                
                 command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
                     ii) + "_" + button + "\"}"
                 await set_hdw_async(command, 0)
@@ -768,108 +771,39 @@ async def set_hdw_async(input_string, dur):
                     time.sleep(0.1)
                 # set speed
                 button = "SPEED"
-                speed = int(seg_split[4])
+                
                 command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
                     ii) + "_" + button + "_" + str(speed) + "\"}"
                 await set_hdw_async(command, 0)
                 # check distance
-                give_up = 30  # Timeout in seconds
+
                 srt_t = time.monotonic()
                 while True:
                     vl53.clear_interrupt()
                     train_pos = vl53.distance
-                    if train_pos < position:
-                        break
+                    print("train pos: ", train_pos)
+                    if gl == "L":
+                        if train_pos < position:
+                            break
+                    else:
+                        if train_pos > position:
+                            break
                     t_past = time.monotonic() - srt_t
-                    if t_past > give_up:
+                    if t_past > time_out:
                         break
+                    time.sleep(0.2)
+                print("got to target")
                 # set speed to 0 to stop train
                 button = "SPEED"
                 speed = 0
                 command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
                     ii) + "_" + button + "_" + str(speed) + "\"}"
-
+                await set_hdw_async(command, 0)
                 # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_FORWARD"}
                 # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_REVERSE"}
                 # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_2"}
                 # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_7"}
                 # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_SPEED_0"}
-
-            # # POS_ID_SSS_XXX_BBB_AAA = Position car, ID of engine,  SSS speed(1-31), XXX target pos (cm), BBB target band (cm), AAA accel (cm/sec)
-            # elif seg[:3] == 'POS':
-            #     final_speed = 0
-            #     seg_split = seg.split("_")
-            #     id = int(seg_split[1])
-            #     initial_speed = int(seg_split[2])
-            #     target_pos = float(seg_split[3])
-            #     target_band = float(seg_split[4])
-            #     acc = float(seg_split[5])
-
-            #     print("Initial speed: ",initial_speed)
-            #     print("Target pos: ",target_pos)
-            #     print("Target band: ",target_band)
-            #     print("Acceleration: ",acc)
-
-            #     # Clear initial measurements
-            #     for _ in range(3):
-            #         vl53.clear_interrupt()
-            #         time.sleep(0.1)
-
-            #     num_times_in_band = 0
-            #     give_up = 30  # Timeout in seconds
-            #     srt_t = time.monotonic()
-
-            #     current_speed = initial_speed  # Start at y
-
-            #     while True:
-            #         vl53.clear_interrupt()
-            #         car_pos = vl53.distance  # Distance in mm
-
-            #         # Calculate distance and target direction
-            #         distance_to_target = abs(car_pos - target_pos)
-
-            #         # Calculate slowdown zone based on acceleration (adapted from car example)
-            #         slowdown_distance = target_band * 3 + (acc * 0.5) * 10  # Convert acc effect to mm
-
-            #         # Determine target speed
-            #         if distance_to_target < target_band:
-            #             # Within target band, use final_speed (x)
-            #             target_speed = final_speed
-            #             num_times_in_band += 1
-            #         elif distance_to_target < slowdown_distance:
-            #             # Interpolate between initial_speed and final_speed
-            #             ratio = distance_to_target / slowdown_distance
-            #             target_speed = initial_speed + (final_speed - initial_speed) * (1 - ratio)
-            #         else:
-            #             # Far away, use initial_speed (y)
-            #             target_speed = initial_speed
-            #             num_times_in_band = 0
-
-            #         # Adjust speed with acceleration (adapted for animation)
-            #         speed_diff = target_speed - current_speed
-            #         if speed_diff > 0:  # Accelerate
-            #             current_speed += min(acc * 0.5, speed_diff)  # Scale acc for animation timing
-            #         elif speed_diff < 0:  # Decelerate
-            #             current_speed += max(-acc * 0.5, speed_diff)  # Scale acc for animation timing
-
-            #         # Clamp speed between initial and final
-            #         sp = max(initial_speed, min(final_speed, current_speed))
-
-            #         files.log_item(f"Pos: {car_pos:.1f} mm, Speed: {sp:.3f} s, Dist: {distance_to_target:.1f} mm")
-
-            #         # Apply to LED (optional visual feedback)
-            #         led.show()
-
-            #         # Exit conditions
-            #         if num_times_in_band > 2:  # Stable within target band
-            #             sp = final_speed  # Lock to x
-            #             break
-            #         t_past = time.monotonic() - srt_t
-            #         if t_past > give_up:  # Timeout
-            #             sp = initial_speed  # Reset to y
-            #             break
-
-            #         await asyncio.sleep(1)  # Check every 50ms (same as car example)
 
     except Exception as e:
         files.log_item(e)
@@ -998,3 +932,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
+
