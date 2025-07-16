@@ -68,9 +68,6 @@ animators_folder = "/animations/"
 
 cfg = files.read_json_file("cfg.json")
 
-ts_jsons = files.return_directory(
-    "", "t_s_def", ".json")
-
 web = cfg["serve_webpage"]
 
 exit_set_hdw_async = False
@@ -256,13 +253,7 @@ if (web):
             def btn(request: Request):
                 global cfg
                 rq_d = request.json()
-                if rq_d["an"] == "reset_animation_timing_to_defaults":
-                    for ts_fn in ts_jsons:
-                        ts = files.read_json_file(
-                            "t_s_def/" + ts_fn + ".json")
-                        files.write_json_file(
-                            "animations/"+ts_fn+".json", ts)
-                elif rq_d["an"] == "reset_to_defaults":
+                if rq_d["an"] == "reset_to_defaults":
                     rst_def()
                     files.write_json_file("cfg.json", cfg)
                 return Response(request, "Utility: " + rq_d["an"])
@@ -293,8 +284,8 @@ if (web):
                     print(rq_d)
                     f_n = animators_folder + rq_d["fn"] + ".json"
                     print(f_n)
-                    an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0",
-                               "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
+                    an_data = ["0.0|", "1.0|",
+                               "2.0|", "3.0|"]
                     files.write_json_file(f_n, an_data)
                     upd_media()
                     return Response(request, "Created animation successfully.")
@@ -342,9 +333,6 @@ if (web):
                 return Response(req, train_pos)
             set_green()
 
-            @server.route("/get-dist", [POST])
-            def btn(req: Request):
-                return Response(req, cfg["light_string"])
 
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
@@ -544,6 +532,7 @@ async def an_light_async(f_nm):
     flsh_t.append(str(tm_last + .1) + "|E")
 
     flsh_i = 0
+    
     srt_t = time.monotonic()
 
     while True:
@@ -556,6 +545,7 @@ async def an_light_async(f_nm):
             dur = 0.25
         if dur < 0:
             dur = 0
+
 
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item(f"time elapsed: {t_past} Timestamp: {ft1[0]}")
@@ -698,7 +688,7 @@ async def set_hdw_async(input_string, dur):
                         br -= 1
                         led.brightness = float(br/100)
                     led.show()
-                    # await asyncio.sleep(s)
+                    await asyncio.sleep(s)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 await random_effect(1, 3, dur)
@@ -768,60 +758,70 @@ async def set_hdw_async(input_string, dur):
                 if value is not None:
                     command += f"_{value}"  # Append value if applicable
                 command += "\"}"
-                await set_hdw_async(command, 0)
+                result == await set_hdw_async(command, 0)
+                if result == "STOP":
+                    await asyncio.sleep(0)  # Yield control to other tasks
+                    return "STOP"
 
             # POS_II_PPP_GL_DDD_SSS_TT = Position car, II of engine (1-99),  PPP pos (decimal cm), GL G greater or L less than, DDD direction (FORWARD, REVERSE) SSS speed(1-31), TT timeout in seconds
             elif seg[:3] == 'POS':
-                seg_split = seg.split("_")
-                ii = int(seg_split[1])
-                position = float(seg_split[2])
-                gl = seg_split[3]
-                button = seg_split[4] # set direction
-                speed = int(seg_split[5])
-                time_out = float(seg_split[6])  # Timeout in seconds
-                
-                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
-                    ii) + "_" + button + "\"}"
-                await set_hdw_async(command, 0)
-                # Clear initial measurements
-                for _ in range(3):
-                    vl53.clear_interrupt()
-                    time.sleep(0.1)
-                # set speed
-                button = "SPEED"
-                
-                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
-                    ii) + "_" + button + "_" + str(speed) + "\"}"
-                await set_hdw_async(command, 0)
-                # check distance
-
-                srt_t = time.monotonic()
+                result = None
                 while True:
-                    vl53.clear_interrupt()
-                    train_pos = vl53.distance
-                    print("train pos: ", train_pos)
-                    if gl == "L":
-                        if train_pos < position:
-                            break
-                    else:
-                        if train_pos > position:
-                            break
-                    t_past = time.monotonic() - srt_t
-                    if t_past > time_out:
+                    seg_split = seg.split("_")
+                    ii = int(seg_split[1])
+                    position = float(seg_split[2])
+                    gl = seg_split[3]
+                    button = seg_split[4] # set direction
+                    speed = int(seg_split[5])
+                    time_out = float(seg_split[6])  # Timeout in seconds
+                    
+                    command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
+                        ii) + "_" + button + "\"}"
+                    result = await set_hdw_async(command, 0)
+                    if result == "STOP":
+                        await asyncio.sleep(0)  # Yield control to other tasks
                         break
-                    time.sleep(0.1)
-                print("got to target")
-                # set speed to 0 to stop train
-                button = "SPEED"
-                speed = 0
-                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
-                    ii) + "_" + button + "_" + str(speed) + "\"}"
-                await set_hdw_async(command, 0)
-                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_FORWARD"}
-                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_REVERSE"}
-                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_2"}
-                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_7"}
-                # API_animator-base3.local:8083_test-animation_{"an":"TMCC_engine_31_SPEED_0"}
+                    # Clear initial measurements
+                    for _ in range(3):
+                        vl53.clear_interrupt()
+                        await asyncio.sleep(0.1)
+                    # set speed
+                    button = "SPEED"
+                    
+                    command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
+                        ii) + "_" + button + "_" + str(speed) + "\"}"
+                    result = await set_hdw_async(command, 0)
+                    if result == "STOP":
+                        await asyncio.sleep(0)  # Yield control to other tasks
+                        break
+
+                    # check distance
+                    srt_t = time.monotonic()
+                    while True:
+                        vl53.clear_interrupt()
+                        train_pos = vl53.distance
+                        print("train pos: ", train_pos)
+                        if gl == "L":
+                            if train_pos < position:
+                                break
+                        else:
+                            if train_pos > position:
+                                break
+                        t_past = time.monotonic() - srt_t
+                        if t_past > time_out:
+                            break
+                        await asyncio.sleep(0.1)
+                        if exit_set_hdw_async == False:
+                            break
+
+                    print("got to target")
+
+                    # set speed to 0 to stop train
+                    exit_set_hdw_async = False
+                    button = "SPEED"
+                    speed = 0
+                    command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(ii) + "_" + button + "_" + str(speed) + "\"}"
+                    await set_hdw_async(command, 0)
 
     except Exception as e:
         files.log_item(e)
@@ -902,8 +902,6 @@ if web:
     set_green()
 else:
     set_red()
-
-# Main task handling
 
 
 async def process_commands_task():
