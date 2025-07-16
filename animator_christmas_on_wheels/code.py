@@ -468,16 +468,16 @@ if (web):
         def btn(req: Request):
             global cfg, c_run, ts_mode
             command_sent = ""
-            req_d = req.json()
-            if req_d["an"] == "left":
+            rq_d = req.json()
+            if rq_d["an"] == "left":
                 override_switch_state["switch_value"] = "left"
-            elif req_d["an"] == "right":
+            elif rq_d["an"] == "right":
                 override_switch_state["switch_value"] = "right"
-            elif req_d["an"] == "right_held":
+            elif rq_d["an"] == "right_held":
                 override_switch_state["switch_value"] = "right_held"
-            elif req_d["an"] == "three":
+            elif rq_d["an"] == "three":
                 override_switch_state["switch_value"] = "three"
-            elif req_d["an"] == "four":
+            elif rq_d["an"] == "four":
                 override_switch_state["switch_value"] = "four"
             elif rq_d["an"] == "cont_mode_on":
                 c_run = True
