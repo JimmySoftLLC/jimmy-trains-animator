@@ -213,7 +213,6 @@ menu_snd_opt = []
 ts_jsons = []
 rand_opt = []
 
-
 def upd_media():
     global snd_opt, menu_snd_opt, ts_jsons, rand_opt
 
@@ -228,7 +227,6 @@ def upd_media():
 
     ts_jsons = files.return_directory(
         "", "/sd/t_s_def", ".json")
-
 
 upd_media()
 
@@ -380,11 +378,9 @@ if (web):
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif rq_d["an"] == "cont_mode_off":
-                cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             elif rq_d["an"] == "timestamp_mode_on":
-                cont_run = False
                 stp_all_cmds()
                 ts_mode = True
                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
@@ -577,10 +573,18 @@ def add_cmd(command, to_start=False):
 
 async def process_cmd():
     while command_queue:
-        command = command_queue.pop(0)  # Retrieve from the front of the queue
-        print("Processing command:", command)
+        cmd = command_queue.pop(0)  # Retrieve from the front of the queue
+        print("Processing command:", cmd)
         # Process each command as an async operation
-        await set_hdw_async(command)
+        if cmd[:2] == 'AN': # AN_XXX = Animation XXX filename
+            cmd_split = cmd.split("_")
+            clr_cmd_queue()
+            if cmd_split[1] == "customers":
+                await an_async(cmd_split[1]+"_"+cmd_split[2]+"_"+cmd_split[3]+"_"+cmd_split[4])
+            else:
+                await an_async(cmd_split[1])
+        else:
+            await set_hdw_async(cmd)
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -590,9 +594,10 @@ def clr_cmd_queue():
 
 
 def stp_all_cmds():
-    global exit_set_hdw_async
+    global exit_set_hdw_async, cont_run
     clr_cmd_queue()
     exit_set_hdw_async = True
+    cont_run = False
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
@@ -872,6 +877,8 @@ async def an_light_async(f_nm):
     ft1 = []
     ft2 = []
 
+    hdw_rtn = ""
+
     while True:
         t_past = time.monotonic()-srt_t
 
@@ -889,13 +896,13 @@ async def an_light_async(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
-                if result == "STOP":
+                hdw_rtn = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
+                if hdw_rtn == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1])
-                if result == "STOP":
+                hdw_rtn = await set_hdw_async(ft1[1])
+                if hdw_rtn == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
@@ -908,10 +915,9 @@ async def an_light_async(f_nm):
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
             if cont_run:
-                cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
+        if hdw_rtn != "STOP" and (not mix.voice[0].playing and w0_exists or flsh_i >= len(flsh_t)-1):
             mix.voice[0].stop()
             led.fill((0, 0, 0))
             led.show()
@@ -1066,7 +1072,12 @@ async def set_hdw_async(input_string, dur = 3):
 
     # Process each segment
     for seg in segs:
-        if seg == "":
+        if exit_set_hdw_async:
+            return "STOP"
+        # end animation
+        elif seg[0] == 'E':
+            return "STOP"
+        elif seg == "":
             print("no command")
         # WXXX = Wait XXX decimal seconds
         elif seg[0] == 'W':  # wait time
@@ -1155,14 +1166,10 @@ async def set_hdw_async(input_string, dur = 3):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
-        # AN_XXX = Animation XXX filename
-        elif seg[:2] == 'AN':
-            seg_split = seg.split("_")
-            clr_cmd_queue()
-            if seg_split[1] == "customers":
-                await an_async(seg_split[1]+"_"+seg_split[2]+"_"+seg_split[3]+"_"+seg_split[4])
-            else:
-                await an_async(seg_split[1])
+        # QCCC = add command CCC
+        elif seg[0] == 'Q':
+                cmd = seg[1:]
+                add_cmd(cmd)
         # TXXX = Train XXX throttle -100 to 100
         elif seg[0] == 'T':
             v = int(seg[1:])/100
@@ -1339,7 +1346,6 @@ class BseSt(Ste):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left_held":
             if cont_run:
-                cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:

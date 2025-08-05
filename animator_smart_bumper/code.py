@@ -707,15 +707,10 @@ async def set_hdw_async(input_string, dur):
             elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
-            # WAIT_SSS = Wait SSS seconds in decimal
-            elif seg[:4] == 'WAIT':
-                seg_split = split_string(seg)
-                wait_sec = float(seg_split[1])
-                srt_t = time.monotonic()
-                while True:
-                    t_past = time.monotonic() - srt_t
-                    if t_past > wait_sec:
-                        break 
+            # WXXX = Wait XXX decimal seconds
+            elif seg[0] == 'W':  # wait time
+                s = float(seg[1:])
+                await asyncio.sleep(s)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":data_object}
             elif seg[:3] == 'API':
                 seg_split = split_string(seg)
