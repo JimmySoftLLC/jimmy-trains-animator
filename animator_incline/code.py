@@ -204,6 +204,8 @@ car = motor.DCMotor(pwm_a, pwm_b)
 car.decay_mode = d_mde
 car_pos = 0
 car.throttle = 0
+home_car_pos = 0
+cal_factor = 27.5
 
 ################################################################################
 # Setup encoder
@@ -221,6 +223,7 @@ print("Encoder position is: ", last_encoder_pos)
 animations_folder = "/sd/snds/"
 
 cfg = files.read_json_file("/sd/cfg.json")
+cfg["volume"] = str(1)
 
 snd_opt = []
 menu_snd_opt = []
@@ -997,7 +1000,7 @@ br = 0
 
 
 async def set_hdw_async(input_string):
-    global sp, br, car_pos
+    global sp, br, car_pos, cal_factor
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -1056,9 +1059,10 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'T':
             v = int(seg[1:])/100
             car.throttle = v
-        # C_SSS_XXX_BBB_AAA = Move car SS speed 0 to 100, XXX Position in decimal cm, 
+        # C_SSS_XXX_BBB_AAA_HHH = Move car SS speed 0 to 100, XXX Position in decimal cm, 
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec
-        elif seg[0] == 'C':
+        elif seg[:2] == 'C_' or seg[:2] == 'CE' or seg[:2] == 'CH':
+            global encoder, home_car_pos
             seg_split = seg.split("_")
 
             spd = int(seg_split[1]) / 100
@@ -1067,24 +1071,33 @@ async def set_hdw_async(input_string):
             acc = float(seg_split[4])
 
             # clear out measurements
-            for _ in range(3):
-                vl53.clear_interrupt()
-                car_pos = vl53.distance
-                time.sleep(.1)
+            if seg[:2] == 'C_' or seg[:2] == 'CH':
+                for _ in range(3):
+                    vl53.clear_interrupt()
+                    car_pos = vl53.distance
+                    time.sleep(.1)
 
-            num_times_in_band = 0
-            give_up = 10
-            srt_t = time.monotonic()
             
             # Use current throttle state directly
             current_speed = abs(car.throttle) if car.throttle else 0
             current_direction = 1 if car.throttle >= 0 else -1
             
-            started_car = False
-            
-            while True:
+
+            if seg[:2] == 'C_':
                 vl53.clear_interrupt()
                 car_pos = vl53.distance
+            elif seg[:2] == 'CH':
+                vl53.clear_interrupt()
+                car_pos = vl53.distance
+            elif seg[:2] == 'CE':
+                car_pos = encoder.position / cal_factor + home_car_pos
+
+            started_car = False
+            num_times_in_band = 0
+            give_up = abs(car_pos - target_pos)
+            srt_t = time.monotonic()
+            
+            while True:
                 
                 # Calculate distance and target direction
                 distance_to_target = abs(car_pos - target_pos)
@@ -1120,8 +1133,8 @@ async def set_hdw_async(input_string):
                 current_speed = max(0, min(spd, current_speed))
                 
                 if started_car == False:
-                    car.throttle = .4
-                    #time.sleep(.05)
+                    car.throttle = .5
+                    time.sleep(.01)
                     started_car = True
                          
                 car.throttle = current_speed * current_direction
@@ -1131,6 +1144,9 @@ async def set_hdw_async(input_string):
                     num_times_in_band += 1
                     if num_times_in_band > 2:
                         car.throttle = 0
+                        if seg[:2] == 'CH':
+                            encoder.position = 0
+                            home_car_pos = car_pos
                         break
                         
                 print(f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
@@ -1139,7 +1155,19 @@ async def set_hdw_async(input_string):
                 t_past = time.monotonic() - srt_t
                 if t_past > give_up:
                     car.throttle = 0
+                    if seg[:2] == 'CH':
+                        encoder.position = 0
+                        home_car_pos = car_pos
                     break
+
+                if seg[:2] == 'C_':
+                    vl53.clear_interrupt()
+                    car_pos = vl53.distance
+                elif seg[:2] == 'CH':
+                    vl53.clear_interrupt()
+                    car_pos = vl53.distance
+                elif seg[:2] == 'CE':
+                    car_pos = encoder.position / cal_factor + home_car_pos
         # lights LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start (1 to 999), EEE end (1 to 999), RGB 0 to 255
         elif seg[:3] == 'LNR':
                 seg_split = seg.split("_")
