@@ -1080,6 +1080,8 @@ async def set_hdw_async(input_string):
             current_speed = abs(car.throttle) if car.throttle else 0
             current_direction = 1 if car.throttle >= 0 else -1
             
+            started_car = False
+            
             while True:
                 vl53.clear_interrupt()
                 car_pos = vl53.distance
@@ -1116,6 +1118,12 @@ async def set_hdw_async(input_string):
                     
                 # Apply clamped speed with direction
                 current_speed = max(0, min(spd, current_speed))
+                
+                if started_car == False:
+                    car.throttle = .4
+                    #time.sleep(.05)
+                    started_car = True
+                         
                 car.throttle = current_speed * current_direction
 
                 # Check if within target band
@@ -1588,4 +1596,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
