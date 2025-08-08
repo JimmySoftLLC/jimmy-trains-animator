@@ -45,7 +45,7 @@ import gc
 import files
 import os
 import adafruit_vl53l4cd
-
+import rotaryio
 
 def gc_col(collection_point):
     gc.collect()
@@ -150,14 +150,10 @@ aud_en.value = False
 
 # Setup the servos
 s_1 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15, frequency=50)
-s_2 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
-s_3 = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
 
 s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
-s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
-s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
 
-s_arr = [s_1, s_2, s_3]
+s_arr = [s_1]
 
 # Setup time
 r = rtc.RTC()
@@ -208,6 +204,16 @@ car = motor.DCMotor(pwm_a, pwm_b)
 car.decay_mode = d_mde
 car_pos = 0
 car.throttle = 0
+
+################################################################################
+# Setup encoder
+
+# Initialize the encoder with pins A and B, GP11 and GP12
+encoder = rotaryio.IncrementalEncoder(board.GP11, board.GP12)
+
+last_encoder_pos = encoder.position 
+
+print("Encoder position is: ", last_encoder_pos)
 
 ################################################################################
 # Sd card config variables
@@ -261,8 +267,8 @@ gc_col("config setup")
 
 num_px = 48
 
-# 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP15, num_px)
+# 15 on demo 17 tiny 10 on large, 13 on incline motor4 pin
+led = neopixel.NeoPixel(board.GP13, num_px)
 led.fill((0, 0, 0))
 led.show()
 
@@ -459,7 +465,14 @@ if (web):
             @server.route("/get-volume", [POST])
             def btn(request: Request):
                 return Response(request, cfg["volume"])
-
+            
+            
+            @server.route("/get-encoder", [POST])
+            def btn(request: Request):
+                global last_encoder_pos, encoder
+                last_encoder_pos = encoder.position 
+                return Response(request, str(last_encoder_pos))
+    
             @server.route("/get-animations", [POST])
             def btn(request: Request):
                 stp_a_0()
@@ -1575,5 +1588,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
 

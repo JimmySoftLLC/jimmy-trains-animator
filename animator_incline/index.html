@@ -103,6 +103,10 @@
                 </div>
             </div>
             <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
+            <input class="input" id="encoder" type="number" disabled>
+            <button class="mui-btn mui-btn--primary" onclick="getEncoderPos()">Get encoder</button>
+
+
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -473,6 +477,26 @@
             })
             .catch(function (error) {
                 console.log(error);
+            });
+    }
+
+    function getEncoderPos() {
+        // get encoder position
+        fetch('/get-encoder', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                encoder.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
             });
     }
 
