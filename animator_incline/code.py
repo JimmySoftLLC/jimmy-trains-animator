@@ -263,6 +263,9 @@ local_ip = ""
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
 
+exit_set_hdw_async = False
+is_running_an = False
+
 gc_col("config setup")
 
 ################################################################################
@@ -854,9 +857,10 @@ lst_opt = ""
 
 
 async def an_async(f_nm):
-    global cfg, lst_opt
+    global is_running_an, cfg, lst_opt
     print("Filename: " + f_nm)
     cur_opt = f_nm
+    is_running_an = True
     try:
         if f_nm == "random all":
             h_i = len(snd_opt) - 1
@@ -879,6 +883,7 @@ async def an_async(f_nm):
         no_trk()
         cfg["option_selected"] = "random all"
         return
+    is_running_an = True
     gc_col("Animation complete.")
 
 
@@ -1063,7 +1068,6 @@ async def set_hdw_async(input_string):
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec
         elif seg[:2] == 'C_' or seg[:2] == 'CE' or seg[:2] == 'CH':
             MIN_SPEED = 0.2
-            KICK_START = 0.5
             global encoder, home_car_pos
             seg_split = seg.split("_")
 
@@ -1077,7 +1081,7 @@ async def set_hdw_async(input_string):
                 for _ in range(3):
                     vl53.clear_interrupt()
                     car_pos = vl53.distance
-                    time.sleep(.1)
+                    await asyncio.sleep(.1)
 
             
             # Use current throttle state directly
@@ -1094,7 +1098,6 @@ async def set_hdw_async(input_string):
             elif seg[:2] == 'CE':
                 car_pos = encoder.position / cal_factor + home_car_pos
 
-            started_car = False
             num_times_in_band = 0
             give_up = abs(car_pos - target_pos)
             srt_t = time.monotonic()
@@ -1147,7 +1150,7 @@ async def set_hdw_async(input_string):
                         break
                         
                 print(f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
-                time.sleep(.05)
+                await asyncio.sleep(.05)
                 
                 t_past = time.monotonic() - srt_t
                 if t_past > give_up:
@@ -1266,21 +1269,23 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held":
-            if cont_run:
-                cont_run = False
-                stp_all_cmds()
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            else:
-                cont_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif (sw == "left" or cont_run) and not mix.voice[0].playing:
-            add_cmd("AN_" + cfg["option_selected"])
-        elif sw == "right" and not mix.voice[1].playing:
-            mch.go_to('main_menu')
+        global cont_run, is_running_an
+        if not is_running_an:
+            sw = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            if sw == "left_held":
+                if cont_run:
+                    cont_run = False
+                    stp_all_cmds()
+                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+                else:
+                    cont_run = True
+                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
+            elif sw == "left" or cont_run:
+                if not is_running_an:
+                    add_cmd("AN_" + cfg["option_selected"])
+            elif sw == "right" and not mix.voice[1].playing:
+                mch.go_to('main_menu')
 
 
 class Main(Ste):
