@@ -1136,6 +1136,50 @@ async def set_hdw_async(input_string):
                     
                 # Apply clamped speed with direction
                 current_speed = max(0, min(spd, current_speed))
+
+                # --- One-time kickstart if motor is stalled ---
+                # If the motor sometimes won't start at low throttle, nudge it up until
+                # the encoder moves, then ramp back down to target speed.
+                # Only do this once per segment run.
+                if 'did_kickstart' not in locals():
+                    did_kickstart = False
+
+                if not did_kickstart and spd > 0:
+                    # consider "not moving" if encoder didn't change for a brief window
+                    start_ticks = encoder.position
+                    await asyncio.sleep(0.05)
+                    no_move = abs(encoder.position - start_ticks) < 1  # tweak if needed
+
+                    if no_move:
+                        did_kickstart = True
+                        # Kick params (tune to taste)
+                        KICK_MAX = max(0.6, min(1.0, spd + 0.4))   # cap between 0.6..1.0
+                        KICK_STEP = 0.08
+                        KICK_DT   = 0.04
+                        STALL_TICKS = 2  # how many encoder counts means "we're moving"
+
+                        # Ramp UP until we see encoder movement or hit KICK_MAX
+                        kick_throttle = max(current_speed, MIN_SPEED)
+                        while kick_throttle < KICK_MAX:
+                            car.throttle = kick_throttle * target_direction
+                            await asyncio.sleep(KICK_DT)
+                            if abs(encoder.position - start_ticks) >= STALL_TICKS:
+                                break
+                            kick_throttle += KICK_STEP
+
+                        # Ramp DOWN from whatever we reached to current target_speed
+                        # (keep direction consistent)
+                        # Snapshot latest target to avoid overshoot if it changed
+                        down_target = max(MIN_SPEED, target_speed)
+                        while kick_throttle > down_target:
+                            kick_throttle = max(down_target, kick_throttle - KICK_STEP)
+                            car.throttle = kick_throttle * target_direction
+                            await asyncio.sleep(KICK_DT)
+
+                        # Sync control variables so your main speed logic continues smoothly
+                        current_speed = down_target
+                        current_direction = target_direction
+
                          
                 car.throttle = current_speed * current_direction
 
