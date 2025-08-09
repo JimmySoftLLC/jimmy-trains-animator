@@ -1062,6 +1062,8 @@ async def set_hdw_async(input_string):
         # C_SSS_XXX_BBB_AAA_HHH = Move car SS speed 0 to 100, XXX Position in decimal cm, 
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec
         elif seg[:2] == 'C_' or seg[:2] == 'CE' or seg[:2] == 'CH':
+            MIN_SPEED = 0.2
+            KICK_START = 0.5
             global encoder, home_car_pos
             seg_split = seg.split("_")
 
@@ -1108,7 +1110,7 @@ async def set_hdw_async(input_string):
                 
                 # Determine target speed
                 if distance_to_target < slowdown_distance:
-                    target_speed = max(0.1, spd * (distance_to_target / slowdown_distance))
+                    target_speed = max(MIN_SPEED, spd * (distance_to_target / slowdown_distance))
                 else:
                     target_speed = spd
                     
@@ -1131,11 +1133,6 @@ async def set_hdw_async(input_string):
                     
                 # Apply clamped speed with direction
                 current_speed = max(0, min(spd, current_speed))
-                
-                if started_car == False:
-                    car.throttle = .5
-                    time.sleep(.01)
-                    started_car = True
                          
                 car.throttle = current_speed * current_direction
 
@@ -1624,3 +1621,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
