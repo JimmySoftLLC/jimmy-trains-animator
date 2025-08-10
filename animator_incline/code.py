@@ -47,6 +47,7 @@ import os
 import adafruit_vl53l4cd
 import rotaryio
 
+
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
@@ -190,7 +191,7 @@ for _ in range(3):
     vl53.clear_interrupt()
     car_pos = vl53.distance
     print("Distance is: ", car_pos)
-    time.sleep(.5)    
+    time.sleep(.5)
 
 ################################################################################
 # Setup motor controller
@@ -213,7 +214,7 @@ cal_factor = 27.5
 # Initialize the encoder with pins A and B, GP11 and GP12
 encoder = rotaryio.IncrementalEncoder(board.GP11, board.GP12)
 
-last_encoder_pos = encoder.position 
+last_encoder_pos = encoder.position
 
 print("Encoder position is: ", last_encoder_pos)
 
@@ -229,6 +230,7 @@ snd_opt = []
 menu_snd_opt = []
 ts_jsons = []
 
+
 def upd_media():
     global snd_opt, menu_snd_opt, ts_jsons
 
@@ -241,6 +243,7 @@ def upd_media():
 
     ts_jsons = files.return_directory(
         "", "/sd/t_s_def", ".json")
+
 
 upd_media()
 
@@ -322,7 +325,7 @@ if (web):
             mdns.hostname = cfg["HOST_NAME"]
             mdns.advertise_service(
                 service_type="_http", protocol="_tcp", port=80)
-            
+
             local_ip = str(wifi.radio.ipv4_address)
 
             # files.log_items IP address to REPL
@@ -471,14 +474,13 @@ if (web):
             @server.route("/get-volume", [POST])
             def btn(request: Request):
                 return Response(request, cfg["volume"])
-            
-            
+
             @server.route("/get-encoder", [POST])
             def btn(request: Request):
                 global last_encoder_pos, encoder
-                last_encoder_pos = encoder.position 
+                last_encoder_pos = encoder.position
                 return Response(request, str(last_encoder_pos))
-    
+
             @server.route("/get-animations", [POST])
             def btn(request: Request):
                 stp_a_0()
@@ -486,7 +488,7 @@ if (web):
                 sounds.extend(snd_opt)
                 my_string = files.json_stringify(sounds)
                 return Response(request, my_string)
-            
+
             @server.route("/create-animation", [POST])
             def btn(request: Request):
                 try:
@@ -502,7 +504,7 @@ if (web):
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error creating animation.")
-            
+
             @server.route("/rename-animation", [POST])
             def btn(request: Request):
                 try:
@@ -516,7 +518,7 @@ if (web):
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error setting lights.")
-                
+
             @server.route("/delete-animation", [POST])
             def btn(request: Request):
                 try:
@@ -542,7 +544,6 @@ if (web):
                 except Exception as e:
                     print(e)
                     return Response(request, "error")
-            
 
             @server.route("/get-animation", [POST])
             def btn(request: Request):
@@ -556,7 +557,6 @@ if (web):
                 else:
                     f_n = "/sd/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
-
 
             data = []
 
@@ -802,6 +802,7 @@ def spk_web():
         spk_str(cfg["HOST_NAME"], True)
     ply_a_0("/sd/mvc/in_your_browser.wav")
 
+
 def get_snds(dir, typ):
     sds = []
     s = files.return_directory("", dir, ".wav")
@@ -882,13 +883,12 @@ async def an_async(f_nm):
         files.log_item(e)
         no_trk()
         cfg["option_selected"] = "random all"
-        return
-    is_running_an = True
+    is_running_an = False
     gc_col("Animation complete.")
 
 
 async def an_light_async(f_nm):
-    global ts_mode, cont_run
+    global exit_set_hdw_async, ts_mode, cont_run
 
     stp_a_0()
 
@@ -945,8 +945,10 @@ async def an_light_async(f_nm):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
+            exit_set_hdw_async = True
             flsh_i = len(flsh_t) - 1
         if sw == "left_held":
+            exit_set_hdw_async = True
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
             if cont_run:
@@ -960,7 +962,6 @@ async def an_light_async(f_nm):
             add_cmd("T0")
             return
         await upd_vol_async(.1)
-
 
 
 def an_ts(f_nm):
@@ -1005,30 +1006,34 @@ br = 0
 
 
 async def set_hdw_async(input_string):
-    global sp, br, car_pos, cal_factor
+    global exit_set_hdw_async, sp, br, car_pos, cal_factor
     # Split the input string into segments
     segs = input_string.split(",")
 
     # Process each segment
     for seg in segs:
-        if seg == "":
+        if exit_set_hdw_async:
+            return
+        elif seg == "":
             print("no command")
             return
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)  
-        elif seg[0] == 'M': # play file
-                if seg[1] == "S":
-                    stp_a_0()
-                elif seg[1] == "W" or seg[1] == "P":
-                    stp_a_0()
-                    if seg[2] == "S":
-                        w0 = audiocore.WaveFile(open("/sd/snds/" + seg[3:] + ".wav", "rb"))
-                    elif seg[2] == "M":
-                        w0 = audiocore.WaveFile(open("/sd/mvc/" + seg[3:] + ".wav", "rb"))
-                    if seg[1] == "W" or seg[1] == "P":
-                        mix.voice[1].play(w0, loop=False)
-                    if seg[1] == "W":
-                        wait_snd()          
-         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180               
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)
+        elif seg[0] == 'M':  # play file
+            if seg[1] == "S":
+                stp_a_0()
+            elif seg[1] == "W" or seg[1] == "P":
+                stp_a_0()
+                if seg[2] == "S":
+                    w0 = audiocore.WaveFile(
+                        open("/sd/snds/" + seg[3:] + ".wav", "rb"))
+                elif seg[2] == "M":
+                    w0 = audiocore.WaveFile(
+                        open("/sd/mvc/" + seg[3:] + ".wav", "rb"))
+                if seg[1] == "W" or seg[1] == "P":
+                    mix.voice[1].play(w0, loop=False)
+                if seg[1] == "W":
+                    wait_snd()
+        # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
         elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
@@ -1064,7 +1069,7 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'T':
             v = int(seg[1:])/100
             car.throttle = v
-        # C_SSS_XXX_BBB_AAA_HHH = Move car SS speed 0 to 100, XXX Position in decimal cm, 
+        # C_SSS_XXX_BBB_AAA_HHH = Move car SS speed 0 to 100, XXX Position in decimal cm,
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec
         elif seg[:2] == 'C_' or seg[:2] == 'CE' or seg[:2] == 'CH':
             MIN_SPEED = 0.2
@@ -1083,11 +1088,9 @@ async def set_hdw_async(input_string):
                     car_pos = vl53.distance
                     await asyncio.sleep(.1)
 
-            
             # Use current throttle state directly
             current_speed = abs(car.throttle) if car.throttle else 0
             current_direction = 1 if car.throttle >= 0 else -1
-            
 
             if seg[:2] == 'C_':
                 vl53.clear_interrupt()
@@ -1101,22 +1104,26 @@ async def set_hdw_async(input_string):
             num_times_in_band = 0
             give_up = abs(car_pos - target_pos)
             srt_t = time.monotonic()
-            
+
             while True:
-                
+                if exit_set_hdw_async:
+                    car.throttle = 0
+                    return
+
                 # Calculate distance and target direction
                 distance_to_target = abs(car_pos - target_pos)
                 target_direction = 1 if car_pos < target_pos else -1  # 1 forward, -1 reverse
-                
+
                 # Calculate slowdown zone based on acceleration
-                slowdown_distance = target_band * 3 + (acc * 0.5)
-                
+                slowdown_distance = 4
+
                 # Determine target speed
                 if distance_to_target < slowdown_distance:
-                    target_speed = max(MIN_SPEED, spd * (distance_to_target / slowdown_distance))
+                    target_speed = max(
+                        MIN_SPEED, spd * (distance_to_target / slowdown_distance))
                 else:
                     target_speed = spd
-                    
+
                 # Handle direction change or speed adjustment
                 if current_direction != target_direction and current_speed > 0:
                     # Decelerate to stop before changing direction
@@ -1133,7 +1140,7 @@ async def set_hdw_async(input_string):
                     elif speed_diff < 0:  # Need to decelerate
                         current_speed += max(-acc * 0.05, speed_diff)
                     current_direction = target_direction
-                    
+
                 # Apply clamped speed with direction
                 current_speed = max(0, min(spd, current_speed))
 
@@ -1148,14 +1155,16 @@ async def set_hdw_async(input_string):
                     # consider "not moving" if encoder didn't change for a brief window
                     start_ticks = encoder.position
                     await asyncio.sleep(0.05)
-                    no_move = abs(encoder.position - start_ticks) < 1  # tweak if needed
+                    # tweak if needed
+                    no_move = abs(encoder.position - start_ticks) < 1
 
                     if no_move:
                         did_kickstart = True
                         # Kick params (tune to taste)
-                        KICK_MAX = max(0.6, min(1.0, spd + 0.4))   # cap between 0.6..1.0
+                        # cap between 0.6..1.0
+                        KICK_MAX = max(0.6, min(1.0, spd + 0.4))
                         KICK_STEP = 0.08
-                        KICK_DT   = 0.04
+                        KICK_DT = 0.04
                         STALL_TICKS = 2  # how many encoder counts means "we're moving"
 
                         # Ramp UP until we see encoder movement or hit KICK_MAX
@@ -1172,7 +1181,8 @@ async def set_hdw_async(input_string):
                         # Snapshot latest target to avoid overshoot if it changed
                         down_target = max(MIN_SPEED, target_speed)
                         while kick_throttle > down_target:
-                            kick_throttle = max(down_target, kick_throttle - KICK_STEP)
+                            kick_throttle = max(
+                                down_target, kick_throttle - KICK_STEP)
                             car.throttle = kick_throttle * target_direction
                             await asyncio.sleep(KICK_DT)
 
@@ -1180,7 +1190,6 @@ async def set_hdw_async(input_string):
                         current_speed = down_target
                         current_direction = target_direction
 
-                         
                 car.throttle = current_speed * current_direction
 
                 # Check if within target band
@@ -1192,10 +1201,11 @@ async def set_hdw_async(input_string):
                             encoder.position = 0
                             home_car_pos = car_pos
                         break
-                        
-                print(f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
+
+                print(
+                    f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
                 await asyncio.sleep(.05)
-                
+
                 t_past = time.monotonic() - srt_t
                 if t_past > give_up:
                     car.throttle = 0
@@ -1214,24 +1224,25 @@ async def set_hdw_async(input_string):
                     car_pos = encoder.position / cal_factor + home_car_pos
         # lights LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start (1 to 999), EEE end (1 to 999), RGB 0 to 255
         elif seg[:3] == 'LNR':
-                seg_split = seg.split("_")
-                start = int(seg_split[1]) - 1
-                end = int(seg_split[2]) - 1
-                r = int(seg_split[3])
-                g = int(seg_split[4])
-                b = int(seg_split[5])
-                set_neo_range(start, end, r, g, b)
+            seg_split = seg.split("_")
+            start = int(seg_split[1]) - 1
+            end = int(seg_split[2]) - 1
+            r = int(seg_split[3])
+            g = int(seg_split[4])
+            b = int(seg_split[5])
+            set_neo_range(start, end, r, g, b)
         # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
         elif seg[:2] == 'LN':
-                seg_split = seg.split("_")
-                light_n = int(seg_split[0][2:])-1
-                r = int(seg_split[1])
-                g = int(seg_split[2])
-                b = int(seg_split[3])
-                set_neo_to(light_n, r, g, b)
+            seg_split = seg.split("_")
+            light_n = int(seg_split[0][2:])-1
+            r = int(seg_split[1])
+            g = int(seg_split[2])
+            b = int(seg_split[3])
+            set_neo_to(light_n, r, g, b)
         # QXXXX = Add command XXXX any command ie AN_filename to add new animation
         elif seg[0] == 'Q':
             add_cmd(seg[1:])
+
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -1240,6 +1251,7 @@ def set_neo_to(light_n, r, g, b):
     else:
         led[light_n] = (r, g, b)
     led.show()
+
 
 def set_neo_range(start, end, r, g, b):
     for i in range(start, end+1):  # set values to indexes start to end
@@ -1313,7 +1325,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, is_running_an
+        global cont_run, is_running_an, exit_set_hdw_async
         if not is_running_an:
             sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
@@ -1614,7 +1626,7 @@ if (web):
         files.log_item("restarting...")
         rst()
 else:
-    led[3] = (0, 125, 0)
+    led[3] = (125, 0, 0)
     led.show()
     time.sleep(3)
 
@@ -1625,6 +1637,7 @@ files.log_item("animator has started...")
 gc_col("animations started.")
 
 # Main task handling
+
 
 async def process_cmd_tsk():
     """Task to continuously process commands."""
@@ -1670,4 +1683,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
