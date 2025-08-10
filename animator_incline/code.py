@@ -57,7 +57,7 @@ def gc_col(collection_point):
 
 def f_exists(filename):
     try:
-        status = os.stat(filename)
+        _ = os.stat(filename)
         f_exists = True
     except OSError:
         f_exists = False
@@ -109,7 +109,7 @@ spi = busio.SPI(sck, si, so)
 
 # Setup the mixer to play wav files
 mix = audiomixer.Mixer(voice_count=2, sample_rate=22050, channel_count=2,
-                       bits_per_sample=16, samples_signed=True, buffer_size=4096)
+                       bits_per_sample=16, samples_signed=True, buffer_size=32768)
 aud.play(mix)
 
 mix.voice[0].level = .2
@@ -1001,22 +1001,141 @@ def an_ts(f_nm):
 # animation effects
 
 
-sp = [0, 0, 0]
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):  # in range(n_px)
+            led[i] = (r, g, b)
+    else:
+        led[light_n] = (r, g, b)
+    led.show()
+
+async def random_effect(il, ih, d):
+    if exit_set_hdw_async:
+        return
+    i = random.randint(il, ih)
+    if i == 1:
+        await rbow(.005, d)
+    elif i == 2:
+        multi_color()
+        await asyncio.sleep(d)
+    elif i == 3:
+        await fire(d)
+
+
+async def rbow(spd, dur):
+    global exit_set_hdw_async
+    st = time.monotonic()
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0, 255, 1):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+            
+def multi_color():
+    for i in range(0, n_px):
+        r = random.randint(128, 255)
+        g = random.randint(128, 255)
+        b = random.randint(128, 255)
+        c = random.randint(0, 2)
+        if c == 0:
+            r1 = r
+            g1 = 0
+            b1 = 0
+        elif c == 1:
+            r1 = 0
+            g1 = g
+            b1 = 0
+        elif c == 2:
+            r1 = 0
+            g1 = 0
+            b1 = b
+        led[i] = (r1, g1, b1)
+    led.show()
+
+async def fire(dur):
+    st = time.monotonic()
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+
+    # Flicker, based on our initial RGB values
+    while True:
+        for i in range(n_px):
+            if exit_set_hdw_async:
+                return
+            f = random.randint(0, 110)
+            r1 = bnd(r-f, 0, 255)
+            g1 = bnd(g-f, 0, 255)
+            b1 = bnd(b-f, 0, 255)
+            led[i] = (r1, g1, b1)
+            led.show()
+        upd_vol(random.uniform(0.05, 0.1))
+        te = time.monotonic()-st
+        if te > dur:
+            return
+        
+def bnd(c, l, u):
+    if (c < l):
+        c = l
+    if (c > u):
+        c = u
+    return c
+
+
 br = 0
 
 
 async def set_hdw_async(input_string):
-    global exit_set_hdw_async, sp, br, car_pos, cal_factor
+    global exit_set_hdw_async, br, car_pos, cal_factor
     # Split the input string into segments
     segs = input_string.split(",")
 
     # Process each segment
     for seg in segs:
         if exit_set_hdw_async:
-            return
+            return "STOP"
+        # end animation
+        elif seg[0] == 'E':
+            return "STOP"
         elif seg == "":
             print("no command")
-            return
+        # WXXX = Wait XXX decimal seconds
+        elif seg[0] == 'W':  # wait time
+            s = float(seg[1:])
+            await asyncio.sleep(s)
+        # ZRAND = Random rainbow, fire, or color change
+        elif seg[0:] == 'ZRAND':
+            await random_effect(1, 3, dur)
+        # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+        elif seg[:2] == 'ZR':
+            v = float(seg[2:])
+            await rbow(v, dur)
+        # ZFIRE = Fire
+        elif seg[0:] == 'ZFIRE':
+            await fire(dur)
+        # ZCOLCH = Color change
+        elif seg[0:] == 'ZCOLCH':
+            multi_color()
+            await asyncio.sleep(dur)  
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)
         elif seg[0] == 'M':  # play file
             if seg[1] == "S":
@@ -1213,7 +1332,7 @@ async def set_hdw_async(input_string):
                         encoder.position = 0
                         home_car_pos = car_pos
                     break
-
+     
                 if seg[:2] == 'C_':
                     vl53.clear_interrupt()
                     car_pos = vl53.distance

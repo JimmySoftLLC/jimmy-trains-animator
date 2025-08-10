@@ -57,7 +57,7 @@ def gc_col(collection_point):
 
 def f_exists(filename):
     try:
-        status = os.stat(filename)
+        _ = os.stat(filename)
         f_exists = True
     except OSError:
         f_exists = False
@@ -248,6 +248,9 @@ local_ip = ""
 
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
+
+exit_set_hdw_async = False
+is_running_an = False
 
 gc_col("config setup")
 
@@ -825,9 +828,10 @@ lst_opt = ""
 
 
 async def an_async(f_nm):
-    global cfg, lst_opt
+    global is_running_an, cfg, lst_opt
     print("Filename: " + f_nm)
     cur_opt = f_nm
+    is_running_an = True
     try:
         if f_nm == "random all":
             h_i = len(rand_opt) - 1
@@ -849,7 +853,7 @@ async def an_async(f_nm):
         files.log_item(e)
         no_trk()
         cfg["option_selected"] = "random all"
-        return
+    is_running_an = False
     gc_col("Animation complete.")
 
 
@@ -1125,8 +1129,7 @@ async def set_hdw_async(input_string, dur = 3):
             stp_a_0()
             fn = get_snds("/sd/mvc", "horn")
             w0 = audiocore.WaveFile(open(fn, "rb"))
-            mix.voice[0].play(w0, loop=False)
-            
+            mix.voice[0].play(w0, loop=False)        
         # BELL = Ring bell
         elif seg[:4] == 'BELL':  # play file
             wait_snd()
@@ -1341,7 +1344,8 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
+        global cont_run, is_running_an
+        if not is_running_an:
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left_held":
@@ -1352,7 +1356,8 @@ class BseSt(Ste):
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif (sw == "left" or cont_run) and not mix.voice[0].playing:
-            add_cmd("AN_" + cfg["option_selected"])
+            if not is_running_an:
+                add_cmd("AN_" + cfg["option_selected"])
         elif sw == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
 
