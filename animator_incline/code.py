@@ -656,15 +656,15 @@ def rst_def():
 # Dialog and sound play methods
 
 
-def upd_vol(s):
+def upd_vol(s, ratio = 100):
     if cfg["volume_pot"]:
-        volume = a_in.value / 65536
+        volume = a_in.value / 65536 * ratio/100
         mix.voice[0].level = volume
         mix.voice[1].level = volume
         time.sleep(s)
     else:
         try:
-            volume = int(cfg["volume"]) / 100
+            volume = int(cfg["volume"]) / 100 * ratio/100
         except Exception as e:
             files.log_item(e)
             volume = .5
@@ -675,15 +675,15 @@ def upd_vol(s):
         time.sleep(s)
 
 
-async def upd_vol_async(s):
+async def upd_vol_async(s, ratio = 100):
     if cfg["volume_pot"]:
-        v = a_in.value / 65536
+        v = a_in.value / 65536 * ratio/100
         mix.voice[0].level = v
         mix.voice[1].level = v
         await asyncio.sleep(s)
     else:
         try:
-            v = int(cfg["volume"]) / 100
+            v = int(cfg["volume"]) / 100 * ratio/100
         except Exception as e:
             files.log_item(e)
             v = .5
@@ -1135,10 +1135,11 @@ def bnd(c, l, u):
 
 
 br = 0
+vr = 0
 
 
 async def set_hdw_async(input_string, dur=3):
-    global exit_set_hdw_async, br, car_pos, cal_factor
+    global exit_set_hdw_async, br, vr, car_pos, cal_factor
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -1230,7 +1231,20 @@ async def set_hdw_async(input_string, dur=3):
                 else:
                     br -= 1
                     led.brightness = float(br/100)
-                upd_vol_async(.01)
+                upd_vol(.01)
+        # VRFXXX = Volume ratio fade up or down XXX 0 to 100
+        elif seg[:3] == 'VRF':
+            v = int(seg[3:])
+            while not vr == v:
+                if vr < v:
+                    vr += 1
+                else:
+                    vr -= 1
+                upd_vol(.01, vr)       
+        # VRXXX = Volume ratio set to XXX
+        elif seg[:2] == 'VR':
+            vr = int(seg[2:])
+            upd_vol(.01, vr)
         # AN_XXX = Animation XXX filename
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
