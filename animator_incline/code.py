@@ -345,17 +345,20 @@ if (web):
             @server.route("/")
             def base(request: HTTPRequest):
                 stp_a_0()
+                stp_a_1()
                 gc_col("Home page.")
                 return FileResponse(request, "index.html", "/")
 
             @server.route("/mui.min.css")
             def base(request: HTTPRequest):
                 stp_a_0()
+                stp_a_1()
                 return FileResponse(request, "/sd/mui.min.css", "/")
 
             @server.route("/mui.min.js")
             def base(request: HTTPRequest):
                 stp_a_0()
+                stp_a_1()
                 return FileResponse(request, "/sd/mui.min.js", "/")
 
             @server.route("/animation", [POST])
@@ -372,6 +375,7 @@ if (web):
             def btn(request: Request):
                 global cfg
                 stp_a_0()
+                stp_a_1()
                 rq_d = request.json()
                 if rq_d["an"] == "reset_animation_timing_to_defaults":
                     for ts_fn in ts_jsons:
@@ -423,6 +427,7 @@ if (web):
             def btn(request: Request):
                 global cfg
                 stp_a_0()
+                stp_a_1()
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
                     ply_a_1("/sd/mvc/left_speaker_right_speaker.wav")
@@ -439,6 +444,7 @@ if (web):
             @server.route("/lights", [POST])
             def btn(request: Request):
                 stp_a_0()
+                stp_a_1()
                 rq_d = request.json()
                 add_cmd(rq_d["an"])
                 return Response(request, "Utility: " + "Utility: set lights")
@@ -447,6 +453,7 @@ if (web):
             def btn(request: Request):
                 global cfg
                 stp_a_0()
+                stp_a_1()
                 rq_d = request.json()
                 cfg["HOST_NAME"] = rq_d["an"]
                 files.write_json_file("/sd/cfg.json", cfg)
@@ -457,11 +464,13 @@ if (web):
             @server.route("/get-host-name", [POST])
             def btn(request: Request):
                 stp_a_0()
+                stp_a_1()
                 return Response(request, cfg["HOST_NAME"])
 
             @server.route("/get-local-ip", [POST])
             def buttonpress(req: Request):
                 stp_a_0()
+                stp_a_1()
                 return Response(req, local_ip)
 
             @server.route("/update-volume", [POST])
@@ -484,6 +493,7 @@ if (web):
             @server.route("/get-animations", [POST])
             def btn(request: Request):
                 stp_a_0()
+                stp_a_1()
                 sounds = []
                 sounds.extend(snd_opt)
                 my_string = files.json_stringify(sounds)
@@ -549,6 +559,7 @@ if (web):
             def btn(request: Request):
                 global cfg, cont_run, ts_mode
                 stp_a_0()
+                stp_a_1()
                 rq_d = request.json()
                 snd_f = rq_d["an"]
                 if (f_exists("/sd/snds/" + snd_f + ".json") == True):
@@ -565,6 +576,7 @@ if (web):
                 global data
                 gc_col("prep save data")
                 stp_a_0()
+                stp_a_1()
                 rq_d = request.json()
                 try:
                     if rq_d[0] == 0:
@@ -712,26 +724,20 @@ def ch_vol(action):
         ply_a_1("/sd/mvc/volume.wav")
         spk_str(cfg["volume"], False)
 
-
-def ply_a_1(file_name):
-    if mix.voice[1].playing:
-        mix.voice[1].stop()
-        while mix.voice[1].playing:
-            upd_vol(0.1)
-    w0 = audiocore.WaveFile(open(file_name, "rb"))
-    mix.voice[1].play(w0, loop=False)
-    while mix.voice[1].playing:
-        exit_early_0()
-
 def wait_snd_0():
     while mix.voice[0].playing:
         exit_early_0()
         pass
 
 def stp_a_0():
-    mix.voice[0].stop()
-    wait_snd_0()
-    gc_col("stp snd")
+    try:
+        mix.voice[0].stop()
+        wait_snd_0()
+        time.sleep(0.5)
+        gc_col("stp snd 0")
+    except Exception as e:
+            files.log_item(e)
+            print("Invalid character in string to speak")
 
 def exit_early_0():
     upd_vol(0.1)
@@ -739,15 +745,30 @@ def exit_early_0():
     if l_sw.fell:
         mix.voice[0].stop()
 
-def wait_snd_1():
+def ply_a_1(file_name):
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+    w1 = audiocore.WaveFile(open(file_name, "rb"))
+    mix.voice[1].play(w1, loop=False)
     while mix.voice[1].playing:
         exit_early_0()
+
+def wait_snd_1():
+    while mix.voice[1].playing:
+        exit_early_1()
         pass
 
 def stp_a_1():
-    mix.voice[1].stop()
-    wait_snd_1()
-    gc_col("stp snd")
+    try:
+        mix.voice[1].stop()
+        wait_snd_1()
+        time.sleep(0.5)
+        gc_col("stp snd 1")
+    except Exception as e:
+        files.log_item(e)
+        print("Invalid character in string to speak")
 
 def exit_early_1():
     upd_vol(0.1)
@@ -775,7 +796,6 @@ def spk_str(str_to_speak, addLocal):
 
 def l_r_but():
     ply_a_1("/sd/mvc/press_left_button_right_button.wav")
-
 
 def sel_web():
     ply_a_1("/sd/mvc/web_menu.wav")
@@ -903,6 +923,7 @@ async def an_light_async(f_nm):
     global exit_set_hdw_async, ts_mode, cont_run
 
     stp_a_0()
+    stp_a_1()
 
     flsh_t = []
 
@@ -1147,23 +1168,45 @@ async def set_hdw_async(input_string, dur=3):
         # ZCOLCH = Color change
         elif seg[0:] == 'ZCOLCH':
             multi_color()
-            await asyncio.sleep(dur)  
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)
+            await asyncio.sleep(dur)
+        # MACLXXX = Play file, A (P play music, W play music wait, S stop music, L loop music), C = channel (0 background, 1 overvoice), L = file location (S sound tracks, M mvc folder) XXX (file name)
         elif seg[0] == 'M':  # play file
-            if seg[1] == "S":
-                stp_a_1()
-            elif seg[1] == "W" or seg[1] == "P":
-                stp_a_1()
-                if seg[2] == "S":
-                    w1 = audiocore.WaveFile(
-                        open("/sd/snds/" + seg[3:] + ".wav", "rb"))
-                elif seg[2] == "M":
-                    w1 = audiocore.WaveFile(
-                        open("/sd/mvc/" + seg[3:] + ".wav", "rb"))
-                if seg[1] == "W" or seg[1] == "P":
-                    mix.voice[1].play(w1, loop=False)
-                if seg[1] == "W":
-                    wait_snd_1()
+            if seg[2] == "0":
+                if seg[1] == "S":
+                    stp_a_0()
+                elif seg[1] == "W" or seg[1] == "P" or seg[1] == "L":
+                    stp_a_0()
+                    if seg[3] == "S":
+                        w0 = audiocore.WaveFile(
+                            open("/sd/snds/" + seg[4:] + ".wav", "rb"))
+                    elif seg[3] == "M":
+                        w0 = audiocore.WaveFile(
+                            open("/sd/mvc/" + seg[4:] + ".wav", "rb"))
+                    if seg[1] == "W" or seg[1] == "P" or seg[1] == "L":
+                        if seg[1] == "L":
+                            mix.voice[0].play(w0, loop=True)
+                        else:
+                            mix.voice[0].play(w0, loop=False)
+                    if seg[1] == "W":
+                        wait_snd_0()
+            elif seg[2] == "1":
+                if seg[1] == "S":
+                    stp_a_1()
+                elif seg[1] == "W" or seg[1] == "P" or seg[1] == "L":
+                    stp_a_1()
+                    if seg[3] == "S":
+                        w1 = audiocore.WaveFile(
+                            open("/sd/snds/" + seg[4:] + ".wav", "rb"))
+                    elif seg[3] == "M":
+                        w1 = audiocore.WaveFile(
+                            open("/sd/mvc/" + seg[4:] + ".wav", "rb"))
+                    if seg[1] == "W" or seg[1] == "P" or seg[1] == "L":
+                        if seg[1] == "L":
+                            mix.voice[1].play(w1, loop=True)
+                        else:
+                            mix.voice[1].play(w1, loop=False)    
+                    if seg[1] == "W":
+                        wait_snd_1()
         # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
         elif seg[0] == 'S':
             num = int(seg[1])
