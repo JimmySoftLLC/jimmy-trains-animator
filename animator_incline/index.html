@@ -105,8 +105,6 @@
             <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
             <input class="input" id="encoder" type="number" disabled>
             <button class="mui-btn mui-btn--primary" onclick="getEncoderPos()">Get encoder</button>
-
-
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -124,6 +122,24 @@
                 <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
                     type="button">
                     Continuous Mode Off
+                </button>
+            </div>
+            <h2>Animation timing:</h2>
+            <p>
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
+                left button to start your animation. Once the sound track starts press the right button for each point
+                that you want an animation change. Time your button presses to key moments in the sound track. Continue
+                to do this until the animation finishes. Then
+                timestamp mode will be automatically turned off and your animation will be ready.
+            </p>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
+                    type="button">
+                    Timestamp Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/mode" type="button">
+                    Timestamp Mode Off
                 </button>
             </div>
         </div>
@@ -336,20 +352,21 @@
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
-            <div>C_SSS_XXX_BBB_AAA = Move car C movement type (C laser, CE encoder, CH home laser), SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal
+            <div>C_SSS_XXX_BBB_AAA = Move car C movement type (C laser, CE encoder, CH home laser), SS speed 0 to 100,
+                XXX Position in decimal cm, BBB target band in decimal
                 cm, AAA acceleration decimal cm/sec</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder) XXX (file name)</div>
             <div>QXXXX = Add command XXXX any command ie AN_filename to add new animation</div>
-            <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
-                Animations</button>
             <div>HORN = Blow horn</div>
             <div>BELL = Ring bell</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
             <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
             <div>ZFIRE = Fire</div>
             <div>ZCOLCH = Color change</div>
-            <div>WXXX = Wait XXX decimal seconds</div> 
+            <div>WXXX = Wait XXX decimal seconds</div>
+            <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
+                Animations</button>
             <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
             <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
             <table id="dataTable" class="mui-table">
