@@ -161,6 +161,9 @@ s_arr = [s_1]
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
+br = 100
+vr = 100
+
 ################################################################################
 # setup distance sensor
 
@@ -656,11 +659,12 @@ def rst_def():
 # Dialog and sound play methods
 
 
-def upd_vol(s, ratio = 100):
+def upd_vol(s, ratio):
     if cfg["volume_pot"]:
         volume = a_in.value / 65536 * ratio/100
         mix.voice[0].level = volume
         mix.voice[1].level = volume
+        print ("vol set: ",volume)
         time.sleep(s)
     else:
         try:
@@ -672,25 +676,28 @@ def upd_vol(s, ratio = 100):
             volume = .5
         mix.voice[0].level = volume
         mix.voice[1].level = volume
+        print ("vol set: ",volume)
         time.sleep(s)
 
 
-async def upd_vol_async(s, ratio = 100):
+async def upd_vol_async(s, ratio):
     if cfg["volume_pot"]:
-        v = a_in.value / 65536 * ratio/100
-        mix.voice[0].level = v
-        mix.voice[1].level = v
+        volume = a_in.value / 65536 * ratio/100
+        mix.voice[0].level = volume
+        mix.voice[1].level = volume
+        print ("vol set: ",volume)
         await asyncio.sleep(s)
     else:
         try:
-            v = int(cfg["volume"]) / 100 * ratio/100
+            volume = int(cfg["volume"]) / 100 * ratio/100
         except Exception as e:
             files.log_item(e)
-            v = .5
-        if v < 0 or v > 1:
-            v = .5
-        mix.voice[0].level = v
-        mix.voice[1].level = v
+            volume = .5
+        if volume < 0 or volume > 1:
+            volume = .5
+        mix.voice[0].level = volume
+        mix.voice[1].level = volume
+        print ("vol set: ",volume)
         await asyncio.sleep(s)
 
 
@@ -740,7 +747,7 @@ def stp_a_0():
             print("Invalid character in string to speak")
 
 def exit_early_0():
-    upd_vol(0.1)
+    upd_vol(0.1, vr)
     l_sw.update()
     if l_sw.fell:
         mix.voice[0].stop()
@@ -749,7 +756,7 @@ def ply_a_1(file_name):
     if mix.voice[1].playing:
         mix.voice[1].stop()
         while mix.voice[1].playing:
-            upd_vol(0.1)
+            upd_vol(0.1, vr)
     w1 = audiocore.WaveFile(open(file_name, "rb"))
     mix.voice[1].play(w1, loop=False)
     while mix.voice[1].playing:
@@ -771,7 +778,7 @@ def stp_a_1():
         print("Invalid character in string to speak")
 
 def exit_early_1():
-    upd_vol(0.1)
+    upd_vol(0.1, vr)
     l_sw.update()
     if l_sw.fell:
         mix.voice[1].stop()
@@ -994,7 +1001,7 @@ async def an_light_async(f_nm):
             led.show()
             add_cmd("T0")
             return
-        await upd_vol_async(.1)
+        await upd_vol_async(.1, vr)
 
 
 def an_ts(f_nm):
@@ -1010,7 +1017,7 @@ def an_ts(f_nm):
     mix.voice[1].play(w0, loop=False)
 
     startTime = time.monotonic()
-    upd_vol(.1)
+    upd_vol(.1, vr)
 
     while True:
         t_elsp = round(time.monotonic()-startTime, 1)
@@ -1121,7 +1128,7 @@ async def fire(dur):
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
             led.show()
-        upd_vol(random.uniform(0.05, 0.1))
+        upd_vol(random.uniform(0.05, 0.1), vr)
         te = time.monotonic()-st
         if te > dur:
             return
@@ -1132,10 +1139,6 @@ def bnd(c, l, u):
     if (c > u):
         c = u
     return c
-
-
-br = 0
-vr = 0
 
 
 async def set_hdw_async(input_string, dur=3):
@@ -1231,20 +1234,20 @@ async def set_hdw_async(input_string, dur=3):
                 else:
                     br -= 1
                     led.brightness = float(br/100)
-                upd_vol(.01)
+                await upd_vol_async(.1, vr)
         # VRFXXX = Volume ratio fade up or down XXX 0 to 100
         elif seg[:3] == 'VRF':
             v = int(seg[3:])
             while not vr == v:
                 if vr < v:
-                    vr += 1
+                    vr += 10
                 else:
-                    vr -= 1
-                upd_vol(.01, vr)       
+                    vr -= 10
+                await upd_vol_async(.15, vr)       
         # VRXXX = Volume ratio set to XXX
         elif seg[:2] == 'VR':
             vr = int(seg[2:])
-            upd_vol(.01, vr)
+            upd_vol(0, vr)
         # AN_XXX = Animation XXX filename
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
@@ -1289,6 +1292,8 @@ async def set_hdw_async(input_string, dur=3):
             elif seg[:2] == 'CE':
                 car_pos = encoder.position / cal_factor + home_car_pos
 
+            ramping_down = True
+            ramping_up = True
             num_times_in_band = 0
             give_up = abs(car_pos - target_pos)
             srt_t = time.monotonic()
@@ -1324,8 +1329,14 @@ async def set_hdw_async(input_string, dur=3):
                     speed_diff = target_speed - current_speed
                     # Apply acceleration/deceleration
                     if speed_diff > 0:  # Need to accelerate
+                        if ramping_up:
+                            ramping_up = False
+                            asyncio.create_task(set_hdw_async("VRF100"))
                         current_speed += min(acc * 0.05, speed_diff)
                     elif speed_diff < 0:  # Need to decelerate
+                        if ramping_down:
+                            ramping_down = False
+                            asyncio.create_task(set_hdw_async("VRF0"))
                         current_speed += max(-acc * 0.05, speed_diff)
                     current_direction = target_direction
 
@@ -1392,7 +1403,7 @@ async def set_hdw_async(input_string, dur=3):
 
                 print(
                     f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
-                await asyncio.sleep(.01)
+                await upd_vol_async(.01, vr)
 
                 t_past = time.monotonic() - srt_t
                 if t_past > give_up:
@@ -1722,7 +1733,7 @@ class VolSet(Ste):
             ply_a_1("/sd/mvc/all_changes_complete.wav")
             s.vol_adj_mode = False
             mch.go_to('base_state')
-            upd_vol(0.1)
+            upd_vol(0.1, vr)
         if sw == "right" and vol_set[s.sel_i] == "volume_pot_off":
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
@@ -1798,7 +1809,7 @@ st_mch.add(WebOpt())
 
 aud_en.value = True
 
-upd_vol(.1)
+upd_vol(.1, vr)
 
 
 if (web):
@@ -1818,7 +1829,7 @@ else:
     led.show()
     time.sleep(3)
 
-upd_vol(.5)
+upd_vol(.5, vr)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -1871,3 +1882,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
