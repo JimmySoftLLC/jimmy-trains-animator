@@ -664,7 +664,6 @@ def upd_vol(s, ratio):
         volume = a_in.value / 65536 * ratio/100
         mix.voice[0].level = volume
         mix.voice[1].level = volume
-        print ("vol set: ",volume)
         time.sleep(s)
     else:
         try:
@@ -676,7 +675,6 @@ def upd_vol(s, ratio):
             volume = .5
         mix.voice[0].level = volume
         mix.voice[1].level = volume
-        print ("vol set: ",volume)
         time.sleep(s)
 
 
@@ -685,7 +683,6 @@ async def upd_vol_async(s, ratio):
         volume = a_in.value / 65536 * ratio/100
         mix.voice[0].level = volume
         mix.voice[1].level = volume
-        print ("vol set: ",volume)
         await asyncio.sleep(s)
     else:
         try:
@@ -697,7 +694,6 @@ async def upd_vol_async(s, ratio):
             volume = .5
         mix.voice[0].level = volume
         mix.voice[1].level = volume
-        print ("vol set: ",volume)
         await asyncio.sleep(s)
 
 
@@ -927,7 +923,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global exit_set_hdw_async, ts_mode, cont_run
+    global exit_set_hdw_async, ts_mode, cont_run, vr, br
 
     stp_a_0()
     stp_a_1()
@@ -996,10 +992,14 @@ async def an_light_async(f_nm):
                 stp_all_cmds()
                 ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
+            exit_set_hdw_async = False
             mix.voice[0].stop()
             led.fill((0, 0, 0))
             led.show()
-            add_cmd("T0")
+            vr = 100
+            br = 100
+            await set_hdw_async("T0")
+            await upd_vol_async(.1, vr)
             return
         await upd_vol_async(.1, vr)
 
@@ -1240,10 +1240,10 @@ async def set_hdw_async(input_string, dur=3):
             v = int(seg[3:])
             while not vr == v:
                 if vr < v:
-                    vr += 10
+                    vr += 2
                 else:
-                    vr -= 10
-                await upd_vol_async(.15, vr)       
+                    vr -= 2
+                await upd_vol_async(.03, vr)       
         # VRXXX = Volume ratio set to XXX
         elif seg[:2] == 'VR':
             vr = int(seg[2:])
@@ -1260,8 +1260,8 @@ async def set_hdw_async(input_string, dur=3):
         elif seg[0] == 'T':
             v = int(seg[1:])/100
             car.throttle = v
-        # C_SSS_XXX_BBB_AAA_HHH = Move car SS speed 0 to 100, XXX Position in decimal cm,
-        # BBB target band in decimal cm, AAA acceleration decimal cm/sec
+        # C_SSS_XXX_BBB_AAA_RRR = Move car SS speed 0 to 100, XXX Position in decimal cm,
+        # BBB target band in decimal cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)
         elif seg[:2] == 'C_' or seg[:2] == 'CE' or seg[:2] == 'CH':
             MIN_SPEED = 0.2
             global encoder, home_car_pos
@@ -1271,6 +1271,12 @@ async def set_hdw_async(input_string, dur=3):
             target_pos = float(seg_split[2])
             target_band = float(seg_split[3])
             acc = float(seg_split[4])
+            if seg_split[5] == "True":
+                ramping_down = True
+                ramping_up = True
+            else:
+                ramping_down = False
+                ramping_up = False
 
             # clear out measurements
             if seg[:2] == 'C_' or seg[:2] == 'CH':
@@ -1292,8 +1298,6 @@ async def set_hdw_async(input_string, dur=3):
             elif seg[:2] == 'CE':
                 car_pos = encoder.position / cal_factor + home_car_pos
 
-            ramping_down = True
-            ramping_up = True
             num_times_in_band = 0
             give_up = abs(car_pos - target_pos)
             srt_t = time.monotonic()
