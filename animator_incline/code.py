@@ -370,7 +370,7 @@ if (web):
                 rq_d = request.json()
                 cfg["option_selected"] = rq_d["an"]
                 add_cmd("AN_" + cfg["option_selected"])
-                if not mix.voice[1].playing:
+                if not mix.voice[0].playing and not mix.voice[1].playing:
                     files.write_json_file("/sd/cfg.json", cfg)
                 return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
@@ -642,6 +642,8 @@ def stp_all_cmds():
     global exit_set_hdw_async
     clr_cmd_queue()
     exit_set_hdw_async = True
+    stp_a_0()
+    stp_a_1()
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
@@ -719,10 +721,10 @@ def ch_vol(action):
     if v > 100:
         v = 100
     if v < 1:
-        v = 1
+        v = 0
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
-    if not mix.voice[1].playing:
+    if not mix.voice[0].playing and not mix.voice[1].playing:
         files.write_json_file("/sd/cfg.json", cfg)
         ply_a_1("/sd/mvc/volume.wav")
         spk_str(cfg["volume"], False)
@@ -991,7 +993,7 @@ async def an_light_async(f_nm):
                 cont_run = False
                 stp_all_cmds()
                 ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
+        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1 or exit_set_hdw_async:
             exit_set_hdw_async = False
             mix.voice[0].stop()
             led.fill((0, 0, 0))
