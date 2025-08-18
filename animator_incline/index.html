@@ -352,10 +352,12 @@
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
-            <div>C_SSS_XXX_BBB_AAA_RRR = Move car C movement type (C laser, CE encoder, CH home laser), SS speed 0 to 100,
+            <div>C_SSS_XXX_BBB_AAA_RRR = Move car C movement type (C laser, CE encoder, CH home laser), SS speed 0 to
+                100,
                 XXX Position in decimal cm, BBB target band in decimal
                 cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)</div>
-            <div>MACLXXX = Play file, A (P play music, W play music wait, S stop music, L loop music), C = channel (0 background, 1 overvoice), L = file location (S sound tracks, M mvc folder) XXX (file name)</div>
+            <div>MACLXXX = Play file, A (P play music, W play music wait, S stop music, L loop music), C = channel (0
+                background, 1 overvoice), L = file location (S sound tracks, M mvc folder) XXX (file name)</div>
             <div>QXXXX = Add command XXXX any command ie AN_filename to add new animation</div>
             <div>HORN = Blow horn</div>
             <div>BELL = Ring bell</div>
@@ -668,8 +670,8 @@
 
         if (filenameInput) {
             animationScriptName.value = filenameInput;
-            saveAnimationScriptData();
-            updateAnimations()
+            saveAnimationScriptData(true);
+
             var modalEl = document.getElementById("modalEl")
             mui.overlay('off', modalEl)
         } else {
@@ -883,7 +885,7 @@
                     })
                     .catch(function (error) {
                         button.removeAttribute('disabled');
-                        alert('Try Again');
+                        showAlert('Try Again');
                     });
             });
             animationsContainer.appendChild(button);
@@ -971,7 +973,7 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    showAlert('Try Again');
                 });
         });
     });
@@ -1509,7 +1511,7 @@
         populateAnimationsTable(combinedData)
     }
 
-    function saveAnimationScriptData() {
+    function saveAnimationScriptData(updateAnimationsNow = false) {
         saveAnimationScriptDataButton.setAttribute("disabled", "true");
         var rows = Array.from(animationTableBody.querySelectorAll("tr"));
 
@@ -1538,6 +1540,7 @@
             if (index >= totalBlocks) {
                 // All blocks have been sent, enable the button
                 saveAnimationScriptDataButton.removeAttribute('disabled');
+                if (updateAnimationsNow) updateAnimations()
                 return;
             }
 
@@ -1565,7 +1568,7 @@
                     sendBlockSequentially(index + 1);
                 })
                 .catch(function (error) {
-                    alert(error.message);
+                    showAlert(error.message);
                     // Enable the button even if an error occurs
                     saveAnimationScriptDataButton.removeAttribute('disabled');
                 });

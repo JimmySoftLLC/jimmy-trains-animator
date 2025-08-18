@@ -590,15 +590,17 @@ if (web):
                             rq_d[3] + ".json"
                         files.write_json_file(f_n, data)
                         data = []
-                        gc_col("get data")
-                    upd_media()
                 except Exception as e:
                     files.log_item(e)
                     data = []
                     gc_col("get data")
                     return Response(request, "out of memory")
+                upd_media()
+                gc_col("get data")
                 return Response(request, "success")
+            
             break
+        
         except Exception as e:
             web = False
             files.log_item(e)
