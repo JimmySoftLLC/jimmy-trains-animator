@@ -132,10 +132,15 @@ import websockets
 import pyautogui
 
 
-# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+# setup pin for audio enable for internal i2s amp
 aud_en = digitalio.DigitalInOut(board.D26)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
+
+# setup pin for audio enable on i2s preamp, this is not hooked up on the JimmyTrains HAT since level shifting might be needed.
+aud_mute_pre = digitalio.DigitalInOut(board.D23)
+aud_mute_pre.direction = digitalio.Direction.OUTPUT
+aud_mute_pre.value = True
 
 
 def get_home_path(subpath=""):
@@ -240,6 +245,8 @@ def gc_col(collection_point):
 # to make this work you must add permission to the visudo file
 # sudo visudo
 # drivein ALL=(ALL) NOPASSWD: /sbin/reboot
+
+
 def restart_pi():
     os.system('sudo reboot')
 
@@ -2626,14 +2633,15 @@ def set_hdw(cmd, dur):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)  
+            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 if len(segs_split) == 2:
                     override_switch_state["switch_value"] = segs_split[1]
                 elif len(segs_split) == 3:
-                    override_switch_state["switch_value"] = segs_split[1] + "_" + segs_split[2]
-                else: 
+                    override_switch_state["switch_value"] = segs_split[1] + \
+                        "_" + segs_split[2]
+                else:
                     override_switch_state["switch_value"] = "none"
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
@@ -2729,14 +2737,14 @@ def set_hdw(cmd, dur):
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = split_string(seg)
-                print (seg_split)
+                print(seg_split)
                 if len(seg_split) == 3:
-                    print ("three params")       
+                    print("three params")
                     response = send_animator_post(
                         url, seg_split[1], seg_split[2])
                     return response
                 elif len(seg_split) == 4:
-                    print ("four params")
+                    print("four params")
                     response = send_animator_post(
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
@@ -2748,26 +2756,26 @@ def set_hdw(cmd, dur):
         # Find the position of the first '_{' and the last '}'
         start_idx = seg.find('_{')
         end_idx = seg.find('}', start_idx)
-        
+
         if start_idx != -1 and end_idx != -1:
             # Extract the object part including the curly braces
             object_part = seg[start_idx:end_idx+1]
-            
+
             # Remove the object part from the string
             seg = seg[:start_idx] + seg[end_idx+1:]
-            
+
             # Remove the leading underscore from the object part
             object_part = object_part[1:]  # Strip the first character '_'
         else:
             object_part = ''  # If no object is found, set it to empty
-        
+
         # Now split the remaining part by underscores
         parts = seg.split('_')
-        
+
         # Add the object part as the last item
         if object_part:
             parts.append(object_part)
-        
+
         return parts
 
 ##############################
@@ -3291,6 +3299,7 @@ st_mch.add(IntermissionSettings())
 
 time.sleep(0.05)
 aud_en.value = True
+aud_mute_pre.value = False
 upd_vol(0.05)
 
 if (web):
