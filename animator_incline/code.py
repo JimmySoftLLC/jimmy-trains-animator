@@ -984,8 +984,6 @@ async def an_light_async(f_nm):
             files.log_item("time elapsed: " + str(t_past) +
                            " Timestamp: " + ft1[0])
             if (len(ft1) == 1 or ft1[1] == ""):
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
                 result = await set_hdw_async("", dur)
                 if result == "STOP":
                     await asyncio.sleep(0)
@@ -1011,10 +1009,13 @@ async def an_light_async(f_nm):
                 stp_all_cmds()
                 ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1 or exit_set_hdw_async:
+            print("animation done clean up.")
             exit_set_hdw_async = False
             mix.voice[0].stop()
             led_low.fill((0, 0, 0))
             led_low.show()
+            led_up.fill((0, 0, 0))
+            led_up.show()
             vr = 100
             br = 100
             await set_hdw_async("T0")
@@ -1082,16 +1083,20 @@ def set_neo_to(light_n, r, g, b):
 def set_neo_range(start, end, r, g, b):
     show_led_up = False
     show_led_low = False
-    for i in range(start, end+1):  # set values to indexes start to end
-        if i < n_px_up:
-            led_up[i] = (r, g, b)
-            show_led_up = True
-        else:
-            led_up[i-n_px_up] = (r, g, b)
-            show_led_low = True
-    if show_led_up:led_up.show()
-    if show_led_low:led_low.show()
-    
+    try:
+        for i in range(start, end+1):  # set values to indexes start to end
+            if i < n_px_up:
+                led_up[i] = (r, g, b)
+                show_led_up = True
+            else:
+                cur_i = i - n_px_up
+                led_low[cur_i] = (r, g, b)
+                show_led_low = True
+        if show_led_up:led_up.show()
+        if show_led_low:led_low.show()
+    except Exception as e:
+        files.log_item(e)
+
 
 async def random_effect(il, ih, d):
     if exit_set_hdw_async:
