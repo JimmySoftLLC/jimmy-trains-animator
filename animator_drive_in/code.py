@@ -482,7 +482,7 @@ def move_vlc_window():
 # Setup video hardware
 
 # create vlc media player object for playing video, music etc
-vlc_instance = vlc.Instance('--aout=alsa')
+vlc_instance = vlc.Instance('--aout=alsa --vout=opengl --ffmpeg-hw')
 media_player = vlc.MediaPlayer(vlc_instance)
 
 
