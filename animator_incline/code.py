@@ -272,22 +272,27 @@ ovrde_sw_st["switch_value"] = ""
 exit_set_hdw_async = False
 is_running_an = False
 
+n_trk_sec = cfg["n_trk_sec"]
+
 gc_col("config setup")
 
 ################################################################################
 # Setup neo pixels
-n_px_up = 4
+n_px_up_house = 4
+n_px_low_house = 6
+n_px_low = n_px_low_house + n_trk_sec * 14
+print ("low house pixels :", n_px_low)
 
 # 16 on demo, 17 tiny, 10 on large, 11 on incline motor2 pin
-led_up = neopixel.NeoPixel(board.GP11, n_px_up)
-led_up.fill((100, 0, 0))
+led_up = neopixel.NeoPixel(board.GP11, n_px_up_house)
+led_up.auto_write = False
+led_up.fill((100, 100, 100))
 led_up.show()
-
-n_px_low = 48
 
 # 15 on demo 17 tiny 10 on large, 13 on incline motor4 pin
 led_low = neopixel.NeoPixel(board.GP13, n_px_low)
-led_low.fill((0, 0, 0))
+led_low.auto_write = False
+led_low.fill((100, 100, 100))
 led_low.show()
 
 gc_col("Neopixels setup")
@@ -1066,18 +1071,18 @@ def set_neo_to(light_n, r, g, b):
     if light_n == -1:
         for i in range(n_px_low):  # in range(n_px_low)
             led_low[i] = (r, g, b)
-        for i in range(n_px_up):  # in range(n_px_up)
+        for i in range(n_px_up_house):  # in range(n_px_up)
             led_up[i] = (r, g, b)
         led_low.show()
         led_up.show()
     else:
-        if light_n in range(0, n_px_up):
+        if light_n in range(0, n_px_up_house):
             print("upper lights ", light_n)
             led_up[light_n] = (r, g, b)
             led_up.show()
         else:
-            print("lower lights ", light_n - n_px_up)
-            led_low[light_n - n_px_up] = (r, g, b)
+            print("lower lights ", light_n - n_px_up_house)
+            led_low[light_n - n_px_up_house] = (r, g, b)
             led_low.show()
 
 def set_neo_range(start, end, r, g, b):
@@ -1085,11 +1090,11 @@ def set_neo_range(start, end, r, g, b):
     show_led_low = False
     try:
         for i in range(start, end+1):  # set values to indexes start to end
-            if i < n_px_up:
+            if i < n_px_up_house:
                 led_up[i] = (r, g, b)
                 show_led_up = True
             else:
-                cur_i = i - n_px_up
+                cur_i = i - n_px_up_house
                 led_low[cur_i] = (r, g, b)
                 show_led_low = True
         if show_led_up:led_up.show()
