@@ -272,8 +272,6 @@ ovrde_sw_st["switch_value"] = ""
 exit_set_hdw_async = False
 is_running_an = False
 
-n_trk_sec = cfg["n_trk_sec"]
-
 gc_col("config setup")
 
 ################################################################################
@@ -281,20 +279,28 @@ gc_col("config setup")
 n_px_up_house = 4
 n_px_cars = 2
 n_px_low_house = 4
-n_px_track = n_trk_sec * 14
-n_px_low = n_px_up_house + n_px_cars + n_px_low_house + n_px_track
 
-# 16 on demo, 17 tiny, 10 on large, 11 on incline motor2 pin
-led_up = neopixel.NeoPixel(board.GP11, n_px_up_house)
-led_up.auto_write = False
-led_up.fill((100, 100, 100))
-led_up.show()
 
-# 15 on demo 17 tiny 10 on large, 13 on incline motor4 pin
-led_low = neopixel.NeoPixel(board.GP13, n_px_low)
-led_low.auto_write = False
-led_low.fill((100, 100, 100))
-led_low.show()
+def update_neo_pixels():
+    global led_up, led_low, n_trk_sec, n_px_track, n_px_low
+    n_trk_sec = cfg["n_trk_sec"]
+    n_px_track = n_trk_sec * 14
+    n_px_low = n_px_up_house + n_px_cars + n_px_low_house + n_px_track
+
+    # 16 on demo, 17 tiny, 10 on large, 11 on incline motor2 pin
+    led_up = neopixel.NeoPixel(board.GP11, n_px_up_house)
+    led_up.auto_write = False
+    led_up.fill((100, 100, 100))
+    led_up.show()
+
+    # 15 on demo 17 tiny 10 on large, 13 on incline motor4 pin
+    led_low = neopixel.NeoPixel(board.GP13, n_px_low)
+    led_low.auto_write = False
+    led_low.fill((100, 100, 100))
+    led_low.show()
+
+
+update_neo_pixels()
 
 gc_col("Neopixels setup")
 
@@ -1298,18 +1304,27 @@ async def set_hdw_async(input_string, dur=3):
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
+            led_up.brightness = float(br/100)
             led_low.brightness = float(br/100)
+            led_up.show()
+            led_low.show()
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
             while not br == v:
                 if br < v:
                     br += 1
+                    print(br)
+                    led_up.brightness = float(br/100)
                     led_low.brightness = float(br/100)
                 else:
                     br -= 1
+                    print(br)
+                    led_up.brightness = float(br/100)
                     led_low.brightness = float(br/100)
-                await upd_vol_async(.1, vr)
+                led_up.show()
+                led_low.show()
+                await upd_vol_async(.05, vr)
         # VRFXXX = Volume ratio fade up or down XXX 0 to 100
         elif seg[:3] == 'VRF':
             v = int(seg[3:])
