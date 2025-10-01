@@ -279,9 +279,10 @@ gc_col("config setup")
 ################################################################################
 # Setup neo pixels
 n_px_up_house = 4
-n_px_low_house = 6
-n_px_low = n_px_low_house + n_trk_sec * 14
-print ("low house pixels :", n_px_low)
+n_px_cars = 2
+n_px_low_house = 4
+n_px_track = n_trk_sec * 14
+n_px_low = n_px_up_house + n_px_cars + n_px_low_house + n_px_track
 
 # 16 on demo, 17 tiny, 10 on large, 11 on incline motor2 pin
 led_up = neopixel.NeoPixel(board.GP11, n_px_up_house)
@@ -1067,7 +1068,6 @@ def an_ts(f_nm):
 
 
 def set_neo_to(light_n, r, g, b):
-    print("light ", light_n )
     if light_n == -1:
         for i in range(n_px_low):  # in range(n_px_low)
             led_low[i] = (r, g, b)
@@ -1076,27 +1076,45 @@ def set_neo_to(light_n, r, g, b):
         led_low.show()
         led_up.show()
     else:
-        if light_n in range(0, n_px_up_house):
-            print("upper lights ", light_n)
+        if light_n in range(0, n_px_up_house): # upper house 1 to 4
+            print("upper house lights ", light_n)
             led_up[light_n] = (r, g, b)
             led_up.show()
-        else:
-            print("lower lights ", light_n - n_px_up_house)
-            led_low[light_n - n_px_up_house] = (r, g, b)
+        if light_n in range(n_px_up_house, n_px_up_house + n_px_low_house): # lower house 5 to 8
+            print("lower house lights ", light_n - n_px_up_house )
+            led_low[light_n - n_px_up_house + n_px_cars + n_px_track] = (r, g, b)
             led_low.show()
+        if light_n in range(n_px_up_house + n_px_low_house, n_px_up_house + n_px_low_house + n_px_cars): # cars 9 to 10
+            print("car lights ", light_n - n_px_up_house - n_px_low_house)
+            led_low[light_n - n_px_up_house - n_px_low_house] = (r, g, b)
+            led_low.show()
+        if light_n in range(n_px_up_house + n_px_low_house + n_px_cars, n_px_up_house + n_px_low_house + n_px_cars + n_px_track): # track 11 to 53 + 14 * track sections over 3
+            print("track lights ", light_n - n_px_up_house - n_px_low_house - n_px_cars)
+            led_low[light_n - n_px_up_house - n_px_low_house] = (r, g, b)
+            led_low.show()    
 
 def set_neo_range(start, end, r, g, b):
     show_led_up = False
     show_led_low = False
     try:
-        for i in range(start, end+1):  # set values to indexes start to end
-            if i < n_px_up_house:
-                led_up[i] = (r, g, b)
+        for light_n in range(start, end + 1):  # set values to indexes start to end
+            print ("light_n ", light_n)
+            if light_n in range(0, n_px_up_house): # upper house 1 to 4
+                print("upper house lights ", light_n)
+                led_up[light_n] = (r, g, b)
                 show_led_up = True
-            else:
-                cur_i = i - n_px_up_house
-                led_low[cur_i] = (r, g, b)
+            if light_n in range(n_px_up_house, n_px_up_house + n_px_low_house): # lower house 5 to 8
+                print("lower house lights ", light_n - n_px_up_house )
+                led_low[light_n - n_px_up_house + n_px_cars + n_px_track] = (r, g, b)
                 show_led_low = True
+            if light_n in range(n_px_up_house + n_px_low_house, n_px_up_house + n_px_low_house + n_px_cars): # cars 9 to 10
+                print("car lights ", light_n - n_px_up_house - n_px_low_house)
+                led_low[light_n - n_px_up_house - n_px_low_house] = (r, g, b)
+                show_led_low = True
+            if light_n in range(n_px_up_house + n_px_low_house + n_px_cars, n_px_up_house + n_px_low_house + n_px_cars + n_px_track): # track 11 to 52 + 14 * track sections over 3
+                print("track lights ", light_n - n_px_up_house - n_px_low_house - n_px_cars)
+                led_low[light_n - n_px_up_house - n_px_low_house] = (r, g, b)
+                show_led_low = True 
         if show_led_up:led_up.show()
         if show_led_low:led_low.show()
     except Exception as e:
@@ -1124,7 +1142,7 @@ async def rbow(spd, dur):
         for j in range(0, 255, 1):
             if exit_set_hdw_async:
                 return
-            for i in range(n_px_low):
+            for i in range(n_px_cars, n_px_cars + n_px_track):
                 pixel_index = (i * 256 // n_px_low) + j
                 led_low[i] = colorwheel(pixel_index & 255)
             led_low.show()
@@ -1135,7 +1153,7 @@ async def rbow(spd, dur):
         for j in reversed(range(0, 255, 1)):
             if exit_set_hdw_async:
                 return
-            for i in range(n_px_low):
+            for i in range(n_px_cars, n_px_cars + n_px_track):
                 pixel_index = (i * 256 // n_px_low) + j
                 led_low[i] = colorwheel(pixel_index & 255)
             led_low.show()
@@ -1146,7 +1164,7 @@ async def rbow(spd, dur):
 
 
 def multi_color():
-    for i in range(0, n_px_low):
+    for i in range(n_px_cars, n_px_cars + n_px_track):
         r = random.randint(128, 255)
         g = random.randint(128, 255)
         b = random.randint(128, 255)
@@ -1175,7 +1193,7 @@ async def fire(dur):
 
     # Flicker, based on our initial RGB values
     while True:
-        for i in range(n_px_low):
+        for i in range(n_px_cars, n_px_cars + n_px_track):
             if exit_set_hdw_async:
                 return
             f = random.randint(0, 110)
@@ -1352,11 +1370,15 @@ async def set_hdw_async(input_string, dur=3):
             elif seg[:2] == 'CH':
                 vl53.clear_interrupt()
                 car_pos = vl53.distance
+
             elif seg[:2] == 'CE':
                 car_pos = encoder.position / cal_factor + home_car_pos
 
             num_times_in_band = 0
-            give_up = abs(car_pos - target_pos)
+            if seg[:2] == 'CH':
+                give_up = n_trk_sec * 20
+            else:
+                give_up = abs(car_pos - target_pos)
             srt_t = time.monotonic()
 
             while True:

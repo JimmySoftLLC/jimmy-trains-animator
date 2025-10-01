@@ -161,31 +161,23 @@
             </div>
             <h2>Test lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN1_255_0_0"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN9_100_0_0"
                     data-url="/lights" type="button">
                     Right Car
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN1_0_255_0"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN9_0_100_0"
                     data-url="/lights" type="button">
                     Left Car
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN1_0_0_255"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN5_100_100_100,LN6_100_100_100,LN7_100_100_100,LN8_100_100_100"
                     data-url="/lights" type="button">
                     Lower Building
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN2_255_0_0"
-                    data-url="/lights" type="button">
-                    Stairs chase
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN2_0_255_0"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN1_100_100_100,LN2_100_100_100,LN3_100_100_100,LN4_100_100_100"
                     data-url="/lights" type="button">
                     Upper Building
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LN2_0_0_255"
-                    data-url="/lights" type="button">
-                    Balcony Lamps
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LNR_3_48_100_100_0"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0,LNR_11_52_100_100_100"
                     data-url="/lights" type="button">
                     Track
                 </button>
@@ -362,8 +354,11 @@
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
             <div>SNXXX = Servo N (0 All, 1-1) XXX 0 to 180</div>
-            <div>LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999, 1-4 upper house, 5-999 track and lower house) RGB 0 to 255</div>
-            <div>LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start (0 All, 1 to 999, 1-4 upper house, 5-999 track and lower house), EEE end (1 to 999), RGB 0 to 255</div>
+            <div>LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1-4 upper house, 5-8 lower house, 9-10 cars, track
+                11-52 + 14 * track sections over 3) RGB
+                0 to 255</div>
+            <div>LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start, EEE end (0 All, 1-4 upper house, 5-8 lower house, 9-10
+                cars, track 11-52 + 14 * track sections over 3), RGB 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
