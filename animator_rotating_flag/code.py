@@ -83,7 +83,7 @@ bot_sw = Debouncer(bot_sw)
 
 led_up = neopixel.NeoPixel(board.GP13, 3)
 led_up.auto_write = False
-led_up.fill((100, 100, 100))
+led_up.fill((255, 255, 255))
 led_up.show()
 
 
