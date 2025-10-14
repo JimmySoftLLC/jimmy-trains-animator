@@ -72,18 +72,18 @@ gc_col("Imports gc, files")
 # Setup pin for v
 a_in = AnalogIn(board.A0)
 
-# setup pin for audio enable 21 on 5v aud board
-aud_en = digitalio.DigitalInOut(board.GP21)
+# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = True
 
 # Setup the switches
-l_sw = digitalio.DigitalInOut(board.GP2)
+l_sw = digitalio.DigitalInOut(board.GP6)
 l_sw.direction = digitalio.Direction.INPUT
 l_sw.pull = digitalio.Pull.UP
 l_sw = Debouncer(l_sw)
 
-r_sw = digitalio.DigitalInOut(board.GP3)
+r_sw = digitalio.DigitalInOut(board.GP7)
 r_sw.direction = digitalio.Direction.INPUT
 r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
@@ -124,9 +124,9 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
 d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 
-# DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP10, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP11, frequency=p_frq)
+# DC motor setup; Set pins to custom PWM frequency, 17 16 on incline, 0 1 on demo
+pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
+pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
 train = motor.DCMotor(pwm_a, pwm_b)
 train.decay_mode = d_mde
 train.throttle = 0
@@ -196,7 +196,8 @@ t_elsp = 0.0
 
 n_px = 9
 
-led = neopixel.NeoPixel(board.GP22, n_px)
+# 16 on demo, 17 tiny, 10 on large, 11 on motor board motor2 pin
+led = neopixel.NeoPixel(board.GP11, n_px)
 
 gc_col("Neopixels setup")
 
