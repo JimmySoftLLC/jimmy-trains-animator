@@ -5,24 +5,24 @@ import random
 import math
 import neopixel
 
-# Example servo pins (adjust based on your board)
-SERVO_PINS = [board.GP2]  # Up to 4 servos for a segmented flag
+# Single servo pin for Raspberry Pi Pico
+SERVO_PINS = [board.GP2]
 
 # Global list to hold PWM objects
 servos = []
 
+# Initialize NeoPixel
 led_up = neopixel.NeoPixel(board.GP13, 3)
 led_up.auto_write = False
 led_up.fill((255, 255, 255))
 led_up.show()
 
-
 def initialize_servos(pins):
     """
-    Initialize PWM for multiple servos.
+    Initialize PWM for servo(s).
     
     Args:
-    pins (list): List of pin objects (e.g., [board.D9, board.D10]).
+    pins (list): List of pin objects (e.g., [board.GP2]).
     
     Returns:
     list: List of PWMOut objects for the servos.
@@ -30,7 +30,7 @@ def initialize_servos(pins):
     global servos
     servos = []
     for pin in pins:
-        pwm = pwmio.PWMOut(pin, duty_cycle=2**15, frequency=50) 
+        pwm = pwmio.PWMOut(pin, duty_cycle=2**15, frequency=50)
         servos.append(pwm)
     return servos
 
@@ -54,29 +54,66 @@ def set_servo_angle(servo_id, angle):
     duty_cycle = int((pulse_ms / 20) * 65535)  # 20ms period
     servos[servo_id].duty_cycle = duty_cycle
 
+def update_leds(wind_speed, angle_deg, offset_shift_factor):
+    """
+    Dynamically update NeoPixel LEDs based on simulation state for dramatic effect.
+    
+    Args:
+    wind_speed (float): Current wind speed (for intensity/brightness).
+    angle_deg (float): Current servo angle (for hue/warmth).
+    offset_shift_factor (float): How much the center is shifting (0-1, for flicker/color shifts).
+    """
+    # Base brightness scales with wind speed (clamp to 0-255)
+    base_brightness = int(min(255, max(50, wind_speed * 20)))  # Stronger wind = brighter
+    
+    # Color temperature: Low angles (cool blue-white), center (warm yellow), high (red-orange gusts)
+    norm_angle = angle_deg / 180.0  # 0-1
+    if norm_angle < 0.3:
+        r, g, b = 100, 150, 255  # Cool blue
+    elif norm_angle < 0.7:
+        r, g, b = 255, 200, 100  # Warm amber
+    else:
+        r, g, b = 255, 100, 50   # Fiery red
+    
+    # Modulate with shift: During rapid center changes, add flicker/strobe
+    if offset_shift_factor > 0.5:
+        # Flicker: Random dim during shifts
+        flicker = random.randint(50, 255)
+        r = int(r * (flicker / 255.0))
+        g = int(g * (flicker / 255.0))
+        b = int(b * (flicker / 255.0))
+    
+    # Apply brightness scaling
+    r = int(r * (base_brightness / 255.0))
+    g = int(g * (base_brightness / 255.0))
+    b = int(b * (base_brightness / 255.0))
+    
+    # Set all 3 LEDs (or pattern if desired)
+    led_up.fill((r, g, b))
+    led_up.show()
+
 class WindSimulator:
     """
-    Enhanced physics-based wind simulator for flag rigging.
-    Removes fixed centering; instead, uses wind-driven drift with random direction variations
+    Enhanced physics-based wind simulator for single-servo flag rigging.
+    Removes fixed centering; uses wind-driven drift with random direction variations
     for more natural, unpredictable waving. Turbulence is amplified for randomness.
+    Simplified to single servo—no segments or coupling.
     """
-    def __init__(self, num_segments, segment_length=0.2, air_density=1.2, drag_coeff=1.0):
+    def __init__(self, segment_length=0.2, air_density=1.2, drag_coeff=1.0):
         """
         Args:
-        num_segments (int): Number of flag segments (matches num servos).
-        segment_length (float): Length of each segment in meters (affects force scaling).
+        segment_length (float): Length of the flag segment in meters (affects force scaling).
         air_density (float): Air density in kg/m³ (default sea level).
         drag_coeff (float): Drag coefficient for fabric (tune for realism, 0.5-2.0).
         """
-        self.num_segments = num_segments
         self.segment_length = segment_length
         self.air_density = air_density
         self.drag_coeff = drag_coeff
         self.dt = 0.02  # Timestep in seconds (~50Hz update for smooth animation)
         
-        # State: angles (radians) and angular velocities for each segment
-        self.angles = [0.0] * num_segments  # Initial rest position (radians)
-        self.ang_vels = [0.0] * num_segments
+        # State: angle (radians) and angular velocity (scalar for single servo)
+        self.angle = 0.0  # Initial rest position (radians)
+        self.ang_vel = 0.0
         
         # Wind state: base wind speed (m/s) and direction (radians from vertical)
         self.base_wind_speed = 5.0  # Steady breeze
@@ -93,6 +130,9 @@ class WindSimulator:
         
         # Damping for stability (friction-like)
         self.damping = 0.7  # Slightly lower for more persistent waves
+        
+        # For LED sync: Track current wind speed
+        self.current_wind_speed = self.base_wind_speed
         
     def update_wind(self):
         """Generate highly variable wind with random direction shifts and amplified turbulence."""
@@ -112,6 +152,7 @@ class WindSimulator:
                 self.turb_phases[i] = random.uniform(0, 2*math.pi)
         
         wind_speed += turb * 0.4  # Higher turbulence scaling for more randomness
+        self.current_wind_speed = wind_speed  # Store for LED
         
         # Random direction: Broader swings (±45° base, plus noise) for non-centered waving
         dir_var = random.uniform(-math.pi/4, math.pi/4)  # ±45°
@@ -124,13 +165,10 @@ class WindSimulator:
         self.wind_x = wind_speed * math.sin(self.wind_dir)
         self.wind_y = -wind_speed * math.cos(self.wind_dir)  # Negative y for downward component
         
-    def compute_torque(self, segment_idx):
-        """Compute drag torque on a segment based on wind and angle.
-        Torque = 0.5 * rho * v^2 * Cd * A * L * sin(theta)  (simplified for angular)
-        Where A ~ segment_length^2, but scaled for torque.
-        """
-        # Relative wind angle: wind_dir - segment angle
-        rel_angle = self.wind_dir - self.angles[segment_idx]
+    def compute_torque(self):
+        """Compute drag torque based on wind and angle (single servo)."""
+        # Relative wind angle: wind_dir - angle
+        rel_angle = self.wind_dir - self.angle
         
         # Projected area factor: sin(rel_angle) for drag
         drag_factor = math.sin(rel_angle)
@@ -140,47 +178,40 @@ class WindSimulator:
         torque = 0.5 * self.air_density * (self.wind_x ** 2) * self.drag_coeff * area * self.segment_length * abs(drag_factor)
         torque *= math.copysign(1, drag_factor)  # Direction
         
-        # Inter-segment coupling: previous segment influences this one (chain tension)
-        if segment_idx > 0:
-            tension_factor = 0.15  # Slightly weaker for more independent waving
-            tension_torque = tension_factor * (self.angles[segment_idx-1] - self.angles[segment_idx])
-            torque += tension_torque
-        
         return torque
     
     def physics_step(self):
         """Euler integration: ang_vel += torque / inertia * dt; angle += ang_vel * dt"""
         self.update_wind()
         
-        for i in range(self.num_segments):
-            # Compute torque for this segment
-            torque = self.compute_torque(i)
-            
-            # Simple rotational inertia (empirical, low for responsive flag)
-            inertia = 0.01  # Tune: higher = slower response
-            
-            # Angular acceleration
-            ang_acc = torque / inertia
-            
-            # Update velocity (with damping)
-            self.ang_vels[i] += ang_acc * self.dt
-            self.ang_vels[i] *= (1 - self.damping * self.dt)  # Exponential decay
-            
-            # Update angle
-            self.angles[i] += self.ang_vels[i] * self.dt
+        # Compute torque for the single servo
+        torque = self.compute_torque()
+        
+        # Simple rotational inertia (empirical, low for responsive flag)
+        inertia = 0.01  # Tune: higher = slower response
+        
+        # Angular acceleration
+        ang_acc = torque / inertia
+        
+        # Update velocity (with damping)
+        self.ang_vel += ang_acc * self.dt
+        self.ang_vel *= (1 - self.damping * self.dt)  # Exponential decay
+        
+        # Update angle
+        self.angle += self.ang_vel * self.dt
         
         # Weak restoring torque relative to *current wind direction* (allows drift, not fixed center)
-        for i in range(self.num_segments):
-            rel_rest_angle = self.angles[i] - self.wind_dir  # Bias toward wind, not 0
-            restoring_torque = -self.restoring_strength * math.sin(rel_rest_angle)
-            gravity_inertia = 0.01
-            self.ang_vels[i] += (restoring_torque / gravity_inertia) * self.dt
+        rel_rest_angle = self.angle - self.wind_dir  # Bias toward wind, not 0
+        restoring_torque = -self.restoring_strength * math.sin(rel_rest_angle)
+        gravity_inertia = 0.01
+        self.ang_vel += (restoring_torque / gravity_inertia) * self.dt
 
 def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim):
     """
     Advanced wind simulation: Use physics to drive servo angle within soft limits.
     Enhanced for random, non-centered waving with periodic wind direction shifts.
     Shifts are smoothed with variable speed (abrupt or smooth).
+    LEDs vary with motion for dramatic effect.
     Runs indefinitely until interrupted.
     
     Args:
@@ -191,7 +222,7 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim):
     if len(servos) != 1:
         raise ValueError("This simplified version is for a single servo only.")
     
-    print("Starting random physics-based wind simulation on 1 servo...")
+    print("Starting random physics-based wind simulation on 1 servo with dynamic LEDs...")
     
     # Wind shift parameters
     current_offset = 0.0  # Current smooth offset
@@ -238,58 +269,42 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim):
                 
                 # Randomize smoothing: 0.01-0.05 smooth, 0.06-0.20 abrupt
                 smooth_factor = random.uniform(0.01, 0.20)
-                # Optional: print for debugging
-                # print(f"New wind shift to {target_offset:.1f}° with smooth_factor {smooth_factor:.3f}")
                 
                 # Reset for next shift
                 wave_count = 0
                 updates_til_shift = random.randint(20, 100)
+            
+            # LED dramatic effect: Sync with wind, angle, and shift
+            shift_factor = abs(current_offset - target_offset) / 60.0  # 0-1 normalized shift progress
+            update_leds(wind_sim.current_wind_speed, angle_deg, shift_factor)
             
             time.sleep(wind_sim.dt)
             
     except KeyboardInterrupt:
         print("\nSimulation stopped by user.")
     finally:
-        # Rest position on exit
+        # Rest position on exit and LEDs off
         set_servo_angle(0, 90)
+        led_up.fill((0, 0, 0))
+        led_up.show()
 
-# Example usage:
-# Initialize hardware
-initialize_servos(SERVO_PINS[:3])  # 3 segments
+# Example usage (updated for single servo on GP2):
+initialize_servos(SERVO_PINS)  # 1 servo on GP2
 
-
+# Servo range test
 set_servo_angle(0, 0)
 time.sleep(2)
-
 
 set_servo_angle(0, 180)
 time.sleep(2)
 
-
 set_servo_angle(0, 90)
 time.sleep(2)
 
-            
-
 # Create simulator (tune for more chaos)
-wind_sim = WindSimulator(num_segments=1, segment_length=.6, drag_coeff=.5)
+wind_sim = WindSimulator(segment_length=0.6, drag_coeff=0.5)
 
-# Set per-segment limits (e.g., tighter at base, looser at tip)
-min_angles = [0]  # Degrees
-max_angles = [180]
-physics_wind_motion(min_angles, max_angles, wind_sim)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Set limits (full range as specified)
+min_angle = 0  # Degrees
+max_angle = 180
+physics_wind_motion(min_angle, max_angle, wind_sim)
