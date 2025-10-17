@@ -3,12 +3,19 @@ import pwmio
 import time
 import random
 import math
+import neopixel
 
 # Example servo pins (adjust based on your board)
 SERVO_PINS = [board.GP2]  # Up to 4 servos for a segmented flag
 
 # Global list to hold PWM objects
 servos = []
+
+led_up = neopixel.NeoPixel(board.GP13, 3)
+led_up.auto_write = False
+led_up.fill((255, 255, 255))
+led_up.show()
+
 
 def initialize_servos(pins):
     """
@@ -41,6 +48,8 @@ def set_servo_angle(servo_id, angle):
     
     # Clamp angle to valid range
     angle = max(0, min(180, angle))
+    
+    #print("angle is :", angle)
     
     # Map angle to duty cycle (1ms to 2ms pulse width)
     pulse_ms = 1 + (angle / 180) * 1  # 1ms (0°) to 2ms (180°)
