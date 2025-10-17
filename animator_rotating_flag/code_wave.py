@@ -9,7 +9,7 @@ import neopixel
 SERVO_PINS = [board.GP2]
 
 # Global list to hold PWM objects
-servos = []
+servo_arr = []
 
 # Initialize NeoPixel
 led_up = neopixel.NeoPixel(board.GP13, 3)
@@ -27,12 +27,12 @@ def initialize_servos(pins):
     Returns:
     list: List of PWMOut objects for the servos.
     """
-    global servos
-    servos = []
+    global servo_arr
+    servo_arr = []
     for pin in pins:
         pwm = pwmio.PWMOut(pin, duty_cycle=2**15, frequency=50)
-        servos.append(pwm)
-    return servos
+        servo_arr.append(pwm)
+    return servo_arr
 
 # Function to set servo angle (0 to 180 degrees) - indexed by servo_id
 def set_servo_angle(servo_id, angle):
@@ -43,8 +43,8 @@ def set_servo_angle(servo_id, angle):
     servo_id (int): Index of the servo (0 to len(servos)-1).
     angle (float): Angle in degrees (0-180).
     """
-    if servo_id >= len(servos):
-        raise ValueError(f"Servo ID {servo_id} out of range. Max: {len(servos)-1}")
+    if servo_id >= len(servo_arr):
+        raise ValueError(f"Servo ID {servo_id} out of range. Max: {len(servo_arr)-1}")
     
     # Clamp angle to valid range
     angle = max(0, min(180, angle))
@@ -52,7 +52,7 @@ def set_servo_angle(servo_id, angle):
     # Extended map: 0.5ms (0°) to 2.5ms (180°) pulse width
     pulse_ms = 0.5 + (angle / 180) * 2.0  # 0.5ms to 2.5ms
     duty_cycle = int((pulse_ms / 20) * 65535)  # 20ms period
-    servos[servo_id].duty_cycle = duty_cycle
+    servo_arr[servo_id].duty_cycle = duty_cycle
 
 def update_leds(wind_speed, angle_deg, offset_shift_factor):
     """
@@ -213,7 +213,7 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim):
         max_angle_deg (float): Max angle in degrees.
         wind_sim (WindSimulator): Initialized simulator instance.
     """
-    if len(servos) != 1:
+    if len(servo_arr) != 1:
         raise ValueError("This simplified version is for a single servo only.")
     
     print("Starting random physics-based wind simulation on 1 servo with dynamic LEDs...")
