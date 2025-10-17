@@ -64,24 +64,18 @@ def update_leds(wind_speed, angle_deg, offset_shift_factor):
     offset_shift_factor (float): How much the center is shifting (0-1, for flicker/color shifts).
     """
     # Base brightness scales with wind speed (clamp to 0-255)
-    base_brightness = int(min(255, max(50, wind_speed * 20)))  # Stronger wind = brighter
+    base_brightness = int(min(255, max(100, wind_speed * 20)))  # Stronger wind = brighter
     
-    # Color temperature: Low angles (cool blue-white), center (warm yellow), high (red-orange gusts)
-    norm_angle = angle_deg / 180.0  # 0-1
-    if norm_angle < 0.3:
-        r, g, b = 100, 150, 255  # Cool blue
-    elif norm_angle < 0.7:
-        r, g, b = 255, 200, 100  # Warm amber
-    else:
-        r, g, b = 255, 100, 50   # Fiery red
+
+    r, g, b = 255, 255, 255  # Cool blue
     
     # Modulate with shift: During rapid center changes, add flicker/strobe
-    if offset_shift_factor > 0.5:
-        # Flicker: Random dim during shifts
-        flicker = random.randint(50, 255)
-        r = int(r * (flicker / 255.0))
-        g = int(g * (flicker / 255.0))
-        b = int(b * (flicker / 255.0))
+    # if offset_shift_factor > 0.5:
+    #     # Flicker: Random dim during shifts
+    #     flicker = random.randint(50, 255)
+    #     r = int(r * (flicker / 255.0))
+    #     g = int(g * (flicker / 255.0))
+    #     b = int(b * (flicker / 255.0))
     
     # Apply brightness scaling
     r = int(r * (base_brightness / 255.0))
@@ -275,8 +269,8 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim):
                 updates_til_shift = random.randint(20, 100)
             
             # LED dramatic effect: Sync with wind, angle, and shift
-            shift_factor = abs(current_offset - target_offset) / 60.0  # 0-1 normalized shift progress
-            update_leds(wind_sim.current_wind_speed, angle_deg, shift_factor)
+            # shift_factor = abs(current_offset - target_offset) / 60.0  # 0-1 normalized shift progress
+            # update_leds(wind_sim.current_wind_speed, angle_deg, shift_factor)
             
             time.sleep(wind_sim.dt)
             
@@ -308,3 +302,4 @@ wind_sim = WindSimulator(segment_length=0.6, drag_coeff=0.5)
 min_angle = 0  # Degrees
 max_angle = 180
 physics_wind_motion(min_angle, max_angle, wind_sim)
+
