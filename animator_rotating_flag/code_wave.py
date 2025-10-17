@@ -30,14 +30,14 @@ def initialize_servos(pins):
     global servos
     servos = []
     for pin in pins:
-        pwm = pwmio.PWMOut(pin, duty_cycle=2**15, frequency=50)
+        pwm = pwmio.PWMOut(pin, duty_cycle=2**15, frequency=50) 
         servos.append(pwm)
     return servos
 
 # Function to set servo angle (0 to 180 degrees) - indexed by servo_id
 def set_servo_angle(servo_id, angle):
     """
-    Set angle for a specific servo.
+    Set angle for a specific servo with extended pulse range.
     
     Args:
     servo_id (int): Index of the servo (0 to len(servos)-1).
@@ -49,10 +49,8 @@ def set_servo_angle(servo_id, angle):
     # Clamp angle to valid range
     angle = max(0, min(180, angle))
     
-    #print("angle is :", angle)
-    
-    # Map angle to duty cycle (1ms to 2ms pulse width)
-    pulse_ms = 1 + (angle / 180) * 1  # 1ms (0°) to 2ms (180°)
+    # Extended map: 0.5ms (0°) to 2.5ms (180°) pulse width
+    pulse_ms = 0.5 + (angle / 180) * 2.0  # 0.5ms to 2.5ms
     duty_cycle = int((pulse_ms / 20) * 65535)  # 20ms period
     servos[servo_id].duty_cycle = duty_cycle
 
@@ -178,39 +176,74 @@ class WindSimulator:
             gravity_inertia = 0.01
             self.ang_vels[i] += (restoring_torque / gravity_inertia) * self.dt
 
-def physics_wind_motion(min_angles_deg, max_angles_deg, wind_sim):
+def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim):
     """
-    Advanced wind simulation: Use physics to drive servo angles within soft limits.
-    Enhanced for random, non-centered waving.
+    Advanced wind simulation: Use physics to drive servo angle within soft limits.
+    Enhanced for random, non-centered waving with periodic wind direction shifts.
+    Shifts are smoothed with variable speed (abrupt or smooth).
     Runs indefinitely until interrupted.
     
     Args:
-    min_angles_deg (list): Min angles per segment in degrees.
-    max_angles_deg (list): Max angles per segment in degrees.
-    wind_sim (WindSimulator): Initialized simulator instance.
+        min_angle_deg (float): Min angle in degrees.
+        max_angle_deg (float): Max angle in degrees.
+        wind_sim (WindSimulator): Initialized simulator instance.
     """
-    num_servos = len(servos)
-    if wind_sim.num_segments != num_servos:
-        raise ValueError("WindSimulator num_segments must match num_servos.")
+    if len(servos) != 1:
+        raise ValueError("This simplified version is for a single servo only.")
     
-    print(f"Starting random physics-based wind simulation on {num_servos} segments...")
+    print("Starting random physics-based wind simulation on 1 servo...")
+    
+    # Wind shift parameters
+    current_offset = 0.0  # Current smooth offset
+    target_offset = 0.0
+    wave_count = 0
+    updates_til_shift = random.randint(20, 100)  # Initial random hold time
+    
+    # Smoothing factor (0.01 very smooth/slow, 0.2 abrupt/fast)
+    # Randomize per shift: lower = smoother, higher = more abrupt
+    smooth_factor = 0.05  # Default medium; will randomize on shift
     
     try:
         while True:
             # Physics update
             wind_sim.physics_step()
             
-            # Convert to degrees and clamp softly (lerp towards limits if exceeded)
-            for i in range(num_servos):
-                angle_deg = math.degrees(wind_sim.angles[i])
+            # Convert physics angle to degrees
+            angle_deg = math.degrees(wind_sim.angle)
+            
+            # Soft clamp to physics limits (before offset)
+            if angle_deg < min_angle_deg:
+                angle_deg = min_angle_deg + 0.1 * (angle_deg - min_angle_deg)
+            elif angle_deg > max_angle_deg:
+                angle_deg = max_angle_deg + 0.1 * (angle_deg - max_angle_deg)
+            
+            # Add smoothed shifting offset
+            angle_deg += current_offset
+            
+            # Final hard clamp to servo range (0-180)
+            angle_deg = max(0, min(180, angle_deg))
+            
+            set_servo_angle(0, angle_deg)
+            
+            # Update smoothing: lerp current toward target
+            if abs(current_offset - target_offset) > 0.1:  # If shifting
+                current_offset += smooth_factor * (target_offset - current_offset)
+            
+            # Count "waves" as updates
+            wave_count += 1
+            
+            # Check if time to initiate new wind shift
+            if wave_count >= updates_til_shift:
+                target_offset = random.uniform(-60, 60)  # New random center offset
                 
-                # Soft clamp: if outside limits, pull back gradually
-                if angle_deg < min_angles_deg[i]:
-                    angle_deg = min_angles_deg[i] + 0.1 * (angle_deg - min_angles_deg[i])
-                elif angle_deg > max_angles_deg[i]:
-                    angle_deg = max_angles_deg[i] + 0.1 * (angle_deg - max_angles_deg[i])
+                # Randomize smoothing: 0.01-0.05 smooth, 0.06-0.20 abrupt
+                smooth_factor = random.uniform(0.01, 0.20)
+                # Optional: print for debugging
+                # print(f"New wind shift to {target_offset:.1f}° with smooth_factor {smooth_factor:.3f}")
                 
-                set_servo_angle(i, angle_deg)
+                # Reset for next shift
+                wave_count = 0
+                updates_til_shift = random.randint(20, 100)
             
             time.sleep(wind_sim.dt)
             
@@ -218,13 +251,25 @@ def physics_wind_motion(min_angles_deg, max_angles_deg, wind_sim):
         print("\nSimulation stopped by user.")
     finally:
         # Rest position on exit
-         
-        for i in range(num_servos):
-            set_servo_angle(i, 90)
+        set_servo_angle(0, 90)
 
 # Example usage:
 # Initialize hardware
 initialize_servos(SERVO_PINS[:3])  # 3 segments
+
+
+set_servo_angle(0, 0)
+time.sleep(2)
+
+
+set_servo_angle(0, 180)
+time.sleep(2)
+
+
+set_servo_angle(0, 90)
+time.sleep(2)
+
+            
 
 # Create simulator (tune for more chaos)
 wind_sim = WindSimulator(num_segments=1, segment_length=.6, drag_coeff=.5)
@@ -233,3 +278,18 @@ wind_sim = WindSimulator(num_segments=1, segment_length=.6, drag_coeff=.5)
 min_angles = [0]  # Degrees
 max_angles = [180]
 physics_wind_motion(min_angles, max_angles, wind_sim)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
