@@ -1,7 +1,4 @@
 {
-  "timer_val": "random_0_10",
-  "mode_pos": 180,
-  "mode_indicate_pos": 90,
   "mode_speed": 0.03,
   "main_menu": [
     "exit_this_menu",
@@ -13,6 +10,9 @@
     "timer_60_seconds",
     "timer_300_seconds"
   ],
+  "mode_indicate_pos": 0,
   "timer": false,
+  "mode_pos": 90,
+  "timer_val": "random_10_20",
   "light": "auto"
 }

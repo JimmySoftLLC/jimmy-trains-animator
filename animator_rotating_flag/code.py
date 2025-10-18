@@ -516,9 +516,6 @@ class BseSt(Ste):
             if cfg["timer"] == True:
                 cfg["timer"] = False
                 files.write_json_file("cfg.json", cfg)
-            elif cfg["timer"] == False:
-                cfg["timer"] = True
-                files.write_json_file("cfg.json", cfg)
             show_timer_mode()
         elif cfg["timer"] == True:
             if rand_timer <= time.monotonic()-srt_t:
@@ -596,9 +593,6 @@ st_mch.add(Main())
 # Example usage (updated for single servo on GP2):
 initialize_servos(SERVO_PINS)  # 1 servo on GP2
 
-# Servo range test
-set_servo_angle(0, 90)
-
 # Create simulator (tune for more chaos)
 wind_sim=WindSimulator(segment_length=0.6, drag_coeff=0.5)
 
@@ -613,7 +607,7 @@ elif sw == "right_held":  # top switch clockwise
     files.write_json_file("cfg.json", cfg)
     show_mode(4)
 else:
-    move_at_speed(0, cfg["mode_indicate_pos"], cfg["mode_speed"])
+    move_at_speed(0, cfg["mode_pos"], cfg["mode_speed"])
     time.sleep(5)
 
 if cfg["light"] == "auto":
