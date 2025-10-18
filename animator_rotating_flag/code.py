@@ -269,19 +269,21 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim, dur):
 
     start_time = time.monotonic()
 
-    if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"]==False:
-        turn_on_led()
-    else:
-        led.brightness=1.0
-        led.show()
+    if cfg["light"] == "auto":
+            if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"]==False:
+                turn_on_led()
+            else:
+                led.brightness=1.0
+                led.show()
 
     try:
         while True:
             current_time = time.monotonic()
             if current_time - start_time >= dur:
                 print(f"\nSimulation completed after {dur} seconds.")
-                if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"]==False:
-                    turn_off_led()
+                if cfg["light"] == "auto":
+                    if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"]==False:
+                        turn_off_led()
                 break
 
             # Physics update
@@ -331,8 +333,9 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim, dur):
                     cfg["timer"] = False
                     files.write_json_file("cfg.json", cfg)
                     show_timer_mode()
-                    led.brightness = 0
-                    led.show()
+                    if cfg["light"] == "auto":
+                        led.brightness = 0
+                        led.show()
                     break
 
     except KeyboardInterrupt:
@@ -602,16 +605,19 @@ wind_sim=WindSimulator(segment_length=0.6, drag_coeff=0.5)
 sw=utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
 
 if sw == "left_held":  # top switch counter clockwise
+    cfg["light"] = "auto"
     files.write_json_file("cfg.json", cfg)
     show_mode(4)
 elif sw == "right_held":  # top switch clockwise
+    cfg["light"] = "on"
     files.write_json_file("cfg.json", cfg)
     show_mode(4)
 else:
     move_at_speed(0, cfg["mode_indicate_pos"], cfg["mode_speed"])
     time.sleep(5)
 
-turn_off_led()
+if cfg["light"] == "auto":
+    turn_off_led()
 
 st_mch.go_to("base_state")
 files.log_item("animator has started...")
