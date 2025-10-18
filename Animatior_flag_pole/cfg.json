@@ -1,0 +1,11 @@
+{
+  "servo": "95",
+  "timer": false,
+  "timer_val": "1",
+  "volume_pot": false,
+  "can_cancel": true,
+  "random": false,
+  "sound": "sound_oreveille_oretreat",
+  "mode": "raise_wave_lower",
+  "volume": "100"
+}

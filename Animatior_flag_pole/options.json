@@ -1,0 +1,19 @@
+{
+  "options": [
+    "sound_off",
+    "sound_otaps",
+    "sound_oreveille_oretreat",
+    "raise_lower",
+    "raise_wave_lower",
+    "raise_wave",
+    "random_sound_off",
+    "random_sound_on",
+    "timer_off",
+    "timer_0_minute",
+    "timer_1_minute",
+    "timer_2_minutes",
+    "timer_5_minutes",
+    "timer_10_minutes",
+    "exit_this_menu"
+  ]
+}
