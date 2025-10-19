@@ -882,41 +882,6 @@ def get_snds(dir, typ):
     return fn
 
 ################################################################################
-# servo helpers
-
-
-p_arr = [90, 90, 90, 90, 90, 90]
-
-
-async def cyc_servo(n, s, p_up, p_dwn):
-    global p_arr
-    while mix.voice[1].playing:
-        n_p = p_up
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
-        n_p = p_dwn
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
-
-
-def m_servo(n, p):
-    global p_arr
-    if p < 0:
-        p = 0
-    if p > 180:
-        p = 180
-    s_arr[n].angle = p
-    p_arr[n][n] = p
-
-################################################################################
 # Animations
 
 
@@ -1297,7 +1262,7 @@ async def set_hdw_async(input_string, dur=3):
             num = int(seg[1])
             v = int(seg[2:])
             if num == 0:
-                for i in range(6):
+                for i in range(len(s_arr)):
                     s_arr[i].angle = v
             else:
                 s_arr[num-1].angle = int(v)
@@ -1324,7 +1289,7 @@ async def set_hdw_async(input_string, dur=3):
                     led_low.brightness = float(br/100)
                 led_up.show()
                 led_low.show()
-                await upd_vol_async(.05, vr)
+                await upd_vol_async(.1, vr)
         # VRFXXX = Volume ratio fade up or down XXX 0 to 100
         elif seg[:3] == 'VRF':
             v = int(seg[3:])
