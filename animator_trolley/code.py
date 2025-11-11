@@ -194,7 +194,7 @@ t_elsp = 0.0
 ################################################################################
 # Setup neo pixels
 
-n_px = 9
+n_px = 13
 
 # 16 on demo, 17 tiny, 10 on large, 11 on motor board motor2 pin
 led = neopixel.NeoPixel(board.GP11, n_px)
