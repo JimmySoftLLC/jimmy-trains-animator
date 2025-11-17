@@ -25,6 +25,7 @@
 import utilities
 from adafruit_debouncer import Debouncer
 import neopixel
+from rainbowio import colorwheel
 from analogio import AnalogIn
 import asyncio
 from adafruit_motor import  motor
@@ -692,7 +693,7 @@ def ch_vol(action):
         spk_str(cfg["volume"], False)
 
 
-def ply_a_0(file_name):
+def ply_a_0(file_name, wait=True):
     # Stop if voice is currently playing
     if mix.voice[0].playing:
         mix.voice[0].stop()
@@ -711,8 +712,10 @@ def ply_a_0(file_name):
     mix.voice[0].play(w0, loop=False)
 
     # Wait until playback completes
-    while mix.voice[0].playing:
-        exit_early()
+    if wait:    
+        while mix.voice[0].playing:
+            exit_early()
+            pass
 
 
 def wait_snd():
@@ -858,11 +861,9 @@ async def an_light_async(f_nm):
         result = await set_hdw_async(ft1[1])
         print("Result is: ", result)
         if result:
-            w0_exists = f_exists("/sd/snds/" + result + ".mp3")
+            w0_exists = f_exists("/sd/snds/" + result)
             if w0_exists:
-                w0 = audiomp3.MP3Decoder(
-                    open("/sd/snds/" + result + ".mp3", "rb"))
-                mix.voice[0].play(w0, loop=False) 
+                ply_a_0("/sd/snds/" + result, False)
             else:
                 return
             srt_t = time.monotonic()
@@ -890,12 +891,12 @@ async def an_light_async(f_nm):
             files.log_item("time elapsed: " + str(t_past) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
             if (len(ft1) == 1 or ft1[1] == ""):
-                result = await set_hdw_async("")
+                result = await set_hdw_async("",dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1])
+                result = await set_hdw_async(ft1[1],dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -1078,7 +1079,7 @@ def set_hdw(input_string):
                 upd_vol(.01)
 
 
-async def set_hdw_async(input_string):
+async def set_hdw_async(input_string, dur=3):
     global sp, br, current_throttle
     # Split the input string into segments
     segs = input_string.split(",")
@@ -1105,6 +1106,20 @@ async def set_hdw_async(input_string):
                     await asyncio.sleep(.02)
             except Exception as e:
                 print(e)
+        # ZRAND = Random rainbow, fire, or color change
+        elif seg[0:] == 'ZRAND':
+            await random_effect(1, 3, dur)
+        # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+        elif seg[:2] == 'ZR':
+            v = float(seg[2:])
+            await rbow(v, dur)
+        # ZFIRE = Fire
+        elif seg[0:] == 'ZFIRE':
+            await fire(dur)
+        # ZCOLCH = Color change
+        elif seg[0:] == 'ZCOLCH':
+            multi_color()
+            await asyncio.sleep(dur)
         # TXXX_AAA = Train XXX throttle -100 to 100
         elif seg[:1] == 'T':
             try:   
@@ -1192,6 +1207,101 @@ def set_neo_to(light_n, r, g, b):
     else:
         led[light_n] = (r, g, b)
     led.show()
+
+
+async def random_effect(il, ih, d):
+    if exit_set_hdw_async:
+        return
+    i = random.randint(il, ih)
+    if i == 1:
+        await rbow(.005, d)
+    elif i == 2:
+        multi_color()
+        await asyncio.sleep(d)
+    elif i == 3:
+        await fire(d)
+
+
+async def rbow(spd, dur):
+    global exit_set_hdw_async
+    st = time.monotonic()
+    te = time.monotonic()-st
+    while te < dur:
+        for j in range(0, 255, 1):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+        for j in reversed(range(0, 255, 1)):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+
+
+def multi_color():
+    for i in range(n_px):
+        r = random.randint(128, 255)
+        g = random.randint(128, 255)
+        b = random.randint(128, 255)
+        c = random.randint(0, 2)
+        if c == 0:
+            r1 = r
+            g1 = 0
+            b1 = 0
+        elif c == 1:
+            r1 = 0
+            g1 = g
+            b1 = 0
+        elif c == 2:
+            r1 = 0
+            g1 = 0
+            b1 = b
+        led[i] = (r1, g1, b1)
+    led.show()
+
+
+async def fire(dur):
+    st = time.monotonic()
+    r = random.randint(0, 255)
+    g = random.randint(0, 255)
+    b = random.randint(0, 255)
+
+    # Flicker, based on our initial RGB values
+    while True:
+        for i in range(n_px):
+            if exit_set_hdw_async:
+                return
+            f = random.randint(0, 110)
+            r1 = bnd(r-f, 0, 255)
+            g1 = bnd(g-f, 0, 255)
+            b1 = bnd(b-f, 0, 255)
+            led[i] = (r1, g1, b1)
+            led.show()
+        upd_vol(random.uniform(0.05, 0.1))
+        te = time.monotonic()-st
+        if te > dur:
+            return
+
+
+def bnd(c, l, u):
+    if (c < l):
+        c = l
+    if (c > u):
+        c = u
+    return c
 
 def get_random_media_file(folder_to_search):
     files = files.return_directory("", folder_to_search, ".mp3")
