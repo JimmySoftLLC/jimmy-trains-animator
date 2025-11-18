@@ -240,8 +240,8 @@ t_elsp = 0.0
 
 n_px = 13
 
-# 16 on demo, 17 tiny, 10 on large, 11 on motor board motor2 pin
-led = neopixel.NeoPixel(board.GP11, n_px)
+# 16 on demo, 17 tiny, 10 on large, 13 on motor board motor4 pin
+led = neopixel.NeoPixel(board.GP13, n_px)
 
 gc_col("Neopixels setup")
 
