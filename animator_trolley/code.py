@@ -577,10 +577,18 @@ def add_cmd(command, to_start=False):
 
 async def process_cmd():
     while command_queue:
-        command = command_queue.pop(0)  # Retrieve from the front of the queue
-        print("Processing command:", command)
+        cmd = command_queue.pop(0)  # Retrieve from the front of the queue
+        print("Processing command:", cmd)
         # Process each command as an async operation
-        await set_hdw_async(command)
+        if cmd[:2] == 'AN': # AN_XXX = Animation XXX filename
+            cmd_split = cmd.split("_")
+            clr_cmd_queue()
+            if cmd_split[1] == "customers":
+                await an_async(cmd_split[1]+"_"+cmd_split[2]+"_"+cmd_split[3]+"_"+cmd_split[4])
+            else:
+                await an_async(cmd_split[1])
+        else:
+            await set_hdw_async(cmd)
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -1007,7 +1015,7 @@ def set_hdw(input_string):
                     time.sleep(.02)
             except Exception as e:
                 print(e)
-        # TXXX_AAA = Train XXX throttle -100 to 100
+        # TXXX = Train XXX throttle -100 to 100
         elif seg[:1] == 'T':
             try:   
                 v_str = seg[1:]         
@@ -1044,8 +1052,8 @@ def set_hdw(input_string):
                         mix.voice[1].play(w0, loop=False)
                     if seg[1] == "W":
                         wait_snd()
-        # WA = Blow horn or whistle, A (H Horn, B Bell)
-        elif seg[0] == 'W': # play file
+        # HA = Blow horn or bell, A (H Horn, B Bell)
+        elif seg[0] == 'H': # play file
             stp_a_0()
             if seg[1] == "B":
                 fn=get_snds("/sd/mvc","bell")
@@ -1078,6 +1086,10 @@ def set_hdw(input_string):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol(.01)
+        # QCCC = add command CCC
+        elif seg[0] == 'Q':
+                cmd = seg[1:]
+                add_cmd(cmd)
 
 
 async def set_hdw_async(input_string, dur=3):
@@ -1158,8 +1170,8 @@ async def set_hdw_async(input_string, dur=3):
                         mix.voice[1].play(w0, loop=False)
                     if seg[1] == "W":
                         wait_snd()
-        # WA = Blow horn or whistle, A (H Horn, B Bell)
-        elif seg[0] == 'W': # play file
+        # HA = Blow horn or bell, A (H Horn, B Bell)
+        elif seg[0] == 'H': # play file
             stp_a_0()
             if seg[1] == "B":
                 fn=get_snds("/sd/mvc","bell")
@@ -1192,14 +1204,11 @@ async def set_hdw_async(input_string, dur=3):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
-        # AN_XXX = Animation XXX filename
-        elif seg[:2] == 'AN':
-            seg_split = seg.split("_")
-            # Process each command as an async operation
-            if seg_split[1] == "customers":
-                await an_async(seg_split[1]+"_"+seg_split[2]+"_"+seg_split[3]+"_"+seg_split[4])
-            else:
-                await an_async(seg_split[1])
+        # WXXX = Wait XXX decimal seconds
+        elif seg[0] == 'W':  # wait time
+            s = float(seg[1:])
+            await asyncio.sleep(s)
+
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:

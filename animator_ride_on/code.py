@@ -1346,20 +1346,20 @@ class BseSt(Ste):
     def upd(self, mch):
         global cont_run, is_running_an
         if not is_running_an:
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held":
-            if cont_run:
-                stp_all_cmds()
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            else:
-                cont_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif (sw == "left" or cont_run) and not mix.voice[0].playing:
-            if not is_running_an:
-                add_cmd("AN_" + cfg["option_selected"])
-        elif sw == "right" and not mix.voice[0].playing:
-            mch.go_to('main_menu')
+            sw = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            if sw == "left_held":
+                if cont_run:
+                    stp_all_cmds()
+                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+                else:
+                    cont_run = True
+                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
+            elif (sw == "left" or cont_run) and not mix.voice[0].playing:
+                if not is_running_an:
+                    add_cmd("AN_" + cfg["option_selected"])
+            elif sw == "right" and not mix.voice[0].playing:
+                mch.go_to('main_menu')
 
 
 class Main(Ste):
