@@ -84,15 +84,15 @@ aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = True
 
 # Setup the switches
-l_sw = digitalio.DigitalInOut(board.GP6)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
+l_sw_io = digitalio.DigitalInOut(board.GP6)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(lambda: not l_sw_io.value)
 
-r_sw = digitalio.DigitalInOut(board.GP7)
-r_sw.direction = digitalio.Direction.INPUT
-r_sw.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw)
+r_sw_io = digitalio.DigitalInOut(board.GP7)
+r_sw_io.direction = digitalio.Direction.INPUT
+r_sw_io.pull = digitalio.Pull.UP
+r_sw = Debouncer(lambda: not r_sw_io.value)
 
 
 # setup i2s audio
@@ -242,6 +242,7 @@ n_px = 13
 
 # 16 on demo, 17 tiny, 10 on large, 13 on motor board motor4 pin
 led = neopixel.NeoPixel(board.GP13, n_px)
+led.auto_write = False
 
 gc_col("Neopixels setup")
 
