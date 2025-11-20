@@ -28,7 +28,7 @@ import neopixel
 from rainbowio import colorwheel
 from analogio import AnalogIn
 import asyncio
-from adafruit_motor import  motor
+from adafruit_motor import motor
 import pwmio
 import microcontroller
 import rtc
@@ -46,6 +46,7 @@ import os
 import audiocore
 import sdcardio
 import storage
+
 
 def gc_col(collection_point):
     gc.collect()
@@ -188,10 +189,11 @@ snd_opt = []
 menu_snd_opt = []
 ts_jsons = []
 
+
 def upd_media():
     global snd_opt, menu_snd_opt, ts_jsons
 
-    snd_opt = files.return_directory("", "/sd/snds", ".json")
+    snd_opt = files.return_directory("", animations_folder, ".json")
 
     menu_snd_opt = []
     menu_snd_opt.extend(snd_opt)
@@ -200,6 +202,7 @@ def upd_media():
 
     ts_jsons = files.return_directory(
         "", "/t_s_def", ".json")
+
 
 upd_media()
 
@@ -234,6 +237,8 @@ flsh_t = []
 
 t_s = []
 t_elsp = 0.0
+
+an_running = False
 
 ################################################################################
 # Setup neo pixels
@@ -285,7 +290,7 @@ if (web):
             mdns.hostname = cfg["HOST_NAME"]
             mdns.advertise_service(
                 service_type="_http", protocol="_tcp", port=80)
-            
+
             local_ip = str(wifi.radio.ipv4_address)
 
             # files.log_items IP address to REPL
@@ -322,7 +327,7 @@ if (web):
                 if not mix.voice[0].playing:
                     files.write_json_file("/sd/cfg.json", cfg)
                 return Response(request, "Animation " + cfg["option_selected"] + " started.")
-            
+
             @server.route("/defaults", [POST])
             def btn(request: Request):
                 stop_all_cmds()
@@ -332,7 +337,7 @@ if (web):
                         ts = files.read_json_file(
                             "/t_s_def/" + ts_fn + ".json")
                         files.write_json_file(
-                            "/sd/snds/"+ts_fn+".json", ts)
+                            animations_folder+ts_fn+".json", ts)
                     ply_a_0("/sd/mvc/all_changes_complete.mp3")
                 elif rq_d["an"] == "reset_to_defaults":
                     rst_def()
@@ -356,6 +361,7 @@ if (web):
                 elif rq_d["an"] == "four":
                     ovrde_sw_st["switch_value"] = "four"
                 elif rq_d["an"] == "cont_mode_on":
+                    stop_all_cmds()
                     cont_run = True
                     ply_a_0("/sd/mvc/continuous_mode_activated.mp3")
                     cfg["cont_mode"] = cont_run
@@ -363,6 +369,7 @@ if (web):
                 elif rq_d["an"] == "cont_mode_off":
                     stop_all_cmds()
                     ply_a_0("/sd/mvc/continuous_mode_deactivated.mp3")
+                    cont_run = False
                     cfg["cont_mode"] = cont_run
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
@@ -371,6 +378,7 @@ if (web):
                     ply_a_0("/sd/mvc/timestamp_mode_on.mp3")
                     ply_a_0("/sd/mvc/timestamp_instructions.mp3")
                 elif rq_d["an"] == "timestamp_mode_off":
+                    stop_all_cmds()
                     ts_mode = False
                     ply_a_0("/sd/mvc/timestamp_mode_off.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
@@ -398,21 +406,21 @@ if (web):
                 add_command_to_ts(command)
                 set_hdw(command)
                 return Response(request, "Utility: " + "Utility: set lights")
-            
+
             @server.route("/set-item-lights", [POST])
             def btn(request: Request):
                 rq_d = request.json()
                 command = "LN0_" + str(rq_d["r"]) + "_" + \
-                str(rq_d["g"]) + "_" + str(rq_d["b"])
+                    str(rq_d["g"]) + "_" + str(rq_d["b"])
                 add_command_to_ts(command)
                 set_hdw(command)
                 return Response(request, "Utility: " + "Utility: set lights")
-            
+
             @server.route("/get-track-voltage", [POST])
             def btn(request: Request):
                 track_voltage = get_track_voltage()
                 return Response(request, str(track_voltage))
-            
+
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
                 stop_all_cmds()
@@ -425,16 +433,15 @@ if (web):
 
             @server.route("/get-host-name", [POST])
             def btn(request: Request):
-                stop_all_cmds()
                 return Response(request, cfg["HOST_NAME"])
 
             @server.route("/get-local-ip", [POST])
             def buttonpress(req: Request):
-                stop_all_cmds()
                 return Response(req, local_ip)
 
             @server.route("/update-volume", [POST])
             def btn(request: Request):
+                stop_all_cmds()
                 rq_d = request.json()
                 ch_vol(rq_d["action"])
                 files.write_json_file("/sd/cfg.json", cfg)
@@ -443,7 +450,7 @@ if (web):
             @server.route("/get-volume", [POST])
             def btn(request: Request):
                 return Response(request, cfg["volume"])
-            
+
             @server.route("/get-throttle", [POST])
             def btn(request: Request):
                 cur_throttle_str = str(current_throttle)
@@ -457,9 +464,10 @@ if (web):
                 sounds.extend(snd_opt)
                 my_string = files.json_stringify(sounds)
                 return Response(request, my_string)
-            
+
             @server.route("/create-animation", [POST])
             def btn(request: Request):
+                stop_all_cmds()
                 try:
                     global data, animations_folder
                     rq_d = request.json()  # Parse the incoming JSON
@@ -473,9 +481,10 @@ if (web):
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error creating animation.")
-            
+
             @server.route("/rename-animation", [POST])
             def btn(request: Request):
+                stop_all_cmds()
                 try:
                     global data, animations_folder
                     rq_d = request.json()  # Parse the incoming JSON
@@ -487,9 +496,10 @@ if (web):
                 except Exception as e:
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error setting lights.")
-                
+
             @server.route("/delete-animation", [POST])
             def btn(request: Request):
+                stop_all_cmds()
                 try:
                     global data, animations_folder
                     rq_d = request.json()  # Parse the incoming JSON
@@ -505,28 +515,27 @@ if (web):
 
             @server.route("/test-animation", [POST])
             def btn(request: Request):
+                stop_all_cmds()
                 try:
                     rq_d = request.json()
-                    clr_cmd_queue()
                     add_cmd(rq_d["an"])
                     return Response(request, "success")
                 except Exception as e:
                     print(e)
                     return Response(request, "error")
-            
 
             @server.route("/get-animation", [POST])
             def btn(request: Request):
                 stop_all_cmds()
                 rq_d = request.json()
                 snd_f = rq_d["an"]
-                if (f_exists("/sd/snds/" + snd_f + ".json") == True):
-                    f_n = "/sd/snds/" + snd_f + ".json"
+                if (f_exists(animations_folder + snd_f + ".json") == True):
+                    f_n = animations_folder + snd_f + ".json"
                     return FileResponse(request, f_n, "/")
                 else:
                     f_n = "/t_s_def/timestamp mode.json"
                     return FileResponse(request, f_n, "/")
-                
+
             data = []
 
             @server.route("/save-data", [POST])
@@ -539,7 +548,7 @@ if (web):
                         data = []
                     data.extend(rq_d[2])
                     if rq_d[0] == rq_d[1]:
-                        f_n = "/sd/snds/" + \
+                        f_n = animations_folder + \
                             rq_d[3] + ".json"
                         files.write_json_file(f_n, data)
                         data = []
@@ -580,7 +589,7 @@ async def process_cmd():
         cmd = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", cmd)
         # Process each command as an async operation
-        if cmd[:2] == 'AN': # AN_XXX = Animation XXX filename
+        if cmd[:2] == 'AN':  # AN_XXX = Animation XXX filename
             cmd_split = cmd.split("_")
             clr_cmd_queue()
             if cmd_split[1] == "customers":
@@ -598,11 +607,15 @@ def clr_cmd_queue():
 
 
 def stop_all_cmds():
-    global exit_set_hdw_async,cont_run
+    global exit_set_hdw_async, cont_run, flsh_i, flsh_t
+    flsh_i = len(flsh_t)-1
     cont_run = False
+    mix.voice[0].stop()
+    mix.voice[1].stop()
     clr_cmd_queue()
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
+
 
 def add_command_to_ts(command):
     global ts_mode, t_s, t_elsp
@@ -615,6 +628,7 @@ def add_command_to_ts(command):
 ################################################################################
 # Misc Methods
 
+
 def get_track_voltage():
     """Get the track voltage from the analog input."""
     if track_a_in.value is None:
@@ -622,6 +636,7 @@ def get_track_voltage():
     # Convert the analog value to a voltage (0-3.3V) and scale it for the track voltage
     # Assuming a 14.7:1 scaling factor for the track voltage
     return track_a_in.value / 65536 * 3.3 * 14.7
+
 
 def rst_def():
     cfg["volume_pot"] = True
@@ -721,7 +736,7 @@ def ply_a_0(file_name, wait=True):
     mix.voice[0].play(w0, loop=False)
 
     # Wait until playback completes
-    if wait:    
+    if wait:
         while mix.voice[0].playing:
             exit_early()
             pass
@@ -731,6 +746,7 @@ def wait_snd():
     while mix.voice[0].playing:
         exit_early()
         pass
+
 
 def stp_a_0():
     mix.voice[0].stop()
@@ -793,7 +809,7 @@ async def no_trk():
             ply_a_0("/sd/mvc/create_sound_track_files.mp3")
             break
         await asyncio.sleep(.1)
-        
+
 
 def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.mp3")
@@ -805,6 +821,7 @@ def spk_web():
     else:
         spk_str(cfg["HOST_NAME"], True)
     ply_a_0("/sd/mvc/in_your_browser.mp3")
+
 
 def get_snds(dir, typ):
     sds = []
@@ -853,15 +870,17 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global cont_run, flsh_i, flsh_t
+    global cont_run, flsh_i, flsh_t, an_running
+
+    an_running = True
 
     stp_a_0()
 
     flsh_t = []
 
-    if (f_exists("/sd/snds/" + f_nm + ".json") == True):
+    if (f_exists(animations_folder + f_nm + ".json") == True):
         flsh_t = files.read_json_file(
-            "/sd/snds/" + f_nm + ".json")
+            animations_folder + f_nm + ".json")
 
     flsh_i = 0
 
@@ -870,9 +889,9 @@ async def an_light_async(f_nm):
         result = await set_hdw_async(ft1[1])
         print("Result is: ", result)
         if result:
-            w0_exists = f_exists("/sd/snds/" + result)
+            w0_exists = f_exists(animations_folder + result)
             if w0_exists:
-                ply_a_0("/sd/snds/" + result, False)
+                ply_a_0(animations_folder + result, False)
             else:
                 return
             srt_t = time.monotonic()
@@ -900,12 +919,12 @@ async def an_light_async(f_nm):
             files.log_item("time elapsed: " + str(t_past) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
             if (len(ft1) == 1 or ft1[1] == ""):
-                result = await set_hdw_async("",dur)
+                result = await set_hdw_async("", dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1],dur)
+                result = await set_hdw_async(ft1[1], dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -914,7 +933,9 @@ async def an_light_async(f_nm):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
-            flsh_i = len(flsh_t) - 1
+            add_cmd("TA_0_2")
+            an_running = False
+            return
         if sw == "left_held":
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
@@ -924,9 +945,12 @@ async def an_light_async(f_nm):
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.mp3")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
+            mix.voice[1].stop()
             add_cmd("TA_0_2")
+            an_running = False
             return
         await upd_vol_async(.1)
+
 
 def add_command_to_ts(command):
     global ts_mode, t_s, t_elsp
@@ -936,6 +960,7 @@ def add_command_to_ts(command):
     t_s.append(t_elsp_formatted + "|" + command)
     files.log_item(t_elsp_formatted + "|" + command)
 
+
 async def an_ts(f_nm):
     print("time stamp mode")
     global t_s, t_elsp, ts_mode, ovrde_sw_st
@@ -944,17 +969,17 @@ async def an_ts(f_nm):
 
     try:
         w0 = audiomp3.MP3Decoder(
-        open("/sd/snds/" + f_nm + ".mp3", "rb"))
+            open(animations_folder + f_nm + ".mp3", "rb"))
     except:
-        if (f_exists("/sd/snds/" + f_nm + ".json") == True):
+        if (f_exists(animations_folder + f_nm + ".json") == True):
             flsh_t = files.read_json_file(
-                "/sd/snds/" + f_nm + ".json")
+                animations_folder + f_nm + ".json")
             ft1 = flsh_t[flsh_i].split("|")
             w0_nm = await set_hdw_async(ft1[1])
             print("Result is: ", w0_nm)
             w0 = audiomp3.MP3Decoder(
-                open("/sd/snds/" + w0_nm + ".mp3", "rb"))
-        
+                open(animations_folder + w0_nm + ".mp3", "rb"))
+
     mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
@@ -971,7 +996,7 @@ async def an_ts(f_nm):
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
-                "/sd/snds/" + f_nm + ".json", t_s)
+                animations_folder + f_nm + ".json", t_s)
             break
         await asyncio.sleep(.1)
 
@@ -980,7 +1005,6 @@ async def an_ts(f_nm):
     ply_a_0("/sd/mvc/timestamp_saved.mp3")
     ply_a_0("/sd/mvc/timestamp_mode_off.mp3")
     ply_a_0("/sd/mvc/animations_are_now_active.mp3")
-
 
 
 ##############################
@@ -998,16 +1022,20 @@ def set_hdw(input_string):
         if seg[:2] == 'TA':
             try:
                 seg_split = seg.split("_")
-                v_str = seg_split[1]         
+                v_str = seg_split[1]
                 target_throttle = int(v_str)
                 a_str = seg_split[2]
                 acceleration = int(a_str)
                 diff = target_throttle - current_throttle
                 while diff != 0:
                     if diff > 0:
-                        new_throttle = min(current_throttle + acceleration, target_throttle)  # Increase throttle
+                        # Increase throttle
+                        new_throttle = min(
+                            current_throttle + acceleration, target_throttle)
                     else:
-                        new_throttle = max(current_throttle - acceleration, target_throttle)  # Decrease throttle
+                        # Decrease throttle
+                        new_throttle = max(
+                            current_throttle - acceleration, target_throttle)
                     v = new_throttle / 100
                     train.throttle = v
                     current_throttle = new_throttle
@@ -1017,8 +1045,8 @@ def set_hdw(input_string):
                 print(e)
         # TXXX = Train XXX throttle -100 to 100
         elif seg[:1] == 'T':
-            try:   
-                v_str = seg[1:]         
+            try:
+                v_str = seg[1:]
                 target_throttle = int(v_str)
                 new_throttle = target_throttle
                 v = new_throttle / 100
@@ -1026,51 +1054,55 @@ def set_hdw(input_string):
                 current_throttle = new_throttle
             except Exception as e:
                 print(e)
-        # MBXXX = Play background file, XXX (file name)  
-        elif seg[:2] == 'MB': # play file
+        # MBXXX = Play background file, XXX (file name)
+        elif seg[:2] == 'MB':  # play file
             file_nm = seg[2:]
             return file_nm
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)  
-        elif seg[0] == 'M': # play file
-                if seg[1] == "S":
-                    stp_a_0()
-                elif seg[1] == "W" or seg[1] == "P":
-                    #stp_a_0()
-                    if seg[2] == "S":
-                        w0 = audiomp3.MP3Decoder(open("/sd/snds/" + seg[3:] + ".mp3", "rb"))
-                    elif seg[2] == "M":
-                        w0 = audiomp3.MP3Decoder(open("/sd/mvc/" + seg[3:] + ".mp3", "rb"))
-                    elif seg[2] == "T":
-                        print("this segment is: ", seg[3:])
-                        if seg[3:] == "RAND":
-                            dude = get_random_media_file("/stops")
-                            print("the result is: ", dude)
-                            w0 = audiomp3.MP3Decoder(open("/stops/" + dude + ".mp3", "rb"))
-                        else:
-                            w0 = audiomp3.MP3Decoder(open("/stops/" + seg[3:] + ".mp3", "rb"))
-                    if seg[1] == "W" or seg[1] == "P":
-                        mix.voice[1].play(w0, loop=False)
-                    if seg[1] == "W":
-                        wait_snd()
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)
+        elif seg[0] == 'M':  # play file
+            if seg[1] == "S":
+                stp_a_0()
+            elif seg[1] == "W" or seg[1] == "P":
+                # stp_a_0()
+                if seg[2] == "S":
+                    w0 = audiomp3.MP3Decoder(
+                        open(animations_folder + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "M":
+                    w0 = audiomp3.MP3Decoder(
+                        open("/sd/mvc/" + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "T":
+                    print("this segment is: ", seg[3:])
+                    if seg[3:] == "RAND":
+                        dude = get_random_media_file("/stops")
+                        print("the result is: ", dude)
+                        w0 = audiomp3.MP3Decoder(
+                            open("/stops/" + dude + ".mp3", "rb"))
+                    else:
+                        w0 = audiomp3.MP3Decoder(
+                            open("/stops/" + seg[3:] + ".mp3", "rb"))
+                if seg[1] == "W" or seg[1] == "P":
+                    mix.voice[1].play(w0, loop=False)
+                if seg[1] == "W":
+                    wait_snd()
         # HA = Blow horn or bell, A (H Horn, B Bell)
-        elif seg[0] == 'H': # play file
+        elif seg[0] == 'H':  # play file
             stp_a_0()
             if seg[1] == "B":
-                fn=get_snds("/sd/mvc","bell")
+                fn = get_snds("/sd/mvc", "bell")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
             elif seg[1] == "H":
-                fn=get_snds("/sd/mvc","horn")
+                fn = get_snds("/sd/mvc", "horn")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
         # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
         elif seg[:2] == 'LN':
-                seg_split = seg.split("_")
-                light_n = int(seg_split[0][2:])-1
-                r = int(seg_split[1])
-                g = int(seg_split[2])
-                b = int(seg_split[3])
-                set_neo_to(light_n, r, g, b)
+            seg_split = seg.split("_")
+            light_n = int(seg_split[0][2:])-1
+            r = int(seg_split[1])
+            g = int(seg_split[2])
+            b = int(seg_split[3])
+            set_neo_to(light_n, r, g, b)
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
@@ -1088,8 +1120,8 @@ def set_hdw(input_string):
                 upd_vol(.01)
         # QCCC = add command CCC
         elif seg[0] == 'Q':
-                cmd = seg[1:]
-                add_cmd(cmd)
+            cmd = seg[1:]
+            add_cmd(cmd)
 
 
 async def set_hdw_async(input_string, dur=3):
@@ -1102,16 +1134,20 @@ async def set_hdw_async(input_string, dur=3):
         if seg[:2] == 'TA':
             try:
                 seg_split = seg.split("_")
-                v_str = seg_split[1]         
+                v_str = seg_split[1]
                 target_throttle = int(v_str)
                 a_str = seg_split[2]
                 acceleration = int(a_str)
                 diff = target_throttle - current_throttle
                 while diff != 0:
                     if diff > 0:
-                        new_throttle = min(current_throttle + acceleration, target_throttle)  # Increase throttle
+                        # Increase throttle
+                        new_throttle = min(
+                            current_throttle + acceleration, target_throttle)
                     else:
-                        new_throttle = max(current_throttle - acceleration, target_throttle)  # Decrease throttle
+                        # Decrease throttle
+                        new_throttle = max(
+                            current_throttle - acceleration, target_throttle)
                     v = new_throttle / 100
                     train.throttle = v
                     current_throttle = new_throttle
@@ -1135,8 +1171,8 @@ async def set_hdw_async(input_string, dur=3):
             await asyncio.sleep(dur)
         # TXXX_AAA = Train XXX throttle -100 to 100
         elif seg[:1] == 'T':
-            try:   
-                v_str = seg[1:]         
+            try:
+                v_str = seg[1:]
                 target_throttle = int(v_str)
                 new_throttle = target_throttle
                 v = new_throttle / 100
@@ -1144,51 +1180,55 @@ async def set_hdw_async(input_string, dur=3):
                 current_throttle = new_throttle
             except Exception as e:
                 print(e)
-        # MBXXX = Play background file, XXX (file name)  
-        elif seg[:2] == 'MB': # play file
+        # MBXXX = Play background file, XXX (file name)
+        elif seg[:2] == 'MB':  # play file
             file_nm = seg[2:]
             return file_nm
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)  
-        elif seg[0] == 'M': # play file
-                if seg[1] == "S":
-                    stp_a_0()
-                elif seg[1] == "W" or seg[1] == "P":
-                    #stp_a_0()
-                    if seg[2] == "S":
-                        w0 = audiomp3.MP3Decoder(open("/sd/snds/" + seg[3:] + ".mp3", "rb"))
-                    elif seg[2] == "M":
-                        w0 = audiomp3.MP3Decoder(open("/sd/mvc/" + seg[3:] + ".mp3", "rb"))
-                    elif seg[2] == "T":
-                        print("this segment is: ", seg[3:])
-                        if seg[3:] == "RAND":
-                            dude = get_random_media_file("/stops")
-                            print("the result is: ", dude)
-                            w0 = audiomp3.MP3Decoder(open("/stops/" + dude + ".mp3", "rb"))
-                        else:
-                            w0 = audiomp3.MP3Decoder(open("/stops/" + seg[3:] + ".mp3", "rb"))
-                    if seg[1] == "W" or seg[1] == "P":
-                        mix.voice[1].play(w0, loop=False)
-                    if seg[1] == "W":
-                        wait_snd()
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)
+        elif seg[0] == 'M':  # play file
+            if seg[1] == "S":
+                stp_a_0()
+            elif seg[1] == "W" or seg[1] == "P":
+                # stp_a_0()
+                if seg[2] == "S":
+                    w0 = audiomp3.MP3Decoder(
+                        open(animations_folder + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "M":
+                    w0 = audiomp3.MP3Decoder(
+                        open("/sd/mvc/" + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "T":
+                    print("this segment is: ", seg[3:])
+                    if seg[3:] == "RAND":
+                        dude = get_random_media_file("/stops")
+                        print("the result is: ", dude)
+                        w0 = audiomp3.MP3Decoder(
+                            open("/stops/" + dude + ".mp3", "rb"))
+                    else:
+                        w0 = audiomp3.MP3Decoder(
+                            open("/stops/" + seg[3:] + ".mp3", "rb"))
+                if seg[1] == "W" or seg[1] == "P":
+                    mix.voice[1].play(w0, loop=False)
+                if seg[1] == "W":
+                    wait_snd()
         # HA = Blow horn or bell, A (H Horn, B Bell)
-        elif seg[0] == 'H': # play file
+        elif seg[0] == 'H':  # play file
             stp_a_0()
             if seg[1] == "B":
-                fn=get_snds("/sd/mvc","bell")
+                fn = get_snds("/sd/mvc", "bell")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
             elif seg[1] == "H":
-                fn=get_snds("/sd/mvc","horn")
+                fn = get_snds("/sd/mvc", "horn")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
         # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
         elif seg[:2] == 'LN':
-                seg_split = seg.split("_")
-                light_n = int(seg_split[0][2:])-1
-                r = int(seg_split[1])
-                g = int(seg_split[2])
-                b = int(seg_split[3])
-                set_neo_to(light_n, r, g, b)
+            seg_split = seg.split("_")
+            light_n = int(seg_split[0][2:])-1
+            r = int(seg_split[1])
+            g = int(seg_split[2])
+            b = int(seg_split[3])
+            set_neo_to(light_n, r, g, b)
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
@@ -1313,10 +1353,11 @@ def bnd(c, l, u):
         c = u
     return c
 
+
 def get_random_media_file(folder_to_search):
     files = files.return_directory("", folder_to_search, ".mp3")
     return random.choice(files) if files else None
-        
+
 ################################################################################
 # State Machine
 
@@ -1389,13 +1430,14 @@ class BseSt(Ste):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left_held":
             if cont_run:
-                cont_run = False
                 stop_all_cmds()
+                cont_run = False
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.mp3")
             else:
+                stop_all_cmds()
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.mp3")
-        elif (sw == "left" or cont_run) and not mix.voice[0].playing:
+        elif (sw == "left" or cont_run) and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
         elif sw == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
@@ -1492,7 +1534,7 @@ class Snds(Ste):
                     pass
             else:
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
-                files.write_json_file("/sd/cfg.json", cfg)
+                files.write_json_file("cfg.json", cfg)
                 w0 = audiomp3.MP3Decoder(
                     open("/sd/mvc/option_selected.mp3", "rb"))
                 mix.voice[0].play(w0, loop=False)
@@ -1587,7 +1629,7 @@ class VolSet(Ste):
         elif sw == "right" and s.vol_adj_mode:
             ch_vol("raise")
         elif sw == "right_held" and s.vol_adj_mode:
-            files.write_json_file("/sd/cfg.json", cfg)
+            files.write_json_file("cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.mp3")
             s.vol_adj_mode = False
             mch.go_to('base_state')
@@ -1596,12 +1638,12 @@ class VolSet(Ste):
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
-            files.write_json_file("/sd/cfg.json", cfg)
+            files.write_json_file("cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.mp3")
             mch.go_to('base_state')
         if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
-            files.write_json_file("/sd/cfg.json", cfg)
+            files.write_json_file("cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.mp3")
             mch.go_to('base_state')
 
@@ -1649,7 +1691,7 @@ class WebOpt(Ste):
                 ply_a_0("/sd/mvc/web_instruct.mp3")
                 sel_web()
             else:
-                files.write_json_file("/sd/cfg.json", cfg)
+                files.write_json_file("cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.mp3")
                 mch.go_to('base_state')
 
@@ -1746,4 +1788,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
