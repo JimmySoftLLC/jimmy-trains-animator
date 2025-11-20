@@ -239,6 +239,7 @@ t_s = []
 t_elsp = 0.0
 
 an_running = False
+an_just_added = False
 
 ################################################################################
 # Setup neo pixels
@@ -1425,7 +1426,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
+        global cont_run, an_just_added
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left_held":
@@ -1439,6 +1440,7 @@ class BseSt(Ste):
                 ply_a_0("/sd/mvc/continuous_mode_activated.mp3")
         elif (sw == "left" or cont_run) and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
+            an_just_added = True
         elif sw == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
 
@@ -1765,9 +1767,14 @@ async def server_poll_tsk(server):
 
 
 async def state_mach_upd_task(st_mch):
+    global an_just_added
     while True:
         st_mch.upd()
-        await asyncio.sleep(0)
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
 
 
 async def main():
@@ -1788,3 +1795,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
