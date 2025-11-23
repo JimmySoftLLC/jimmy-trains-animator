@@ -147,7 +147,7 @@ except Exception as e:
                 storage.mount(vfs, "/sd")
                 card_in = True
                 w0 = audiocore.WaveFile(
-                    open("/sd/mvc/micro_sd_card_success.wav", "rb"))
+                    open(mvc_folder + "micro_sd_card_success.wav", "rb"))
                 mix.voice[1].play(w0, loop=False)
                 while mix.voice[1].playing:
                     pass
@@ -182,6 +182,7 @@ current_throttle = 0
 # Flash data and globals
 
 animations_folder = "/sd/snds/"
+mvc_folder = "/sd/mvc/"
 
 cfg = files.read_json_file("/sd/cfg.json")
 
@@ -339,11 +340,11 @@ if (web):
                             "/t_s_def/" + ts_fn + ".json")
                         files.write_json_file(
                             animations_folder+ts_fn+".json", ts)
-                    ply_a_0("/sd/mvc/all_changes_complete.mp3")
+                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 elif rq_d["an"] == "reset_to_defaults":
                     rst_def()
                     files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0("/sd/mvc/all_changes_complete.mp3")
+                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
                     st_mch.go_to('base_state')
                 return Response(request, "Utility: " + rq_d["an"])
 
@@ -364,24 +365,24 @@ if (web):
                 elif rq_d["an"] == "cont_mode_on":
                     stop_all_cmds()
                     cont_run = True
-                    ply_a_0("/sd/mvc/continuous_mode_activated.mp3")
+                    ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
                     cfg["cont_mode"] = cont_run
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "cont_mode_off":
                     stop_all_cmds()
-                    ply_a_0("/sd/mvc/continuous_mode_deactivated.mp3")
+                    ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
                     cont_run = False
                     cfg["cont_mode"] = cont_run
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
                     stop_all_cmds()
                     ts_mode = True
-                    ply_a_0("/sd/mvc/timestamp_mode_on.mp3")
-                    ply_a_0("/sd/mvc/timestamp_instructions.mp3")
+                    ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
+                    ply_a_0(mvc_folder + "timestamp_instructions.mp3")
                 elif rq_d["an"] == "timestamp_mode_off":
                     stop_all_cmds()
                     ts_mode = False
-                    ply_a_0("/sd/mvc/timestamp_mode_off.mp3")
+                    ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/speaker", [POST])
@@ -389,15 +390,15 @@ if (web):
                 stop_all_cmds()
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
-                    ply_a_0("/sd/mvc/left_speaker_right_speaker.mp3")
+                    ply_a_0(mvc_folder + "left_speaker_right_speaker.mp3")
                 elif rq_d["an"] == "volume_pot_off":
                     cfg["volume_pot"] = False
                     files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0("/sd/mvc/all_changes_complete.mp3")
+                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 elif rq_d["an"] == "volume_pot_on":
                     cfg["volume_pot"] = True
                     files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0("/sd/mvc/all_changes_complete.mp3")
+                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/lights", [POST])
@@ -405,7 +406,7 @@ if (web):
                 rq_d = request.json()
                 command = rq_d["an"]
                 add_command_to_ts(command)
-                set_hdw(command)
+                set_hdw_lights(command)
                 return Response(request, "Utility: " + "Utility: set lights")
 
             @server.route("/set-item-lights", [POST])
@@ -414,7 +415,7 @@ if (web):
                 command = "LN0_" + str(rq_d["r"]) + "_" + \
                     str(rq_d["g"]) + "_" + str(rq_d["b"])
                 add_command_to_ts(command)
-                set_hdw(command)
+                set_hdw_lights(command)
                 return Response(request, "Utility: " + "Utility: set lights")
 
             @server.route("/get-track-voltage", [POST])
@@ -714,11 +715,11 @@ def ch_vol(action):
     cfg["volume_pot"] = False
     if not mix.voice[0].playing:
         files.write_json_file("/sd/cfg.json", cfg)
-        ply_a_0("/sd/mvc/volume.mp3")
+        ply_a_0(mvc_folder + "volume.mp3")
         spk_str(cfg["volume"], False)
 
 
-def ply_a_0(file_name, wait=True):
+def ply_a_0(file_name, wait=True, repeat = False):
     # Stop if voice is currently playing
     if mix.voice[0].playing:
         mix.voice[0].stop()
@@ -734,7 +735,7 @@ def ply_a_0(file_name, wait=True):
         raise ValueError("Unsupported audio format: " + file_name)
 
     # Play the selected file
-    mix.voice[0].play(w0, loop=False)
+    mix.voice[0].play(w0, loop = repeat)
 
     # Wait until playback completes
     if wait:
@@ -770,35 +771,35 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_0("/sd/mvc/" + character + ".mp3")
+            ply_a_0(mvc_folder + character + ".mp3")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_0("/sd/mvc/dot.mp3")
-        ply_a_0("/sd/mvc/local.mp3")
+        ply_a_0(mvc_folder + "dot.mp3")
+        ply_a_0(mvc_folder + "local.mp3")
 
 
 def l_r_but():
-    ply_a_0("/sd/mvc/press_left_button_right_button.mp3")
+    ply_a_0(mvc_folder + "press_left_button_right_button.mp3")
 
 
 def sel_web():
-    ply_a_0("/sd/mvc/web_menu.mp3")
+    ply_a_0(mvc_folder + "web_menu.mp3")
     l_r_but()
 
 
 def opt_sel():
-    ply_a_0("/sd/mvc/option_selected.mp3")
+    ply_a_0(mvc_folder + "option_selected.mp3")
 
 
 def spk_sng_num(song_number):
-    ply_a_0("/sd/mvc/song.mp3")
+    ply_a_0(mvc_folder + "song.mp3")
     spk_str(song_number, False)
 
 
 async def no_trk():
-    ply_a_0("/sd/mvc/no_user_soundtrack_found.mp3")
+    ply_a_0(mvc_folder + "no_user_soundtrack_found.mp3")
     while True:
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
@@ -807,21 +808,21 @@ async def no_trk():
         if sw == "left":
             break
         if sw == "right":
-            ply_a_0("/sd/mvc/create_sound_track_files.mp3")
+            ply_a_0(mvc_folder + "create_sound_track_files.mp3")
             break
         await asyncio.sleep(.1)
 
 
 def spk_web():
-    ply_a_0("/sd/mvc/animator_available_on_network.mp3")
-    ply_a_0("/sd/mvc/to_access_type.mp3")
+    ply_a_0(mvc_folder + "animator_available_on_network.mp3")
+    ply_a_0(mvc_folder + "to_access_type.mp3")
     if cfg["HOST_NAME"] == "animator-ride-on-train":
-        ply_a_0("/sd/mvc/animator_ride_on_train.mp3")
-        ply_a_0("/sd/mvc/dot.mp3")
-        ply_a_0("/sd/mvc/local.mp3")
+        ply_a_0(mvc_folder + "animator_ride_on_train.mp3")
+        ply_a_0(mvc_folder + "dot.mp3")
+        ply_a_0(mvc_folder + "local.mp3")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    ply_a_0("/sd/mvc/in_your_browser.mp3")
+    ply_a_0(mvc_folder + "in_your_browser.mp3")
 
 
 def get_snds(dir, typ):
@@ -889,10 +890,15 @@ async def an_light_async(f_nm):
         ft1 = flsh_t[flsh_i].split("|")
         result = await set_hdw_async(ft1[1])
         print("Result is: ", result)
-        if result:
-            w0_exists = f_exists(animations_folder + result)
+        result = result.split("_")
+        if result and len(result) > 1:
+            w0_exists = f_exists(animations_folder + result[1])
             if w0_exists:
-                ply_a_0(animations_folder + result, False)
+                if result[0] == "1":
+                    repeat = True
+                else:
+                    repeat = False
+                ply_a_0(animations_folder + result[1], False, repeat)
             else:
                 return
             srt_t = time.monotonic()
@@ -943,7 +949,7 @@ async def an_light_async(f_nm):
             if cont_run:
                 cont_run = False
                 stop_all_cmds()
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.mp3")
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
@@ -1003,130 +1009,32 @@ async def an_ts(f_nm):
 
     ts_mode = False
 
-    ply_a_0("/sd/mvc/timestamp_saved.mp3")
-    ply_a_0("/sd/mvc/timestamp_mode_off.mp3")
-    ply_a_0("/sd/mvc/animations_are_now_active.mp3")
+    ply_a_0(mvc_folder + "timestamp_saved.mp3")
+    ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+    ply_a_0(mvc_folder + "animations_are_now_active.mp3")
 
 
 ##############################
 # animation effects
 br = 0
 
-
-def set_hdw(input_string):
-    global sp, br, current_throttle
-    # Split the input string into segments
-    segs = input_string.split(",")
-    # Process each segment
-    for seg in segs:
-        # TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100
-        if seg[:2] == 'TA':
-            try:
-                seg_split = seg.split("_")
-                v_str = seg_split[1]
-                target_throttle = int(v_str)
-                a_str = seg_split[2]
-                acceleration = int(a_str)
-                diff = target_throttle - current_throttle
-                while diff != 0:
-                    if diff > 0:
-                        # Increase throttle
-                        new_throttle = min(
-                            current_throttle + acceleration, target_throttle)
-                    else:
-                        # Decrease throttle
-                        new_throttle = max(
-                            current_throttle - acceleration, target_throttle)
-                    v = new_throttle / 100
-                    train.throttle = v
-                    current_throttle = new_throttle
-                    diff = target_throttle - current_throttle
-                    time.sleep(.02)
-            except Exception as e:
-                print(e)
-        # TXXX = Train XXX throttle -100 to 100
-        elif seg[:1] == 'T':
-            try:
-                v_str = seg[1:]
-                target_throttle = int(v_str)
-                new_throttle = target_throttle
-                v = new_throttle / 100
-                train.throttle = v
-                current_throttle = new_throttle
-            except Exception as e:
-                print(e)
-        # MBXXX = Play background file, XXX (file name)
-        elif seg[:2] == 'MB':  # play file
-            file_nm = seg[2:]
-            return file_nm
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)
-        elif seg[0] == 'M':  # play file
-            if seg[1] == "S":
-                stp_a_0()
-            elif seg[1] == "W" or seg[1] == "P":
-                # stp_a_0()
-                if seg[2] == "S":
-                    w0 = audiomp3.MP3Decoder(
-                        open(animations_folder + seg[3:] + ".mp3", "rb"))
-                elif seg[2] == "M":
-                    w0 = audiomp3.MP3Decoder(
-                        open("/sd/mvc/" + seg[3:] + ".mp3", "rb"))
-                elif seg[2] == "T":
-                    print("this segment is: ", seg[3:])
-                    if seg[3:] == "RAND":
-                        dude = get_random_media_file("/stops")
-                        print("the result is: ", dude)
-                        w0 = audiomp3.MP3Decoder(
-                            open("/stops/" + dude + ".mp3", "rb"))
-                    else:
-                        w0 = audiomp3.MP3Decoder(
-                            open("/stops/" + seg[3:] + ".mp3", "rb"))
-                if seg[1] == "W" or seg[1] == "P":
-                    mix.voice[1].play(w0, loop=False)
-                if seg[1] == "W":
-                    wait_snd()
-        # HA = Blow horn or bell, A (H Horn, B Bell)
-        elif seg[0] == 'H':  # play file
-            stp_a_0()
-            if seg[1] == "B":
-                fn = get_snds("/sd/mvc", "bell")
-                w0 = audiomp3.MP3Decoder(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
-            elif seg[1] == "H":
-                fn = get_snds("/sd/mvc", "horn")
-                w0 = audiomp3.MP3Decoder(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
-        # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
-        elif seg[:2] == 'LN':
-            seg_split = seg.split("_")
-            light_n = int(seg_split[0][2:])-1
-            r = int(seg_split[1])
-            g = int(seg_split[2])
-            b = int(seg_split[3])
-            set_neo_to(light_n, r, g, b)
-        # BXXX = Brightness XXX 0 to 100
-        elif seg[0] == 'B':
-            br = int(seg[1:])
-            led.brightness = float(br/100)
-        # FXXX = Fade brightness in or out XXX 0 to 100
-        elif seg[0] == 'F':
-            v = int(seg[1:])
-            while not br == v:
-                if br < v:
-                    br += 1
-                    led.brightness = float(br/100)
-                else:
-                    br -= 1
-                    led.brightness = float(br/100)
-                upd_vol(.01)
-        # QCCC = add command CCC
-        elif seg[0] == 'Q':
-            cmd = seg[1:]
-            add_cmd(cmd)
-
+def set_hdw_lights(seg):
+    global br
+    # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+    if seg[:2] == 'LN':
+        seg_split = seg.split("_")
+        light_n = int(seg_split[0][2:])-1
+        r = int(seg_split[1])
+        g = int(seg_split[2])
+        b = int(seg_split[3])
+        set_neo_to(light_n, r, g, b)
+    # BXXX = Brightness XXX 0 to 100
+    elif seg[0] == 'B':
+        br = int(seg[1:])
+        led.brightness = float(br/100)
 
 async def set_hdw_async(input_string, dur=3):
-    global sp, br, current_throttle
+    global br, current_throttle
     # Split the input string into segments
     segs = input_string.split(",")
     # Process each segment
@@ -1181,10 +1089,11 @@ async def set_hdw_async(input_string, dur=3):
                 current_throttle = new_throttle
             except Exception as e:
                 print(e)
-        # MBXXX = Play background file, XXX (file name)
+        # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others ignored
         elif seg[:2] == 'MB':  # play file
-            file_nm = seg[2:]
-            return file_nm
+            repeat = seg[2]
+            file_nm = seg[3:]
+            return repeat + "_" + file_nm
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)
         elif seg[0] == 'M':  # play file
             if seg[1] == "S":
@@ -1196,7 +1105,7 @@ async def set_hdw_async(input_string, dur=3):
                         open(animations_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "M":
                     w0 = audiomp3.MP3Decoder(
-                        open("/sd/mvc/" + seg[3:] + ".mp3", "rb"))
+                        open(mvc_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "T":
                     print("this segment is: ", seg[3:])
                     if seg[3:] == "RAND":
@@ -1222,18 +1131,9 @@ async def set_hdw_async(input_string, dur=3):
                 fn = get_snds("/sd/mvc", "horn")
                 w0 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[0].play(w0, loop=False)
-        # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
-        elif seg[:2] == 'LN':
-            seg_split = seg.split("_")
-            light_n = int(seg_split[0][2:])-1
-            r = int(seg_split[1])
-            g = int(seg_split[2])
-            b = int(seg_split[3])
-            set_neo_to(light_n, r, g, b)
-        # BXXX = Brightness XXX 0 to 100
-        elif seg[0] == 'B':
-            br = int(seg[1:])
-            led.brightness = float(br/100)
+        # lights LNZZZ_R_G_B or BXXX
+        elif seg[:2] == 'LN' or seg[0] == 'B':
+            set_hdw_lights(seg)
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
@@ -1418,7 +1318,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        ply_a_0("/sd/mvc/animations_are_now_active.mp3")
+        ply_a_0(mvc_folder + "animations_are_now_active.mp3")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -1433,11 +1333,11 @@ class BseSt(Ste):
             if cont_run:
                 stop_all_cmds()
                 cont_run = False
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.mp3")
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
             else:
                 stop_all_cmds()
                 cont_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.mp3")
+                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
         elif (sw == "left" or cont_run) and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
@@ -1457,7 +1357,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_0("/sd/mvc/main_menu.mp3")
+        ply_a_0(mvc_folder + "main_menu.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1468,7 +1368,7 @@ class Main(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_0("/sd/mvc/" + main_m[self.i] + ".mp3")
+            ply_a_0(mvc_folder + main_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -1484,7 +1384,7 @@ class Main(Ste):
             elif sel_mnu == "web_options":
                 mch.go_to('web_options')
             else:
-                ply_a_0("/sd/mvc/all_changes_complete.mp3")
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -1500,7 +1400,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_0("/sd/mvc/sound_selection_menu.mp3")
+        ply_a_0(mvc_folder + "sound_selection_menu.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1538,7 +1438,7 @@ class Snds(Ste):
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
                 files.write_json_file("cfg.json", cfg)
                 w0 = audiomp3.MP3Decoder(
-                    open("/sd/mvc/option_selected.mp3", "rb"))
+                    open(mvc_folder + "option_selected.mp3", "rb"))
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
@@ -1557,7 +1457,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        ply_a_0("/sd/mvc/add_sounds_animate.mp3")
+        ply_a_0(mvc_folder + "add_sounds_animate.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1570,7 +1470,7 @@ class AddSnds(Ste):
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
             ply_a_0(
-                "/sd/mvc/" + add_snd[self.i] + ".mp3")
+                mvc_folder + add_snd[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(add_snd)-1:
@@ -1578,17 +1478,17 @@ class AddSnds(Ste):
         if sw == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                ply_a_0("/sd/mvc/create_sound_track_files.mp3")
+                ply_a_0(mvc_folder + "create_sound_track_files.mp3")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                ply_a_0("/sd/mvc/timestamp_mode_on.mp3")
-                ply_a_0("/sd/mvc/timestamp_instructions.mp3")
+                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
+                ply_a_0(mvc_folder + "timestamp_instructions.mp3")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                ply_a_0("/sd/mvc/timestamp_mode_off.mp3")
+                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
             else:
-                ply_a_0("/sd/mvc/all_changes_complete.mp3")
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -1605,7 +1505,7 @@ class VolSet(Ste):
 
     def enter(s, mch):
         files.log_item('Set Web Options')
-        ply_a_0("/sd/mvc/volume_settings_menu.mp3")
+        ply_a_0(mvc_folder + "volume_settings_menu.mp3")
         l_r_but()
         s.vol_adj_mode = False
         Ste.enter(s, mch)
@@ -1617,7 +1517,7 @@ class VolSet(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left" and not s.vol_adj_mode:
-            ply_a_0("/sd/mvc/" + vol_set[s.i] + ".mp3")
+            ply_a_0(mvc_folder + vol_set[s.i] + ".mp3")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
@@ -1625,14 +1525,14 @@ class VolSet(Ste):
         if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
             if sw == "right":
                 s.vol_adj_mode = True
-                ply_a_0("/sd/mvc/volume_adjustment_menu.mp3")
+                ply_a_0(mvc_folder + "volume_adjustment_menu.mp3")
         elif sw == "left" and s.vol_adj_mode:
             ch_vol("lower")
         elif sw == "right" and s.vol_adj_mode:
             ch_vol("raise")
         elif sw == "right_held" and s.vol_adj_mode:
             files.write_json_file("cfg.json", cfg)
-            ply_a_0("/sd/mvc/all_changes_complete.mp3")
+            ply_a_0(mvc_folder + "all_changes_complete.mp3")
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1)
@@ -1641,12 +1541,12 @@ class VolSet(Ste):
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             files.write_json_file("cfg.json", cfg)
-            ply_a_0("/sd/mvc/all_changes_complete.mp3")
+            ply_a_0(mvc_folder + "all_changes_complete.mp3")
             mch.go_to('base_state')
         if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             files.write_json_file("cfg.json", cfg)
-            ply_a_0("/sd/mvc/all_changes_complete.mp3")
+            ply_a_0(mvc_folder + "all_changes_complete.mp3")
             mch.go_to('base_state')
 
 
@@ -1671,7 +1571,7 @@ class WebOpt(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_0("/sd/mvc/" + web_m[self.i] + ".mp3")
+            ply_a_0(mvc_folder + web_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -1690,11 +1590,11 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif selected_menu_item == "hear_instr_web":
-                ply_a_0("/sd/mvc/web_instruct.mp3")
+                ply_a_0(mvc_folder + "web_instruct.mp3")
                 sel_web()
             else:
                 files.write_json_file("cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.mp3")
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 ###############################################################################

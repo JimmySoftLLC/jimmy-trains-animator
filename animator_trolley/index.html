@@ -328,7 +328,7 @@
             <div>HA = Blow horn or bell, A (H Horn, B Bell)</div>
             <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
                 tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)</div>
-            <div>MBXXX = Play background file, XXX (file name) must be in first row all others ignored</div>
+            <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others ignored</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
             <div>TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100</div>
             <div>QCCC = add command CCC</div>
@@ -1686,12 +1686,12 @@
     }
 
     function blowHorn() {
-        let newCommand = "WH";
+        let newCommand = "HH";
         testAnimationCommand(newCommand);
     }
 
     function ringBell() {
-        let newCommand = "WB";
+        let newCommand = "HB";
         testAnimationCommand(newCommand);
     }
 
