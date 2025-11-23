@@ -183,6 +183,10 @@ current_throttle = 0
 
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
+elves_folder = "elves/"
+bells_folder = "bells/"
+horns_folder = "horns/"
+stops_folder = "stops/"
 
 cfg = files.read_json_file("/sd/cfg.json")
 
@@ -201,24 +205,23 @@ def upd_media():
     rnd_opt = ['random all']
     menu_snd_opt.extend(rnd_opt)
 
-    ts_jsons = files.return_directory(
-        "", "/t_s_def", ".json")
+    ts_jsons = files.return_directory("", "/sd/t_s_def", ".json")
 
 
 upd_media()
 
 web = cfg["serve_webpage"]
 
-cfg_main = files.read_json_file("main_menu.json")
+cfg_main = files.read_json_file(mvc_folder + "main_menu.json")
 main_m = cfg_main["main_menu"]
 
-cfg_vol = files.read_json_file("volume_settings.json")
+cfg_vol = files.read_json_file(mvc_folder + "volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
 
-cfg_web = files.read_json_file("web_menu.json")
+cfg_web = files.read_json_file(mvc_folder + "web_menu.json")
 web_m = cfg_web["web_menu"]
 
-cfg_add_song = files.read_json_file(
+cfg_add_song = files.read_json_file(mvc_folder + 
     "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
@@ -517,7 +520,6 @@ if (web):
 
             @server.route("/test-animation", [POST])
             def btn(request: Request):
-                stop_all_cmds()
                 try:
                     rq_d = request.json()
                     add_cmd(rq_d["an"])
@@ -746,13 +748,20 @@ def ply_a_0(file_name, wait=True, repeat = False):
 
 def wait_snd():
     while mix.voice[0].playing:
-        exit_early()
+        pass
+
+def wait_snd_1():
+    while mix.voice[1].playing:
         pass
 
 
 def stp_a_0():
     mix.voice[0].stop()
     wait_snd()
+
+def stp_a_1():
+    mix.voice[1].stop()
+    wait_snd_1()
 
 
 def exit_early():
@@ -1077,7 +1086,6 @@ async def set_hdw_async(input_string, dur=3):
         # ZCOLCH = Color change
         elif seg[0:] == 'ZCOLCH':
             multi_color()
-            await asyncio.sleep(dur)
         # TXXX_AAA = Train XXX throttle -100 to 100
         elif seg[:1] == 'T':
             try:
@@ -1094,43 +1102,55 @@ async def set_hdw_async(input_string, dur=3):
             repeat = seg[2]
             file_nm = seg[3:]
             return repeat + "_" + file_nm
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder, T stops) XXX (file name, if RAND random selection of folder)
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops) XXX (file name, if RAND random selection of folder)
         elif seg[0] == 'M':  # play file
             if seg[1] == "S":
                 stp_a_0()
             elif seg[1] == "W" or seg[1] == "P":
-                # stp_a_0()
-                if seg[2] == "S":
-                    w0 = audiomp3.MP3Decoder(
-                        open(animations_folder + seg[3:] + ".mp3", "rb"))
-                elif seg[2] == "M":
-                    w0 = audiomp3.MP3Decoder(
-                        open(mvc_folder + seg[3:] + ".mp3", "rb"))
-                elif seg[2] == "T":
-                    print("this segment is: ", seg[3:])
+                if seg[2] == "E":
                     if seg[3:] == "RAND":
-                        dude = get_random_media_file("/stops")
-                        print("the result is: ", dude)
-                        w0 = audiomp3.MP3Decoder(
-                            open("/stops/" + dude + ".mp3", "rb"))
+                        rand_snd = get_random_media_file("/elves")
+                        w1 = audiomp3.MP3Decoder(open("/elves/" + rand_snd + ".mp3", "rb"))
                     else:
-                        w0 = audiomp3.MP3Decoder(
+                        w1 = audiomp3.MP3Decoder(open(elves_folder + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "B":
+                    if seg[3:] == "RAND":
+                        rand_snd = get_random_media_file("/bells")
+                        w1 = audiomp3.MP3Decoder(open("/bells/" + rand_snd + ".mp3", "rb"))
+                    else:
+                        w1 = audiomp3.MP3Decoder(open(bells_folder + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "H":
+                    if seg[3:] == "RAND":
+                        rand_snd = get_random_media_file("/horns")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/horns/" + rand_snd + ".mp3", "rb"))
+                    else:
+                        w1 = audiomp3.MP3Decoder(
+                        open(horns_folder + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "T":
+                    if seg[3:] == "RAND":
+                        rand_snd = get_random_media_file("/stops")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/stops/" + rand_snd + ".mp3", "rb"))
+                    else:
+                        w1 = audiomp3.MP3Decoder(
                             open("/stops/" + seg[3:] + ".mp3", "rb"))
                 if seg[1] == "W" or seg[1] == "P":
-                    mix.voice[1].play(w0, loop=False)
+                    stp_a_1()
+                    mix.voice[1].play(w1, loop=False)
                 if seg[1] == "W":
-                    wait_snd()
+                    wait_snd_1()
         # HA = Blow horn or bell, A (H Horn, B Bell)
         elif seg[0] == 'H':  # play file
-            stp_a_0()
+            stp_a_1()
             if seg[1] == "B":
-                fn = get_snds("/sd/mvc", "bell")
-                w0 = audiomp3.MP3Decoder(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
+                fn = get_snds("bells/", "bell")
+                w1 = audiomp3.MP3Decoder(open(fn, "rb"))
+                mix.voice[1].play(w1, loop=False)
             elif seg[1] == "H":
-                fn = get_snds("/sd/mvc", "horn")
-                w0 = audiomp3.MP3Decoder(open(fn, "rb"))
-                mix.voice[0].play(w0, loop=False)
+                fn = get_snds("horns/", "horn")
+                w1 = audiomp3.MP3Decoder(open(fn, "rb"))
+                mix.voice[1].play(w1, loop=False)
         # lights LNZZZ_R_G_B or BXXX
         elif seg[:2] == 'LN' or seg[0] == 'B':
             set_hdw_lights(seg)
@@ -1165,7 +1185,7 @@ async def random_effect(il, ih, d):
         return
     i = random.randint(il, ih)
     if i == 1:
-        await rbow(.005, d)
+        await rbow(0.012, d)
     elif i == 2:
         multi_color()
         await asyncio.sleep(d)
@@ -1189,17 +1209,17 @@ async def rbow(spd, dur):
             te = time.monotonic()-st
             if te > dur:
                 return
-        for j in reversed(range(0, 255, 1)):
-            if exit_set_hdw_async:
-                return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
-            led.show()
-            time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
+        # for j in reversed(range(0, 255, 1)):
+        #     if exit_set_hdw_async:
+        #         return
+        #     for i in range(n_px):
+        #         pixel_index = (i * 256 // n_px) + j
+        #         led[i] = colorwheel(pixel_index & 255)
+        #     led.show()
+        #     time.sleep(spd)
+        #     te = time.monotonic()-st
+        #     if te > dur:
+        #         return
 
 
 def multi_color():
@@ -1241,7 +1261,7 @@ async def fire(dur):
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
             led.show()
-        upd_vol(random.uniform(0.05, 0.1))
+        await upd_vol_async(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
             return
@@ -1256,8 +1276,8 @@ def bnd(c, l, u):
 
 
 def get_random_media_file(folder_to_search):
-    files = files.return_directory("", folder_to_search, ".mp3")
-    return random.choice(files) if files else None
+    myfiles = files.return_directory("", folder_to_search, ".mp3")
+    return random.choice(myfiles) if myfiles else None
 
 ################################################################################
 # State Machine
