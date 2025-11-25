@@ -225,8 +225,6 @@ cfg_add_song = files.read_json_file(mvc_folder +
     "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
-cont_run = cfg["cont_mode"]
-
 local_ip = ""
 
 ovrde_sw_st = {}
@@ -353,7 +351,7 @@ if (web):
 
             @server.route("/mode", [POST])
             def btn(request: Request):
-                global cont_run, ts_mode
+                global ts_mode
                 rq_d = request.json()
                 if rq_d["an"] == "left":
                     ovrde_sw_st["switch_value"] = "left"
@@ -367,15 +365,13 @@ if (web):
                     ovrde_sw_st["switch_value"] = "four"
                 elif rq_d["an"] == "cont_mode_on":
                     stop_all_cmds()
-                    cont_run = True
                     ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-                    cfg["cont_mode"] = cont_run
+                    cfg["cont_mode"] = True
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "cont_mode_off":
                     stop_all_cmds()
                     ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-                    cont_run = False
-                    cfg["cont_mode"] = cont_run
+                    cfg["cont_mode"] = False
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
                     stop_all_cmds()
@@ -611,9 +607,9 @@ def clr_cmd_queue():
 
 
 def stop_all_cmds():
-    global exit_set_hdw_async, cont_run, flsh_i, flsh_t
+    global exit_set_hdw_async, flsh_i, flsh_t
     flsh_i = len(flsh_t)-1
-    cont_run = False
+    cfg["cont_mode"] = False
     mix.voice[0].stop()
     mix.voice[1].stop()
     clr_cmd_queue()
@@ -881,7 +877,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global cont_run, flsh_i, flsh_t, an_running
+    global flsh_i, flsh_t, an_running, exit_set_hdw_async
 
     an_running = True
 
@@ -948,15 +944,18 @@ async def an_light_async(f_nm):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left" and cfg["can_cancel"]:
+            flsh_i = len(flsh_t)-1
             mix.voice[0].stop()
+            mix.voice[1].stop()
+            exit_set_hdw_async = True
             add_cmd("TA_0_2")
             an_running = False
             return
         if sw == "left_held":
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
-            if cont_run:
-                cont_run = False
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
@@ -1194,7 +1193,6 @@ async def random_effect(il, ih, d):
 
 
 async def rbow(spd, dur):
-    global exit_set_hdw_async
     st = time.monotonic()
     te = time.monotonic()-st
     while te < dur:
@@ -1346,19 +1344,21 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, an_just_added
+        global an_just_added
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left_held":
-            if cont_run:
+            if cfg["cont_mode"]:
                 stop_all_cmds()
-                cont_run = False
+                cfg["cont_mode"] = False
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                files.write_json_file("/sd/cfg.json", cfg)
             else:
                 stop_all_cmds()
-                cont_run = True
+                cfg["cont_mode"] = True
                 ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-        elif (sw == "left" or cont_run) and not mix.voice[0].playing and not an_running:
+                files.write_json_file("/sd/cfg.json", cfg)
+        elif (sw == "left" or cfg["cont_mode"]) and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
         elif sw == "right" and not mix.voice[0].playing:
@@ -1456,7 +1456,7 @@ class Snds(Ste):
                     pass
             else:
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
-                files.write_json_file("cfg.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 w0 = audiomp3.MP3Decoder(
                     open(mvc_folder + "option_selected.mp3", "rb"))
                 mix.voice[0].play(w0, loop=False)
@@ -1551,7 +1551,7 @@ class VolSet(Ste):
         elif sw == "right" and s.vol_adj_mode:
             ch_vol("raise")
         elif sw == "right_held" and s.vol_adj_mode:
-            files.write_json_file("cfg.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0(mvc_folder + "all_changes_complete.mp3")
             s.vol_adj_mode = False
             mch.go_to('base_state')
@@ -1560,12 +1560,12 @@ class VolSet(Ste):
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
-            files.write_json_file("cfg.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0(mvc_folder + "all_changes_complete.mp3")
             mch.go_to('base_state')
         if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
-            files.write_json_file("cfg.json", cfg)
+            files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0(mvc_folder + "all_changes_complete.mp3")
             mch.go_to('base_state')
 
@@ -1613,7 +1613,7 @@ class WebOpt(Ste):
                 ply_a_0(mvc_folder + "web_instruct.mp3")
                 sel_web()
             else:
-                files.write_json_file("cfg.json", cfg)
+                files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
@@ -1639,6 +1639,7 @@ if (web):
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
         led[1] = (0, 255, 0)
+        led.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
     except Exception as e:
