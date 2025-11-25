@@ -945,7 +945,7 @@ async def an_light_async(f_nm):
             flsh_i += 1
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left" and cfg["can_cancel"]:
+        if sw == "left" or sw == "right":
             flsh_i = len(flsh_t)-1
             mix.voice[0].stop()
             mix.voice[1].stop()
@@ -953,7 +953,7 @@ async def an_light_async(f_nm):
             add_cmd("TA_0_2")
             an_running = False
             return
-        if sw == "left_held":
+        if sw == "left_held" or sw == "right_held":
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
             if cfg["cont_mode"]:
@@ -1215,6 +1215,10 @@ async def rbow(spd, dur):
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
+            pressed_sw =  l_sw_io.value
+            if pressed_sw: 
+                ovrde_sw_st["switch_value"] = "left"
+                return
             if exit_set_hdw_async:
                 return
             for i in range(n_px):
@@ -1225,17 +1229,6 @@ async def rbow(spd, dur):
             te = time.monotonic()-st
             if te > dur:
                 return
-        # for j in reversed(range(0, 255, 1)):
-        #     if exit_set_hdw_async:
-        #         return
-        #     for i in range(n_px):
-        #         pixel_index = (i * 256 // n_px) + j
-        #         led[i] = colorwheel(pixel_index & 255)
-        #     led.show()
-        #     time.sleep(spd)
-        #     te = time.monotonic()-st
-        #     if te > dur:
-        #         return
 
 
 def multi_color():
@@ -1257,6 +1250,10 @@ def multi_color():
             g1 = 0
             b1 = b
         led[i] = (r1, g1, b1)
+        pressed_sw =  l_sw_io.value
+        if pressed_sw: 
+            ovrde_sw_st["switch_value"] = "left"
+            return
     led.show()
 
 
@@ -1277,6 +1274,10 @@ async def fire(dur):
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
             led.show()
+        pressed_sw =  l_sw_io.value
+        if pressed_sw: 
+            ovrde_sw_st["switch_value"] = "left"
+            return
         await upd_vol_async(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
@@ -1365,7 +1366,7 @@ class BseSt(Ste):
         global an_just_added
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held":
+        if sw == "left_held" or sw == "right_held":
             if cfg["cont_mode"]:
                 stop_all_cmds()
                 cfg["cont_mode"] = False
