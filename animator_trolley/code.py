@@ -251,6 +251,8 @@ n_px = 13
 # 16 on demo, 17 tiny, 10 on large, 13 on motor board motor4 pin
 led = neopixel.NeoPixel(board.GP13, n_px)
 led.auto_write = False
+led.fill((20, 20, 20))
+led.show()
 
 gc_col("Neopixels setup")
 
@@ -1134,6 +1136,22 @@ async def set_hdw_async(input_string, dur=3):
                     else:
                         w1 = audiomp3.MP3Decoder(
                             open("/stops/" + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "S":
+                    if seg[3:] == "RAND":
+                        rand_snd = get_random_media_file("/santa")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/santa/" + rand_snd + ".mp3", "rb"))
+                    else:
+                        w1 = audiomp3.MP3Decoder(
+                            open("/santa/" + seg[3:] + ".mp3", "rb"))
+                elif seg[2] == "C":
+                    if seg[3:] == "RAND":
+                        rand_snd = get_random_media_file("/story")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/story/" + rand_snd + ".mp3", "rb"))
+                    else:
+                        w1 = audiomp3.MP3Decoder(
+                            open("/story/" + seg[3:] + ".mp3", "rb"))
                 if seg[1] == "W" or seg[1] == "P":
                     stp_a_1()
                     mix.voice[1].play(w1, loop=False)
