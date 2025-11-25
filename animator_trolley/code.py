@@ -215,9 +215,6 @@ web = cfg["serve_webpage"]
 cfg_main = files.read_json_file(mvc_folder + "main_menu.json")
 main_m = cfg_main["main_menu"]
 
-cfg_vol = files.read_json_file(mvc_folder + "volume_settings.json")
-vol_set = cfg_vol["volume_settings"]
-
 cfg_web = files.read_json_file(mvc_folder + "web_menu.json")
 web_m = cfg_web["web_menu"]
 
@@ -945,7 +942,7 @@ async def an_light_async(f_nm):
             flsh_i += 1
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left" or sw == "right":
+        if sw == "left":
             flsh_i = len(flsh_t)-1
             mix.voice[0].stop()
             mix.voice[1].stop()
@@ -953,7 +950,7 @@ async def an_light_async(f_nm):
             add_cmd("TA_0_2")
             an_running = False
             return
-        if sw == "left_held" or sw == "right_held":
+        if sw == "left_held":
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
             if cfg["cont_mode"]:
@@ -1366,7 +1363,7 @@ class BseSt(Ste):
         global an_just_added
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left_held" or sw == "right_held":
+        if sw == "left_held":
             if cfg["cont_mode"]:
                 stop_all_cmds()
                 cfg["cont_mode"] = False
@@ -1416,8 +1413,21 @@ class Main(Ste):
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
-            elif sel_mnu == "volume_settings":
-                mch.go_to('volume_settings')
+            elif sel_mnu == "volume_level_adjustment":
+                vol_adj_mode = True
+                ply_a_0(mvc_folder + "volume_adjustment_menu.mp3")
+                while vol_adj_mode:
+                    sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+                    if sw == "left" and vol_adj_mode:
+                        ch_vol("lower")
+                    elif sw == "right" and vol_adj_mode:
+                        ch_vol("raise")
+                    elif sw == "right_held" and vol_adj_mode:
+                        files.write_json_file("/sd/cfg.json", cfg)
+                        ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                        vol_adj_mode = False
+                        mch.go_to('base_state')
+                        upd_vol(0.1)
             elif sel_mnu == "add_sounds_animate":
                 mch.go_to('add_sounds_animate')
             elif sel_mnu == "web_options":
@@ -1531,64 +1541,6 @@ class AddSnds(Ste):
                 mch.go_to('base_state')
 
 
-class VolSet(Ste):
-
-    def __init__(s):
-        s.i = 0
-        s.sel_i = 0
-        s.vol_adj_mode = False
-
-    @property
-    def name(s):
-        return 'volume_settings'
-
-    def enter(s, mch):
-        files.log_item('Set Web Options')
-        ply_a_0(mvc_folder + "volume_settings_menu.mp3")
-        l_r_but()
-        s.vol_adj_mode = False
-        Ste.enter(s, mch)
-
-    def exit(s, mch):
-        Ste.exit(s, mch)
-
-    def upd(s, mch):
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left" and not s.vol_adj_mode:
-            ply_a_0(mvc_folder + vol_set[s.i] + ".mp3")
-            s.sel_i = s.i
-            s.i += 1
-            if s.i > len(vol_set)-1:
-                s.i = 0
-        if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
-            if sw == "right":
-                s.vol_adj_mode = True
-                ply_a_0(mvc_folder + "volume_adjustment_menu.mp3")
-        elif sw == "left" and s.vol_adj_mode:
-            ch_vol("lower")
-        elif sw == "right" and s.vol_adj_mode:
-            ch_vol("raise")
-        elif sw == "right_held" and s.vol_adj_mode:
-            files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.mp3")
-            s.vol_adj_mode = False
-            mch.go_to('base_state')
-            upd_vol(0.1)
-        if sw == "right" and vol_set[s.sel_i] == "volume_pot_off":
-            cfg["volume_pot"] = False
-            if cfg["volume"] == 0:
-                cfg["volume"] = 10
-            files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.mp3")
-            mch.go_to('base_state')
-        if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
-            cfg["volume_pot"] = True
-            files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.mp3")
-            mch.go_to('base_state')
-
-
 class WebOpt(Ste):
     def __init__(self):
         self.i = 0
@@ -1645,7 +1597,6 @@ st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
 st_mch.add(AddSnds())
-st_mch.add(VolSet())
 st_mch.add(WebOpt())
 
 aud_en.value = True
