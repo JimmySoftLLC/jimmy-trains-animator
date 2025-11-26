@@ -960,9 +960,10 @@ async def an_light_async(f_nm):
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
             if cfg["cont_mode"]:
-                cfg["cont_mode"] = False
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                cfg["cont_mode"] = False
+                files.write_json_file("/sd/cfg.json", cfg)
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
@@ -1210,7 +1211,8 @@ async def set_hdw_async(cmd, dur=3):
                 else:
                     br -= 1
                     led.brightness = float(br/100)
-                upd_vol_async(.01)
+                led.show()
+                time.sleep(.01)
         # WXXX = Wait XXX decimal seconds
         elif seg[0] == 'W':  # wait time
             s = float(seg[1:])
@@ -1398,8 +1400,8 @@ class BseSt(Ste):
         if sw == "left_held":
             if cfg["cont_mode"]:
                 stop_all_cmds()
-                cfg["cont_mode"] = False
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                cfg["cont_mode"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
             else:
                 stop_all_cmds()
