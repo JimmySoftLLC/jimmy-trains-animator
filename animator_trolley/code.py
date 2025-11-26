@@ -334,14 +334,7 @@ if (web):
             def btn(request: Request):
                 stop_all_cmds()
                 rq_d = request.json()
-                if rq_d["an"] == "reset_animation_timing_to_defaults":
-                    for ts_fn in ts_jsons:
-                        ts = files.read_json_file(
-                            "/t_s_def/" + ts_fn + ".json")
-                        files.write_json_file(
-                            animations_folder+ts_fn+".json", ts)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
-                elif rq_d["an"] == "reset_to_defaults":
+                if rq_d["an"] == "reset_to_defaults":
                     rst_def()
                     files.write_json_file("/sd/cfg.json", cfg)
                     ply_a_0(mvc_folder + "all_changes_complete.mp3")
@@ -389,14 +382,6 @@ if (web):
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
                     ply_a_0(mvc_folder + "left_speaker_right_speaker.mp3")
-                elif rq_d["an"] == "volume_pot_off":
-                    cfg["volume_pot"] = False
-                    files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
-                elif rq_d["an"] == "volume_pot_on":
-                    cfg["volume_pot"] = True
-                    files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/lights", [POST])
@@ -638,51 +623,41 @@ def get_track_voltage():
 
 
 def rst_def():
-    cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-trolley"
     cfg["option_selected"] = "random all"
-    cfg["volume"] = "20"
+    cfg["cont_mode"] = False
+    cfg["volume"] = "50"
+    cfg["HOST_NAME"] = "animator-trolley"
+    cfg["serve_webpage"] = True
+
 
 ################################################################################
 # Dialog and sound play methods
 
 
 def upd_vol(s):
-    if cfg["volume_pot"]:
-        volume = a_in.value / 65536
-        mix.voice[0].level = volume
-        mix.voice[1].level = volume
-        time.sleep(s)
-    else:
-        try:
-            volume = int(cfg["volume"]) / 100
-        except Exception as e:
-            files.log_item(e)
-            volume = .5
-        if volume < 0 or volume > 1:
-            volume = .5
-        mix.voice[0].level = volume
-        mix.voice[1].level = volume
-        time.sleep(s)
+    try:
+        volume = int(cfg["volume"]) / 100
+    except Exception as e:
+        files.log_item(e)
+        volume = .5
+    if volume < 0 or volume > 1:
+        volume = .5
+    mix.voice[0].level = volume
+    mix.voice[1].level = volume
+    time.sleep(s)
 
 
 async def upd_vol_async(s):
-    if cfg["volume_pot"]:
-        v = a_in.value / 65536
-        mix.voice[0].level = v
-        mix.voice[1].level = v
-        await asyncio.sleep(s)
-    else:
-        try:
-            v = int(cfg["volume"]) / 100
-        except Exception as e:
-            files.log_item(e)
-            v = .5
-        if v < 0 or v > 1:
-            v = .5
-        mix.voice[0].level = v
-        mix.voice[1].level = v
-        await asyncio.sleep(s)
+    try:
+        v = int(cfg["volume"]) / 100
+    except Exception as e:
+        files.log_item(e)
+        v = .5
+    if v < 0 or v > 1:
+        v = .5
+    mix.voice[0].level = v
+    mix.voice[1].level = v
+    await asyncio.sleep(s)
 
 
 def ch_vol(action):
@@ -709,7 +684,6 @@ def ch_vol(action):
     if v < 1:
         v = 1
     cfg["volume"] = str(v)
-    cfg["volume_pot"] = False
     if not mix.voice[0].playing:
         files.write_json_file("/sd/cfg.json", cfg)
         ply_a_0(mvc_folder + "volume.mp3")
@@ -912,9 +886,8 @@ async def an_light_async(f_nm):
 
             # add end command to time stamps so all table values can be used
             ft_last = flsh_t[len(flsh_t)-1].split("|")
-            tm_last = float(ft_last[0]) + 1
-            flsh_t.append(str(tm_last) + "|E")
-            flsh_t.append(str(tm_last + 1) + "|E")
+            tm_last = float(ft_last[0]) + .1
+            flsh_t.append(str(tm_last) + "|")
         else:
             return
         flsh_i += 1
@@ -986,6 +959,7 @@ async def an_ts(f_nm):
     print("time stamp mode")
     global t_s, t_elsp, ts_mode, ovrde_sw_st
 
+    t_elsp = 0
     t_s =[""]
 
     if (f_exists(animations_folder + f_nm + ".json") == True):
@@ -1614,9 +1588,6 @@ class WebOpt(Ste):
                 sel_web()
             elif selected_menu_item == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
-                sel_web()
-            elif selected_menu_item == "hear_instr_web":
-                ply_a_0(mvc_folder + "web_instruct.mp3")
                 sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
