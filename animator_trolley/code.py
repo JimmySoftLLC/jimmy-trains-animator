@@ -820,8 +820,8 @@ async def no_trk():
 def spk_web():
     ply_a_0(mvc_folder + "animator_available_on_network.mp3")
     ply_a_0(mvc_folder + "to_access_type.mp3")
-    if cfg["HOST_NAME"] == "animator-ride-on-train":
-        ply_a_0(mvc_folder + "animator_ride_on_train.mp3")
+    if cfg["HOST_NAME"] == "animator-trolley":
+        ply_a_0(mvc_folder + "animator_trolley.mp3")
         ply_a_0(mvc_folder + "dot.mp3")
         ply_a_0(mvc_folder + "local.mp3")
     else:
@@ -909,12 +909,18 @@ async def an_light_async(f_nm):
 
             ft1 = []
             ft2 = []
+
+            # add end command to time stamps so all table values can be used
+            ft_last = flsh_t[len(flsh_t)-1].split("|")
+            tm_last = float(ft_last[0]) + 1
+            flsh_t.append(str(tm_last) + "|E")
+            flsh_t.append(str(tm_last + 1) + "|E")
         else:
             return
         flsh_i += 1
     else:
         return
-
+    
     while True:
         t_past = time.monotonic()-srt_t
 
@@ -979,22 +985,46 @@ async def an_ts(f_nm):
     print("time stamp mode")
     global t_s, t_elsp, ts_mode, ovrde_sw_st
 
-    t_s = []
+    t_s =[""]
 
-    try:
-        w0 = audiomp3.MP3Decoder(
-            open(animations_folder + f_nm + ".mp3", "rb"))
-    except:
-        if (f_exists(animations_folder + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(
-                animations_folder + f_nm + ".json")
-            ft1 = flsh_t[flsh_i].split("|")
-            w0_nm = await set_hdw_async(ft1[1])
-            print("Result is: ", w0_nm)
-            w0 = audiomp3.MP3Decoder(
-                open(animations_folder + w0_nm + ".mp3", "rb"))
-
-    mix.voice[0].play(w0, loop=False)
+    if (f_exists(animations_folder + f_nm + ".json") == True):
+        t_s_from_file = files.read_json_file(
+            animations_folder + f_nm + ".json")
+    else:
+        return
+    
+    if len(t_s) > 0:
+        t_s[0] = t_s_from_file[0]
+        ft1 = t_s[0].split("|")
+        result = await set_hdw_async(ft1[1])
+        print("Result is: ", result)
+        result = result.split("_")
+        if result and len(result) > 1:
+            w0_exists = f_exists(animations_folder + result[1])
+            if w0_exists:
+                if result[0] == "1":
+                    repeat = True
+                else:
+                    repeat = False
+            else:
+                return
+            if w0_exists:
+                file_name = animations_folder + result[1]
+                # Choose decoder based on file extension
+                if file_name.lower().endswith(".mp3"):
+                    w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
+                elif file_name.lower().endswith(".wav"):
+                    w0 = audiocore.WaveFile(open(file_name, "rb"))
+                else:
+                    raise ValueError("Unsupported audio format: " + file_name)
+                # Play the selected file
+                mix.voice[0].play(w0, loop = repeat)
+            else:
+                return
+        else:
+            return
+    else:
+        return
 
     startTime = time.monotonic()
     upd_vol(.1)
@@ -1040,10 +1070,12 @@ def set_hdw_lights(seg):
         br = int(seg[1:])
         led.brightness = float(br/100)
 
-async def set_hdw_async(input_string, dur=3):
+async def set_hdw_async(cmd, dur=3):
     global br, current_throttle
+    if cmd == "":
+        return "NOCMDS"
     # Split the input string into segments
-    segs = input_string.split(",")
+    segs = cmd.split(",")
     # Process each segment
     for seg in segs:
         # TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100
@@ -1270,7 +1302,7 @@ async def fire(dur):
             g1 = bnd(g-f, 0, 255)
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
-            led.show()
+        led.show()
         pressed_sw =  l_sw_io.value
         if pressed_sw: 
             ovrde_sw_st["switch_value"] = "left"

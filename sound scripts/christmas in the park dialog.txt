@@ -44,4 +44,10 @@ Each light has an i d on the back.  For example grandtree, dash, 21.  The lights
 The default setup is cane, dash, 4, repeated five more times, then grandtree, dash, 21,   This can be changed.  To change it you select menu options clear light string, and, or, add lights to light string.  These settings
 can also be changed on the animator dash christmas dash park dot local web page.  To setup this web page on your local network follow the instructions in the wep page options menu.
 
+You can create your own sound track files by putting wav files in the folder called s n d on the microSD card that is inserted 
+in your animator.  The files must be named with only lower case letters, numbers and spaces. For example. white christmas. The files must be wav files encoded with a sample rate of 22050Hz and a sample format of 16 bits. 
+You can create files of this type using Audacity, a free application.
+
+Once you have your files on the microSD card reinsert it into the animator and power it back on.
+Next you animate them by creating a animation file using the webpage.  Further instruction can be found at JimmyTrains.com.
 
