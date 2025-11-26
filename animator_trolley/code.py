@@ -474,7 +474,7 @@ if (web):
                     print(rq_d)
                     f_n = animations_folder + rq_d["fn"] + ".json"
                     print(f_n)
-                    an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
+                    an_data = ["0.0|MB0name of your track.wav", "1.0|"]
                     files.write_json_file(f_n, an_data)
                     upd_media()
                     return Response(request, "Created animation successfully.")
@@ -964,7 +964,7 @@ async def an_light_async(f_nm):
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
                 cfg["cont_mode"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
+        if (not mix.voice[0].playing and w0_exists) and not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
             add_cmd("TA_0_2")
@@ -1018,6 +1018,7 @@ async def an_ts(f_nm):
                     w0 = audiocore.WaveFile(open(file_name, "rb"))
                 else:
                     raise ValueError("Unsupported audio format: " + file_name)
+                add_command_to_ts("B0,ZCOLCH,F100,TA_30_1")
                 # Play the selected file
                 mix.voice[0].play(w0, loop = repeat)
             else:
@@ -1034,10 +1035,10 @@ async def an_ts(f_nm):
         t_elsp = round(time.monotonic()-startTime, 1)
         r_sw.update()
         if r_sw.fell or ovrde_sw_st["switch_value"]:
-            add_command_to_ts("")
+            add_command_to_ts("ZRAND")
             ovrde_sw_st["switch_value"] = ""
         if not mix.voice[0].playing:
-            add_command_to_ts("")
+            add_command_to_ts("B100,TA_0_1,F0,LN0_0_0_0,B100")
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
