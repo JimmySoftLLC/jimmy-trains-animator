@@ -218,8 +218,8 @@ main_m = cfg_main["main_menu"]
 cfg_web = files.read_json_file(mvc_folder + "web_menu.json")
 web_m = cfg_web["web_menu"]
 
-cfg_add_song = files.read_json_file(mvc_folder + 
-    "add_sounds_animate.json")
+cfg_add_song = files.read_json_file(mvc_folder +
+                                    "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
 local_ip = ""
@@ -690,7 +690,7 @@ def ch_vol(action):
         spk_str(cfg["volume"], False)
 
 
-def ply_a_0(file_name, wait=True, repeat = False):
+def ply_a_0(file_name, wait=True, repeat=False):
     # Stop if voice is currently playing
     if mix.voice[0].playing:
         mix.voice[0].stop()
@@ -706,7 +706,7 @@ def ply_a_0(file_name, wait=True, repeat = False):
         raise ValueError("Unsupported audio format: " + file_name)
 
     # Play the selected file
-    mix.voice[0].play(w0, loop = repeat)
+    mix.voice[0].play(w0, loop=repeat)
 
     # Wait until playback completes
     if wait:
@@ -719,6 +719,7 @@ def wait_snd():
     while mix.voice[0].playing:
         pass
 
+
 def wait_snd_1():
     while mix.voice[1].playing:
         pass
@@ -727,6 +728,7 @@ def wait_snd_1():
 def stp_a_0():
     mix.voice[0].stop()
     wait_snd()
+
 
 def stp_a_1():
     mix.voice[1].stop()
@@ -893,7 +895,7 @@ async def an_light_async(f_nm):
         flsh_i += 1
     else:
         return
-    
+
     while True:
         t_past = time.monotonic()-srt_t
 
@@ -937,7 +939,7 @@ async def an_light_async(f_nm):
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
                 cfg["cont_mode"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
-        if (not mix.voice[0].playing and w0_exists) and not flsh_i < len(flsh_t)-1:
+        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
             add_cmd("TA_0_2")
@@ -960,14 +962,14 @@ async def an_ts(f_nm):
     global t_s, t_elsp, ts_mode, ovrde_sw_st
 
     t_elsp = 0
-    t_s =[""]
+    t_s = [""]
 
     if (f_exists(animations_folder + f_nm + ".json") == True):
         t_s_from_file = files.read_json_file(
             animations_folder + f_nm + ".json")
     else:
         return
-    
+
     if len(t_s) > 0:
         t_s[0] = t_s_from_file[0]
         ft1 = t_s[0].split("|")
@@ -994,7 +996,7 @@ async def an_ts(f_nm):
                     raise ValueError("Unsupported audio format: " + file_name)
                 add_command_to_ts("B0,ZCOLCH,F100,TA_30_1")
                 # Play the selected file
-                mix.voice[0].play(w0, loop = repeat)
+                mix.voice[0].play(w0, loop=repeat)
             else:
                 return
         else:
@@ -1031,6 +1033,7 @@ async def an_ts(f_nm):
 # animation effects
 br = 0
 
+
 def set_hdw_lights(seg):
     global br
     # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
@@ -1046,8 +1049,9 @@ def set_hdw_lights(seg):
         br = int(seg[1:])
         led.brightness = float(br/100)
 
+
 async def set_hdw_async(cmd, dur=3):
-    global br, current_throttle
+    global br, current_throttle, media_file_index
     if cmd == "":
         return "NOCMDS"
     # Split the input string into segments
@@ -1108,7 +1112,7 @@ async def set_hdw_async(cmd, dur=3):
             repeat = seg[2]
             file_nm = seg[3:]
             return repeat + "_" + file_nm
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops) XXX (file name, if RAND random selection of folder)
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
         elif seg[0] == 'M':  # play file
             if seg[1] == "S":
                 stp_a_0()
@@ -1116,15 +1120,19 @@ async def set_hdw_async(cmd, dur=3):
                 if seg[2] == "E":
                     if seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/elves")
-                        w1 = audiomp3.MP3Decoder(open("/elves/" + rand_snd + ".mp3", "rb"))
+                        w1 = audiomp3.MP3Decoder(
+                            open("/elves/" + rand_snd + ".mp3", "rb"))
                     else:
-                        w1 = audiomp3.MP3Decoder(open(elves_folder + seg[3:] + ".mp3", "rb"))
+                        w1 = audiomp3.MP3Decoder(
+                            open(elves_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "B":
                     if seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/bells")
-                        w1 = audiomp3.MP3Decoder(open("/bells/" + rand_snd + ".mp3", "rb"))
+                        w1 = audiomp3.MP3Decoder(
+                            open("/bells/" + rand_snd + ".mp3", "rb"))
                     else:
-                        w1 = audiomp3.MP3Decoder(open(bells_folder + seg[3:] + ".mp3", "rb"))
+                        w1 = audiomp3.MP3Decoder(
+                            open(bells_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "H":
                     if seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/horns")
@@ -1132,7 +1140,7 @@ async def set_hdw_async(cmd, dur=3):
                             open("/horns/" + rand_snd + ".mp3", "rb"))
                     else:
                         w1 = audiomp3.MP3Decoder(
-                        open(horns_folder + seg[3:] + ".mp3", "rb"))
+                            open(horns_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "T":
                     if seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/stops")
@@ -1150,7 +1158,16 @@ async def set_hdw_async(cmd, dur=3):
                         w1 = audiomp3.MP3Decoder(
                             open("/santa/" + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "C":
-                    if seg[3:] == "RAND":
+                    if seg[3:] == "SEQN":
+                        rand_snd = get_indexed_media_file("/story")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/story/" + rand_snd + ".mp3", "rb"))
+                    if seg[3:] == "SEQF":
+                        media_file_index = 0
+                        rand_snd = get_indexed_media_file("/story")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/story/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/story")
                         w1 = audiomp3.MP3Decoder(
                             open("/story/" + rand_snd + ".mp3", "rb"))
@@ -1221,8 +1238,8 @@ async def rbow(spd, dur):
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
-            pressed_sw =  l_sw_io.value
-            if pressed_sw: 
+            pressed_sw = l_sw_io.value
+            if pressed_sw:
                 ovrde_sw_st["switch_value"] = "left"
                 return
             if exit_set_hdw_async:
@@ -1256,8 +1273,8 @@ def multi_color():
             g1 = 0
             b1 = b
         led[i] = (r1, g1, b1)
-        pressed_sw =  l_sw_io.value
-        if pressed_sw: 
+        pressed_sw = l_sw_io.value
+        if pressed_sw:
             ovrde_sw_st["switch_value"] = "left"
             return
     led.show()
@@ -1280,8 +1297,8 @@ async def fire(dur):
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
         led.show()
-        pressed_sw =  l_sw_io.value
-        if pressed_sw: 
+        pressed_sw = l_sw_io.value
+        if pressed_sw:
             ovrde_sw_st["switch_value"] = "left"
             return
         await upd_vol_async(random.uniform(0.05, 0.1))
@@ -1301,6 +1318,26 @@ def bnd(c, l, u):
 def get_random_media_file(folder_to_search):
     myfiles = files.return_directory("", folder_to_search, ".mp3")
     return random.choice(myfiles) if myfiles else None
+
+
+media_file_index = 0
+
+def get_indexed_media_file(folder_to_search):
+    global media_file_index
+
+    myfiles = files.return_directory("", folder_to_search, ".mp3")
+    if not myfiles:
+        media_file_index = 0
+        return None
+    if media_file_index >= len(myfiles):
+        media_file_index = 0
+    selected_file = myfiles[media_file_index]
+    media_file_index += 1
+
+    print("indexed file: ", selected_file)
+
+    return selected_file
+
 
 ################################################################################
 # State Machine
@@ -1426,7 +1463,8 @@ class Main(Ste):
                 vol_adj_mode = True
                 ply_a_0(mvc_folder + "volume_adjustment_menu.mp3")
                 while vol_adj_mode:
-                    sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+                    sw = utilities.switch_state(
+                        l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
                     if sw == "left" and vol_adj_mode:
                         ch_vol("lower")
                     elif sw == "right" and vol_adj_mode:
@@ -1692,4 +1730,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
