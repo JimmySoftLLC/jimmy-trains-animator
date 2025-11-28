@@ -1096,7 +1096,7 @@ async def set_hdw_async(cmd, dur=3):
         # ZCOLCH = Color change
         elif seg[0:] == 'ZCOLCH':
             multi_color()
-        # TXXX_AAA = Train XXX throttle -100 to 100
+        # TXXX = Train XXX throttle -100 to 100
         elif seg[:1] == 'T':
             try:
                 v_str = seg[1:]
