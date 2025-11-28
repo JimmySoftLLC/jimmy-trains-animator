@@ -1162,7 +1162,7 @@ async def set_hdw_async(cmd, dur=3):
                         rand_snd = get_indexed_media_file("/story")
                         w1 = audiomp3.MP3Decoder(
                             open("/story/" + rand_snd + ".mp3", "rb"))
-                    if seg[3:] == "SEQF":
+                    elif seg[3:] == "SEQF":
                         media_file_index = 0
                         rand_snd = get_indexed_media_file("/story")
                         w1 = audiomp3.MP3Decoder(
