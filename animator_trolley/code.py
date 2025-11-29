@@ -1118,7 +1118,16 @@ async def set_hdw_async(cmd, dur=3):
                 stp_a_0()
             elif seg[1] == "W" or seg[1] == "P":
                 if seg[2] == "E":
-                    if seg[3:] == "RAND":
+                    if seg[3:] == "SEQN":
+                        rand_snd = get_indexed_media_file("/elves")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/elves/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "SEQF":
+                        media_file_index = 0
+                        rand_snd = get_indexed_media_file("/elves")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/elves/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/elves")
                         w1 = audiomp3.MP3Decoder(
                             open("/elves/" + rand_snd + ".mp3", "rb"))
@@ -1126,7 +1135,16 @@ async def set_hdw_async(cmd, dur=3):
                         w1 = audiomp3.MP3Decoder(
                             open(elves_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "B":
-                    if seg[3:] == "RAND":
+                    if seg[3:] == "SEQN":
+                        rand_snd = get_indexed_media_file("/bells")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/bells/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "SEQF":
+                        media_file_index = 0
+                        rand_snd = get_indexed_media_file("/bells")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/bells/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/bells")
                         w1 = audiomp3.MP3Decoder(
                             open("/bells/" + rand_snd + ".mp3", "rb"))
@@ -1134,7 +1152,16 @@ async def set_hdw_async(cmd, dur=3):
                         w1 = audiomp3.MP3Decoder(
                             open(bells_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "H":
-                    if seg[3:] == "RAND":
+                    if seg[3:] == "SEQN":
+                        rand_snd = get_indexed_media_file("/horns")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/horns/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "SEQF":
+                        media_file_index = 0
+                        rand_snd = get_indexed_media_file("/horns")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/horns/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/horns")
                         w1 = audiomp3.MP3Decoder(
                             open("/horns/" + rand_snd + ".mp3", "rb"))
@@ -1142,7 +1169,16 @@ async def set_hdw_async(cmd, dur=3):
                         w1 = audiomp3.MP3Decoder(
                             open(horns_folder + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "T":
-                    if seg[3:] == "RAND":
+                    if seg[3:] == "SEQN":
+                        rand_snd = get_indexed_media_file("/stops")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/stops/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "SEQF":
+                        media_file_index = 0
+                        rand_snd = get_indexed_media_file("/stops")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/stops/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/stops")
                         w1 = audiomp3.MP3Decoder(
                             open("/stops/" + rand_snd + ".mp3", "rb"))
@@ -1150,7 +1186,16 @@ async def set_hdw_async(cmd, dur=3):
                         w1 = audiomp3.MP3Decoder(
                             open("/stops/" + seg[3:] + ".mp3", "rb"))
                 elif seg[2] == "S":
-                    if seg[3:] == "RAND":
+                    if seg[3:] == "SEQN":
+                        rand_snd = get_indexed_media_file("/santa")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/santa/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "SEQF":
+                        media_file_index = 0
+                        rand_snd = get_indexed_media_file("/santa")
+                        w1 = audiomp3.MP3Decoder(
+                            open("/santa/" + rand_snd + ".mp3", "rb"))
+                    elif seg[3:] == "RAND":
                         rand_snd = get_random_media_file("/santa")
                         w1 = audiomp3.MP3Decoder(
                             open("/santa/" + rand_snd + ".mp3", "rb"))

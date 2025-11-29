@@ -111,8 +111,15 @@
                 </div>
             </div>
             <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
-            <button class="mui-btn mui-btn--primary" onclick="blowHorn()">Horn</button>
-            <button class="mui-btn mui-btn--primary" onclick="ringBell()">Bell</button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MPHRAND" data-url="/test-animation"
+                type="button">
+                Horn
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MPBRAND" data-url="/test-animation"
+                type="button">
+                Bell
+            </button>
+
             <button class="mui-btn mui-btn--primary animator-action" data-value="MPERAND" data-url="/test-animation"
                 type="button">
                 Elf
@@ -121,7 +128,7 @@
                 type="button">
                 Station stops
             </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPSRAND" data-url="/test-animation"
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MPSSEQN" data-url="/test-animation"
                 type="button">
                 Santa
             </button>
@@ -1684,16 +1691,6 @@
 
         // Throttle command sending
         throttleSendCommand(newCommand);
-    }
-
-    function blowHorn() {
-        let newCommand = "HH";
-        testAnimationCommand(newCommand);
-    }
-
-    function ringBell() {
-        let newCommand = "HB";
-        testAnimationCommand(newCommand);
     }
 
     const knob = document.getElementById('knob');
