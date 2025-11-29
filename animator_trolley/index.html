@@ -129,6 +129,11 @@
                 type="button">
                 Christmas story
             </button>
+            <h2>Track Voltage:</h2>
+            <input class="input" id="trackVoltage" type="number" disabled>
+            <button class="mui-btn mui-btn--primary" onclick="getTrackVoltage()" type="button">
+                Get Voltage
+            </button>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -207,20 +212,7 @@
                 <h2>Neo pixel colors:</h2>
                 <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
             </div>
-            <h2>Track Voltage:</h2>
-            <input class="input" id="trackVoltage" type="number" disabled>
-            <button class="mui-btn mui-btn--primary" onclick="getTrackVoltage()" type="button">
-                Get Voltage
-            </button>
             <h2>Volume:</h2>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_on" data-url="/speaker"
-                type="button">
-                Volume Pot On
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="volume_pot_off" data-url="/speaker"
-                type="button">
-                Volume Pot Off
-            </button>
             <div class="mui-textfield">
                 <input class="input" id="volume" type="number" disabled>
                 <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
@@ -295,8 +287,6 @@
                     Change
                 </button>
             </div>
-            <a id="ipLink" href="" style="margin-left: 10px; text-decoration: underline; color: #0078d7;">Visit IP</a>
-
             <p>
                 Use alphanumerics and dashes only. All names are automatically
                 appended with .local. So your website url will be something like
@@ -336,7 +326,6 @@
             <div class="mui-textfield">
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
-            <div>AN_XXX = Animation XXX filename</div>
             <div>LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
@@ -515,9 +504,6 @@
             .then(function (data) {
                 local_ip = data; // Set the value of the input field with the received data
                 settingsIpAddress.value = local_ip
-                const ipLinkButton = document.getElementById('ipLinkButton');
-                const ipLink = document.getElementById('ipLink');
-                ipLink.href = `http://${local_ip}`; // Set the link's href
             })
             .catch(function (error) {
                 console.log(error);
