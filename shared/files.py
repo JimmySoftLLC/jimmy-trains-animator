@@ -29,22 +29,43 @@ def print_directory(path, tabs=0):
             log_item_name += "/"
         log_item('{0:<40} Size: {1:>10}'.format(log_item_name, size_str))
 
-        # recursively files.log_item directory contents
         if isdir:
             print_directory(path + "/" + file, tabs + 1)
 
-def return_directory(prefix, path, fileType, remove_ext = True, replace_ext_with =''):
+def return_directory(prefix='', path='.', fileType='', remove_ext=True, replace_ext_with=''):
     file_list = []
-    for file in os.listdir(path):  
-        if "._" not in file and fileType in file:
-            if remove_ext:
-                file_name = prefix + file.replace(fileType, '')
-            elif replace_ext_with:
-                file_name = prefix + file.replace(fileType, replace_ext_with)
+    
+    for file in os.listdir(path):
+        if "._" in file:
+            continue
+        if fileType and fileType not in file:
+            continue
+
+
+        if remove_ext and file.endswith(fileType):
+            name = file[:-len(fileType)]
+        elif replace_ext_with and file.endswith(fileType):
+            name = file[:-len(fileType)] + replace_ext_with
+        else:
+            name = file
+        file_list.append(prefix + name)
+
+    def natural_key(s):
+        key = []
+        num = ''
+        for c in s:
+            if c.isdigit():
+                num += c
             else:
-                file_name = prefix + file
-            file_list.append(file_name)
-    file_list.sort()
+                if num:
+                    key.append(int(num))
+                    num = ''
+                key.append(c.lower())
+        if num:
+            key.append(int(num))
+        return key
+
+    file_list.sort(key=natural_key)
     return file_list
  
 def write_file_lines(file_name, lines):
@@ -88,7 +109,6 @@ def read_json_file(file_name):
     return python_dictionary
 
 def strip_path_and_extension(file_path):
-    # Extract the file name from the path without the extension
     file_name = os.path.splitext(os.path.basename(file_path))[0]
     return file_name
 
