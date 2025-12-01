@@ -1143,7 +1143,6 @@ async def set_hdw_async(cmd, dur=3):
                     folder = FOLDER_MAP[seg[2]]
                     code   = seg[3:]
                     if code == "SEQN":
-                        print("next index", media_index[seg[2]])
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
                     elif code == "SEQF":
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
