@@ -1139,12 +1139,11 @@ async def set_hdw_async(cmd, dur=3):
             if seg[1] == "S":
                 stp_a_0()
             elif seg[1] == "W" or seg[1] == "P":
-                # One index per sound group
-                media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
                 if seg[2] in FOLDER_MAP:
                     folder = FOLDER_MAP[seg[2]]
                     code   = seg[3:]
                     if code == "SEQN":
+                        print("next index", media_index[seg[2]])
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
                     elif code == "SEQF":
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
@@ -1155,7 +1154,7 @@ async def set_hdw_async(cmd, dur=3):
                     w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
                 if seg[1] == "W" or seg[1] == "P":
                     stp_a_1()
-                    mix.voice[1].play(w1, loop=False)
+                    mix.voice[1].play(w1, loop=False)        
                 if seg[1] == "W":
                     wait_snd_1()
         # HA = Blow horn or bell, A (H Horn, B Bell)
@@ -1299,7 +1298,7 @@ def get_random_media_file(folder_to_search):
     return random.choice(myfiles) if myfiles else None
 
 
-def get_indexed_media_file(folder_to_search, file_ext, index=0):
+def get_indexed_media_file(folder_to_search, file_ext, index):
     if not file_ext.startswith('.'):
         file_ext = '.' + file_ext
     file_ext = file_ext.lower()
@@ -1314,7 +1313,7 @@ def get_indexed_media_file(folder_to_search, file_ext, index=0):
     selected_file = myfiles[index]
     new_index = (index + 1) % len(myfiles)
 
-    print(f"playing: {selected_file}  ({new_index}/{len(myfiles)})")
+    print(f"playing: {selected_file}  ({index}/{len(myfiles)})")
 
     return selected_file, new_index
 
