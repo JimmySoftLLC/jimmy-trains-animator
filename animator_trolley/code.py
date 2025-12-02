@@ -46,6 +46,7 @@ import os
 import audiocore
 import sdcardio
 import storage
+from trolley_controller import TrolleyController
 
 
 def gc_col(collection_point):
@@ -189,20 +190,6 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
-# Setup motor controller
-p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
-d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
-
-# DC motor setup; Set pins to custom PWM frequency, 17 16 on incline, 0 1 on demo
-pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
-train = motor.DCMotor(pwm_a, pwm_b)
-train.decay_mode = d_mde
-train.throttle = 0
-current_throttle = 0
-
-
-################################################################################
 # Flash data
 
 cfg = files.read_json_file("/sd/cfg.json")
@@ -269,6 +256,42 @@ led.fill((20, 20, 20))
 led.show()
 
 gc_col("Neopixels setup")
+
+################################################################################
+# Setup motor controller
+p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
+d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
+
+# DC motor setup; Set pins to custom PWM frequency, 17 16 on incline, 0 1 on demo
+pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
+pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
+train = motor.DCMotor(pwm_a, pwm_b)
+train.decay_mode = d_mde
+train.throttle = 0
+current_throttle = 0
+
+from trolley_controller import TrolleyController
+
+controller = TrolleyController(
+    train,
+    l_sw_io,
+    r_sw_io,
+    ramp_start_ratio=0.7,
+    min_throttle=0.12,
+    off_bumper_time=0.3,
+    ramp_steps=3,
+)
+
+# print("Calibrating...")
+# cal = controller.calibrate(speed=0.3, cycles=3)
+# print("Cal:", cal)
+
+# # Start by heading toward the RIGHT bumper
+# controller.shuttle(start_direction=+1, cycles=10)
+
+# Or start toward LEFT:
+# controller.shuttle(start_direction=-1, cycles=20)
+
 
 ################################################################################
 # Setup wifi and web server
@@ -645,7 +668,6 @@ def rst_def():
     cfg["volume"] = "50"
     cfg["HOST_NAME"] = "animator-trolley"
     cfg["serve_webpage"] = True
-
 
 ################################################################################
 # Dialog and sound play methods
