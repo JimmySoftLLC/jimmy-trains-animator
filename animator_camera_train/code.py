@@ -521,24 +521,26 @@ def media_player_state():
 
 kit = ServoKit(channels=16)
 
-# Setup servo hardware
-kit.servo[0].set_pulse_width_range(300, 2700)
-kit.servo[1].set_pulse_width_range(300, 2700)
-kit.servo[2].set_pulse_width_range(300, 2700)
-kit.servo[3].set_pulse_width_range(300, 2700)
-kit.servo[4].set_pulse_width_range(300, 2700)
-kit.servo[5].set_pulse_width_range(300, 2700)
+# Setup servo hardware, new hat has 8 motor output pads, only 4 are used for camera car
+# For a 180-degree servo, the typical pulse width range is 1ms to 2ms, with 1ms 
+# often being one end (0 degrees) and 2ms the other (180 degrees), though some 
+# servos use a wider range like 500µs (0.5ms) to 2500µs (2.5ms) for the full 
+# 180-degree sweep, with 1500µs at the center; always check the specific servo's 
+# datasheet as ranges can vary. Prototype used a 300-2700 pulse width range, 
+# but new boards use the standard range of 500 to 2500.
+kit.servo[0].set_pulse_width_range(500, 2500)
+kit.servo[1].set_pulse_width_range(500, 2500)
+kit.servo[2].set_pulse_width_range(500, 2500)
+kit.servo[3].set_pulse_width_range(500, 2500)
 
 s_1 = kit.servo[0]
 s_2 = kit.servo[1]
 s_3 = kit.servo[2]
 s_4 = kit.servo[3]
-s_5 = kit.servo[4]
-s_6 = kit.servo[5]
 
-p_arr = [90, 90, 90, 90, 90, 90]
+p_arr = [90, 90, 90, 90]
 
-s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
+s_arr = [s_1, s_2, s_3, s_4]
 
 def m_servo(n, p):
     global p_arr
@@ -2945,7 +2947,7 @@ def set_hdw(cmd, dur=0):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)
+            # SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 if len(segs_split) == 2:
@@ -2955,7 +2957,7 @@ def set_hdw(cmd, dur=0):
                         "_" + segs_split[2]
                 else:
                     override_switch_state["switch_value"] = "none"
-            # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
+            # LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][2:])-1
@@ -2963,7 +2965,7 @@ def set_hdw(cmd, dur=0):
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_neo_to(light_n, r, g, b)
-            # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+            # LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][2:])-1
@@ -2971,25 +2973,25 @@ def set_hdw(cmd, dur=0):
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_light_color(light_n, r, g, b)
-            # lights LPZZZ_YYY = Lifx lights ZZZ (0 All, 1 to 999) YYY power ON or OFF
+            # LPZZZ_YYY = Lifx lights ZZZ (0 All, 1 to 999) YYY power ON or OFF
             elif seg[:2] == 'LP':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][2:])-1
                 power = segs_split[1]
                 set_light_power(light_n, power)
-            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+            # NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[0] == 'N':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0][1:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
-            # brightness BXXX = Brightness XXX 000 to 100
+            # BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100
             elif seg[0:2] == 'BN':
                 br = int(seg[2:])
                 led.brightness = float(br/100)
                 led.show()
-            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+            # FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
             elif seg[0] == 'F':
                 segs_split = seg.split("_")
                 v = int(segs_split[0][1:])
@@ -3029,7 +3031,7 @@ def set_hdw(cmd, dur=0):
             # ZJ = Joke
             elif seg[:2] == 'ZJ':
                 get_random_joke()
-            # image IXXX/XXX XXX/XXXX(folder/filename)
+            # IXXX/XXX XXX/XXXX(folder/filename)
             elif seg[0] == 'I':
                 f_nm = media_folder + seg[1:]
                 change_wallpaper(f_nm)
@@ -3061,9 +3063,6 @@ def set_hdw(cmd, dur=0):
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
                 return ""
-            # C_NN,..._TTT = Cycle, NN one or many commands separated by slashes, TTT interval in decimal seconds between commands
-            elif seg[0] == 'C':
-                print("not implemented")
     except Exception as e:
         files.log_item(e)
 
