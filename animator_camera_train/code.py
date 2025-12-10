@@ -544,12 +544,22 @@ s_arr = [s_1, s_2, s_3, s_4]
 
 def m_servo(n, p):
     global p_arr
+    
+    # Clamp input to 0-180
     if p < 0:
         p = 0
     if p > 180:
         p = 180
-    s_arr[n].angle = p
+
     p_arr[n] = p
+    
+    # List of servos that are mounted "backwards"
+    inverted_servos = {3}
+    
+    if n in inverted_servos:
+        p = 180 - p
+    
+    s_arr[n].angle = p
 
 def m_servo_s(n, n_pos, spd=0.01):
     global p_arr

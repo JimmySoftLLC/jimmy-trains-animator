@@ -360,7 +360,7 @@
                             </div>
                             <div class="knob-text" id="knob1-text">0</div>
                         </div>
-                        <div class="knob-label">Rotate cam</div>
+                        <div class="knob-label">Rotate camera</div>
                     </div>
                     <div class="knob-wrapper">
                         <div class="knob-container">
@@ -369,7 +369,7 @@
                             </div>
                             <div class="knob-text" id="knob2-text">0</div>
                         </div>
-                        <div class="knob-label">Tilt cam</div>
+                        <div class="knob-label">Tilt camera</div>
                     </div>
                     <div class="knob-wrapper">
                         <div class="knob-container">
@@ -402,6 +402,11 @@
                 <input type="range" id="focusSlider" class="mui-slider" min="0" max="10" step="0.1" value="1">
                 <span id="focusValue" class="mui-zoom-value">1.0</span>
             </div>
+            <div class="mui-form-group mui-slider-container">
+                <label class="mui-form__label" for="lightSlider">Light (0-100):</label>
+                <input type="range" id="lightSlider" class="mui-slider" min="0" max="100" step="1" value="0">
+                <span id="lightValue" class="mui-zoom-value">0</span>
+            </div>
             <div id="controls">
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
                 <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
@@ -424,55 +429,6 @@
             </div>
             <div id="thumbnailGallery">
                 <h3>Recordings</h3>
-            </div>
-            <h2>Camera positions:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S00" data-url="/lights"
-                    type="button">
-                    All 0
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S010" data-url="/lights"
-                    type="button">
-                    All 10
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S020" data-url="/lights"
-                    type="button">
-                    All 20
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S030" data-url="/lights"
-                    type="button">
-                    All 30
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S040" data-url="/lights"
-                    type="button">
-                    All 40
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S050" data-url="/lights"
-                    type="button">
-                    All 50
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S060" data-url="/lights"
-                    type="button">
-                    All 60
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S070" data-url="/lights"
-                    type="button">
-                    All 70
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S080" data-url="/lights"
-                    type="button">
-                    All 80
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
-                    type="button">
-                    Servo 1 90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
-                    type="button">
-                    Servo 2 90
-                </button>
             </div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
@@ -2877,6 +2833,8 @@
     const setZoomBtn = document.getElementById('setZoomBtn');
     const focusSlider = document.getElementById('focusSlider');
     const focusValue = document.getElementById('focusValue');
+    const lightSlider = document.getElementById('lightSlider');
+    const lightValue = document.getElementById('lightValue');
 
 
     let canvas, ctx, mediaRecorder, recordedChunks = [];
@@ -2910,9 +2868,18 @@
         } catch (e) { console.error('Error setting focus:', e); }
     }
 
+    async function setLight(lightValue) {
+        try {
+            const response = await fetch('/lights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ an: "LN0_255_255_255," + "BN" + lightValue }) });
+            if (response.ok) console.log(`Light set to ${lightValue}`);
+            else console.error('Failed to set light:', response.status);
+        } catch (e) { console.error('Error setting light:', e); }
+    }
+
 
     const throttledSetZoom = throttle(setZoom, 200);
     const throttledSetFocus = throttle(setFocus, 200);
+    const throttledSetLight = throttle(setLight, 200);
 
     zoomSlider.addEventListener('input', () => { const zoom = parseFloat(zoomSlider.value); zoomValue.textContent = `${zoom}x`; throttledSetZoom(zoom); });
     zoomSlider.addEventListener('change', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
@@ -2922,6 +2889,11 @@
     focusSlider.addEventListener('input', () => { const focus = parseFloat(focusSlider.value); focusValue.textContent = focus; throttledSetFocus(focus); });
     focusSlider.addEventListener('change', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
     focusSlider.addEventListener('touchend', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+
+
+    lightSlider.addEventListener('input', () => { const brightness = parseFloat(lightSlider.value); lightValue.textContent = brightness; throttledSetLight(brightness); });
+    lightSlider.addEventListener('change', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
+    lightSlider.addEventListener('touchend', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
 
 
     function setupCanvas() {
