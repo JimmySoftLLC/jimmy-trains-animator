@@ -37,17 +37,23 @@
             height: 100px;
         }
 
-        .parent-container {
+        .knobs-parent-container {
             display: flex;
+            flex-wrap: wrap;
             justify-content: flex-start;
-            /* Changed from center to flex-start to align left */
             gap: 20px;
-            /* Keeps space between knobs */
-            width: max-content;
-            height: max-content;
-            position: relative;
-            margin: 0;
-            /* Changed from auto to 0 to remove centering */
+            width: 100%;
+            max-width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            margin: 0 auto;
+        }
+
+        .knob-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
         }
 
         .knob-container {
@@ -95,6 +101,16 @@
             font-size: 20px;
             pointer-events: none;
             text-align: center;
+        }
+
+        .knob-labels {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: clamp(0.9rem, 3vw, 1.1rem);
+            color: #333;
+            font-weight: 500;
         }
 
         #videoContainer {
@@ -151,15 +167,37 @@
 
         .stream-container {
             position: relative;
-            text-align: center;
+            width: 100%;
+            max-width: 100%;
+            margin: 20px auto;
+            padding-bottom: 56.25%;
+            /* 16:9 - change to 75% for 4:3 */
+            height: 0;
+            background: #000;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
         }
 
+        #stream {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        /* Keep your status text centered below */
         .stream-status {
             margin-top: 10px;
             font-size: 16px;
-            color: #333;
-            font-family: Arial, sans-serif;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+            text-align: center;
         }
+
 
         .stream-status.error {
             color: #d9534f;
@@ -295,7 +333,7 @@
                 </button>
             </div>
 
-            <div class="mui-textfield">
+            <div class="mui-textfield" hidden>
                 <h2>Upload a File</h1>
                     <form id="uploadForm" enctype="multipart/form-data">
                         <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
@@ -314,24 +352,42 @@
                 <div id="streamStatus" class="stream-status"></div>
             </div>
             <div class="mui-tabs__pane mui--is-active" id="tiltControl" style="padding-top:0.5rem;">
-                <div class="parent-container">
-                    <div class="knob-container">
-                        <div class="knob" id="knob">
-                            <div class="indicator"></div>
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knob1">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob1-text">0</div>
                         </div>
-                        <div class="knob-text" id="knob-text">0</div>
+                        <div class="knob-label">Rotate cam</div>
                     </div>
-                    <div class="knob-container">
-                        <div class="knob" id="knob2">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knob2">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob2-text">0</div>
                         </div>
-                        <div class="knob-text" id="knob2-text">0</div>
+                        <div class="knob-label">Tilt cam</div>
                     </div>
-                    <div class="knob-container">
-                        <div class="knob" id="knob3">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knob3">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob3-text">0</div>
                         </div>
-                        <div class="knob-text" id="knob3-text">0</div>
+                        <div class="knob-label">Rotate light</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knob4">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob4-text">0</div>
+                        </div>
+                        <div class="knob-label">Rotate driver</div>
                     </div>
                 </div>
             </div>
@@ -754,7 +810,6 @@
                             <thead>
                                 <tr>
                                     <th>TimeStamp</th>
-                                    <th>TimeCode</th>
                                     <th>Animation</th>
                                     <th>Action</th>
                                 </tr>
@@ -1099,9 +1154,10 @@
     }
 
     // Example usage with both normal and reversed ranges
-    const knob1Controller = new KnobController('knob', 'knob-text', 'S1', 180, 0);
+    const knob1Controller = new KnobController('knob1', 'knob1-text', 'S1', 180, 0);
     const knob2Controller = new KnobController('knob2', 'knob2-text', 'S2', 140, 90);
     const knob3Controller = new KnobController('knob3', 'knob3-text', 'S3', 0, 180);
+    const knob4Controller = new KnobController('knob4', 'knob4-text', 'S4', 0, 180);
 
     async function testAnimationCommand(command) {
         if (!command) {
@@ -1763,8 +1819,8 @@
 
         // Now combine the data into combinedData
         const combinedData = data.map(function (row) {
-            var secondsConverted = convertTimeCodeToSeconds(row[1]);
-            return secondsConverted + "|" + (row[2] || ""); // Ensure a fallback in case row[2] is undefined
+            var secondsConverted = row[0];
+            return secondsConverted + "|" + (row[1] || ""); // Ensure a fallback in case row[1] is undefined
         });
 
         console.log(combinedData);
@@ -2389,45 +2445,16 @@
     }
 
 
-    function timeSecondsCellChanged(event) {
-        var inputValue = convertSecondsToTimeCode(event.target.value);
-        setTextOfInput(event.target.parentNode.parentNode.parentNode, 2, inputValue);
-    }
-
-    function timeCodeCellChanged(event) {
-        var inputValue = convertTimeCodeToSeconds(event.target.value)
-        setTextOfInput(event.target.parentNode.parentNode.parentNode, 1, inputValue);
-    }
-
     function createDataRow(rowData, rowIndex) {
         var row = document.createElement("tr");
         myRowDataSplit = rowData.split("|")
 
         if (myRowDataSplit[0]) {
             var tsCell = createEditableCell(myRowDataSplit[0], "80px");
-            tsCell.addEventListener('keydown', function (event) {
-                if (event.keyCode === 13) {
-                    timeSecondsCellChanged(event);
-                }
-            });
         } else {
             var tsCell = createEditableCell("", "80px");
         }
         row.appendChild(tsCell);
-
-        if (myRowDataSplit[0]) {
-            var timeCode = convertSecondsToTimeCode(myRowDataSplit[0])
-            var tcCell = createEditableCell(timeCode, "110px");
-            tcCell.addEventListener('keydown', function (event) {
-                if (event.keyCode === 13) {
-                    timeCodeCellChanged(event);
-                }
-            });
-
-        } else {
-            var tcCell = createEditableCell("", "110px");
-        }
-        row.appendChild(tcCell);
 
         if (myRowDataSplit[1]) {
             var anCell = createEditableCell(myRowDataSplit[1], "500px");
@@ -2546,8 +2573,8 @@
         combinedData = []
 
         for (let i = 0; i < data.length; i++) {
-            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
-            combinedData.push(secondsConverted + "|" + data[i][2])
+            var secondsConverted = data[i][0]
+            combinedData.push(secondsConverted + "|" + data[i][1])
         }
 
         populateTable(combinedData)
@@ -2571,8 +2598,8 @@
         combinedData = []
 
         for (let i = 0; i < data.length; i++) {
-            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
-            combinedData.push(secondsConverted + "|" + data[i][2])
+            var secondsConverted = data[i][0]
+            combinedData.push(secondsConverted + "|" + data[i][1])
         }
 
         const blockSize = 5;
@@ -2625,39 +2652,6 @@
         sendBlockSequentially(0);
     }
 
-    // Function to convert DaVinci Resolve timestamp to seconds
-    function convertTimeCodeToSeconds(timestamp) {
-        var parts = timestamp.split(':');
-        var hours = parseInt(parts[0]);
-        var minutes = parseInt(parts[1]);
-        var seconds = parseInt(parts[2]);
-        var frames = parseInt(parts[3]);
-
-        hours -= 1
-
-        var totalSeconds = hours * 3600 + minutes * 60 + seconds + frames / 24;
-
-        if (!totalSeconds) totalSeconds = 0;
-
-        return totalSeconds.toFixed(1);
-    }
-
-    // Function to convert seconds to DaVinci Resolve timestamp
-    function convertSecondsToTimeCode(seconds) {
-        var hours = Math.floor(seconds / 3600) + 1;
-        seconds %= 3600;
-        var minutes = Math.floor(seconds / 60);
-        seconds %= 60;
-        var frames = Math.round((seconds - Math.floor(seconds)) * 24);
-
-        if (!seconds) {
-            hours = 1
-            minutes = 0
-            frames = 0
-        }
-
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(Math.floor(seconds)).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
-    }
 
     const colorPickerLifx = document.getElementById('colorPickerLifx');
     colorPickerLifx.addEventListener('input', function () {
@@ -2890,15 +2884,15 @@
     const blobUrlMap = new Map();
 
     function throttle(func, limit) {
-            let lastCall = 0;
-            return function (...args) {
-                const now = Date.now();
-                if (now - lastCall >= limit) {
-                    lastCall = now;
-                    return func.apply(this, args);
-                }
-            };
-        }
+        let lastCall = 0;
+        return function (...args) {
+            const now = Date.now();
+            if (now - lastCall >= limit) {
+                lastCall = now;
+                return func.apply(this, args);
+            }
+        };
+    }
 
     async function setZoom(zoomFactor) {
         try {
