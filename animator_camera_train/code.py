@@ -241,10 +241,12 @@ def gc_col(collection_point):
     print("Point " + collection_point +
           " Available memory: {} bytes".format(start_mem))
 
-
+################################################################################
+# reset pi setup
 # to make this work you must add permission to the visudo file
 # sudo visudo
-# drivein ALL=(ALL) NOPASSWD: /sbin/reboot
+# cameratrain ALL=(ALL) NOPASSWD: /sbin/reboot
+
 def restart_pi():
     os.system('sudo reboot')
 
@@ -255,8 +257,86 @@ def restart_pi_timer():
     timer = threading.Timer(delay, restart_pi)
     timer.start()
 
-
 gc_col("Imports gc, files")
+
+################################################################################
+# ssid and password setup
+# to make this work you must add permission to the visudo file
+# sudo visudo
+# cameratrain ALL=(ALL) NOPASSWD: /usr/bin/nmcli
+
+# Function to mount the USB drive (assumes automatic mounting to /media/pi)
+def get_usb_path():
+    media_path = "/media/cameratrain/"
+    usb_path = None
+    for root, dirs, files in os.walk(media_path):
+        if 'wifi_config.txt' in files:
+            usb_path = os.path.join(root, 'wifi_config.txt')
+            break
+    return usb_path
+
+# Function to read the SSID and PASSWORD from the file
+def read_wifi_credentials(file_path):
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+    ssid = None
+    password = None
+    for line in lines:
+        if line.startswith('SSID='):
+            ssid = line.strip().split('=')[1]
+        elif line.startswith('PASSWORD='):
+            password = line.strip().split('=')[1]
+    return ssid, password
+
+def connect_wifi(ssid, password):
+    """
+    Adds (or updates) a Wi-Fi connection with maximum priority (99)
+    so it is ALWAYS chosen over any old/existing networks.
+    """
+
+    # Remove any existing connection with the same name first (clean slate for this SSID)
+    subprocess.run(['sudo', 'nmcli', 'connection', 'delete', ssid], 
+                  capture_output=True)
+
+    # Add the new connection with priority 99
+    cmd = [
+        'sudo', 'nmcli', 'connection', 'add',
+        'type',             'wifi',
+        'con-name',         ssid,           # name = SSID, looks clean
+        'ifname',           'wlan0',
+        'ssid',             ssid,
+        'wifi-sec.key-mgmt','wpa-psk',
+        'wifi-sec.psk',     password,
+        'connection.autoconnect',         'yes',        # auto-connect enabled
+        'connection.autoconnect-priority','99'           # ← THIS IS THE MAGIC
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        print("Failed to add connection:")
+        print(result.stderr)
+        return False
+
+    return True
+
+# Update ssid password using usb drive
+def update_ssid_password_from_usb():
+    print("Looking for USB with Wi-Fi configuration...")
+    while True:
+        usb_path = get_usb_path()
+        if usb_path:
+            print(f"Found USB with Wi-Fi config at: {usb_path}")
+            ssid, password = read_wifi_credentials(usb_path)
+            print("Using SSID: " + ssid + " and password: " + password)
+            if ssid:
+                print(f"Setting up Wi-Fi connection with SSID: {ssid}")
+                connect_wifi(ssid, password)
+                break
+        else:
+            print("Waiting for USB to be inserted...")
+            time.sleep(5)  # Check every 5 seconds for the USB
+
 
 ################################################################################
 # config variables
@@ -320,7 +400,7 @@ def upd_media():
 
 upd_media()
 
-web = cfg["serve_webpage"]
+web = True
 
 cfg_main = files.read_json_file(code_folder + "mvc/main_menu.json")
 main_m = cfg_main["main_menu"]
@@ -2389,7 +2469,9 @@ def exit_early():
     time.sleep(0.05)
 
 
-def spk_str(str_to_speak, addLocal):
+def spk_str(str_to_speak, addLocal, addIpAddressIs = False):
+    if addIpAddressIs:
+        play_mix(code_folder + "mvc/ip_address_is.wav")
     for character in str_to_speak:
         try:
             if character == " ":
@@ -3583,22 +3665,17 @@ class WebOpt(Ste):
                 self.i = 0
         if switch_state == "right":
             selected_menu_item = web_m[self.sel_i]
-            if selected_menu_item == "web_on":
-                cfg["serve_webpage"] = True
-                opt_sel()
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                restart_pi_timer()
-            elif selected_menu_item == "web_off":
-                cfg["serve_webpage"] = False
-                opt_sel()
-                files.write_json_file(code_folder + "cfg.json", cfg)
-                restart_pi_timer()
-            elif selected_menu_item == "hear_url":
+            if selected_menu_item == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
-            elif selected_menu_item == "hear_instr_web":
-                play_mix(code_folder + "mvc/hear_instr_web_drive_in.wav")
+            elif selected_menu_item == "hear_ip_address":
+                local_ip
+                spk_str(local_ip, False, True)
                 sel_web()
+            elif selected_menu_item == "update_ssid_password_from_usb":
+                play_mix(code_folder + "mvc/update_ssid_password_from_usb.wav")
+                update_ssid_password_from_usb()
+                restart_pi_timer()
             else:
                 mch.go_to('base_state')
 
