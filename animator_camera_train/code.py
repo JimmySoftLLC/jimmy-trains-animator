@@ -369,7 +369,7 @@ def get_media_files(folder_to_search, extensions):
 def upd_media():
     global play_list_options, media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission
 
-    extensions = ['.wav', '.mp4']  # List of extensions to filter by
+    extensions = ['.wav', '.mp3','.json']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
     # gets folders in the random_config directory, currently only all and play lists, the folders are empty
     rand_files = get_media_files(media_folder + "random_config/", extensions)
