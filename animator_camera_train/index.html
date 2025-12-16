@@ -265,11 +265,11 @@
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
             <h2>Random play:</h2>
             <div id="topicButtonContainer"></div>
-            <h2>Current Media Queue</h2>
+            <h2>Current Animation Queue</h2>
             <div id="currentMedia"></div>
             <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-            <h2>Media:</h2>
-            <div id="mediaContainer"></div>
+            <h2>Animations:</h2>
+            <div id="animationsContainer"></div>
             <h2>Intermission between movies:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0" data-url="/mode"
@@ -434,73 +434,6 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
-            <h2>Setup light string:</h2>
-            <div class="mui-textfield">
-                <p>
-                    Enter your light string in the order which each component is connected together by pressing neo-6,
-                    cane-4...
-                    When finished press "Save".
-                </p>
-                <input class="input" id="lightString" type="text" disabled placeholder="No lights setup">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="save"
-                    data-url="/update-light-string">
-                    Save
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="clear"
-                    data-url="/update-light-string">
-                    Clear
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="defaults"
-                    data-url="/update-light-string">
-                    Set to defaults
-                </button>
-            </div>
-            <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
-                    data-url="/update-light-string">
-                    projector-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
-                    data-url="/update-light-string">
-                    concession-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
-                    data-url="/update-light-string">
-                    sign-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
-                    data-url="/update-light-string">
-                    cane-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="grandtree-21"
-                    data-url="/update-light-string">
-                    grandtree-21
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neo-6"
-                    data-url="/update-light-string">
-                    neo-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
-                    data-url="/update-light-string">
-                    bolt-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-2"
-                    data-url="/update-light-string">
-                    bolt-2
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-3"
-                    data-url="/update-light-string">
-                    bolt-3
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-4"
-                    data-url="/update-light-string">
-                    bolt-4
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bar-10"
-                    data-url="/update-light-string">
-                    bar-10
-                </button>
-            </div>
             <h2>Test neopixel lights:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
@@ -730,10 +663,10 @@
             <button class="mui-btn mui-btn--primary" onclick="deleteAnimationDialog()">Delete
                 Animation</button>
             <h2>Animations:</h2>
-            <div id="mediaScriptContainer"></div>
+            <div id="animationScriptsContainer"></div>
             <h2>Animation script table:</h2>
             <div class="mui-textfield">
-                <input class="input" id="animationName" type="text" disabled>
+                <input class="input" id="animationScriptName" type="text" disabled>
             </div>
             <div>
                 <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
@@ -818,7 +751,7 @@
     };
 
     function getAnimations() {
-        fetch('/get-all-media', {
+        fetch('/get-animations', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -829,8 +762,8 @@
             })
             .then(function (data) {
                 my_data = JSON.parse(data)
-                setMediaButtons(my_data)
-                setMediaScriptButtons(my_data)
+                setRunAnimationButtons(my_data)
+                setGetAnimationButtons(my_data)
             })
             .catch(function (error) {
                 console.log(error);
@@ -1066,7 +999,7 @@
 
         if (filenameInput) {
             animationScriptName.value = filenameInput;
-            saveAnimationScriptData();
+            saveAnimationScriptData(filenameInput);
             updateAnimations()
             var modalEl = document.getElementById("modalEl")
             mui.overlay('off', modalEl)
@@ -1503,38 +1436,26 @@
             });
     }
 
-    function setMediaButtons(my_data) {
-        // Clear the existing buttons (if needed)
-        const topicButtonContainer = document.getElementById("topicButtonContainer");
-        topicButtonContainer.innerHTML = '';
-
-        // Clear the existing buttons (if needed)
-        const mediaContainer = document.getElementById("mediaContainer");
-        mediaContainer.innerHTML = '';
-
-        // Loop through each folder (topic) in my_data
-        Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('pictures') || topic.includes('random_config')) {
-                return; // Skip this topic
-            }
-            // Create and add a button for the folder (topic)
-            const topicButton = document.createElement("button");
-            topicButton.textContent = topic;
-            topicButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-            topicButton.setAttribute("data-value", "random_" + topic);
-            topicButton.setAttribute("data-url", "/animation");
-            topicButton.setAttribute("type", "button");
-            topicButton.addEventListener('click', function () {
-                var url = topicButton.getAttribute('data-url');
-                var animation = topicButton.getAttribute('data-value');
-                var redirectUrl = topicButton.getAttribute('data-redirect');
+    function setRunAnimationButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item;
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
 
                 // Create an object with the data to be sent in the request
                 var data = {
                     an: animation,
                 };
 
-                topicButton.setAttribute('disabled', 'true');
+                button.setAttribute('disabled', 'true')
 
                 // Make a POST request using fetch
                 fetch(url, {
@@ -1549,149 +1470,64 @@
                         if (redirectUrl) {
                             window.location.href = redirectUrl;
                         } else {
-                            topicButton.removeAttribute('disabled');
+                            button.removeAttribute('disabled');
                         }
                     })
                     .catch(function (error) {
-                        topicButton.removeAttribute('disabled');
-                        console.log(error);
-                        showAlert(error);
+                        button.removeAttribute('disabled');
+                        showAlert('Try Again');
                     });
             });
-
-            // Append the topic button to the topic button container
-            topicButtonContainer.appendChild(topicButton);
-
-            if (topic.includes('random_config') || topic.includes('all') || topic.includes('play lists')) {
-                return; // Skip adding files
-            }
-
-            // Create and add a title for the folder (topic)
-            const title = document.createElement("h2");
-            title.textContent = topic + " :";
-            mediaContainer.appendChild(title);
-
-            // Get the array of files for this topic
-            const files = my_data[topic];
-
-            // Loop through each file in the topic and create a button for it
-            files.forEach((file) => {
-                const fileButton = document.createElement("button");
-                fileButton.textContent = file.replace("customers_owned_music_", "");
-                fileButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                fileButton.setAttribute("data-value", topic + "/" + file);
-                fileButton.setAttribute("data-url", "/animation");
-                fileButton.setAttribute("type", "button");
-                fileButton.addEventListener('click', function () {
-                    var url = fileButton.getAttribute('data-url');
-                    var animation = fileButton.getAttribute('data-value');
-                    var redirectUrl = fileButton.getAttribute('data-redirect');
-
-                    // Create an object with the data to be sent in the request
-                    var data = {
-                        an: animation,
-                    };
-
-                    fileButton.setAttribute('disabled', 'true');
-
-                    // Make a POST request using fetch
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data),
-                    })
-                        .then(function (response) {
-                            // Handle the response from the server
-                            if (redirectUrl) {
-                                window.location.href = redirectUrl;
-                            } else {
-                                fileButton.removeAttribute('disabled');
-                            }
-                        })
-                        .catch(function (error) {
-                            fileButton.removeAttribute('disabled');
-                            console.log(error);
-                            showAlert(error);
-                        });
-                });
-
-                // Append the file button to the file button container
-                mediaContainer.appendChild(fileButton);
-            });
+            animationsContainer.appendChild(button);
         });
     }
 
+    function setGetAnimationButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item;
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-animation");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
 
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
 
-    function setMediaScriptButtons(my_data) {
-        // Clear the existing buttons (if needed)
-        const mediaScriptContainer = document.getElementById("mediaScriptContainer");
-        mediaScriptContainer.innerHTML = '';
+                button.setAttribute('disabled', 'true')
 
-        // Loop through each folder (topic) in my_data
-        Object.keys(my_data).forEach((topic) => {
-            if (topic.includes('pictures') || topic.includes('random') || topic.includes('play lists') || topic.includes('all')) {
-                return; // Skip this topic
-            }
-            // Create and add a title for the folder (topic)
-            const title = document.createElement("h2");
-            title.textContent = topic + " :";
-            mediaScriptContainer.appendChild(title);
-
-            // Get the array of files for this topic
-            const files = my_data[topic];
-
-            // Loop through each file in the topic and create a button for it
-            files.forEach((file) => {
-                const button = document.createElement("button");
-                button.textContent = file.replace("customers_owned_music_", "");
-                button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
-                button.setAttribute("data-value", topic + "/" + file);
-                button.setAttribute("data-url", "/get-animation");
-                button.setAttribute("type", "button");
-                button.addEventListener('click', function () {
-                    var url = button.getAttribute('data-url');
-                    var animation = button.getAttribute('data-value');
-                    var redirectUrl = button.getAttribute('data-redirect');
-
-                    // Create an object with the data to be sent in the request
-                    var data = {
-                        an: animation,
-                    };
-
-                    button.setAttribute('disabled', 'true');
-
-                    // Make a POST request using fetch
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data),
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
                     })
-                        .then(function (response) {
-                            return response.text(); // assuming the response is plain text
-                        })
-                        .then(function (data) {
-                            myData = JSON.parse(data); // Set the value of the input field with the received data
-                            animationName.value = animation;
-                            populateTable(myData);
-                            button.removeAttribute('disabled');
-                        })
-                        .catch(function (error) {
-                            button.removeAttribute('disabled');
-                            console.log(error);
-                            showAlert(error);
-                        });
-                });
-                // Append the button under the current folder title
-                mediaScriptContainer.appendChild(button);
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        animationScriptName.value = animation
+                        populateAnimationsTable(myData)
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                        button.removeAttribute('disabled')
+                    });
             });
+            animationScriptsContainer.appendChild(button);
         });
     }
-
 
     function setNeoChangeButtons(my_data) {
         // Clear the existing buttons (if needed)
@@ -1997,8 +1833,8 @@
 
         // First mutate the data
         while (globalRowIndex < data.length && pasteIndex < globalPasteTable.length) {
-            // Replace data[globalRowIndex][2] with the item from globalPasteTable
-            data[globalRowIndex][2] = globalPasteTable[pasteIndex];
+
+            data[globalRowIndex][1] = globalPasteTable[pasteIndex];
             globalRowIndex++; // Move to the next row in data
             pasteIndex++; // Move to the next item in globalPasteTable
         }
@@ -2012,7 +1848,7 @@
         console.log(combinedData);
 
         // Populate the table with the combined data
-        populateTable(combinedData);
+        populateAnimationsTable(combinedData);
     }
 
 
@@ -2167,289 +2003,6 @@
         }
     }
 
-    function createPlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Create playlist';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', createPlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function createPlaylist() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            console.log('Filename:', filenameInput);
-            var data = {
-                fn: filenameInput,
-            };
-
-            fetch("/create-playlist", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    updatePlaylists()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function duplicatePlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Duplicate playlist';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', duplicatePlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function duplicatePlaylist() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            saveData("plylst_" + filenameInput, true);
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function renamePlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Rename playlist';
-        form.appendChild(legend);
-
-        var filenameInput = document.createElement('div');
-        filenameInput.className = 'mui-textfield';
-        filenameInput.innerHTML = '<input type="text" id="filename" placeholder="Enter filename"/>';
-        form.appendChild(filenameInput);
-
-        // Error message container
-        var errorMessage = document.createElement('div');
-        errorMessage.className = 'mui--text-danger mui--text-caption';
-        form.appendChild(errorMessage);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Save';
-        saveBtn.addEventListener('click', renamePlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    function renamePlaylist() {
-        var filenameInput = document.getElementById('filename').value.trim();
-        var errorMessage = document.querySelector('.mui--text-danger');
-
-        if (filenameInput) {
-            console.log('Filename:', filenameInput);
-            var data = {
-                fo: animationName.value,
-                fn: filenameInput,
-            };
-
-            fetch("/rename-playlist", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    updatePlaylists()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
-        } else {
-            errorMessage.textContent = 'Please enter a filename.';
-        }
-    }
-
-    function deletePlaylistDialog() {
-        var modalEl = document.getElementById("modalEl")
-        removeChildNodes(modalEl)
-        modalEl.style.width = '400px';
-        modalEl.style.height = 'auto';
-        modalEl.style.margin = '100px auto';
-        modalEl.style.backgroundColor = '#fff';
-
-        // Create form
-        var form = document.createElement('form');
-        form.className = 'mui-form';
-        form.style.padding = '20px'; // Add padding to the form
-        form.style.margin = '20px'; // Add margin to the form
-
-        var legend = document.createElement('legend');
-        legend.textContent = 'Delete playlist';
-        form.appendChild(legend);
-
-        var message = document.createElement('div');
-        message.className = "mui-textfield"
-        message.textContent = "Are you sure your want to delete " + animationName.value + " this is irreversible.";
-        form.appendChild(message);
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
-        saveBtn.textContent = 'Delete';
-        saveBtn.addEventListener('click', deletePlaylist);
-        form.appendChild(saveBtn);
-
-        var cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'mui-btn';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.addEventListener('click', function () {
-            mui.overlay('off', modalEl);
-        });
-        form.appendChild(cancelBtn);
-
-        modalEl.appendChild(form);
-
-        // Show modal
-        mui.overlay('on', modalEl);
-    }
-
-    // function updatePlaylists() {
-    //     const myPlaylistDiv = document.getElementById("playlistContainer");
-    //     removeChildNodes(myPlaylistDiv)
-    //     const myPlaylistScriptDiv = document.getElementById("playlistScriptContainer");
-    //     removeChildNodes(myPlaylistScriptDiv)
-    //     getPlaylists()
-    // }
-
     function removeChildNodes(myDiv) {
         // Remove all child nodes
         while (myDiv.firstChild) {
@@ -2492,7 +2045,6 @@
     var stopButton = document.getElementById("stopButton");
     var dataTable = document.getElementById("dataTable");
     var dataTableBody = document.querySelector("#dataTable tbody");
-    var deletePlaylistButton = document.getElementById("deletePlaylistButton");
 
 
     stopButton.addEventListener("click", function () {
@@ -2500,14 +2052,14 @@
     });
 
     saveDataButton.addEventListener("click", function () {
-        saveData(animationName.value, false);
+        saveAnimationScriptData(animationScriptName.value, false);
     });
 
     function stopAnimation() {
         stopButton.setAttribute("disabled", "true");
 
         var data = {
-            an: animationName.value,
+            an: animationScriptName.value,
         };
 
         fetch("/stop", {
@@ -2521,7 +2073,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                console.log("file deleted")
+                console.log("animation stopped: " + data);
                 stopButton.removeAttribute('disabled')
             })
             .catch(function (error) {
@@ -2530,36 +2082,8 @@
             });
     }
 
-    function deletePlaylist() {
-        var data = {
-            fn: animationName.value,
-        };
-
-        fetch("/delete-playlist", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                updatePlaylists()
-                console.log("file deleted")
-                var modalEl = document.getElementById("modalEl")
-                mui.overlay('off', modalEl)
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
-    }
-
-
-
-    function populateTable(data) {
+ 
+    function populateAnimationsTable(data) {
         // Clear existing table rows
         dataTableBody.innerHTML = "";
 
@@ -2763,11 +2287,11 @@
             combinedData.push(secondsConverted + "|" + data[i][1])
         }
 
-        populateTable(combinedData)
+        populateAnimationsTable(combinedData)
     }
 
 
-    function saveData(file_name, get_changes) {
+    function saveAnimationScriptData(file_name) {
         saveDataButton.setAttribute("disabled", "true");
         var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
@@ -2794,11 +2318,6 @@
         // Function to send each block sequentially
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
-                if (get_changes == true) {
-                    updatePlaylists()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
-                }
                 // All blocks have been sent, enable the button
                 saveDataButton.removeAttribute('disabled');
                 return;

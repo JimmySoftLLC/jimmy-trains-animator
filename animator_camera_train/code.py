@@ -151,7 +151,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
-plylst_folder = get_home_path() + "media/play lists/"
+animations_folder = get_home_path() + "media/animations/"
 snd_opt_folder = code_folder + "snd_opt/"
 current_media_playing = ""
 current_scene = ""
@@ -270,8 +270,8 @@ def get_usb_path():
     media_path = "/media/cameratrain/"
     usb_path = None
     for root, dirs, files in os.walk(media_path):
-        if 'wifi_config.txt' in files:
-            usb_path = os.path.join(root, 'wifi_config.txt')
+        if 'env.txt' in files:
+            usb_path = os.path.join(root, 'env.txt')
             break
     return usb_path
 
@@ -286,9 +286,11 @@ def read_wifi_credentials(file_path):
             ssid = line.strip().split('=')[1]
         elif line.startswith('PASSWORD='):
             password = line.strip().split('=')[1]
-    return ssid, password
+        elif line.startswith('PRIORITY='):
+            priority = line.strip().split('=')[1]
+    return ssid, password, priority
 
-def connect_wifi(ssid, password):
+def connect_wifi(ssid, password, priority):
     """
     Adds (or updates) a Wi-Fi connection with maximum priority (99)
     so it is ALWAYS chosen over any old/existing networks.
@@ -308,7 +310,7 @@ def connect_wifi(ssid, password):
         'wifi-sec.key-mgmt','wpa-psk',
         'wifi-sec.psk',     password,
         'connection.autoconnect',         'yes',        # auto-connect enabled
-        'connection.autoconnect-priority','99'           # ← THIS IS THE MAGIC
+        'connection.autoconnect-priority',priority           # ← THIS IS THE MAGIC
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -327,11 +329,11 @@ def update_ssid_password_from_usb():
         usb_path = get_usb_path()
         if usb_path:
             print(f"Found USB with Wi-Fi config at: {usb_path}")
-            ssid, password = read_wifi_credentials(usb_path)
+            ssid, password, priority = read_wifi_credentials(usb_path)
             print("Using SSID: " + ssid + " and password: " + password)
             if ssid:
                 print(f"Setting up Wi-Fi connection with SSID: {ssid}")
-                connect_wifi(ssid, password)
+                connect_wifi(ssid, password, priority)
                 break
         else:
             print("Waiting for USB to be inserted...")
@@ -345,57 +347,17 @@ cfg = files.read_json_file(code_folder + "cfg.json")
 default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
 
-def get_media_files(folder_to_search, extensions):
-    media_dict = {}
-
-    # Normalize extensions (e.g., ensure they all start with a dot)
-    extensions = [ext if ext.startswith(
-        '.') else f'.{ext}' for ext in extensions]
-
-    # Loop through each folder (topic) in the folder_to_search directory
-    for topic in os.listdir(folder_to_search):
-        topic_path = os.path.join(folder_to_search, topic)
-
-        # Ensure it's a directory before proceeding
-        if os.path.isdir(topic_path):
-            # Get all files that match the specified extensions
-            files = [f for f in os.listdir(topic_path)
-                     if os.path.isfile(os.path.join(topic_path, f)) and f.lower().endswith(tuple(extensions))]
-            media_dict[topic] = files
-
-    return media_dict
-
-
 def upd_media():
-    global play_list_options, media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission
+    global snd_opt, menu_snd_opt # ts_jsons
 
-    extensions = ['.wav', '.mp3','.json']  # List of extensions to filter by
-    media_files = get_media_files(media_folder, extensions)
-    # gets folders in the random_config directory, currently only all and play lists, the folders are empty
-    rand_files = get_media_files(media_folder + "random_config/", extensions)
-    media_files.update(rand_files)  # add rand_files to media_files dictionary
-    # print("All media: " + str(media_files))
-
-    media_list_all = []
-    for topic, my_files in media_files.items():
-        media_list_all.extend(
-            [f"{topic}/{my_file}" for my_file in my_files])
-
-    media_list_all_no_intermission = []
-    for topic, my_files in media_files.items():
-        if "intermission" not in topic.lower():  # Ignore topics with 'intermission'
-            media_list_all_no_intermission.extend(
-                [f"{topic}/{my_file}" for my_file in my_files])
-
-    # print(str(rand_files.keys))
+    snd_opt = files.return_directory("", animations_folder, ".json")
 
     menu_snd_opt = []
+    menu_snd_opt.extend(snd_opt)
+    rnd_opt = ['random all']
+    menu_snd_opt.extend(rnd_opt)
 
-    for myKey in media_files:
-        if myKey != "random_config" and myKey != "pictures":
-            menu_snd_opt.append("random_" + myKey + ".wav")
-
-    # print("Menu sound tracks: " + str(menu_snd_opt))
+    # ts_jsons = files.return_directory("", "/sd/t_s_def", ".json")
 
 
 upd_media()
@@ -1679,8 +1641,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.mode_post(post_data_obj)
         elif self.path == "/defaults":
             self.defaults_post(post_data_obj)
-        elif self.path == "/get-all-media":
-            self.get_all_media_post(post_data_obj)
+        elif self.path == "/get-animations":
+            self.get_animations_post(post_data_obj)
         elif self.path == "/speaker":
             self.speaker_post(post_data_obj)
         elif self.path == "/start-camera":
@@ -1717,24 +1679,22 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.get_host_name_post(post_data_obj)
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
-        elif self.path == "/update-volume":
-            self.update_volume_post(post_data_obj)
         elif self.path == "/set-lifx-enabled":
             self.set_lifx_enabled(post_data_obj)
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
-        elif self.path == "/create-playlist":
-            self.create_playlist_post(post_data_obj)
+        elif self.path == "/create-animation":
+            self.create_animation_post(post_data_obj)
         elif self.path == "/get-animation":
             self.get_animation_post(post_data_obj)
-        elif self.path == "/delete-playlist":
-            self.delete_playlist_post(post_data_obj)
+        elif self.path == "/delete-animation":
+            self.delete_animation_post(post_data_obj)
         elif self.path == "/save-data":
             self.save_data_post(post_data_obj)
-        elif self.path == "/rename-playlist":
-            self.rename_playlist_post(post_data_obj)
+        elif self.path == "/rename-animation":
+            self.rename_animation_post(post_data_obj)
         elif self.path == "/stop":
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
@@ -1787,11 +1747,11 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def rename_playlist_post(self, rq_d):
+    def rename_animation_post(self, rq_d):
         global data
-        snd = rq_d["fo"].replace("plylst_", "")
-        fo = plylst_folder + snd + ".json"
-        fn = plylst_folder + rq_d["fn"] + ".json"
+        snd = rq_d["fo"].replace("animations", "")
+        fo = animations_folder + snd + ".json"
+        fn = animations_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
         upd_media()
         self.send_response(200)
@@ -1810,21 +1770,12 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                 data = []
             data.extend(rq_d[2])
             if rq_d[0] == rq_d[1]:
-                f_n = ""
-                an = rq_d[3].split("_")
-                if "plylst" == an[0]:
-                    snd_f = rq_d[3].replace("plylst_", "")
-                    snd_f = snd_f.replace(".mp4", "")
-                    snd_f = snd_f.replace(".wav", "")
-                    f_n = plylst_folder + \
-                        snd_f + ".json"
-                else:
-                    snd_f = rq_d[3].replace(".mp4", "")
-                    snd_f = snd_f.replace(".wav", "")
-                    f_n = media_folder + snd_f + ".json"
+                f_n = animations_folder + \
+                    rq_d[3] + ".json"
                 files.write_json_file(f_n, data)
-                upd_media()
                 data = []
+            upd_media()
+            data = []
         except:
             data = []
             self.send_response(500)
@@ -1841,51 +1792,35 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def delete_playlist_post(self, rq_d):
-        snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = plylst_folder + snd_f + ".json"
+    def delete_animation_post(self, rq_d):
+        snd_f = rq_d["fn"]
+        f_n = animations_folder + snd_f + ".json"
         os.remove(f_n)
         upd_media()
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = rq_d["fn"] + " playlist file deleted"
+        response = rq_d["fn"] + " animation file deleted"
         self.wfile.write(response.encode('utf-8'))
 
     def get_animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
         snd_f = rq_d["an"]
-        snd_f = snd_f.replace(".mp4", "")
-        snd_f = snd_f.replace(".wav", "")
-        if "plylst_" in snd_f:
-            snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(plylst_folder + snd_f + ".json") == True):
-                f_n = plylst_folder + snd_f + ".json"
-                self.handle_serve_file_name(f_n)
-                return
-            else:
-                f_n = code_folder + "t_s_def/timestamp mode.json"
-                self.handle_serve_file_name(f_n)
-                return
-        elif (f_exists(media_folder + snd_f + ".json") == True):
-            f_n = media_folder + snd_f + ".json"
-            self.handle_serve_file_name(f_n)
-            return
-        else:
-            f_n = code_folder + "t_s_def/timestamp mode.json"
+        if (f_exists(animations_folder + snd_f + ".json") == True):
+            f_n = animations_folder + snd_f + ".json"
             self.handle_serve_file_name(f_n)
             return
 
-    def create_playlist_post(self, rq_d):
+    def create_animation_post(self, rq_d):
         global data
-        f_n = plylst_folder + rq_d["fn"] + ".json"
+        f_n = animations_folder + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
-        gc_col("created playlist")
+        gc_col("created animation ")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = "created " + rq_d["fn"] + " playlist"
+        response = "created " + rq_d["fn"] + " animation"
         self.wfile.write(response.encode('utf-8'))
 
     def update_light_string_post(self, rq_d):
@@ -2132,9 +2067,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def get_all_media_post(self, rq_d):
+    def get_animations_post(self, rq_d):
         upd_media()
-        response = media_files
+        response = snd_opt
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2783,11 +2718,11 @@ def return_file_to_use(f_nm):
     global cfg, lst_opt, running_mode
     cur_opt = f_nm
     if f_nm == "random_play lists":
-        h_i = len(play_list_options) - 1
-        cur_opt = play_list_options[random.randint(
+        h_i = len(animation_options) - 1
+        cur_opt = animation_options[random.randint(
             0, h_i)]
-        while lst_opt == cur_opt and len(play_list_options) > 1:
-            cur_opt = play_list_options[random.randint(
+        while lst_opt == cur_opt and len(animation_options) > 1:
+            cur_opt = animation_options[random.randint(
                 0, h_i)]
         lst_opt = cur_opt
         print("Random sound option: " + f_nm)
@@ -2831,12 +2766,12 @@ def an_light(f_nm):
 
     if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        if (f_exists(plylst_folder + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
+        if (f_exists(animations_folder + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
         else:
             flsh_t.append("0.0|")
             flsh_t.append("5000.0|")
-            files.write_json_file(plylst_folder + f_nm + ".json", flsh_t)
+            files.write_json_file(animations_folder + f_nm + ".json", flsh_t)
     else:
         if (f_exists(media_folder + json_fn + ".json") == True):
             flsh_t = files.read_json_file(media_folder + json_fn + ".json")
@@ -2872,7 +2807,7 @@ def an_light(f_nm):
             mix_is_paused = False
             close_midori()
     else:
-        running_mode = "play_list"
+        running_mode = "animation"
 
     srt_t = time.monotonic()
 
