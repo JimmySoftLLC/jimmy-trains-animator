@@ -270,25 +270,6 @@
             <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
             <h2>Animations:</h2>
             <div id="animationsContainer"></div>
-            <h2>Intermission between movies:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0" data-url="/mode"
-                    type="button">
-                    Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.33" data-url="/mode"
-                    type="button">
-                    Infrequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.66" data-url="/mode"
-                    type="button">
-                    Frequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_1" data-url="/mode"
-                    type="button">
-                    Always
-                </button>
-            </div>
             <h2>Animation settings:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
@@ -322,16 +303,6 @@
                 <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
                     data-url="/mode" type="button">
                     Timestamp Mode Off
-                </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_on" data-url="/mode"
-                    type="button">
-                    Terminal Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="terminal_mode_off" data-url="/mode"
-                    type="button">
-                    Terminal Mode Off
                 </button>
             </div>
 
@@ -683,6 +654,9 @@
                     between
                     transitions in decimal seconds
                 </div>
+                <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)</div>
+                <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
+                ignored</div>
                 <div>ZRAND = Random rainbow, fire, or color change</div>
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
