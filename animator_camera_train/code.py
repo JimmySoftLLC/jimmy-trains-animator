@@ -151,6 +151,7 @@ def get_home_path(subpath=""):
 ################################################################################
 # Globals
 
+
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 mvc_folder = code_folder + "mvc/"
@@ -163,12 +164,12 @@ is_midori_running = False
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
 
-elves_folder = "elves/"
-bells_folder = "bells/"
-horns_folder = "horns/"
-stops_folder = "stops/"
-santa_folder = "santa/"
-story_folder = "story/"
+elves_folder = media_folder + "elves/"
+bells_folder = media_folder + "bells/"
+horns_folder = media_folder + "horns/"
+stops_folder = media_folder + "stops/"
+santa_folder = media_folder + "santa/"
+story_folder = media_folder + "story/"
 
 FOLDER_MAP = {
     'E': elves_folder,
@@ -268,15 +269,17 @@ def gc_col(collection_point):
 # sudo visudo
 # cameratrain ALL=(ALL) NOPASSWD: /sbin/reboot
 
+
 def restart_pi():
     os.system('sudo reboot')
 
 
 def restart_pi_timer():
-    play_mix(mvc_folder + "restarting_animator_camera_train.wav")
+    ply_a_0(mvc_folder + "restarting_animator_camera_train.wav")
     delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
+
 
 gc_col("Imports gc, files")
 
@@ -287,6 +290,8 @@ gc_col("Imports gc, files")
 # cameratrain ALL=(ALL) NOPASSWD: /usr/bin/nmcli
 
 # Function to mount the USB drive (assumes automatic mounting to /media/pi)
+
+
 def get_usb_path():
     media_path = "/media/cameratrain/"
     usb_path = None
@@ -297,6 +302,8 @@ def get_usb_path():
     return usb_path
 
 # Function to read the SSID and PASSWORD from the file
+
+
 def read_wifi_credentials(file_path):
     with open(file_path, 'r') as f:
         lines = f.readlines()
@@ -311,6 +318,7 @@ def read_wifi_credentials(file_path):
             priority = line.strip().split('=')[1]
     return ssid, password, priority
 
+
 def connect_wifi(ssid, password, priority):
     """
     Adds (or updates) a Wi-Fi connection with maximum priority (99)
@@ -318,8 +326,8 @@ def connect_wifi(ssid, password, priority):
     """
 
     # Remove any existing connection with the same name first (clean slate for this SSID)
-    subprocess.run(['sudo', 'nmcli', 'connection', 'delete', ssid], 
-                  capture_output=True)
+    subprocess.run(['sudo', 'nmcli', 'connection', 'delete', ssid],
+                   capture_output=True)
 
     # Add the new connection with priority 99
     cmd = [
@@ -328,10 +336,10 @@ def connect_wifi(ssid, password, priority):
         'con-name',         ssid,           # name = SSID, looks clean
         'ifname',           'wlan0',
         'ssid',             ssid,
-        'wifi-sec.key-mgmt','wpa-psk',
+        'wifi-sec.key-mgmt', 'wpa-psk',
         'wifi-sec.psk',     password,
         'connection.autoconnect',         'yes',        # auto-connect enabled
-        'connection.autoconnect-priority',priority           # ← THIS IS THE MAGIC
+        'connection.autoconnect-priority', priority           # ← THIS IS THE MAGIC
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -344,6 +352,8 @@ def connect_wifi(ssid, password, priority):
     return True
 
 # Update ssid password using usb drive
+
+
 def update_ssid_password_from_usb():
     print("Looking for USB with Wi-Fi configuration...")
     while True:
@@ -369,7 +379,7 @@ default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
 
 def upd_media():
-    global snd_opt, menu_snd_opt # ts_jsons
+    global snd_opt, menu_snd_opt  # ts_jsons
 
     snd_opt = files.return_directory("", animations_folder, ".json")
 
@@ -444,78 +454,16 @@ pygame.mixer.init()
 mix_voice_0 = pygame.mixer.Channel(0)
 mix_voice_1 = pygame.mixer.Channel(1)
 
-
-################################################################################
-# Terminal to observe timestamp during playback
-
-terminal_process = None
-
-
-def hide_terminal():
-    # Check for Linux platform
-    if sys.platform.startswith('linux'):
-        try:
-            # Use xdotool to find the terminal running 'code.py'
-            window_ids = subprocess.check_output(
-                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
-
-            if window_ids:
-                for window_id in window_ids:
-                    # Minimize (hide) the terminal window
-                    subprocess.run(['xdotool', 'windowminimize', window_id])
-                    print("Terminal window minimized and hidden.")
-            else:
-                print("Terminal window running 'code.py' not found.")
-        except Exception as e:
-            print(f"Error hiding terminal: {e}")
-    else:
-        print("Unsupported platform.")
-
-
-def open_terminal():
-    # Check for Linux platform
-    if sys.platform.startswith('linux'):
-        try:
-            # Use xdotool to find the terminal running 'code.py'
-            window_ids = subprocess.check_output(
-                ['xdotool', 'search', '--name', 'code.py']).strip().decode('utf-8').split()
-
-            if window_ids:
-                for window_id in window_ids:
-                    # Unhide and bring the terminal window to the front
-                    # Unhide window
-                    subprocess.run(['xdotool', 'windowmap', window_id])
-                    # Focus window
-                    subprocess.run(
-                        ['xdotool', 'windowactivate', '--sync', window_id])
-
-                    # Resize and move the terminal as required
-                    subprocess.run(
-                        ['xdotool', 'windowmove', window_id, '0', '0'])
-                    subprocess.run(
-                        ['xdotool', 'windowsize', window_id, str(cfg["horizontal_resolution"]), str(cfg["vertical_resolution"]/2)])
-                    print("Terminal window unhidden, moved, and resized.")
-            else:
-                print("Terminal window running 'code.py' not found.")
-            return True
-        except Exception as e:
-            print(f"Error opening terminal: {e}")
-            return None
-    else:
-        print("Unsupported platform.")
-        return None
-
-
 ################################################################################
 
 kit = ServoKit(channels=16)
 
 # Setup servo hardware, new hat has 8 motor output pads, only 4 are used for camera car
-# For a 180-degree servo, the typical pulse width range is 1ms to 2ms, with 1ms 
-# often being one end (0 degrees) and 2ms the other (180 degrees), though some 
-# servos use a wider range like 500µs (0.5ms) to 2500µs (2.5ms) for the full 
-# 180-degree sweep, with 1500µs at the center; always check the specific servo's 
-# datasheet as ranges can vary. Prototype used a 300-2700 pulse width range, 
+# For a 180-degree servo, the typical pulse width range is 1ms to 2ms, with 1ms
+# often being one end (0 degrees) and 2ms the other (180 degrees), though some
+# servos use a wider range like 500µs (0.5ms) to 2500µs (2.5ms) for the full
+# 180-degree sweep, with 1500µs at the center; always check the specific servo's
+# datasheet as ranges can vary. Prototype used a 300-2700 pulse width range,
 # but new boards use the standard range of 500 to 2500.
 kit.servo[0].set_pulse_width_range(500, 2500)
 kit.servo[1].set_pulse_width_range(500, 2500)
@@ -531,9 +479,10 @@ p_arr = [90, 90, 90, 90]
 
 s_arr = [s_1, s_2, s_3, s_4]
 
+
 def m_servo(n, p):
     global p_arr
-    
+
     # Clamp input to 0-180
     if p < 0:
         p = 0
@@ -541,14 +490,15 @@ def m_servo(n, p):
         p = 180
 
     p_arr[n] = p
-    
+
     # List of servos that are mounted "backwards"
     inverted_servos = {3}
-    
+
     if n in inverted_servos:
         p = 180 - p
-    
+
     s_arr[n].angle = p
+
 
 def m_servo_s(n, n_pos, spd=0.01):
     global p_arr
@@ -559,6 +509,7 @@ def m_servo_s(n, n_pos, spd=0.01):
         m_servo(n, p)
         time.sleep(spd)
     m_servo(n, p)
+
 
 ################################################################################
 # Create an ordered dictionary to preserve the order of insertion
@@ -907,7 +858,7 @@ def discover_lights():
     if cfg["lifx_enabled"] == False:
         return
     global devices, lifx
-    play_mix(mvc_folder + "" + "discovering_lifx_lights" + ".wav")
+    ply_a_0(mvc_folder + "" + "discovering_lifx_lights" + ".wav")
     lifx = LifxLAN()
 
     # Discover LIFX devices on the local network
@@ -916,7 +867,7 @@ def discover_lights():
     # Report the count of discovered devices
     device_count = len(devices)
     spk_str(str(device_count), False)
-    play_mix(mvc_folder + "" + "lifx_lights_found" + ".wav")
+    ply_a_0(mvc_folder + "" + "lifx_lights_found" + ".wav")
 
     print(f"Discovered {device_count} device(s).")
 
@@ -1219,10 +1170,11 @@ def open_midori():
 ################################################################################
 # Setup camera streaming
 
+
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
         global picam2, stream_output, recording
-        path = self.path.split('?', 1)[0]  
+        path = self.path.split('?', 1)[0]
         if path == '/snapshot':
             if not camera_running:
                 self.send_response(503)
@@ -1240,7 +1192,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(f"Failed to take snapshot: {e}".encode())
-                
+
         elif path == '/start_recording':
             if not camera_running:
                 self.send_response(503)
@@ -1255,7 +1207,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.end_headers()
                 self.wfile.write(b'Already recording')
-                
+
         elif path == '/stop_recording':
             if not recording:
                 self.send_response(400)
@@ -1270,9 +1222,11 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
             self.send_error(404)
             self.end_headers()
 
+
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
+
 
 def start_recording():
     global recording, picam2
@@ -1282,6 +1236,7 @@ def start_recording():
         recording = True
         print(f"Started recording to {filename}")
 
+
 def stop_recording():
     global recording, picam2
     if recording:
@@ -1289,11 +1244,13 @@ def stop_recording():
         recording = False
         print("Stopped recording")
 
+
 def set_zoom(zoom_factor):
     global picam2, camera_running
     if camera_running and picam2:
         try:
-            full_res = picam2.sensor_resolution  # (4608, 2592) for Camera Module 3
+            # (4608, 2592) for Camera Module 3
+            full_res = picam2.sensor_resolution
             if zoom_factor < 1.0:
                 zoom_factor = 1.0  # Minimum zoom
             # Avoid integer truncation by keeping float precision until final step
@@ -1302,7 +1259,8 @@ def set_zoom(zoom_factor):
             crop_x = (full_res[0] - crop_width) / 2
             crop_y = (full_res[1] - crop_height) / 2
             # Convert to integers only at the end
-            scaler_crop = (int(crop_x), int(crop_y), int(crop_width), int(crop_height))
+            scaler_crop = (int(crop_x), int(crop_y),
+                           int(crop_width), int(crop_height))
             picam2.set_controls({"ScalerCrop": scaler_crop})
             print(f"Zoom set to {zoom_factor}x (ScalerCrop: {scaler_crop})")
             return True
@@ -1312,6 +1270,7 @@ def set_zoom(zoom_factor):
     return False
 
 # [Rest of code unchanged, including MyHttpRequestHandler with /set-zoom...]
+
 
 def take_snapshot():
     global stream_output
@@ -1326,12 +1285,14 @@ def take_snapshot():
         f.write(frame)
     return filename
 
+
 def start_camera_server(zoom_factor=1.0):
     global camera_running, picam2, stream_output
     if not camera_running:
         try:
             picam2 = Picamera2()
-            full_res = picam2.sensor_resolution  # (4608, 2592) for Camera Module 3
+            # (4608, 2592) for Camera Module 3
+            full_res = picam2.sensor_resolution
             output_res = (1280, 720)  # Your current output resolution
 
             # Calculate ScalerCrop for digital zoom
@@ -1346,18 +1307,22 @@ def start_camera_server(zoom_factor=1.0):
             # Configure with Transform for 180-degree rotation
             config = picam2.create_video_configuration(
                 main={"size": output_res},
-                controls={"FrameDurationLimits": (100000, 100000), "ScalerCrop": scaler_crop},
-                transform=Transform(hflip=True, vflip=True)  # 180-degree rotation
+                controls={"FrameDurationLimits": (
+                    100000, 100000), "ScalerCrop": scaler_crop},
+                # 180-degree rotation
+                transform=Transform(hflip=True, vflip=True)
             )
             picam2.configure(config)
             stream_output = StreamingOutput()
             picam2.start_recording(JpegEncoder(), FileOutput(stream_output))
             time.sleep(1)  # Give the camera time to start
             camera_running = True
-            print(f"Camera server started with 180-degree rotation and zoom factor {zoom_factor} (ScalerCrop: {scaler_crop})")
+            print(
+                f"Camera server started with 180-degree rotation and zoom factor {zoom_factor} (ScalerCrop: {scaler_crop})")
         except Exception as e:
             print(f"Failed to start camera server: {e}")
             camera_running = False
+
 
 def stop_camera_server():
     global camera_running, picam2, stream_output, camera_thread
@@ -1373,6 +1338,7 @@ def stop_camera_server():
         except Exception as e:
             print(f"Error stopping camera server: {e}")
 
+
 ################################################################################
 # Setup routes
 # Camera streaming globals
@@ -1381,6 +1347,7 @@ picam2 = None
 stream_output = None
 camera_thread = None
 recording = False
+
 
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self):
@@ -1392,8 +1359,10 @@ class StreamingOutput(io.BufferedIOBase):
         with self.condition:
             self.frame = buf
             self.frame_count += 1
-            #print(f"Frame {self.frame_count} written to stream_output (size: {len(buf)} bytes)")
+            # print(f"Frame {self.frame_count} written to stream_output (size: {len(buf)} bytes)")
             self.condition.notify_all()
+
+
 class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
@@ -1405,7 +1374,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.handle_serve_file("/code" + self.path, "text/css")
         elif self.path.endswith(".js"):
             print(self.path)
-            self.handle_serve_file("/code" + self.path, "application/javascript")
+            self.handle_serve_file("/code" + self.path,
+                                   "application/javascript")
         elif self.path == "/record_stream":
             print(self.path)
             self.handle_serve_file("/code/record_stream.html")
@@ -1461,13 +1431,15 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.send_header('Age', 0)
         self.send_header('Cache-Control', 'no-cache, private')
         self.send_header('Pragma', 'no-cache')
-        self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+        self.send_header(
+            'Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
         self.end_headers()
         try:
             while camera_running:
                 with stream_output.condition:
                     if not stream_output.condition.wait(timeout=2.0):
-                        print("Timeout waiting for frame - no frame received within 2 seconds")
+                        print(
+                            "Timeout waiting for frame - no frame received within 2 seconds")
                         continue
                     if stream_output.frame is None:
                         print("No frame available - frame buffer is empty")
@@ -1482,7 +1454,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                 # print(f"Sent frame {stream_output.frame_count} to client (size: {len(frame)} bytes)")
         except Exception as e:
             print(f'Removed streaming client {self.client_address}: {e}')
-
 
     def handle_file_upload(self):
         content_length = int(self.headers['Content-Length'])
@@ -1561,7 +1532,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         focus_value = float(rq_d.get("focus", 1.0))
         if 0.0 <= focus_value <= 10.0:
             if picam2 and camera_running:
-                picam2.set_controls({"AfMode": 0, "LensPosition": focus_value})  # AfMode 0 = Manual
+                # AfMode 0 = Manual
+                picam2.set_controls({"AfMode": 0, "LensPosition": focus_value})
                 print(f"Focus set to {focus_value} (1/{focus_value}m)")
                 self.send_response(200)
                 self.send_header("Content-type", "text/plain")
@@ -1571,7 +1543,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                 self.send_response(500, "Camera not running")
         else:
             self.send_response(400, "Focus value out of range (0-10)")
-
 
     def handle_generic_post(self, path):
         content_length = int(self.headers['Content-Length'])
@@ -1652,7 +1623,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.set_camera_zoom(post_data_obj)
         elif self.path == "/set-focus":
             self.set_camera_focus(post_data_obj)
-            
 
     def set_camera_zoom(self, rq_d):
         zoom_factor = float(rq_d.get("zoom", 1.0))
@@ -1778,7 +1748,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                   rq_d["action"] + " data: " + cfg["light_string"])
             files.write_json_file(code_folder + "cfg.json", cfg)
             upd_l_str()
-            play_mix(mvc_folder + "all_changes_complete.wav")
+            ply_a_0(mvc_folder + "all_changes_complete.wav")
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
@@ -1794,7 +1764,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
               " data: " + cfg["light_string"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         upd_l_str()
-        play_mix(mvc_folder + "all_changes_complete.wav")
+        ply_a_0(mvc_folder + "all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1805,17 +1775,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         print(rq_d)
         global cfg, cont_run, ts_mode
         if rq_d["an"] == "cont_mode_on":
-            play_mix(mvc_folder + "continuous_mode_activated.wav")
+            ply_a_0(mvc_folder + "continuous_mode_activated.wav")
             cont_run = True
         elif rq_d["an"] == "cont_mode_off":
-            play_mix(mvc_folder + "continuous_mode_deactivated.wav")
+            ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
             cont_run = False
         elif rq_d["an"] == "timestamp_mode_on":
-            play_mix(mvc_folder + "timestamp_mode_on.wav")
-            play_mix(mvc_folder + "timestamp_instructions.wav")
+            ply_a_0(mvc_folder + "timestamp_mode_on.wav")
+            ply_a_0(mvc_folder + "timestamp_instructions.wav")
             ts_mode = True
         elif rq_d["an"] == "timestamp_mode_off":
-            play_mix(mvc_folder + "timestamp_mode_off.wav")
+            ply_a_0(mvc_folder + "timestamp_mode_off.wav")
             ts_mode = False
         if rq_d["an"] == "left":
             override_switch_state["switch_value"] = "left"
@@ -1851,17 +1821,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         if rq_d["an"] == "reset_to_defaults":
             rst_def()
             files.write_json_file(code_folder + "cfg.json", cfg)
-            play_mix(mvc_folder + "all_changes_complete.wav")
+            ply_a_0(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         elif rq_d["an"] == "reset_scene_to_defaults":
             cfg["scene_changes"] = copy.deepcopy(default_cfg["scene_changes"])
             files.write_json_file(code_folder + "cfg.json", cfg)
-            play_mix(mvc_folder + "all_changes_complete.wav")
+            ply_a_0(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         elif rq_d["an"] == "reset_neo_to_defaults":
             cfg["neo_changes"] = copy.deepcopy(default_cfg["neo_changes"])
             files.write_json_file(code_folder + "cfg.json", cfg)
-            play_mix(mvc_folder + "all_changes_complete.wav")
+            ply_a_0(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1872,7 +1842,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def speaker_post(self, rq_d):
         global cfg
         if rq_d["an"] == "speaker_test":
-            play_mix(mvc_folder + "left_speaker_right_speaker.wav")
+            ply_a_0(mvc_folder + "left_speaker_right_speaker.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -2284,11 +2254,11 @@ def ch_vol(action):
     cfg["volume_pot"] = False
     upd_vol(.05)
     files.write_json_file(code_folder + "cfg.json", cfg)
-    play_mix(mvc_folder + "volume.wav")
+    ply_a_0(mvc_folder + "volume.wav")
     spk_str(cfg["volume"], False)
 
 
-def play_mix(file_name, wait_until_done=True, allow_exit=True):
+def ply_a_0(file_name, wait_until_done=True, repeat=0, allow_exit=True):
     print("playing " + file_name)
     if mix_voice_0.get_busy():
         mix_voice_0.stop()
@@ -2296,14 +2266,14 @@ def play_mix(file_name, wait_until_done=True, allow_exit=True):
             pass
     mix_sound = pygame.mixer.Sound(file_name)
     upd_vol(.05)
-    mix_voice_0.play(mix_sound, loops=0)
+    mix_voice_0.play(mix_sound, loops=repeat)
     while mix_voice_0.get_busy() and wait_until_done:
         if allow_exit:
             exit_early()
     print("done playing")
 
 
-def play_mix_media(file_name,loops=0):
+def ply_a_1(file_name, wait_until_done=True, repeat=0, allow_exit=True):
     print("playing " + file_name)
     if mix_voice_1.get_busy():
         mix_voice_1.stop()
@@ -2311,15 +2281,30 @@ def play_mix_media(file_name,loops=0):
             pass
     mix_media_sound = pygame.mixer.Sound(file_name)
     upd_vol(.05)
-    mix_voice_1.play(mix_media_sound, loops) #loops=-1 for infinite loop
+    mix_voice_1.play(mix_media_sound, loops=repeat)
+    while mix_voice_1.get_busy() and wait_until_done:
+        if allow_exit:
+            exit_early()
     print("done playing")
 
+def wait_snd_0():
+    while mix_voice_0.get_busy():
+        exit_early()
+    print("done playing")
 
-def wait_snd():
+def wait_snd_1():
     while mix_voice_1.get_busy():
         exit_early()
     print("done playing")
 
+def stp_a_0():
+    mix_voice_0.stop()
+    wait_snd_0()
+
+
+def stp_a_1():
+    mix_voice_1.stop()
+    wait_snd_1()
 
 def stop_all_media():
     mix_voice_0.stop()
@@ -2336,9 +2321,9 @@ def exit_early():
     time.sleep(0.05)
 
 
-def spk_str(str_to_speak, addLocal, addIpAddressIs = False):
+def spk_str(str_to_speak, addLocal, addIpAddressIs=False):
     if addIpAddressIs:
-        play_mix(mvc_folder + "ip_address_is.wav")
+        ply_a_0(mvc_folder + "ip_address_is.wav")
     for character in str_to_speak:
         try:
             if character == " ":
@@ -2347,53 +2332,53 @@ def spk_str(str_to_speak, addLocal, addIpAddressIs = False):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            play_mix(mvc_folder + "" + character + ".wav")
+            ply_a_0(mvc_folder + "" + character + ".wav")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        play_mix(mvc_folder + "dot_local_colon_8083.wav")
+        ply_a_0(mvc_folder + "dot_local_colon_8083.wav")
 
 
 def l_r_but():
-    play_mix(mvc_folder + "press_left_button_right_button.wav")
+    ply_a_0(mvc_folder + "press_left_button_right_button.wav")
 
 
 def sel_web():
-    play_mix(mvc_folder + "web_menu.wav")
+    ply_a_0(mvc_folder + "web_menu.wav")
     l_r_but()
 
 
 def opt_sel():
-    play_mix(mvc_folder + "option_selected.wav")
+    ply_a_0(mvc_folder + "option_selected.wav")
 
 
 def spk_sng_num(song_number):
-    play_mix(mvc_folder + "song.wav")
+    ply_a_0(mvc_folder + "song.wav")
     spk_str(song_number, False)
 
 
 def no_trk():
-    play_mix(mvc_folder + "no_user_soundtrack_found.wav")
+    ply_a_0(mvc_folder + "no_user_soundtrack_found.wav")
     while True:
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             break
         if switch_state == "right":
-            play_mix(mvc_folder + "create_sound_track_files.wav")
+            ply_a_0(mvc_folder + "create_sound_track_files.wav")
             break
 
 
 def spk_web():
-    play_mix(mvc_folder + "animator_available_on_network.wav")
-    play_mix(mvc_folder + "to_access_type.wav")
+    ply_a_0(mvc_folder + "animator_available_on_network.wav")
+    ply_a_0(mvc_folder + "to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-camera-train":
-        play_mix(mvc_folder + "animator_dash_camera_dash_train.wav")
-        play_mix(mvc_folder + "dot_local_colon_8083.wav")
+        ply_a_0(mvc_folder + "animator_dash_camera_dash_train.wav")
+        ply_a_0(mvc_folder + "dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    play_mix(mvc_folder + "in_your_browser.wav")
+    ply_a_0(mvc_folder + "in_your_browser.wav")
 
 
 def get_random_joke():
@@ -2484,7 +2469,7 @@ def text_to_wav_file(text, file_name, timeout_duration):
         adjusted_audio.export(file_name, format="wav")
         print(f"Wav for {file_name} generated and volume adjusted.")
 
-        play_mix(file_name)
+        ply_a_0(file_name)
 
     except TimeoutException:
         print("TTS operation timed out.")
@@ -2577,7 +2562,7 @@ def check_switches(stop_event):
             rst_an()
             if cont_run:
                 cont_run = False
-                play_mix(mvc_folder + "continuous_mode_deactivated.wav")
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "mix":
                 if mix_is_paused:
@@ -2606,7 +2591,6 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     global current_media_playing, exit_set_hdw
     exit_set_hdw = True
     stop_all_media()
-    hide_terminal()
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
@@ -2674,13 +2658,13 @@ def an_light(f_nm):
         print("Result is: ", result)
         result = result.split("_")
         if result and len(result) > 1:
-            w0_exists = f_exists(animations_folder + result[1])
-            if w0_exists:
+            w1_exists = f_exists(animations_folder + result[1])
+            if w1_exists:
                 if result[0] == "1":
-                    repeat = True
+                    repeat = -1
                 else:
-                    repeat = False
-                play_mix_media(animations_folder + result[1])
+                    repeat = 0
+                ply_a_1(animations_folder + result[1], False, repeat, True)
             else:
                 return
             srt_t = time.monotonic()
@@ -2766,7 +2750,7 @@ def an_ts(f_nm):
 
     media0 = media_folder + f_nm
 
-    play_mix_media(media0)
+    ply_a_1(media0)
 
     startTime = time.perf_counter()
     time.sleep(.1)
@@ -2786,9 +2770,9 @@ def an_ts(f_nm):
 
     ts_mode = False
     rst_an()
-    play_mix(mvc_folder + "timestamp_saved.wav")
-    play_mix(mvc_folder + "timestamp_mode_off.wav")
-    play_mix(mvc_folder + "animations_are_now_active.wav")
+    ply_a_0(mvc_folder + "timestamp_saved.wav")
+    ply_a_0(mvc_folder + "timestamp_mode_off.wav")
+    ply_a_0(mvc_folder + "animations_are_now_active.wav")
     running_mode = ""
 
 
@@ -2841,23 +2825,24 @@ def set_hdw(cmd, dur=0):
             # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
             elif seg[0] == 'M':  # play file
                 if seg[1] == "S":
-                    stp_a_0()
+                    stop_all_media()
                 elif seg[1] == "W" or seg[1] == "P":
                     if seg[2] in FOLDER_MAP:
                         folder = FOLDER_MAP[seg[2]]
-                        code   = seg[3:]
+                        code = seg[3:]
                         if code == "SEQN":
-                            filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
+                            filename, media_index[seg[2]] = get_indexed_media_file(
+                                folder, "mp3", media_index[seg[2]])
                         elif code == "SEQF":
-                            filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
+                            filename, media_index[seg[2]] = get_indexed_media_file(
+                                folder, "mp3", 0)
                         elif code == "RAND":
                             filename = get_random_media_file(folder)
                         else:
                             filename = code
-                        w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
+                        w1 = folder + filename + ".wav"
                     if seg[1] == "W" or seg[1] == "P":
-                        stp_a_1()
-                        mix_voice_0.voice[1].play(w1, loop=False)        
+                        ply_a_1(w1, False, 0, False)
                     if seg[1] == "W":
                         wait_snd_1()
             # LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
@@ -2944,9 +2929,9 @@ def set_hdw(cmd, dur=0):
                 v = int(seg[2:])
                 if num == 0:
                     for i in range(6):
-                        m_servo_s(i,v)
+                        m_servo_s(i, v)
                 else:
-                    m_servo_s(num-1,v)
+                    m_servo_s(num-1, v)
             # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
             if seg[0] == 'Q':
                 file_nm = seg[1:]
@@ -2989,6 +2974,31 @@ def split_string(seg):
     parts.append(object_part.strip('_'))
 
     return parts
+
+
+def get_random_media_file(folder_to_search):
+    myfiles = files.return_directory("", folder_to_search, ".mp3")
+    return random.choice(myfiles) if myfiles else None
+
+
+def get_indexed_media_file(folder_to_search, file_ext, index):
+    if not file_ext.startswith('.'):
+        file_ext = '.' + file_ext
+    file_ext = file_ext.lower()
+
+    myfiles = files.return_directory("", folder_to_search, file_ext)
+
+    if not myfiles:
+        return None, 0
+
+    index = index % len(myfiles)
+
+    selected_file = myfiles[index]
+    new_index = (index + 1) % len(myfiles)
+
+    print(f"playing: {selected_file}  ({index}/{len(myfiles)})")
+
+    return selected_file, new_index
 
 ##############################
 # Led color effects
@@ -3184,7 +3194,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        play_mix(mvc_folder + "animations_are_now_active.wav")
+        ply_a_0(mvc_folder + "animations_are_now_active.wav")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -3200,10 +3210,10 @@ class BseSt(Ste):
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
-                    play_mix(mvc_folder + "continuous_mode_deactivated.wav")
+                    ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
                 else:
                     cont_run = True
-                    play_mix(mvc_folder + "continuous_mode_activated.wav")
+                    ply_a_0(mvc_folder + "continuous_mode_activated.wav")
                 time.sleep(.5)
             elif switch_state == "left" or cont_run:
                 add_command(cfg["option_selected"])
@@ -3234,7 +3244,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        play_mix(mvc_folder + "main_menu.wav")
+        ply_a_0(mvc_folder + "main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3246,7 +3256,7 @@ class Main(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            play_mix(mvc_folder + "" + main_m[self.i] + ".wav")
+            ply_a_0(mvc_folder + "" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -3262,7 +3272,7 @@ class Main(Ste):
             elif sel_mnu == "volume_level_adjustment":
                 mch.go_to('volume_level_adjustment')
             else:
-                play_mix(mvc_folder + "all_changes_complete.wav")
+                ply_a_0(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -3278,7 +3288,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        play_mix(mvc_folder + "sound_selection_menu.wav")
+        ply_a_0(mvc_folder + "sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3291,7 +3301,7 @@ class Snds(Ste):
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             try:
-                play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
+                ply_a_0(code_folder + "snd_opt/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -3302,8 +3312,9 @@ class Snds(Ste):
         if switch_state == "right":
             cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
             files.write_json_file(code_folder + "cfg.json", cfg)
-            play_mix(mvc_folder + "option_selected.wav", "rb")
+            ply_a_0(mvc_folder + "option_selected.wav", "rb")
             mch.go_to('base_state')
+
 
 class AddSnds(Ste):
 
@@ -3317,7 +3328,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        play_mix(mvc_folder + "add_sounds_animate.wav")
+        ply_a_0(mvc_folder + "add_sounds_animate.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3329,7 +3340,7 @@ class AddSnds(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            play_mix(
+            ply_a_0(
                 mvc_folder + "" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
@@ -3338,17 +3349,17 @@ class AddSnds(Ste):
         if switch_state == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                play_mix(mvc_folder + "drive_in_media_instructions.wav")
+                ply_a_0(mvc_folder + "drive_in_media_instructions.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                play_mix(mvc_folder + "timestamp_mode_on.wav")
-                play_mix(mvc_folder + "timestamp_instructions.wav")
+                ply_a_0(mvc_folder + "timestamp_mode_on.wav")
+                ply_a_0(mvc_folder + "timestamp_instructions.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                play_mix(mvc_folder + "timestamp_mode_off.wav")
+                ply_a_0(mvc_folder + "timestamp_mode_off.wav")
             else:
-                play_mix(mvc_folder + "all_changes_complete.wav")
+                ply_a_0(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -3364,7 +3375,7 @@ class VolumeLevelAdjustment(Ste):
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        play_mix(mvc_folder + "volume_adjustment_menu.wav")
+        ply_a_0(mvc_folder + "volume_adjustment_menu.wav")
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -3383,7 +3394,7 @@ class VolumeLevelAdjustment(Ste):
             elif switch_state == "right_held":
                 files.write_json_file(
                     code_folder + "cfg.json", cfg)
-                play_mix(mvc_folder + "all_changes_complete.wav")
+                ply_a_0(mvc_folder + "all_changes_complete.wav")
                 done = True
                 mch.go_to('base_state')
             time.sleep(0.05)
@@ -3412,7 +3423,7 @@ class WebOpt(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            play_mix(mvc_folder + "" + web_m[self.i] + ".wav")
+            ply_a_0(mvc_folder + "" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -3427,7 +3438,7 @@ class WebOpt(Ste):
                 spk_str(local_ip, False, True)
                 sel_web()
             elif selected_menu_item == "update_ssid_password_from_usb":
-                play_mix(mvc_folder + "update_ssid_password_from_usb.wav")
+                ply_a_0(mvc_folder + "update_ssid_password_from_usb.wav")
                 update_ssid_password_from_usb()
                 restart_pi_timer()
             else:
@@ -3435,6 +3446,7 @@ class WebOpt(Ste):
 
 ###############################################################################
 # Create the state machine
+
 
 st_mch = StMch()
 st_mch.add(BseSt())
@@ -3497,6 +3509,7 @@ logo_when_idle_thread = threading.Thread(target=logo_when_idle)
 logo_when_idle_thread.daemon = True
 logo_when_idle_thread.start()
 
+
 def stop_program():
     stop_all_commands()
     if web:
@@ -3506,6 +3519,7 @@ def stop_program():
         httpd.shutdown()
     rst_an(media_folder + 'pictures/logo.jpg')
     quit()
+
 
 while True:
     try:
