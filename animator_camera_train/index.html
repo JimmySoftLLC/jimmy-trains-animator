@@ -268,6 +268,10 @@
             <h2>Current Animation Queue</h2>
             <div id="currentMedia"></div>
             <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
+                type="button">
+                Random all animations
+            </button>
             <h2>Animations:</h2>
             <div id="animationsContainer"></div>
             <h2>Animation settings:</h2>
@@ -654,9 +658,11 @@
                     between
                     transitions in decimal seconds
                 </div>
-                <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)</div>
+                <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves,
+                    B bells, H horns, T stops, C cut, R recording, S santa) XXX (file name, if RAND random selection of
+                    folder, SEQN play next in sequence, SEQF play first in sequence)</div>
                 <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
-                ignored</div>
+                    ignored</div>
                 <div>ZRAND = Random rainbow, fire, or color change</div>
                 <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
                 <div>ZFIRE = Fire</div>
@@ -668,9 +674,8 @@
                 <div>ZJ = Joke</div>
                 <div id="neoInstructionsContainer"></div>
                 <div id="sceneInstructionsContainer"></div>
-                <div>IXXX/XXX = Set desktop image XXX/XXXX(folder/filename)</div>
                 <div>SNXXX = Servo N (0 All, 1-4) XXX 0 to 180</div>
-                <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+                <div>Q = Add command to queue (AN_XXX = Animation XXX filename)</div>
                 <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
                     data_object}</div>
                 <div>E = End script<div>
@@ -831,7 +836,7 @@
             });
     }
 
-        function createAnimationDialog() {
+    function createAnimationDialog() {
         var modalEl = document.getElementById("modalEl")
         removeChildNodes(modalEl)
         modalEl.style.width = '400px';
@@ -2056,7 +2061,7 @@
             });
     }
 
- 
+
     function populateAnimationsTable(data) {
         // Clear existing table rows
         dataTableBody.innerHTML = "";

@@ -169,7 +169,8 @@ bells_folder = media_folder + "bells/"
 horns_folder = media_folder + "horns/"
 stops_folder = media_folder + "stops/"
 santa_folder = media_folder + "santa/"
-story_folder = media_folder + "story/"
+cut_folder = media_folder + "cut/"
+recording_folder = media_folder + "recording/"
 
 FOLDER_MAP = {
     'E': elves_folder,
@@ -177,10 +178,11 @@ FOLDER_MAP = {
     'H': horns_folder,
     'T': stops_folder,
     'S': santa_folder,
-    'C': story_folder
+    'C': cut_folder,
+    'R': recording_folder
 }
 
-media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
+media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0, 'R': 0}
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -389,7 +391,6 @@ def upd_media():
     menu_snd_opt.extend(rnd_opt)
 
     # ts_jsons = files.return_directory("", "/sd/t_s_def", ".json")
-
 
 upd_media()
 
@@ -1495,6 +1496,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         fn = animations_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
         upd_media()
+        update_folder_name_wavs()
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1538,6 +1540,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         f_n = animations_folder + snd_f + ".json"
         os.remove(f_n)
         upd_media()
+        update_folder_name_wavs()
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1557,6 +1560,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         f_n = animations_folder + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
+        update_folder_name_wavs()
         gc_col("created animation ")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1631,7 +1635,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def animation_post(self, rq_d):
         global cfg, cont_run, ts_mode
         cfg["option_selected"] = rq_d["an"]
-        add_command(cfg["option_selected"])
+        add_command("AN_" + cfg["option_selected"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1966,8 +1970,11 @@ def process_commands():
     while command_queue:
         command = command_queue.popleft()  # Retrieve from the front
         print(f"Processing command: {command}")
-        an(command)
-
+        if command[:2] == 'AN':  # AN_XXX = Animation XXX filename
+            cmd_split = command.split("_")
+            an(cmd_split[1])
+        else:
+            set_hdw(command)
 
 def clear_command_queue():
     """Clear all commands from the queue."""
@@ -2318,7 +2325,7 @@ def generate_wav_from_filename(file_name):
     if is_gtts_reachable == False:
         return
     text_to_speak = file_name.replace("_", " ")
-    text_to_speak = text_to_speak.replace(".wav", "")
+    text_to_speak = text_to_speak.replace(".json", "")
 
     wav_file = os.path.join(
         snd_opt_folder, f"{os.path.splitext(file_name)[0]}.wav")
@@ -2339,31 +2346,32 @@ def generate_wav_from_filename(file_name):
     volume_change = -5  # Decrease volume by 5db
     adjusted_audio = audio + volume_change
 
+    print(f"Wav filename to save: {wav_file}")
     # Save the adjusted audio
     adjusted_audio.export(wav_file, format="wav")
     print(f"Wav for {file_name} generated and volume adjusted.")
 
 
 def update_folder_name_wavs():
-    if web == False:
-        return False
-    if is_gtts_reachable == False:
+    if not web or not is_gtts_reachable:
         return
 
-    # Get all files in the folder
-    files = os.listdir(snd_opt_folder)
+    # Generate wavs for valid menu options
+    for name in menu_snd_opt:
+        generate_wav_from_filename(name)
 
-    wav_files = {f for f in files if f.endswith('.wav')}
+    # Get all wav files in the folder
+    for file in os.listdir(snd_opt_folder):
+        if not file.lower().endswith(".wav"):
+            continue
 
-    # Generate wavs for valid files
-    for my_file in menu_snd_opt:
-        generate_wav_from_filename(my_file)
+        base_name = os.path.splitext(file)[0]
 
-    # Delete orphaned wav files (those without a corresponding key in menu_snd_opt)
-    for wav_file in wav_files:
-        if f"{os.path.splitext(wav_file)[0]}.wav" not in menu_snd_opt:
-            os.remove(os.path.join(snd_opt_folder, wav_file))
-            print(f"Deleted orphaned wav: {wav_file}")
+        # Delete orphaned wav files
+        if base_name not in menu_snd_opt:
+            os.remove(os.path.join(snd_opt_folder, file))
+            print(f"Deleted orphaned wav: {file}")
+
 
 
 ################################################################################
@@ -2461,7 +2469,7 @@ def an(f_nm):
 def return_file_to_use(f_nm):
     global cfg, lst_opt, running_mode
     cur_opt = f_nm
-    if f_nm == "random_all":
+    if f_nm == "random all":
         h_i = len(snd_opt) - 1
         cur_opt = snd_opt[random.randint(
             0, h_i)]
@@ -2821,7 +2829,7 @@ def split_string(seg):
 
 
 def get_random_media_file(folder_to_search):
-    myfiles = files.return_directory("", folder_to_search, ".mp3")
+    myfiles = files.return_directory("", folder_to_search, ".wav")
     return random.choice(myfiles) if myfiles else None
 
 
@@ -3025,7 +3033,7 @@ class BseSt(Ste):
                     ply_a_1(mvc_folder + "continuous_mode_activated.wav")
                 time.sleep(.5)
             elif switch_state == "left" or cont_run:
-                add_command(cfg["option_selected"])
+                add_command("AN_"+ cfg["option_selected"])
                 time.sleep(.5)
             elif switch_state == "right":
                 mch.go_to('main_menu')
@@ -3110,7 +3118,7 @@ class Snds(Ste):
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             try:
-                ply_a_1(code_folder + "snd_opt/" + menu_snd_opt[self.i])
+                ply_a_1(snd_opt_folder + menu_snd_opt[self.i] + ".wav")
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -3119,9 +3127,9 @@ class Snds(Ste):
             if self.i > len(menu_snd_opt)-1:
                 self.i = 0
         if switch_state == "right":
-            cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
+            cfg["option_selected"] = menu_snd_opt[self.sel_i]
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_1(mvc_folder + "option_selected.wav", "rb")
+            ply_a_1(mvc_folder + "option_selected.wav")
             mch.go_to('base_state')
 
 
@@ -3285,7 +3293,7 @@ discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
-# update_folder_name_wavs()
+update_folder_name_wavs()
 
 if web:
     # Start the WebSocket server in a separate thread
