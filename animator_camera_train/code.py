@@ -1495,6 +1495,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         fo = animations_folder + snd + ".json"
         fn = animations_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
+        ply_a_1(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
         self.send_response(200)
@@ -1539,6 +1540,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         snd_f = rq_d["fn"]
         f_n = animations_folder + snd_f + ".json"
         os.remove(f_n)
+        ply_a_1(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
         self.send_response(200)
@@ -1559,6 +1561,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         global data
         f_n = animations_folder + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
+        ply_a_1(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
         gc_col("created animation ")
@@ -2492,6 +2495,8 @@ def an_light(f_nm):
     if (f_exists(animations_folder + f_nm + ".json") == True):
         flsh_t = files.read_json_file(
             animations_folder + f_nm + ".json")
+        
+    check_thread, stop_event = run_check_switches_thread()
 
     flsh_i = 0
 
@@ -2508,8 +2513,6 @@ def an_light(f_nm):
                 else:
                     repeat = 0
                 ply_a_0(animations_folder + result[1], False, repeat, True)
-            else:
-                return
             srt_t = time.monotonic()
 
             ft1 = []
@@ -2519,13 +2522,12 @@ def an_light(f_nm):
             ft_last = flsh_t[len(flsh_t)-1].split("|")
             tm_last = float(ft_last[0]) + .1
             flsh_t.append(str(tm_last) + "|")
-        else:
-            return
         flsh_i += 1
     else:
-        return
-
-    check_thread, stop_event = run_check_switches_thread()
+        stop_event.set()  # Signal the thread to stop
+        check_thread.join()  # Wait for the thread to finish
+        result = an_done_reset("DONE")
+        return result
 
     srt_t = time.monotonic()
 
@@ -2552,7 +2554,7 @@ def an_light(f_nm):
                 return result
             flsh_i += 1
 
-        if not mix_voice_0.get_busy():
+        if not mix_voice_0.get_busy() and w0_exists:
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
