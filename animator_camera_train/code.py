@@ -275,7 +275,7 @@ def restart_pi():
 
 
 def restart_pi_timer():
-    ply_a_0(mvc_folder + "restarting_animator_camera_train.wav")
+    ply_a_1(mvc_folder + "restarting_animator_camera_train.wav")
     delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
@@ -518,86 +518,12 @@ neo_changes = OrderedDict(cfg["neo_changes"])
 # Get the ordered list of keys
 ordered_neo_changes_keys = list(neo_changes.keys())
 
-trees = []
-canes = []
-ornmnts = []
-stars = []
-brnchs = []
-cane_s = []
-cane_e = []
-
-bars = []
-bolts = []
-noods = []
 neos = []
-
-bar_arr = []
-bolt_arr = []
 neo_arr = []
 
 n_px = 0
 led = neopixel_spi.NeoPixel_SPI(
     board.SPI(), n_px, brightness=1.0, auto_write=False)
-
-
-def bld_tree(p):
-    i = []
-    for t in trees:
-        for ledi in t:
-            si = ledi
-            break
-        if p == "ornaments":
-            for ledi in range(0, 7):
-                i.append(ledi+si)
-        if p == "star":
-            for ledi in range(7, 14):
-                i.append(ledi+si)
-        if p == "branches":
-            for ledi in range(14, 21):
-                i.append(ledi+si)
-    return i
-
-
-def bld_cane(p):
-    i = []
-    for c in canes:
-        for led_i in c:
-            si = led_i
-            break
-        if p == "end":
-            for led_i in range(0, 2):
-                i.append(led_i+si)
-        if p == "start":
-            for led_i in range(2, 4):
-                i.append(led_i+si)
-    return i
-
-
-def bld_bar():
-    i = []
-    for b in bars:
-        for l in b:
-            si = l
-            break
-        for l in range(0, 10):
-            i.append(l+si)
-    return i
-
-
-def bld_bolt():
-    i = []
-    for b in bolts:
-        for l in b:
-            si = l
-            break
-        if len(b) == 4:
-            for l in range(0, 4):
-                i.append(l+si)
-        if len(b) == 1:
-            for l in range(0, 1):
-                i.append(l+si)
-    return i
-
 
 def bld_neo():
     i = []
@@ -609,7 +535,6 @@ def bld_neo():
             i.append(l+si)
     return i
 
-
 def show_l():
     led.show()
     time.sleep(.05)
@@ -618,83 +543,10 @@ def show_l():
 
 
 def l_tst():
-    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
-
-    # Christmas items
-    ornmnts = bld_tree("ornaments")
-    stars = bld_tree("star")
-    brnchs = bld_tree("branches")
-    cane_s = bld_cane("start")
-    cane_e = bld_cane("end")
-
-    # Lightning items
-    bar_arr = bld_bar()
-    bolt_arr = bld_bolt()
+    global neo_arr
 
     # Neo items
     neo_arr = bld_neo()
-
-    # cane test
-    cnt = 0
-    for i in cane_s:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 1:
-            show_l()
-            cnt = 0
-    for i in cane_e:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 1:
-            show_l()
-            cnt = 0
-
-    # tree test
-    cnt = 0
-    for i in ornmnts:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-    for i in stars:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-    for i in brnchs:
-        led[i] = (50, 50, 50)
-        cnt += 1
-        if cnt > 6:
-            show_l()
-            cnt = 0
-
-    # bar test
-    for b in bars:
-        for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # bolt test
-    for b in bolts:
-        for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
-
-    # nood test
-    for n in noods:
-        led[n[0]] = (50, 50, 50)
-        led.show()
-        time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
 
     # neo test
     for n in neos:
@@ -714,12 +566,8 @@ def l_tst():
 
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, n_px, led
-    trees = []
-    canes = []
-    bars = []
-    bolts = []
-    noods = []
+    global neos, n_px, led
+
     neos = []
 
     n_px = 0
@@ -731,26 +579,6 @@ def upd_l_str():
         if len(p) == 2:
             typ, qty = p
             qty = int(qty)
-            if typ == 'grandtree':
-                s = list(range(n_px, n_px + qty))
-                trees.append(s)
-                n_px += qty
-            elif typ == 'cane':
-                s = list(range(n_px, n_px + qty))
-                canes.append(s)
-                n_px += qty
-            if typ == 'bar':
-                s = list(range(n_px, n_px + qty))
-                bars.append(s)
-                n_px += qty
-            elif typ == 'bolt' and qty < 4:
-                s = [n_px, qty]
-                noods.append(s)
-                n_px += 1
-            elif typ == 'bolt' and qty == 4:
-                s = list(range(n_px, n_px + qty))
-                bolts.append(s)
-                n_px += qty
             if typ == 'neo':
                 if qty == 6:
                     neoqty = 2
@@ -768,17 +596,14 @@ def upd_l_str():
     led.brightness = 1.0
     l_tst()
 
-
 upd_l_str()
 
 # Neo pixel / neo 6 module methods
 
 br = 0
 
-
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
-
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -801,7 +626,6 @@ def get_neo_ids():
         if any(num == sublist[0] for sublist in neos):
             matches.append(num)
     return matches
-
 
 def set_neo_module_to(mod_n, ind, v):
     cur = []
@@ -858,7 +682,7 @@ def discover_lights():
     if cfg["lifx_enabled"] == False:
         return
     global devices, lifx
-    ply_a_0(mvc_folder + "" + "discovering_lifx_lights" + ".wav")
+    ply_a_1(mvc_folder + "" + "discovering_lifx_lights" + ".wav")
     lifx = LifxLAN()
 
     # Discover LIFX devices on the local network
@@ -867,7 +691,7 @@ def discover_lights():
     # Report the count of discovered devices
     device_count = len(devices)
     spk_str(str(device_count), False)
-    ply_a_0(mvc_folder + "" + "lifx_lights_found" + ".wav")
+    ply_a_1(mvc_folder + "" + "lifx_lights_found" + ".wav")
 
     print(f"Discovered {device_count} device(s).")
 
@@ -1748,7 +1572,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                   rq_d["action"] + " data: " + cfg["light_string"])
             files.write_json_file(code_folder + "cfg.json", cfg)
             upd_l_str()
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            ply_a_1(mvc_folder + "all_changes_complete.wav")
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
@@ -1764,7 +1588,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
               " data: " + cfg["light_string"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         upd_l_str()
-        ply_a_0(mvc_folder + "all_changes_complete.wav")
+        ply_a_1(mvc_folder + "all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1775,17 +1599,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         print(rq_d)
         global cfg, cont_run, ts_mode
         if rq_d["an"] == "cont_mode_on":
-            ply_a_0(mvc_folder + "continuous_mode_activated.wav")
+            ply_a_1(mvc_folder + "continuous_mode_activated.wav")
             cont_run = True
         elif rq_d["an"] == "cont_mode_off":
-            ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
+            ply_a_1(mvc_folder + "continuous_mode_deactivated.wav")
             cont_run = False
         elif rq_d["an"] == "timestamp_mode_on":
-            ply_a_0(mvc_folder + "timestamp_mode_on.wav")
-            ply_a_0(mvc_folder + "timestamp_instructions.wav")
+            ply_a_1(mvc_folder + "timestamp_mode_on.wav")
+            ply_a_1(mvc_folder + "timestamp_instructions.wav")
             ts_mode = True
         elif rq_d["an"] == "timestamp_mode_off":
-            ply_a_0(mvc_folder + "timestamp_mode_off.wav")
+            ply_a_1(mvc_folder + "timestamp_mode_off.wav")
             ts_mode = False
         if rq_d["an"] == "left":
             override_switch_state["switch_value"] = "left"
@@ -1821,17 +1645,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         if rq_d["an"] == "reset_to_defaults":
             rst_def()
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            ply_a_1(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         elif rq_d["an"] == "reset_scene_to_defaults":
             cfg["scene_changes"] = copy.deepcopy(default_cfg["scene_changes"])
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            ply_a_1(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         elif rq_d["an"] == "reset_neo_to_defaults":
             cfg["neo_changes"] = copy.deepcopy(default_cfg["neo_changes"])
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            ply_a_1(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1842,7 +1666,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def speaker_post(self, rq_d):
         global cfg
         if rq_d["an"] == "speaker_test":
-            ply_a_0(mvc_folder + "left_speaker_right_speaker.wav")
+            ply_a_1(mvc_folder + "left_speaker_right_speaker.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -2254,7 +2078,7 @@ def ch_vol(action):
     cfg["volume_pot"] = False
     upd_vol(.05)
     files.write_json_file(code_folder + "cfg.json", cfg)
-    ply_a_0(mvc_folder + "volume.wav")
+    ply_a_1(mvc_folder + "volume.wav")
     spk_str(cfg["volume"], False)
 
 
@@ -2277,7 +2101,7 @@ def ply_a_1(file_name, wait_until_done=True, repeat=0, allow_exit=True):
     print("playing " + file_name)
     if mix_voice_1.get_busy():
         mix_voice_1.stop()
-        while mix_voice_0.get_busy():
+        while mix_voice_1.get_busy():
             pass
     mix_media_sound = pygame.mixer.Sound(file_name)
     upd_vol(.05)
@@ -2323,7 +2147,7 @@ def exit_early():
 
 def spk_str(str_to_speak, addLocal, addIpAddressIs=False):
     if addIpAddressIs:
-        ply_a_0(mvc_folder + "ip_address_is.wav")
+        ply_a_1(mvc_folder + "ip_address_is.wav")
     for character in str_to_speak:
         try:
             if character == " ":
@@ -2332,54 +2156,65 @@ def spk_str(str_to_speak, addLocal, addIpAddressIs=False):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_0(mvc_folder + "" + character + ".wav")
+            ply_a_1(mvc_folder + "" + character + ".wav")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_0(mvc_folder + "dot_local_colon_8083.wav")
+        ply_a_1(mvc_folder + "dot_local_colon_8083.wav")
 
 
 def l_r_but():
-    ply_a_0(mvc_folder + "press_left_button_right_button.wav")
+    ply_a_1(mvc_folder + "press_left_button_right_button.wav")
 
 
 def sel_web():
-    ply_a_0(mvc_folder + "web_menu.wav")
+    ply_a_1(mvc_folder + "web_menu.wav")
     l_r_but()
 
 
 def opt_sel():
-    ply_a_0(mvc_folder + "option_selected.wav")
+    ply_a_1(mvc_folder + "option_selected.wav")
 
 
 def spk_sng_num(song_number):
-    ply_a_0(mvc_folder + "song.wav")
+    ply_a_1(mvc_folder + "song.wav")
     spk_str(song_number, False)
 
 
 def no_trk():
-    ply_a_0(mvc_folder + "no_user_soundtrack_found.wav")
+    ply_a_1(mvc_folder + "no_user_soundtrack_found.wav")
     while True:
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             break
         if switch_state == "right":
-            ply_a_0(mvc_folder + "create_sound_track_files.wav")
+            ply_a_1(mvc_folder + "create_sound_track_files.wav")
             break
 
 
 def spk_web():
-    ply_a_0(mvc_folder + "animator_available_on_network.wav")
-    ply_a_0(mvc_folder + "to_access_type.wav")
+    ply_a_1(mvc_folder + "animator_available_on_network.wav")
+    ply_a_1(mvc_folder + "to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-camera-train":
-        ply_a_0(mvc_folder + "animator_dash_camera_dash_train.wav")
-        ply_a_0(mvc_folder + "dot_local_colon_8083.wav")
+        ply_a_1(mvc_folder + "animator_dash_camera_dash_train.wav")
+        ply_a_1(mvc_folder + "dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    ply_a_0(mvc_folder + "in_your_browser.wav")
+    ply_a_1(mvc_folder + "in_your_browser.wav")
 
+def get_snds(dir, typ):
+    sds = []
+    s = files.return_directory("", dir, ".wav")
+    for el in s:
+        p = el.split('_')
+        if p[0] == typ:
+            sds.append(el)
+    mx = len(sds) - 1
+    i = random.randint(0, mx)
+    fn = dir + "/" + sds[i] + ".wav"
+    return fn
 
 def get_random_joke():
     url = "https://official-joke-api.appspot.com/jokes/random"
@@ -2469,7 +2304,7 @@ def text_to_wav_file(text, file_name, timeout_duration):
         adjusted_audio.export(file_name, format="wav")
         print(f"Wav for {file_name} generated and volume adjusted.")
 
-        ply_a_0(file_name)
+        ply_a_1(file_name)
 
     except TimeoutException:
         print("TTS operation timed out.")
@@ -2562,7 +2397,7 @@ def check_switches(stop_event):
             rst_an()
             if cont_run:
                 cont_run = False
-                ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
+                ply_a_1(mvc_folder + "continuous_mode_deactivated.wav")
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "mix":
                 if mix_is_paused:
@@ -2587,7 +2422,7 @@ def run_check_switches_thread():
     return check_thread, stop_event
 
 
-def rst_an(file_name=media_folder + 'pictures/black.jpg'):
+def rst_an(file_name=media_folder + 'pictures/logo.jpg'):
     global current_media_playing, exit_set_hdw
     exit_set_hdw = True
     stop_all_media()
@@ -2658,13 +2493,13 @@ def an_light(f_nm):
         print("Result is: ", result)
         result = result.split("_")
         if result and len(result) > 1:
-            w1_exists = f_exists(animations_folder + result[1])
-            if w1_exists:
+            w0_exists = f_exists(animations_folder + result[1])
+            if w0_exists:
                 if result[0] == "1":
                     repeat = -1
                 else:
                     repeat = 0
-                ply_a_1(animations_folder + result[1], False, repeat, True)
+                ply_a_0(animations_folder + result[1], False, repeat, True)
             else:
                 return
             srt_t = time.monotonic()
@@ -2709,12 +2544,12 @@ def an_light(f_nm):
                 return result
             flsh_i += 1
 
-        if not mix_voice_1.get_busy():
+        if not mix_voice_0.get_busy():
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
             return result
-        elif flsh_i > len(flsh_t)-1:
+        if (not mix_voice_0.get_busy() and w0_exists) or not flsh_i < len(flsh_t)-1:
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
@@ -2750,7 +2585,7 @@ def an_ts(f_nm):
 
     media0 = media_folder + f_nm
 
-    ply_a_1(media0)
+    ply_a_0(media0)
 
     startTime = time.perf_counter()
     time.sleep(.1)
@@ -2760,7 +2595,7 @@ def an_ts(f_nm):
         r_sw.update()
         if r_sw.fell:
             add_command_to_ts("")
-        if not mix_voice_1.get_busy():
+        if not mix_voice_0.get_busy():
             add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
@@ -2769,10 +2604,10 @@ def an_ts(f_nm):
             break
 
     ts_mode = False
-    rst_an()
-    ply_a_0(mvc_folder + "timestamp_saved.wav")
-    ply_a_0(mvc_folder + "timestamp_mode_off.wav")
-    ply_a_0(mvc_folder + "animations_are_now_active.wav")
+    rst_an(media_folder + 'pictures/logo.jpg')
+    ply_a_1(mvc_folder + "timestamp_saved.wav")
+    ply_a_1(mvc_folder + "timestamp_mode_off.wav")
+    ply_a_1(mvc_folder + "animations_are_now_active.wav")
     running_mode = ""
 
 
@@ -2792,7 +2627,7 @@ def rnd_prob(random_value):
     return False
 
 
-def set_hdw(cmd, dur=0):
+def set_hdw(cmd, dur=3):
     global sp, br, running_mode, exit_set_hdw
 
     if cmd == "":
@@ -2845,6 +2680,15 @@ def set_hdw(cmd, dur=0):
                         ply_a_1(w1, False, 0, False)
                     if seg[1] == "W":
                         wait_snd_1()
+            # HA = Blow horn or bell, A (H Horn, B Bell)
+            elif seg[0] == 'H':  # play file
+                stp_a_1()
+                if seg[1] == "B":
+                    w1 = get_snds(bells_folder, "bell")
+                    ply_a_1(w1, False, 0, False)
+                elif seg[1] == "H":
+                    w1 = get_snds(horns_folder, "horn")
+                    ply_a_1(w1, False, 0, False)
             # LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
@@ -3047,40 +2891,21 @@ def rbow(spd, dur):
 def fire(dur):
     global exit_set_hdw
     st = time.monotonic()
-
-    firei = []
-
-    firei.extend(ornmnts)
-    firei.extend(cane_s)
-    firei.extend(cane_e)
-
-    stari = []
-    stari.extend(stars)
-
-    for i in stari:
-        led[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend((brnchs))
-
-    for i in brnchsi:
-        led[i] = (50, 50, 50)
-
     r = random.randint(0, 255)
     g = random.randint(0, 255)
     b = random.randint(0, 255)
 
     # Flicker, based on our initial RGB values
     while True:
-        for i in firei:
-            if exit_set_hdw:
-                return
+        for i in range(n_px):
+            # if exit_set_hdw:
+            #     return
             f = random.randint(0, 110)
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
-            led.show()
+        led.show()
         time.sleep(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
@@ -3088,9 +2913,10 @@ def fire(dur):
 
 
 def multi_color():
+    global exit_set_hdw
     for i in range(0, n_px):
-        if not running_mode:
-            return
+        # if exit_set_hdw:
+        #         return
         r = random.randint(128, 255)
         g = random.randint(128, 255)
         b = random.randint(128, 255)
@@ -3108,23 +2934,6 @@ def multi_color():
             g1 = 0
             b1 = b
         led[i] = (r1, g1, b1)
-
-    stari = []
-    stari.extend(stars)
-
-    for i in stari:
-        led[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend((brnchs))
-
-    for i in brnchsi:
-        led[i] = (7, 163, 30)
-
-    canei = []
-    canei.extend(cane_e)
-    for i in canei:
-        led[i] = (255, 255, 255)
     led.show()
 
 
@@ -3194,7 +3003,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        ply_a_0(mvc_folder + "animations_are_now_active.wav")
+        ply_a_1(mvc_folder + "animations_are_now_active.wav")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -3210,10 +3019,10 @@ class BseSt(Ste):
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
-                    ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
+                    ply_a_1(mvc_folder + "continuous_mode_deactivated.wav")
                 else:
                     cont_run = True
-                    ply_a_0(mvc_folder + "continuous_mode_activated.wav")
+                    ply_a_1(mvc_folder + "continuous_mode_activated.wav")
                 time.sleep(.5)
             elif switch_state == "left" or cont_run:
                 add_command(cfg["option_selected"])
@@ -3244,7 +3053,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_0(mvc_folder + "main_menu.wav")
+        ply_a_1(mvc_folder + "main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3256,7 +3065,7 @@ class Main(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            ply_a_0(mvc_folder + "" + main_m[self.i] + ".wav")
+            ply_a_1(mvc_folder + "" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -3272,7 +3081,7 @@ class Main(Ste):
             elif sel_mnu == "volume_level_adjustment":
                 mch.go_to('volume_level_adjustment')
             else:
-                ply_a_0(mvc_folder + "all_changes_complete.wav")
+                ply_a_1(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -3288,7 +3097,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_0(mvc_folder + "sound_selection_menu.wav")
+        ply_a_1(mvc_folder + "sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3301,7 +3110,7 @@ class Snds(Ste):
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             try:
-                ply_a_0(code_folder + "snd_opt/" + menu_snd_opt[self.i])
+                ply_a_1(code_folder + "snd_opt/" + menu_snd_opt[self.i])
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -3312,7 +3121,7 @@ class Snds(Ste):
         if switch_state == "right":
             cfg["option_selected"] = menu_snd_opt[self.sel_i][:-4]
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_0(mvc_folder + "option_selected.wav", "rb")
+            ply_a_1(mvc_folder + "option_selected.wav", "rb")
             mch.go_to('base_state')
 
 
@@ -3328,7 +3137,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        ply_a_0(mvc_folder + "add_sounds_animate.wav")
+        ply_a_1(mvc_folder + "add_sounds_animate.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3340,7 +3149,7 @@ class AddSnds(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            ply_a_0(
+            ply_a_1(
                 mvc_folder + "" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
@@ -3349,17 +3158,17 @@ class AddSnds(Ste):
         if switch_state == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                ply_a_0(mvc_folder + "drive_in_media_instructions.wav")
+                ply_a_1(mvc_folder + "drive_in_media_instructions.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                ply_a_0(mvc_folder + "timestamp_mode_on.wav")
-                ply_a_0(mvc_folder + "timestamp_instructions.wav")
+                ply_a_1(mvc_folder + "timestamp_mode_on.wav")
+                ply_a_1(mvc_folder + "timestamp_instructions.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                ply_a_0(mvc_folder + "timestamp_mode_off.wav")
+                ply_a_1(mvc_folder + "timestamp_mode_off.wav")
             else:
-                ply_a_0(mvc_folder + "all_changes_complete.wav")
+                ply_a_1(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -3375,7 +3184,7 @@ class VolumeLevelAdjustment(Ste):
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        ply_a_0(mvc_folder + "volume_adjustment_menu.wav")
+        ply_a_1(mvc_folder + "volume_adjustment_menu.wav")
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -3394,7 +3203,7 @@ class VolumeLevelAdjustment(Ste):
             elif switch_state == "right_held":
                 files.write_json_file(
                     code_folder + "cfg.json", cfg)
-                ply_a_0(mvc_folder + "all_changes_complete.wav")
+                ply_a_1(mvc_folder + "all_changes_complete.wav")
                 done = True
                 mch.go_to('base_state')
             time.sleep(0.05)
@@ -3423,7 +3232,7 @@ class WebOpt(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            ply_a_0(mvc_folder + "" + web_m[self.i] + ".wav")
+            ply_a_1(mvc_folder + "" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -3438,7 +3247,7 @@ class WebOpt(Ste):
                 spk_str(local_ip, False, True)
                 sel_web()
             elif selected_menu_item == "update_ssid_password_from_usb":
-                ply_a_0(mvc_folder + "update_ssid_password_from_usb.wav")
+                ply_a_1(mvc_folder + "update_ssid_password_from_usb.wav")
                 update_ssid_password_from_usb()
                 restart_pi_timer()
             else:
@@ -3476,7 +3285,7 @@ discover_lights()
 
 is_gtts_reachable = check_gtts_status()
 
-update_folder_name_wavs()
+# update_folder_name_wavs()
 
 if web:
     # Start the WebSocket server in a separate thread
@@ -3504,12 +3313,6 @@ state_machine_thread = threading.Thread(target=run_state_machine)
 state_machine_thread.daemon = True
 state_machine_thread.start()
 
-# Start the logo_when_idle in a separate thread
-logo_when_idle_thread = threading.Thread(target=logo_when_idle)
-logo_when_idle_thread.daemon = True
-logo_when_idle_thread.start()
-
-
 def stop_program():
     stop_all_commands()
     if web:
@@ -3517,7 +3320,7 @@ def stop_program():
         zeroconf.unregister_service(mdns_info)
         zeroconf.close()
         httpd.shutdown()
-    rst_an(media_folder + 'pictures/logo.jpg')
+    rst_an()
     quit()
 
 
