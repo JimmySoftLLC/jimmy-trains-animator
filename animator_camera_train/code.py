@@ -1516,8 +1516,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                 files.write_json_file(f_n, data)
                 data = []
             upd_media()
-            data = []
-        except:
+        except Exception as e:
+            files.log_item(e)
             data = []
             self.send_response(500)
             self.send_header("Content-type", "text/plain")
