@@ -246,6 +246,52 @@ updates_til_shift = random.randint(20, 100)  # Initial random hold time
 # Randomize per shift: lower = smoother, higher = more abrupt
 smooth_factor = 0.05  # Default medium; will randomize on shift
 
+# --- Speed limiting (keeps old look, just caps how fast servo can move) ---
+MAX_DEG_PER_SEC = 90.0   # try 60.0, 90.0, 120.0 (lower = slower)
+_last_cmd_angle = None
+_last_cmd_time = None
+
+
+def limit_servo_speed(target_angle_deg, dt_guess=0.02, reset=False):
+    """
+    Rate-limit the commanded servo angle to MAX_DEG_PER_SEC.
+
+    Fix for "jerk between cycles":
+      - when reset=True, we initialize the limiter to the CURRENT SERVO POSITION
+        so the next cycle starts seamlessly from wherever it ended.
+    """
+    global _last_cmd_angle, _last_cmd_time
+
+    now = time.monotonic()
+
+    if reset:
+        # Initialize limiter to the servo's actual last position (no jump)
+        _last_cmd_angle = float(prev_pos_arr[0]) if len(prev_pos_arr) else target_angle_deg
+        _last_cmd_time = now
+        return _last_cmd_angle
+
+    if _last_cmd_angle is None or _last_cmd_time is None:
+        _last_cmd_angle = target_angle_deg
+        _last_cmd_time = now
+        return target_angle_deg
+
+    dt = now - _last_cmd_time
+    if dt <= 0:
+        dt = dt_guess
+
+    max_step = MAX_DEG_PER_SEC * dt  # degrees allowed this update
+
+    delta = target_angle_deg - _last_cmd_angle
+    if delta > max_step:
+        target_angle_deg = _last_cmd_angle + max_step
+    elif delta < -max_step:
+        target_angle_deg = _last_cmd_angle - max_step
+
+    _last_cmd_angle = target_angle_deg
+    _last_cmd_time = now
+    return target_angle_deg
+
+
 def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim, dur):
     global current_offset, target_offset, wave_count, updates_til_shift, smooth_factor
     """
@@ -267,13 +313,16 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim, dur):
     print(
         f"Starting random physics-based wind simulation on 1 servo with dynamic LEDs for {dur} seconds...")
 
+    # --- NEW: Reset rate limiter to current servo position for seamless restarts ---
+    limit_servo_speed(float(prev_pos_arr[0]), dt_guess=wind_sim.dt, reset=True)
+
     start_time = time.monotonic()
 
     if cfg["light"] == "auto":
-            if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"]==False:
+            if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"] == False:
                 turn_on_led()
             else:
-                led.brightness=1.0
+                led.brightness = 1.0
                 led.show()
 
     try:
@@ -282,11 +331,11 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim, dur):
             if current_time - start_time >= dur:
                 print(f"\nSimulation completed after {dur} seconds.")
                 if cfg["light"] == "auto":
-                    if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"]==False:
+                    if cfg["timer_val"] != "timer_0_seconds" or cfg["timer"] == False:
                         turn_off_led()
                 break
 
-            # Physics update
+            # Physics update (UNCHANGED)
             wind_sim.physics_step()
 
             # Convert physics angle to degrees
@@ -298,18 +347,20 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim, dur):
             elif angle_deg > max_angle_deg:
                 angle_deg = max_angle_deg + 0.1 * (angle_deg - max_angle_deg)
 
-            # Add smoothed shifting offset
+            # Add smoothed shifting offset (UNCHANGED)
             angle_deg += current_offset
 
             # Final hard clamp to servo range (0-180)
             angle_deg = max(0, min(180, angle_deg))
 
+            # Speed limit the commanded motion
+            angle_deg = limit_servo_speed(angle_deg, dt_guess=wind_sim.dt)
+
             set_servo_angle(0, angle_deg)
 
             # Update smoothing: lerp current toward target
             if abs(current_offset - target_offset) > 0.1:  # If shifting
-                current_offset += smooth_factor * \
-                    (target_offset - current_offset)
+                current_offset += smooth_factor * (target_offset - current_offset)
 
             # Count "waves" as updates
             wave_count += 1
@@ -343,10 +394,11 @@ def physics_wind_motion(min_angle_deg, max_angle_deg, wind_sim, dur):
 
 
 def turn_on_led():
-    for i in range(0,101):
+    for i in range(0, 101):
         led.brightness = float(i/100)
         led.show()
         time.sleep(.01)
+
 
 def turn_off_led():
     for i in reversed(range(101)):
@@ -594,9 +646,9 @@ st_mch.add(Main())
 initialize_servos(SERVO_PINS)  # 1 servo on GP2
 
 # Create simulator (tune for more chaos)
-wind_sim=WindSimulator(segment_length=0.6, drag_coeff=0.5)
+wind_sim = WindSimulator(segment_length=0.6, drag_coeff=0.5)
 
-sw=utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
+sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
 
 if sw == "left_held":  # top switch counter clockwise
     cfg["light"] = "auto"
@@ -620,3 +672,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     time.sleep(0.01)
+
