@@ -169,8 +169,11 @@ bells_folder = media_folder + "bells/"
 horns_folder = media_folder + "horns/"
 stops_folder = media_folder + "stops/"
 santa_folder = media_folder + "santa/"
+story_folder = media_folder + "story/"
 cut_folder = media_folder + "cut/"
 recording_folder = media_folder + "recording/"
+shutter_folder = media_folder + "shutter/"
+quotes_folder = media_folder + "quotes/"
 
 FOLDER_MAP = {
     'E': elves_folder,
@@ -178,11 +181,14 @@ FOLDER_MAP = {
     'H': horns_folder,
     'T': stops_folder,
     'S': santa_folder,
+    'Z': story_folder,
     'C': cut_folder,
-    'R': recording_folder
+    'R': recording_folder,
+    'X': shutter_folder,
+    'Q': quotes_folder
 }
 
-media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0, 'R': 0}
+media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'Z': 0, 'C': 0, 'R': 0, 'X': 0, 'Q': 0 }
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -2500,28 +2506,33 @@ def an_light(f_nm):
 
     flsh_i = 0
 
+    w0_exists = False
+
     if flsh_i < len(flsh_t)-1:
-        ft1 = flsh_t[flsh_i].split("|")
-        result = set_hdw(ft1[1])
-        print("Result is: ", result)
-        result = result.split("_")
-        if result and len(result) > 1:
-            w0_exists = f_exists(animations_folder + result[1])
-            if w0_exists:
-                if result[0] == "1":
-                    repeat = -1
-                else:
-                    repeat = 0
-                ply_a_0(animations_folder + result[1], False, repeat, True)
-            srt_t = time.monotonic()
+        try:
+            ft1 = flsh_t[flsh_i].split("|")
+            result = set_hdw(ft1[1])
+            print("Result is: ", result)
+            result = result.split("_")
+            if result and len(result) > 1:
+                w0_exists = f_exists(animations_folder + result[1])
+                if w0_exists:
+                    if result[0] == "1":
+                        repeat = -1
+                    else:
+                        repeat = 0
+                    ply_a_0(animations_folder + result[1], False, repeat, True)
+                srt_t = time.monotonic()
 
-            ft1 = []
-            ft2 = []
+                ft1 = []
+                ft2 = []
 
-            # add end command to time stamps so all table values can be used
-            ft_last = flsh_t[len(flsh_t)-1].split("|")
-            tm_last = float(ft_last[0]) + .1
-            flsh_t.append(str(tm_last) + "|")
+                # add end command to time stamps so all table values can be used
+                ft_last = flsh_t[len(flsh_t)-1].split("|")
+                tm_last = float(ft_last[0]) + .1
+                flsh_t.append(str(tm_last) + "|")
+        except Exception as e:
+            files.log_item(e)
         flsh_i += 1
     else:
         stop_event.set()  # Signal the thread to stop
@@ -2667,7 +2678,7 @@ def set_hdw(cmd, dur=3):
                 repeat = seg[2]
                 file_nm = seg[3:]
                 return repeat + "_" + file_nm
-            # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
+            # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops, S santa, Z christmas story, C cut, R recording, X shutter, Q quotes) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
             elif seg[0] == 'M':  # play file
                 if seg[1] == "S":
                     stop_all_media()
