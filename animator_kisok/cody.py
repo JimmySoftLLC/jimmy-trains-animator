@@ -133,7 +133,7 @@ import io
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, JpegEncoder
 from picamera2.outputs import FileOutput
-from libcamera import Transform  # Add this import for Transform
+from libcamera import Transform
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -339,6 +339,7 @@ cfg_add_song = files.read_json_file(
     code_folder + "mvc/add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
+
 cont_run = False
 ts_mode = False
 lst_opt = ''
@@ -354,7 +355,6 @@ t_elsp = 0.0
 
 ################################################################################
 # Setup io hardware
-
 
 switch_io_1 = digitalio.DigitalInOut(board.D17)
 switch_io_1.direction = digitalio.Direction.INPUT
@@ -391,8 +391,13 @@ def pygame_mixer_init():
     mix = pygame.mixer.Channel(0)
     mix_media = pygame.mixer.Channel(1)
 
+
 def pygame_mixer_quit():
     global mix, mix_media
+    if mix:
+        mix.stop()
+    if mix_media:
+        mix_media.stop()
     mix = None
     mix_media = None
     pygame.mixer.quit()
@@ -1408,6 +1413,7 @@ class StreamingOutput(io.BufferedIOBase):
             self.frame_count += 1
             #print(f"Frame {self.frame_count} written to stream_output (size: {len(buf)} bytes)")
             self.condition.notify_all()
+
 class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
@@ -2239,7 +2245,10 @@ def stop_all_commands():
     clear_command_queue()
     running_mode = ""
     exit_set_hdw = True
-    mix.stop()
+    if mix:
+        mix.stop()
+    if mix_media:
+        mix_media.stop()
     media_player.stop()
     cont_run = False
     rst_an()
@@ -2306,8 +2315,10 @@ def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
     log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
-    mix.set_volume(volume_0_1*0.7)
-    mix_media.set_volume(volume_0_1*0.7)
+    if mix:
+        mix.set_volume(volume_0_1*0.7)
+    if mix_media:
+        mix_media.set_volume(volume_0_1*0.7)
     media_player.audio_set_volume(log_to_linear)
     time.sleep(seconds)
 
@@ -2345,14 +2356,15 @@ def ch_vol(action):
 
 def play_mix(file_name, wait_until_done=True, allow_exit=True):
     print("playing " + file_name)
-    if mix.get_busy():
+    if mix and mix.get_busy():
         mix.stop()
-        while mix.get_busy():
+        while mix and mix.get_busy():
             pass
     mix_sound = pygame.mixer.Sound(file_name)
     upd_vol(.05)
-    mix.play(mix_sound, loops=0)
-    while mix.get_busy() and wait_until_done:
+    if mix:
+        mix.play(mix_sound, loops=0)
+    while mix and mix.get_busy() and wait_until_done:
         if allow_exit:
             exit_early()
     print("done playing")
@@ -2360,27 +2372,30 @@ def play_mix(file_name, wait_until_done=True, allow_exit=True):
 
 def play_mix_media(file_name):
     print("playing " + file_name)
-    if mix_media.get_busy():
+    if mix_media and mix_media.get_busy():
         mix_media.stop()
-        while mix.get_busy():
+        while mix and mix.get_busy():
             pass
     mix_media_sound = pygame.mixer.Sound(file_name)
     upd_vol(.05)
-    mix_media.play(mix_media_sound, loops=0)
+    if mix_media:
+        mix_media.play(mix_media_sound, loops=0)
     print("done playing")
 
 
 def wait_snd():
-    while mix_media.get_busy() or media_player.is_playing():
+    while (mix_media and mix_media.get_busy()) or media_player.is_playing():
         exit_early()
     print("done playing")
 
 
 def stop_all_media():
-    mix.stop()
-    mix_media.stop()
+    if mix:
+        mix.stop()
+    if mix_media:
+        mix_media.stop()
     media_player.stop()
-    while mix.get_busy() or mix_media.get_busy() or media_player.is_playing():
+    while (mix and mix.get_busy()) or (mix_media and mix_media.get_busy()) or media_player.is_playing():
         pass
 
 
@@ -2640,10 +2655,12 @@ def check_switches(stop_event):
                     media_player.play()
             elif running_mode == "mix":
                 if mix_is_paused:
-                    mix_media.unpause()
+                    if mix_media:
+                        mix_media.unpause()
                     mix_is_paused = False
                 else:
-                    mix_media.pause()
+                    if mix_media:
+                        mix_media.pause()
                     mix_is_paused = True
         elif switch_state == "three":
             print("sw three fell")
@@ -2688,10 +2705,9 @@ def an(f_nm):
             gc_col("animation cleanup")
         else:
             if not "intermission/" in cur_opt:
-                insert_intermission_start_of_queue()
-            pygame_mixer_quit()   
+                insert_intermission_start_of_queue() 
             result = an_light(cur_opt)
-            pygame_mixer_init()
+            if not mix: pygame_mixer_init()
             gc_col("animation cleanup")
             return result
     except Exception as e:
@@ -2786,6 +2802,7 @@ def an_light(f_nm):
         if terminal_window_during_playback:
             terminal_process = open_terminal()
         if is_video:
+            pygame_mixer_quit()
             running_mode = "media_player"
             play_movie_file(media0)
         else:
@@ -2841,7 +2858,7 @@ def an_light(f_nm):
                 running_mode = ""
                 return "DONE"
         else:
-            if not mix_media.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
+            if not (mix_media and mix_media.get_busy()) and media_player_state_now != "Playing" and media_player_state_now != "Paused":
                 stop_event.set()  # Signal the thread to stop
                 check_thread.join()  # Wait for the thread to finish
                 result = an_done_reset("DONE")
@@ -2911,7 +2928,7 @@ def an_ts(f_nm):
         r_sw.update()
         if r_sw.fell:
             add_command_to_ts("")
-        if not mix_media.get_busy() and not media_player.is_playing():
+        if not (mix_media and mix_media.get_busy()) and not media_player.is_playing():
             add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
