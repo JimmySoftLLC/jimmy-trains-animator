@@ -250,7 +250,7 @@ def restart_pi():
 
 
 def restart_pi_timer():
-    play_mix(code_folder + "mvc/restarting_animator_camera_train.wav")
+    play_mix(code_folder + "mvc/restarting_animator_kiosk.wav")
     delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
@@ -2457,8 +2457,8 @@ def no_trk():
 def spk_web():
     play_mix(code_folder + "mvc/animator_available_on_network.wav")
     play_mix(code_folder + "mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-camera-train":
-        play_mix(code_folder + "mvc/animator_dash_camera_dash_train.wav")
+    if cfg["HOST_NAME"] == "animator-kiosk":
+        play_mix(code_folder + "mvc/animator_dash_kiosk.wav")
         play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
