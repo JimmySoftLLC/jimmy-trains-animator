@@ -1,0 +1,9 @@
+pcm.!default {
+    type plug
+    slave.pcm "hdmi:vc4hdmi,0"
+}
+
+ctl.!default {
+    type hw
+    card vc4hdmi
+}

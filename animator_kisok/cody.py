@@ -381,10 +381,23 @@ four_sw = Debouncer(switch_io_4)
 ################################################################################
 # Setup sound
 
+mix = None
+mix_media = None
+
 # Setup the mixer to play wav files
-pygame.mixer.init()
-mix = pygame.mixer.Channel(0)
-mix_media = pygame.mixer.Channel(1)
+def pygame_mixer_init():
+    global mix, mix_media
+    pygame.mixer.init()
+    mix = pygame.mixer.Channel(0)
+    mix_media = pygame.mixer.Channel(1)
+
+def pygame_mixer_quit():
+    global mix, mix_media
+    mix = None
+    mix_media = None
+    pygame.mixer.quit()
+    
+pygame_mixer_init()
 
 
 ################################################################################
@@ -2676,7 +2689,9 @@ def an(f_nm):
         else:
             if not "intermission/" in cur_opt:
                 insert_intermission_start_of_queue()
+            pygame_mixer_quit()   
             result = an_light(cur_opt)
+            pygame_mixer_init()
             gc_col("animation cleanup")
             return result
     except Exception as e:
