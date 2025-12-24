@@ -2360,9 +2360,9 @@ def play_mix(file_name, wait_until_done=True, allow_exit=True):
         mix.stop()
         while mix and mix.get_busy():
             pass
-    mix_sound = pygame.mixer.Sound(file_name)
-    upd_vol(.05)
     if mix:
+        mix_sound = pygame.mixer.Sound(file_name)
+        upd_vol(.05)
         mix.play(mix_sound, loops=0)
     while mix and mix.get_busy() and wait_until_done:
         if allow_exit:
@@ -2376,8 +2376,9 @@ def play_mix_media(file_name):
         mix_media.stop()
         while mix and mix.get_busy():
             pass
-    mix_media_sound = pygame.mixer.Sound(file_name)
-    upd_vol(.05)
+    if mix_media:
+        mix_media_sound = pygame.mixer.Sound(file_name)
+        upd_vol(.05)
     if mix_media:
         mix_media.play(mix_media_sound, loops=0)
     print("done playing")
