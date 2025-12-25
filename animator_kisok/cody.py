@@ -373,10 +373,15 @@ switch_io_4 = digitalio.DigitalInOut(board.D5)
 switch_io_4.direction = digitalio.Direction.INPUT
 switch_io_4.pull = digitalio.Pull.UP
 
+switch_io_5 = digitalio.DigitalInOut(board.D6)
+switch_io_5.direction = digitalio.Direction.INPUT
+switch_io_5.pull = digitalio.Pull.UP
+
 l_sw = Debouncer(switch_io_1)
 r_sw = Debouncer(switch_io_2)
 three_sw = Debouncer(switch_io_3)
 four_sw = Debouncer(switch_io_4)
+five_sw = Debouncer(switch_io_5)
 
 ################################################################################
 # Setup sound
@@ -3325,8 +3330,8 @@ class BseSt(Ste):
         global cont_run, running_mode, override_switch_state
         if running_mode != "time_stamp_mode":
             process_commands()
-            switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
+            switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
@@ -3347,6 +3352,10 @@ class BseSt(Ste):
                 time.sleep(.5)
             elif switch_state == "four":
                 print("sw four fell")
+                ch_vol("raise")
+                time.sleep(.5)
+            elif switch_state == "five":
+                print("sw five fell")
                 ch_vol("raise")
                 time.sleep(.5)
         time.sleep(0.05)
