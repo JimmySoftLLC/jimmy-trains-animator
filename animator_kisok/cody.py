@@ -1890,6 +1890,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             override_switch_state["switch_value"] = "three"
         elif rq_d["an"] == "four":
             override_switch_state["switch_value"] = "four"
+        elif rq_d["an"] == "five":
+            override_switch_state["switch_value"] = "five"
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2406,8 +2408,8 @@ def stop_all_media():
 
 
 def exit_early():
-    switch_state = utilities.switch_state(
-        l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+    switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
     if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
@@ -2451,8 +2453,8 @@ def spk_sng_num(song_number):
 def no_trk():
     play_mix(code_folder + "mvc/no_user_soundtrack_found.wav")
     while True:
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             break
         if switch_state == "right":
@@ -2641,8 +2643,8 @@ def logo_when_idle():
 def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
-        switch_state = utilities.switch_state_four_switches(
-            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             rst_an()
@@ -3382,8 +3384,8 @@ class Main(Ste):
 
     def upd(self, mch):
         global override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(code_folder + "mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
@@ -3428,8 +3430,8 @@ class Snds(Ste):
 
     def upd(self, mch):
         global override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             try:
                 play_mix(code_folder + "snd_opt/" + menu_snd_opt[self.i])
@@ -3468,8 +3470,8 @@ class IntermissionSettings(Ste):
 
     def upd(self, mch):
         global cfg, override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + intermission_settings[self.i] + ".wav")
@@ -3522,8 +3524,8 @@ class AddSnds(Ste):
 
     def upd(self, mch):
         global ts_mode, override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(
                 code_folder + "mvc/" + add_snd[self.i] + ".wav")
@@ -3570,8 +3572,8 @@ class VolumeLevelAdjustment(Ste):
         global override_switch_state
         done = False
         while not done:
-            switch_state = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+            switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left":
                 ch_vol("lower")
             elif switch_state == "right":
@@ -3605,8 +3607,8 @@ class WebOpt(Ste):
 
     def upd(self, mch):
         global cfg, override_switch_state
-        switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             play_mix(code_folder + "mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
