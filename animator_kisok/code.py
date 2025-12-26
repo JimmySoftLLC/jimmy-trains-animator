@@ -257,7 +257,7 @@ def restart_pi():
 
 
 def restart_pi_timer():
-    ply_a_1(mvc_folder + "restarting_animator_camera_train.wav")
+    play_mix_media(mvc_folder + "mvc/restarting_animator_kiosk.wav")
     delay = 2
     timer = threading.Timer(delay, restart_pi)
     timer.start()
@@ -365,6 +365,8 @@ def upd_media():
 
     snd_opt = files.return_directory("", animations_folder, ".json")
 
+    print("Sound options are: ", snd_opt)
+
     menu_snd_opt = []
     menu_snd_opt.extend(snd_opt)
     rnd_opt = ['random all']
@@ -463,6 +465,49 @@ def pygame_mixer_quit():
 pygame_mixer_init()
 
 ################################################################################
+# Setup video hardware
+
+# create vlc media player object for playing video, music etc
+vlc_instance = vlc.Instance()
+media_player = vlc.MediaPlayer(vlc_instance)
+
+
+def play_movie_file(movie_filename):
+    # Load media
+    media = vlc_instance.media_new(movie_filename)
+    media_player.set_media(media)
+
+    media_player.set_fullscreen()
+
+    # Play the video
+    media_player.play()
+
+    while not media_player.is_playing():
+        time.sleep(.05)
+
+
+def pause_movie():
+    media_player.pause()
+
+
+def play_movie():
+    media_player.play()
+
+
+def media_player_state():
+    state = media_player.get_state()
+    if state == vlc.State.Playing:
+        return "Playing"
+    elif state == vlc.State.Paused:
+        return "Paused"
+    elif state == vlc.State.Stopped:
+        return "Stopped"
+    elif state == vlc.State.Ended:
+        return "Ended"
+    else:
+        return "Other state"
+
+################################################################################
 
 kit = ServoKit(channels=16)
 
@@ -526,12 +571,86 @@ neo_changes = OrderedDict(cfg["neo_changes"])
 # Get the ordered list of keys
 ordered_neo_changes_keys = list(neo_changes.keys())
 
+trees = []
+canes = []
+ornmnts = []
+stars = []
+brnchs = []
+cane_s = []
+cane_e = []
+
+bars = []
+bolts = []
+noods = []
 neos = []
+
+bar_arr = []
+bolt_arr = []
 neo_arr = []
 
 n_px = 0
 led = neopixel_spi.NeoPixel_SPI(
     board.SPI(), n_px, brightness=1.0, auto_write=False)
+
+
+def bld_tree(p):
+    i = []
+    for t in trees:
+        for ledi in t:
+            si = ledi
+            break
+        if p == "ornaments":
+            for ledi in range(0, 7):
+                i.append(ledi+si)
+        if p == "star":
+            for ledi in range(7, 14):
+                i.append(ledi+si)
+        if p == "branches":
+            for ledi in range(14, 21):
+                i.append(ledi+si)
+    return i
+
+
+def bld_cane(p):
+    i = []
+    for c in canes:
+        for led_i in c:
+            si = led_i
+            break
+        if p == "end":
+            for led_i in range(0, 2):
+                i.append(led_i+si)
+        if p == "start":
+            for led_i in range(2, 4):
+                i.append(led_i+si)
+    return i
+
+
+def bld_bar():
+    i = []
+    for b in bars:
+        for l in b:
+            si = l
+            break
+        for l in range(0, 10):
+            i.append(l+si)
+    return i
+
+
+def bld_bolt():
+    i = []
+    for b in bolts:
+        for l in b:
+            si = l
+            break
+        if len(b) == 4:
+            for l in range(0, 4):
+                i.append(l+si)
+        if len(b) == 1:
+            for l in range(0, 1):
+                i.append(l+si)
+    return i
+
 
 def bld_neo():
     i = []
@@ -543,6 +662,7 @@ def bld_neo():
             i.append(l+si)
     return i
 
+
 def show_l():
     led.show()
     time.sleep(.05)
@@ -551,10 +671,83 @@ def show_l():
 
 
 def l_tst():
-    global neo_arr
+    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
+
+    # Christmas items
+    ornmnts = bld_tree("ornaments")
+    stars = bld_tree("star")
+    brnchs = bld_tree("branches")
+    cane_s = bld_cane("start")
+    cane_e = bld_cane("end")
+
+    # Lightning items
+    bar_arr = bld_bar()
+    bolt_arr = bld_bolt()
 
     # Neo items
     neo_arr = bld_neo()
+
+    # cane test
+    cnt = 0
+    for i in cane_s:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 1:
+            show_l()
+            cnt = 0
+    for i in cane_e:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 1:
+            show_l()
+            cnt = 0
+
+    # tree test
+    cnt = 0
+    for i in ornmnts:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in stars:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+    for i in brnchs:
+        led[i] = (50, 50, 50)
+        cnt += 1
+        if cnt > 6:
+            show_l()
+            cnt = 0
+
+    # bar test
+    for b in bars:
+        for l in b:
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # bolt test
+    for b in bolts:
+        for l in b:
+            led[l] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
+
+    # nood test
+    for n in noods:
+        led[n[0]] = (50, 50, 50)
+        led.show()
+        time.sleep(.3)
+        led.fill((0, 0, 0))
+        led.show()
 
     # neo test
     for n in neos:
@@ -574,8 +767,12 @@ def l_tst():
 
 
 def upd_l_str():
-    global neos, n_px, led
-
+    global trees, canes, bars, bolts, noods, neos, n_px, led
+    trees = []
+    canes = []
+    bars = []
+    bolts = []
+    noods = []
     neos = []
 
     n_px = 0
@@ -587,6 +784,26 @@ def upd_l_str():
         if len(p) == 2:
             typ, qty = p
             qty = int(qty)
+            if typ == 'grandtree':
+                s = list(range(n_px, n_px + qty))
+                trees.append(s)
+                n_px += qty
+            elif typ == 'cane':
+                s = list(range(n_px, n_px + qty))
+                canes.append(s)
+                n_px += qty
+            if typ == 'bar':
+                s = list(range(n_px, n_px + qty))
+                bars.append(s)
+                n_px += qty
+            elif typ == 'bolt' and qty < 4:
+                s = [n_px, qty]
+                noods.append(s)
+                n_px += 1
+            elif typ == 'bolt' and qty == 4:
+                s = list(range(n_px, n_px + qty))
+                bolts.append(s)
+                n_px += qty
             if typ == 'neo':
                 if qty == 6:
                     neoqty = 2
@@ -604,14 +821,17 @@ def upd_l_str():
     led.brightness = 1.0
     l_tst()
 
+
 upd_l_str()
 
 # Neo pixel / neo 6 module methods
 
 br = 0
 
+
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
+
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -634,6 +854,7 @@ def get_neo_ids():
         if any(num == sublist[0] for sublist in neos):
             matches.append(num)
     return matches
+
 
 def set_neo_module_to(mod_n, ind, v):
     cur = []
@@ -690,7 +911,7 @@ def discover_lights():
     if cfg["lifx_enabled"] == False:
         return
     global devices, lifx
-    ply_a_1(mvc_folder + "" + "discovering_lifx_lights" + ".wav")
+    play_mix_media(mvc_folder + "" + "discovering_lifx_lights" + ".wav")
     lifx = LifxLAN()
 
     # Discover LIFX devices on the local network
@@ -699,7 +920,7 @@ def discover_lights():
     # Report the count of discovered devices
     device_count = len(devices)
     spk_str(str(device_count), False)
-    ply_a_1(mvc_folder + "" + "lifx_lights_found" + ".wav")
+    play_mix_media(mvc_folder + "" + "lifx_lights_found" + ".wav")
 
     print(f"Discovered {device_count} device(s).")
 
@@ -1502,7 +1723,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         fo = animations_folder + snd + ".json"
         fn = animations_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
-        ply_a_1(mvc_folder + "all_changes_complete.wav")
+        play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
         self.send_response(200)
@@ -1547,7 +1768,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         snd_f = rq_d["fn"]
         f_n = animations_folder + snd_f + ".json"
         os.remove(f_n)
-        ply_a_1(mvc_folder + "all_changes_complete.wav")
+        play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
         self.send_response(200)
@@ -1568,7 +1789,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         global data
         f_n = animations_folder + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
-        ply_a_1(mvc_folder + "all_changes_complete.wav")
+        play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
         gc_col("created animation ")
@@ -1586,7 +1807,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                   rq_d["action"] + " data: " + cfg["light_string"])
             files.write_json_file(code_folder + "cfg.json", cfg)
             upd_l_str()
-            ply_a_1(mvc_folder + "all_changes_complete.wav")
+            play_mix_media(mvc_folder + "all_changes_complete.wav")
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
@@ -1602,7 +1823,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
               " data: " + cfg["light_string"])
         files.write_json_file(code_folder + "cfg.json", cfg)
         upd_l_str()
-        ply_a_1(mvc_folder + "all_changes_complete.wav")
+        play_mix_media(mvc_folder + "all_changes_complete.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1613,17 +1834,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         print(rq_d)
         global cfg, cont_run, ts_mode
         if rq_d["an"] == "cont_mode_on":
-            ply_a_1(mvc_folder + "continuous_mode_activated.wav")
+            play_mix_media(mvc_folder + "continuous_mode_activated.wav")
             cont_run = True
         elif rq_d["an"] == "cont_mode_off":
-            ply_a_1(mvc_folder + "continuous_mode_deactivated.wav")
+            play_mix_media(mvc_folder + "continuous_mode_deactivated.wav")
             cont_run = False
         elif rq_d["an"] == "timestamp_mode_on":
-            ply_a_1(mvc_folder + "timestamp_mode_on.wav")
-            ply_a_1(mvc_folder + "timestamp_instructions.wav")
+            play_mix_media(mvc_folder + "timestamp_mode_on.wav")
+            play_mix_media(mvc_folder + "timestamp_instructions.wav")
             ts_mode = True
         elif rq_d["an"] == "timestamp_mode_off":
-            ply_a_1(mvc_folder + "timestamp_mode_off.wav")
+            play_mix_media(mvc_folder + "timestamp_mode_off.wav")
             ts_mode = False
         if rq_d["an"] == "left":
             override_switch_state["switch_value"] = "left"
@@ -1659,17 +1880,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         if rq_d["an"] == "reset_to_defaults":
             rst_def()
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_1(mvc_folder + "all_changes_complete.wav")
+            play_mix_media(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         elif rq_d["an"] == "reset_scene_to_defaults":
             cfg["scene_changes"] = copy.deepcopy(default_cfg["scene_changes"])
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_1(mvc_folder + "all_changes_complete.wav")
+            play_mix_media(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         elif rq_d["an"] == "reset_neo_to_defaults":
             cfg["neo_changes"] = copy.deepcopy(default_cfg["neo_changes"])
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_1(mvc_folder + "all_changes_complete.wav")
+            play_mix_media(mvc_folder + "all_changes_complete.wav")
             st_mch.go_to('base_state')
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
@@ -1680,7 +1901,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def speaker_post(self, rq_d):
         global cfg
         if rq_d["an"] == "speaker_test":
-            ply_a_1(mvc_folder + "left_speaker_right_speaker.wav")
+            play_mix_media(mvc_folder + "left_speaker_right_speaker.wav")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1998,7 +2219,11 @@ def stop_all_commands():
     clear_command_queue()
     running_mode = ""
     exit_set_hdw = True
-    mix_voice_0.stop()
+    if mix:
+        mix.stop()
+    if mix_media:
+        mix_media.stop()
+    media_player.stop()
     cont_run = False
     rst_an()
     print("Processing stopped and command queue cleared.")
@@ -2063,8 +2288,12 @@ print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    mix_voice_0.set_volume(volume_0_1*0.7)
-    mix_voice_1.set_volume(volume_0_1*0.7)
+    log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
+    if mix:
+        mix.set_volume(volume_0_1*0.7)
+    if mix_media:
+        mix_media.set_volume(volume_0_1*0.7)
+    media_player.audio_set_volume(log_to_linear)
     time.sleep(seconds)
 
 
@@ -2095,68 +2324,60 @@ def ch_vol(action):
     cfg["volume_pot"] = False
     upd_vol(.05)
     files.write_json_file(code_folder + "cfg.json", cfg)
-    ply_a_1(mvc_folder + "volume.wav")
+    play_mix_media(mvc_folder + "volume.wav")
     spk_str(cfg["volume"], False)
 
 
-def ply_a_0(file_name, wait_until_done=True, repeat=0, allow_exit=True):
+def play_mix(file_name, wait_until_done=True, allow_exit=True):
     print("playing " + file_name)
-    if mix_voice_0.get_busy():
-        mix_voice_0.stop()
-        while mix_voice_0.get_busy():
+    if mix and mix.get_busy():
+        mix.stop()
+        while mix and mix.get_busy():
             pass
-    mix_sound = pygame.mixer.Sound(file_name)
-    upd_vol(.05)
-    mix_voice_0.play(mix_sound, loops=repeat)
-    while mix_voice_0.get_busy() and wait_until_done:
+    if mix:
+        mix_sound = pygame.mixer.Sound(file_name)
+        upd_vol(.05)
+        mix.play(mix_sound, loops=0)
+    while mix and mix.get_busy() and wait_until_done:
         if allow_exit:
             exit_early()
     print("done playing")
 
 
-def ply_a_1(file_name, wait_until_done=True, repeat=0, allow_exit=True):
+def play_mix_media(file_name, wait_until_done=True, repeat=0, allow_exit=True):
     print("playing " + file_name)
-    if mix_voice_1.get_busy():
-        mix_voice_1.stop()
-        while mix_voice_1.get_busy():
+    if mix_media and mix_media.get_busy():
+        mix_media.stop()
+        while mix and mix.get_busy():
             pass
-    mix_media_sound = pygame.mixer.Sound(file_name)
-    upd_vol(.05)
-    mix_voice_1.play(mix_media_sound, loops=repeat)
-    while mix_voice_1.get_busy() and wait_until_done:
-        if allow_exit:
-            exit_early()
+    if mix_media:
+        mix_media_sound = pygame.mixer.Sound(file_name)
+        upd_vol(.05)
+        mix_media.play(mix_media_sound, loops=repeat)
+        while mix_media.get_busy() and wait_until_done:
+            if allow_exit:
+                exit_early()
     print("done playing")
 
-def wait_snd_0():
-    while mix_voice_0.get_busy():
+def wait_snd():
+    while (mix_media and mix_media.get_busy()) or media_player.is_playing():
         exit_early()
     print("done playing")
 
-def wait_snd_1():
-    while mix_voice_1.get_busy():
-        exit_early()
-    print("done playing")
-
-def stp_a_0():
-    mix_voice_0.stop()
-    wait_snd_0()
-
-
-def stp_a_1():
-    mix_voice_1.stop()
-    wait_snd_1()
 
 def stop_all_media():
-    mix_voice_0.stop()
-    mix_voice_1.stop()
-    while mix_voice_0.get_busy() or mix_voice_1.get_busy():
+    if mix:
+        mix.stop()
+    if mix_media:
+        mix_media.stop()
+    media_player.stop()
+    while (mix and mix.get_busy()) or (mix_media and mix_media.get_busy()) or media_player.is_playing():
         pass
 
 
 def exit_early():
-    switch_state = utilities.switch_state(
-        l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+    switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
     if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
@@ -2164,7 +2385,7 @@ def exit_early():
 
 def spk_str(str_to_speak, addLocal, addIpAddressIs=False):
     if addIpAddressIs:
-        ply_a_1(mvc_folder + "ip_address_is.wav")
+        play_mix_media(mvc_folder + "ip_address_is.wav")
     for character in str_to_speak:
         try:
             if character == " ":
@@ -2173,53 +2394,53 @@ def spk_str(str_to_speak, addLocal, addIpAddressIs=False):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_1(mvc_folder + "" + character + ".wav")
+            play_mix_media(mvc_folder + "" + character + ".wav")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_1(mvc_folder + "dot_local_colon_8083.wav")
+        play_mix_media(mvc_folder + "dot_local_colon_8083.wav")
 
 
 def l_r_but():
-    ply_a_1(mvc_folder + "press_left_button_right_button.wav")
+    play_mix_media(mvc_folder + "press_left_button_right_button.wav")
 
 
 def sel_web():
-    ply_a_1(mvc_folder + "web_menu.wav")
+    play_mix_media(mvc_folder + "web_menu.wav")
     l_r_but()
 
 
 def opt_sel():
-    ply_a_1(mvc_folder + "option_selected.wav")
+    play_mix_media(mvc_folder + "option_selected.wav")
 
 
 def spk_sng_num(song_number):
-    ply_a_1(mvc_folder + "song.wav")
+    play_mix_media(mvc_folder + "song.wav")
     spk_str(song_number, False)
 
 
 def no_trk():
-    ply_a_1(mvc_folder + "no_user_soundtrack_found.wav")
+    play_mix_media(mvc_folder + "no_user_soundtrack_found.wav")
     while True:
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             break
         if switch_state == "right":
-            ply_a_1(mvc_folder + "create_sound_track_files.wav")
+            play_mix_media(mvc_folder + "create_sound_track_files.wav")
             break
 
 
 def spk_web():
-    ply_a_1(mvc_folder + "animator_available_on_network.wav")
-    ply_a_1(mvc_folder + "to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-camera-train":
-        ply_a_1(mvc_folder + "animator_dash_camera_dash_train.wav")
-        ply_a_1(mvc_folder + "dot_local_colon_8083.wav")
+    play_mix(code_folder + "mvc/animator_available_on_network.wav")
+    play_mix(code_folder + "mvc/to_access_type.wav")
+    if cfg["HOST_NAME"] == "animator-kiosk":
+        play_mix(code_folder + "mvc/animator_dash_kiosk.wav")
+        play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    ply_a_1(mvc_folder + "in_your_browser.wav")
+    play_mix(code_folder + "mvc/in_your_browser.wav")
 
 def get_snds(dir, typ):
     sds = []
@@ -2321,7 +2542,7 @@ def text_to_wav_file(text, file_name, timeout_duration):
         adjusted_audio.export(file_name, format="wav")
         print(f"Wav for {file_name} generated and volume adjusted.")
 
-        ply_a_1(file_name)
+        play_mix_media(file_name)
 
     except TimeoutException:
         print("TTS operation timed out.")
@@ -2404,8 +2625,8 @@ def logo_when_idle():
 def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
-        switch_state = utilities.switch_state_four_switches(
-            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             rst_an()
@@ -2415,14 +2636,21 @@ def check_switches(stop_event):
             rst_an()
             if cont_run:
                 cont_run = False
-                ply_a_1(mvc_folder + "continuous_mode_deactivated.wav")
+                play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
         elif switch_state == "right" and cfg["can_cancel"]:
-            if running_mode == "mix":
+            if running_mode == "media_player":
+                if media_player.is_playing():
+                    media_player.pause()
+                else:
+                    media_player.play()
+            elif running_mode == "mix":
                 if mix_is_paused:
-                    mix_voice_1.unpause()
+                    if mix_media:
+                        mix_media.unpause()
                     mix_is_paused = False
                 else:
-                    mix_voice_1.pause()
+                    if mix_media:
+                        mix_media.pause()
                     mix_is_paused = True
         elif switch_state == "three":
             print("sw three fell")
@@ -2453,6 +2681,7 @@ def rst_an(file_name=media_folder + 'pictures/logo.jpg'):
     r_sw.update()
     three_sw.update()
     four_sw.update()
+    five_sw.update()
     current_media_playing = ""
 
 
@@ -2466,6 +2695,7 @@ def an(f_nm):
             gc_col("animation cleanup")
         else:
             result = an_light(cur_opt)
+            if not mix: pygame_mixer_init()
             gc_col("animation cleanup")
             return result
     except Exception as e:
@@ -2496,6 +2726,9 @@ def an_light(f_nm):
     global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
     exit_set_hdw = False
     current_media_playing = f_nm
+    is_video = ".mp4" in f_nm
+    json_fn = f_nm.replace(".mp4", "")
+    json_fn = json_fn.replace(".wav", "")
 
     flsh_t = []
 
@@ -2507,7 +2740,7 @@ def an_light(f_nm):
 
     flsh_i = 0
 
-    w0_exists = False
+    media0 = False
 
     if flsh_i < len(flsh_t)-1:
         try:
@@ -2516,13 +2749,24 @@ def an_light(f_nm):
             print("Result is: ", result)
             result = result.split("_")
             if result and len(result) > 1:
-                w0_exists = f_exists(animations_folder + result[1])
-                if w0_exists:
-                    if result[0] == "1":
-                        repeat = -1
+                media0 = f_exists(animations_folder + result[1])
+                if media0:
+                    if is_video:
+                        pygame_mixer_quit()
+                        running_mode = "media_player"
+                        play_movie_file(media0)
                     else:
-                        repeat = 0
-                    ply_a_0(animations_folder + result[1], False, repeat, True)
+                        running_mode = "mix"
+                        change_wallpaper(media0)
+                        mix_is_paused = False
+                        close_midori()
+                        if result[0] == "1":
+                            repeat = -1
+                        else:
+                            repeat = 0
+                        play_mix_media(animations_folder + result[1], False, repeat, True)
+
+
                 srt_t = time.monotonic()
 
                 ft1 = []
@@ -2566,12 +2810,14 @@ def an_light(f_nm):
                 return result
             flsh_i += 1
 
-        if not mix_voice_0.get_busy() and w0_exists:
+        media_player_state_now = media_player_state()
+
+        if not (mix_media and mix_media.get_busy()) and media_player_state_now != "Playing" and media_player_state_now != "Paused":
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
             return result
-        if (not mix_voice_0.get_busy() and w0_exists) or not flsh_i < len(flsh_t)-1:
+        elif flsh_i > len(flsh_t)-1:
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
@@ -2601,13 +2847,20 @@ def an_ts(f_nm):
     print("time stamp mode")
     running_mode == "time_stamp_mode"
 
+    is_video = ".mp4" in f_nm
+    json_fn = f_nm.replace(".mp4", "")
+    json_fn = json_fn.replace(".wav", "")
+
     t_s = []
 
     t_s.append("0.0|")
 
     media0 = media_folder + f_nm
 
-    ply_a_0(media0)
+    if is_video:
+        play_movie_file(media0)
+    else:
+        play_mix_media(media0)
 
     startTime = time.perf_counter()
     time.sleep(.1)
@@ -2617,19 +2870,19 @@ def an_ts(f_nm):
         r_sw.update()
         if r_sw.fell:
             add_command_to_ts("")
-        if not mix_voice_0.get_busy():
+        if not (mix_media and mix_media.get_busy()) and not media_player.is_playing():
             add_command_to_ts("")
             led.fill((0, 0, 0))
             led.show()
             files.write_json_file(
-                media_folder + f_nm + ".json", t_s)
+                media_folder + json_fn + ".json", t_s)
             break
 
     ts_mode = False
-    rst_an(media_folder + 'pictures/logo.jpg')
-    ply_a_1(mvc_folder + "timestamp_saved.wav")
-    ply_a_1(mvc_folder + "timestamp_mode_off.wav")
-    ply_a_1(mvc_folder + "animations_are_now_active.wav")
+    rst_an()
+    play_mix(code_folder + "mvc/timestamp_saved.wav")
+    play_mix(code_folder + "mvc/timestamp_mode_off.wav")
+    play_mix(code_folder + "mvc/animations_are_now_active.wav")
     running_mode = ""
 
 
@@ -2699,18 +2952,18 @@ def set_hdw(cmd, dur=3):
                             filename = code
                         w1 = folder + filename + ".wav"
                     if seg[1] == "W" or seg[1] == "P":
-                        ply_a_1(w1, False, 0, False)
+                        play_mix_media(w1, False, 0, False)
                     if seg[1] == "W":
-                        wait_snd_1()
+                        wait_snd()
             # HA = Blow horn or bell, A (H Horn, B Bell)
             elif seg[0] == 'H':  # play file
-                stp_a_1()
+                stop_all_media()
                 if seg[1] == "B":
                     w1 = get_snds(bells_folder, "bell")
-                    ply_a_1(w1, False, 0, False)
+                    play_mix_media(w1, False, 0, False)
                 elif seg[1] == "H":
                     w1 = get_snds(horns_folder, "horn")
-                    ply_a_1(w1, False, 0, False)
+                    play_mix_media(w1, False, 0, False)
             # LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
@@ -3025,7 +3278,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        ply_a_1(mvc_folder + "animations_are_now_active.wav")
+        play_mix_media(mvc_folder + "animations_are_now_active.wav")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -3041,10 +3294,10 @@ class BseSt(Ste):
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
-                    ply_a_1(mvc_folder + "continuous_mode_deactivated.wav")
+                    play_mix_media(mvc_folder + "continuous_mode_deactivated.wav")
                 else:
                     cont_run = True
-                    ply_a_1(mvc_folder + "continuous_mode_activated.wav")
+                    play_mix_media(mvc_folder + "continuous_mode_activated.wav")
                 time.sleep(.5)
             elif switch_state == "left" or cont_run:
                 add_command("AN_"+ cfg["option_selected"])
@@ -3058,6 +3311,10 @@ class BseSt(Ste):
                 time.sleep(.5)
             elif switch_state == "four":
                 print("sw four fell")
+                ch_vol("raise")
+                time.sleep(.5)
+            elif switch_state == "five":
+                print("sw five fell")
                 ch_vol("raise")
                 time.sleep(.5)
         time.sleep(0.05)
@@ -3075,7 +3332,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_1(mvc_folder + "main_menu.wav")
+        play_mix_media(mvc_folder + "main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3087,7 +3344,7 @@ class Main(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            ply_a_1(mvc_folder + "" + main_m[self.i] + ".wav")
+            play_mix_media(mvc_folder + "" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -3103,7 +3360,7 @@ class Main(Ste):
             elif sel_mnu == "volume_level_adjustment":
                 mch.go_to('volume_level_adjustment')
             else:
-                ply_a_1(mvc_folder + "all_changes_complete.wav")
+                play_mix_media(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -3119,7 +3376,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_1(mvc_folder + "sound_selection_menu.wav")
+        play_mix_media(mvc_folder + "sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3132,7 +3389,7 @@ class Snds(Ste):
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
             try:
-                ply_a_1(snd_opt_folder + menu_snd_opt[self.i] + ".wav")
+                play_mix_media(snd_opt_folder + menu_snd_opt[self.i] + ".wav")
             except Exception as e:
                 files.log_item(e)
                 spk_sng_num(str(self.i+1))
@@ -3143,7 +3400,7 @@ class Snds(Ste):
         if switch_state == "right":
             cfg["option_selected"] = menu_snd_opt[self.sel_i]
             files.write_json_file(code_folder + "cfg.json", cfg)
-            ply_a_1(mvc_folder + "option_selected.wav")
+            play_mix_media(mvc_folder + "option_selected.wav")
             mch.go_to('base_state')
 
 
@@ -3159,7 +3416,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        ply_a_1(mvc_folder + "add_sounds_animate.wav")
+        play_mix_media(mvc_folder + "add_sounds_animate.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -3171,7 +3428,7 @@ class AddSnds(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            ply_a_1(
+            play_mix_media(
                 mvc_folder + "" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
@@ -3180,17 +3437,17 @@ class AddSnds(Ste):
         if switch_state == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                ply_a_1(mvc_folder + "drive_in_media_instructions.wav")
+                play_mix_media(mvc_folder + "drive_in_media_instructions.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                ply_a_1(mvc_folder + "timestamp_mode_on.wav")
-                ply_a_1(mvc_folder + "timestamp_instructions.wav")
+                play_mix_media(mvc_folder + "timestamp_mode_on.wav")
+                play_mix_media(mvc_folder + "timestamp_instructions.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                ply_a_1(mvc_folder + "timestamp_mode_off.wav")
+                play_mix_media(mvc_folder + "timestamp_mode_off.wav")
             else:
-                ply_a_1(mvc_folder + "all_changes_complete.wav")
+                play_mix_media(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -3206,7 +3463,7 @@ class VolumeLevelAdjustment(Ste):
 
     def enter(self, mch):
         files.log_item('Set Web Options')
-        ply_a_1(mvc_folder + "volume_adjustment_menu.wav")
+        play_mix_media(mvc_folder + "volume_adjustment_menu.wav")
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -3225,7 +3482,7 @@ class VolumeLevelAdjustment(Ste):
             elif switch_state == "right_held":
                 files.write_json_file(
                     code_folder + "cfg.json", cfg)
-                ply_a_1(mvc_folder + "all_changes_complete.wav")
+                play_mix_media(mvc_folder + "all_changes_complete.wav")
                 done = True
                 mch.go_to('base_state')
             time.sleep(0.05)
@@ -3254,7 +3511,7 @@ class WebOpt(Ste):
         switch_state = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            ply_a_1(mvc_folder + "" + web_m[self.i] + ".wav")
+            play_mix_media(mvc_folder + "" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -3269,7 +3526,7 @@ class WebOpt(Ste):
                 spk_str(local_ip, False, True)
                 sel_web()
             elif selected_menu_item == "update_ssid_password_from_usb":
-                ply_a_1(mvc_folder + "update_ssid_password_from_usb.wav")
+                play_mix_media(mvc_folder + "update_ssid_password_from_usb.wav")
                 update_ssid_password_from_usb()
                 restart_pi_timer()
             else:
