@@ -422,18 +422,45 @@ switch_io_4 = digitalio.DigitalInOut(board.D5)
 switch_io_4.direction = digitalio.Direction.INPUT
 switch_io_4.pull = digitalio.Pull.UP
 
+switch_io_5 = digitalio.DigitalInOut(board.D6)
+switch_io_5.direction = digitalio.Direction.INPUT
+switch_io_5.pull = digitalio.Pull.UP
+
 l_sw = Debouncer(switch_io_1)
 r_sw = Debouncer(switch_io_2)
 three_sw = Debouncer(switch_io_3)
 four_sw = Debouncer(switch_io_4)
+five_sw = Debouncer(switch_io_5)
 
 ################################################################################
 # Setup sound
 
+mix = None
+mix_media = None
+
 # Setup the mixer to play wav files
-pygame.mixer.init()
-mix_voice_0 = pygame.mixer.Channel(0)
-mix_voice_1 = pygame.mixer.Channel(1)
+def pygame_mixer_init():
+    global mix, mix_media
+    try:        
+        pygame.mixer.init()
+        mix = pygame.mixer.Channel(0)
+        mix_media = pygame.mixer.Channel(1)
+    except Exception as e:
+        print(f"Error while setting up audio: {e}")
+        mix = None
+        mix_media = None
+
+def pygame_mixer_quit():
+    global mix, mix_media
+    if mix:
+        mix.stop()
+    if mix_media:
+        mix_media.stop()
+    mix = None
+    mix_media = None
+    pygame.mixer.quit()
+    
+pygame_mixer_init()
 
 ################################################################################
 
