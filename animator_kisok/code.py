@@ -1788,7 +1788,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def create_animation_post(self, rq_d):
         global data
         f_n = animations_folder + rq_d["fn"] + ".json"
-        files.write_json_file(f_n, ["0.0|", "1.0|"])
+        files.write_json_file(f_n, ["0.0|MB0name of your track.wav", "1.0|"])
         play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
@@ -2670,6 +2670,7 @@ def run_check_switches_thread():
 
 def rst_an(file_name=media_folder + 'pictures/logo.jpg'):
     global current_media_playing, exit_set_hdw
+    print("resetting animations")
     exit_set_hdw = True
     stop_all_media()
     led.brightness = 1.0
@@ -2766,7 +2767,6 @@ def an_light(f_nm):
                             repeat = 0
                         play_mix_media(animations_folder + result[1], False, repeat, True)
 
-
                 srt_t = time.monotonic()
 
                 ft1 = []
@@ -2812,7 +2812,7 @@ def an_light(f_nm):
 
         media_player_state_now = media_player_state()
 
-        if not (mix_media and mix_media.get_busy()) and media_player_state_now != "Playing" and media_player_state_now != "Paused":
+        if media0 and (not (mix_media and mix_media.get_busy()) and media_player_state_now != "Playing" and media_player_state_now != "Paused"):
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
