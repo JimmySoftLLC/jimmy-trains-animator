@@ -1811,7 +1811,10 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def create_animation_post(self, rq_d, folder_location):
         global data
         f_n = folder_location + rq_d["fn"] + ".json"
-        files.write_json_file(f_n, ["0.0|MB0name of your track.wav", "1.0|"])
+        if folder_location == buttons_folder:
+            files.write_json_file(f_n, ["1|QAN_filename", "2|QAN_filename", "3|QAN_filename", "4|QAN_filename"])
+        else:
+            files.write_json_file(f_n, ["0.0|MB0name of your track.wav", "1.0|"])
         play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
@@ -2408,8 +2411,8 @@ def stop_all_media():
 
 
 def exit_early():
-    switch_state = utilities.switch_state_five_switches(
-                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
+    switch_state = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
     if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
@@ -2657,8 +2660,8 @@ def logo_when_idle():
 def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
-        switch_state = utilities.switch_state_five_switches(
-                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
+        switch_state = utilities.switch_state_four_switches(
+                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             rst_an()
@@ -2668,6 +2671,7 @@ def check_switches(stop_event):
             rst_an()
             if cont_run:
                 cont_run = False
+                pygame_mixer_init()
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
@@ -3325,8 +3329,8 @@ class BseSt(Ste):
         global cont_run, running_mode, override_switch_state
         if running_mode != "time_stamp_mode":
             process_commands()
-            switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
+            switch_state = utilities.switch_state_five_switches(
+                l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left_held":
                 if cont_run:
                     cont_run = False
@@ -3350,9 +3354,9 @@ class BseSt(Ste):
                 ch_vol("raise")
                 time.sleep(.5)
             elif switch_state == "five":
-                print("sw five fell")
-                ch_vol("raise")
-                time.sleep(.5)
+                play_mix(code_folder + "mvc/a.wav")
+            elif switch_state == "five_held":
+                play_mix(code_folder + "mvc/b.wav")
         time.sleep(0.05)
 
 
