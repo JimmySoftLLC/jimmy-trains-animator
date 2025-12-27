@@ -245,6 +245,8 @@
             data-url="/mode">Three</button>
         <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
             data-url="/mode">Four</button>
+        <button id="fiveButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="five"
+            data-url="/mode">Four</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -639,6 +641,8 @@
                 Animation</button>
             <h2>Animations:</h2>
             <div id="animationScriptsContainer"></div>
+            <h2>Buttons:</h2>
+            <div id="buttonScriptsContainer"></div>
             <h2>Animation script table:</h2>
             <div class="mui-textfield">
                 <input class="input" id="animationScriptName" type="text" disabled>
@@ -683,7 +687,7 @@
                         <table id="dataTable" class="mui-table">
                             <thead>
                                 <tr>
-                                    <th>TimeStamp</th>
+                                    <th>TS/Button</th>
                                     <th>Animation</th>
                                     <th>Action</th>
                                 </tr>
@@ -699,6 +703,7 @@
 
 <script>
     let isRequestInProgress = false;
+    let saveDataUrl = ""
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
@@ -706,6 +711,7 @@
         getVolume()
         getLightString()
         getAnimations()
+        getButtons()
         getSceneChanges()
         getNeoChanges()
         getLifxEnabled()
@@ -751,7 +757,25 @@
             });
     }
 
-
+    function getButtons() {
+        fetch('/get-buttons', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                my_data = JSON.parse(data)
+                setGetButtonButtons(my_data)
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
 
     function getSceneChanges() {
         fetch('/get-scene-changes', {
@@ -1497,6 +1521,7 @@
                     .then(function (data) {
                         myData = JSON.parse(data); // Set the value of the input field with the received data
                         animationScriptName.value = animation
+                        saveDataUrl = "/save-data"
                         populateAnimationsTable(myData)
                         button.removeAttribute('disabled')
                     })
@@ -1506,6 +1531,55 @@
                     });
             });
             animationScriptsContainer.appendChild(button);
+        });
+    }
+
+
+    function setGetButtonButtons(my_data) {
+        // Loop through the data and create a button for each item
+        my_data.forEach((item) => {
+            const button = document.createElement("button");
+            button.textContent = item;
+            button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
+            button.setAttribute("data-value", item);
+            button.setAttribute("data-url", "/get-button");
+            button.setAttribute("type", "button");
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-url');
+                var animation = button.getAttribute('data-value');
+                var redirectUrl = button.getAttribute('data-redirect');
+
+                // Create an object with the data to be sent in the request
+                var data = {
+                    an: animation,
+                };
+
+                button.setAttribute('disabled', 'true')
+
+                // Make a POST request using fetch
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                })
+                    .then(function (response) {
+                        return response.text(); // assuming the response is plain text
+                    })
+                    .then(function (data) {
+                        myData = JSON.parse(data); // Set the value of the input field with the received data
+                        saveDataUrl = "/save-data-button"
+                        animationScriptName.value = animation
+                        populateAnimationsTable(myData)
+                        button.removeAttribute('disabled')
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                        button.removeAttribute('disabled')
+                    });
+            });
+            buttonScriptsContainer.appendChild(button);
         });
     }
 
@@ -2032,7 +2106,7 @@
     });
 
     saveDataButton.addEventListener("click", function () {
-        saveAnimationScriptData(animationScriptName.value, false);
+        saveAnimationScriptData(animationScriptName.value);
     });
 
     function stopAnimation() {
@@ -2312,7 +2386,7 @@
             }
 
             // Send data to the server
-            fetch("/save-data", {
+            fetch(saveDataUrl, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

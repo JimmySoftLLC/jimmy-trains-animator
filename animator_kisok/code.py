@@ -156,6 +156,7 @@ code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
 mvc_folder = code_folder + "mvc/"
 animations_folder = get_home_path() + "media/animations/"
+buttons_folder = get_home_path() + "media/buttons/"
 snd_opt_folder = code_folder + "snd_opt/"
 current_media_playing = ""
 current_scene = ""
@@ -361,9 +362,11 @@ default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
 
 def upd_media():
-    global snd_opt, menu_snd_opt  # ts_jsons
+    global snd_opt, menu_snd_opt, button_opt  # ts_jsons
 
     snd_opt = files.return_directory("", animations_folder, ".json")
+
+    button_opt = files.return_directory("", buttons_folder, ".json")
 
     print("Sound options are: ", snd_opt)
 
@@ -1207,7 +1210,7 @@ def close_midori():
         print("Midori was not running.")
 
 
-def open_midori():
+def open_midori(midori_url):
     global is_midori_running
     if cfg["show_webpage"] == False or is_midori_running:
         return
@@ -1614,6 +1617,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.defaults_post(post_data_obj)
         elif self.path == "/get-animations":
             self.get_animations_post(post_data_obj)
+        elif self.path == "/get-buttons":
+            self.get_buttons_post(post_data_obj)
         elif self.path == "/speaker":
             self.speaker_post(post_data_obj)
         elif self.path == "/start-camera":
@@ -1657,15 +1662,25 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
         elif self.path == "/create-animation":
-            self.create_animation_post(post_data_obj)
+            self.create_animation_post(post_data_obj, animations_folder)
+        elif self.path == "/create-animation-button":
+            self.create_animation_post(post_data_obj, buttons_folder)
         elif self.path == "/get-animation":
             self.get_animation_post(post_data_obj)
+        elif self.path == "/get-button":
+            self.get_button_post(post_data_obj)
         elif self.path == "/delete-animation":
-            self.delete_animation_post(post_data_obj)
+            self.delete_animation_post(post_data_obj, animations_folder)
+        elif self.path == "/delete-animation-button":
+            self.delete_animation_post(post_data_obj, buttons_folder)
         elif self.path == "/save-data":
-            self.save_data_post(post_data_obj)
+            self.save_data_post(post_data_obj, animations_folder)
+        elif self.path == "/save-data-button":
+            self.save_data_post(post_data_obj, buttons_folder)
         elif self.path == "/rename-animation":
-            self.rename_animation_post(post_data_obj)
+            self.rename_animation_post(post_data_obj, animations_folder)
+        elif self.path == "/rename-animation-button":
+            self.rename_animation_post(post_data_obj, buttons_folder)
         elif self.path == "/stop":
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
@@ -1717,11 +1732,11 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def rename_animation_post(self, rq_d):
+    def rename_animation_post(self, rq_d, folder_location):
         global data
         snd = rq_d["fo"].replace("animations", "")
-        fo = animations_folder + snd + ".json"
-        fn = animations_folder + rq_d["fn"] + ".json"
+        fo = folder_location + snd + ".json"
+        fn = folder_location + rq_d["fn"] + ".json"
         os.rename(fo, fn)
         play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
@@ -1735,14 +1750,14 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     data = []
 
-    def save_data_post(self, rq_d):
+    def save_data_post(self, rq_d, folder_location):
         global data
         try:
             if rq_d[0] == 0:
                 data = []
             data.extend(rq_d[2])
             if rq_d[0] == rq_d[1]:
-                f_n = animations_folder + \
+                f_n = folder_location + \
                     rq_d[3] + ".json"
                 files.write_json_file(f_n, data)
                 data = []
@@ -1764,9 +1779,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def delete_animation_post(self, rq_d):
+    def delete_animation_post(self, rq_d, folder_location):
         snd_f = rq_d["fn"]
-        f_n = animations_folder + snd_f + ".json"
+        f_n = folder_location + snd_f + ".json"
         os.remove(f_n)
         play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
@@ -1784,10 +1799,18 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             f_n = animations_folder + snd_f + ".json"
             self.handle_serve_file_name(f_n)
             return
+        
+    def get_button_post(self, rq_d):
+        global cfg, cont_run, ts_mode
+        snd_f = rq_d["an"]
+        if (f_exists(buttons_folder + snd_f + ".json") == True):
+            f_n = buttons_folder + snd_f + ".json"
+            self.handle_serve_file_name(f_n)
+            return
 
-    def create_animation_post(self, rq_d):
+    def create_animation_post(self, rq_d, folder_location):
         global data
-        f_n = animations_folder + rq_d["fn"] + ".json"
+        f_n = folder_location + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|MB0name of your track.wav", "1.0|"])
         play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
@@ -2035,6 +2058,15 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
     def get_animations_post(self, rq_d):
         upd_media()
         response = snd_opt
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_buttons_post(self, rq_d):
+        upd_media()
+        response = button_opt
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2615,7 +2647,7 @@ def logo_when_idle():
         if not running_mode:
             time_counter += 1
             if time_counter == 2:
-                open_midori()
+                open_midori("http://" + local_ip + ":" + str(PORT) + "/")
                 change_wallpaper(media_folder + 'pictures/logo.jpg')
         else:
             time_counter = 0
@@ -3577,7 +3609,7 @@ if web:
     websocket_thread.start()
     start_camera_server()
     close_midori()
-    open_midori()
+    open_midori("http://" + local_ip + ":" + str(PORT) + "/")
     spk_web()
 
 st_mch.go_to('base_state')
