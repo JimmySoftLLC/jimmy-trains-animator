@@ -477,7 +477,7 @@ def play_movie_file(movie_filename):
     media = vlc_instance.media_new(movie_filename)
     media_player.set_media(media)
 
-    media_player.set_fullscreen()
+    media_player.set_fullscreen(True)
 
     # Play the video
     media_player.play()
@@ -2724,12 +2724,9 @@ def return_file_to_use(f_nm):
 
 
 def an_light(f_nm):
-    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
+    global ts_mode, running_mode, terminal_process, current_media_playing, mix_is_paused, exit_set_hdw
     exit_set_hdw = False
     current_media_playing = f_nm
-    is_video = ".mp4" in f_nm
-    json_fn = f_nm.replace(".mp4", "")
-    json_fn = json_fn.replace(".wav", "")
 
     flsh_t = []
 
@@ -2741,43 +2738,48 @@ def an_light(f_nm):
 
     flsh_i = 0
 
-    media0 = False
+    media0_exists = False
 
     if flsh_i < len(flsh_t)-1:
         try:
             ft1 = flsh_t[flsh_i].split("|")
             result = set_hdw(ft1[1])
-            print("Result is: ", result)
             result = result.split("_")
             if result and len(result) > 1:
-                media0 = f_exists(animations_folder + result[1])
-                if media0:
-                    if is_video:
+                media0 = animations_folder + result[1]
+                media0_exists = f_exists(media0)
+                if media0_exists:
+                    if ".mp4" in media0:
                         pygame_mixer_quit()
                         running_mode = "media_player"
+                        print("Running mode: ", running_mode)
                         play_movie_file(media0)
-                    else:
+                    elif ".wav" in media0:
+                        media0_basename = media0.replace(".wav", "")
                         running_mode = "mix"
-                        change_wallpaper(media0)
+                        print("Running mode: ", running_mode)
+                        change_wallpaper(media0_basename + ".jpg")
                         mix_is_paused = False
                         close_midori()
                         if result[0] == "1":
                             repeat = -1
                         else:
                             repeat = 0
-                        play_mix_media(animations_folder + result[1], False, repeat, True)
+                        play_mix_media(media0, False, repeat, True)
 
-                srt_t = time.monotonic()
+            ft1 = []
+            ft2 = []
 
-                ft1 = []
-                ft2 = []
-
-                # add end command to time stamps so all table values can be used
-                ft_last = flsh_t[len(flsh_t)-1].split("|")
-                tm_last = float(ft_last[0]) + .1
-                flsh_t.append(str(tm_last) + "|")
+            # add end command to time stamps so all table values can be used
+            ft_last = flsh_t[len(flsh_t)-1].split("|")
+            tm_last = float(ft_last[0]) + .1
+            flsh_t.append(str(tm_last) + "|")
         except Exception as e:
             files.log_item(e)
+            stop_event.set()  # Signal the thread to stop
+            check_thread.join()  # Wait for the thread to finish
+            result = an_done_reset("DONE")
+            return result
         flsh_i += 1
     else:
         stop_event.set()  # Signal the thread to stop
@@ -2812,12 +2814,14 @@ def an_light(f_nm):
 
         media_player_state_now = media_player_state()
 
-        if media0 and (not (mix_media and mix_media.get_busy()) and media_player_state_now != "Playing" and media_player_state_now != "Paused"):
+        if media0_exists and (not (mix_media and mix_media.get_busy()) and media_player_state_now != "Playing" and media_player_state_now != "Paused"):
+            print("media ended")
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
             return result
-        elif flsh_i > len(flsh_t)-1:
+        if flsh_i >= len(flsh_t)-1:
+            print("all time stamps done")
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
