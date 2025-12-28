@@ -134,6 +134,7 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, JpegEncoder
 from picamera2.outputs import FileOutput
 from libcamera import Transform  # Add this import for Transform
+from typing import Dict, Any
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -360,24 +361,72 @@ def update_ssid_password_from_usb():
 cfg = files.read_json_file(code_folder + "cfg.json")
 default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
+button_groups = {}
+
+def parse_button_list(items):
+    """
+    Convert ["1|Name", "2|Other"] -> {"1": "Name", "2": "Other"}
+    Skips bad rows safely.
+    """
+    out = {}
+    if not isinstance(items, list):
+        raise ValueError(f"Expected list, got {type(items).__name__}")
+
+    for row in items:
+        if not isinstance(row, str) or "|" not in row:
+            # skip unexpected rows
+            continue
+        k, v = row.split("|", 1)
+        k = k.strip()
+        v = v.strip()
+        if k:  # only store if key not empty
+            out[str(k)] = v
+    return out
+
 
 def upd_media():
-    global snd_opt, menu_snd_opt, button_opt  # ts_jsons
+    global snd_opt, menu_snd_opt, button_opt, button_groups
 
     snd_opt = files.return_directory("", animations_folder, ".json")
-
     button_opt = files.return_directory("", buttons_folder, ".json")
 
-    print("Sound options are: ", snd_opt)
+    button_groups = {}
 
-    menu_snd_opt = []
-    menu_snd_opt.extend(snd_opt)
-    rnd_opt = ['random all']
-    menu_snd_opt.extend(rnd_opt)
+    for base_name in button_opt:
+        filename = base_name + ".json"
+        try:
+            raw = files.read_json_file(buttons_folder + filename)
 
-    # ts_jsons = files.return_directory("", "/sd/t_s_def", ".json")
+            # raw is like ["1|...", "2|..."]
+            button_groups[str(base_name)] = parse_button_list(raw)
 
+        except Exception as e:
+            print(f"Failed on {filename}: {e}")
+
+    print("Sound options are:", json.dumps(snd_opt, indent=2, ensure_ascii=False))
+    print("Button groups are:", json.dumps(button_groups, indent=2, ensure_ascii=False))
+
+    menu_snd_opt = list(snd_opt)
+    menu_snd_opt.append("random all")
+
+
+def get_button_value(group_idx, button_idx, default=None):
+    group_key = str(group_idx)
+    button_key = str(button_idx)
+
+    group = button_groups.get(group_key)
+    if group is None:
+        return default
+
+    return group.get(button_key, default)
+
+
+# --- run it ---
 upd_media()
+
+print("Button value is 1:", get_button_value(1, 1))
+print("Button value is 2:", get_button_value(1, 2))
+
 
 web = True
 
@@ -404,6 +453,8 @@ exit_set_hdw = False
 local_ip = ""
 t_s = []
 t_elsp = 0.0
+
+
 
 
 ################################################################################
@@ -1874,14 +1925,24 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             ts_mode = False
         if rq_d["an"] == "left":
             override_switch_state["switch_value"] = "left"
+        elif rq_d["an"] == "left_held":
+            override_switch_state["switch_value"] = "left_held"
         elif rq_d["an"] == "right":
             override_switch_state["switch_value"] = "right"
         elif rq_d["an"] == "right_held":
             override_switch_state["switch_value"] = "right_held"
         elif rq_d["an"] == "three":
             override_switch_state["switch_value"] = "three"
+        elif rq_d["an"] == "three_held":
+            override_switch_state["switch_value"] = "three_held"
         elif rq_d["an"] == "four":
             override_switch_state["switch_value"] = "four"
+        elif rq_d["an"] == "four_held":
+            override_switch_state["switch_value"] = "four_held"
+        elif rq_d["an"] == "five":
+            override_switch_state["switch_value"] = "five"
+        elif rq_d["an"] == "five_held":
+            override_switch_state["switch_value"] = "five_held"
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
