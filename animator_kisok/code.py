@@ -165,6 +165,8 @@ current_neo = ""
 is_midori_running = False
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
+group_index = 1
+is_button_mode = False
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -364,11 +366,7 @@ default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 button_groups = {}
 
 def parse_button_list(items):
-    """
-    Convert ["1|Name", "2|Other"] -> {"1": "Name", "2": "Other"}
-    Skips bad rows safely.
-    """
-    out = {}
+    list_output = {}
     if not isinstance(items, list):
         raise ValueError(f"Expected list, got {type(items).__name__}")
 
@@ -376,13 +374,12 @@ def parse_button_list(items):
         if not isinstance(row, str) or "|" not in row:
             # skip unexpected rows
             continue
-        k, v = row.split("|", 1)
-        k = k.strip()
-        v = v.strip()
-        if k:  # only store if key not empty
-            out[str(k)] = v
-    return out
-
+        key, val = row.split("|", 1)
+        key = key.strip()
+        val = val.strip()
+        if key:
+            list_output[str(key)] = val
+    return list_output
 
 def upd_media():
     global snd_opt, menu_snd_opt, button_opt, button_groups
@@ -420,13 +417,7 @@ def get_button_value(group_idx, button_idx, default=None):
 
     return group.get(button_key, default)
 
-
-# --- run it ---
 upd_media()
-
-print("Button value is 1:", get_button_value(1, 1))
-print("Button value is 2:", get_button_value(1, 2))
-
 
 web = True
 
@@ -2799,7 +2790,7 @@ def an(f_nm):
     except Exception as e:
         files.log_item(e)
         no_trk()
-        cfg["option_selected"] = "random_all"
+        cfg["option_selected"] = "random all"
         return
     gc_col("Animation complete.")
 
@@ -3387,37 +3378,64 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, running_mode, override_switch_state
+        global cont_run, running_mode, override_switch_state, is_button_mode, group_index
         if running_mode != "time_stamp_mode":
             process_commands()
             switch_state = utilities.switch_state_five_switches(
                 l_sw, r_sw, three_sw, four_sw, five_sw, time.sleep, 3.0, override_switch_state)
-            if switch_state == "left_held":
-                if cont_run:
-                    cont_run = False
-                    play_mix_media(mvc_folder + "continuous_mode_deactivated.wav")
-                else:
-                    cont_run = True
-                    play_mix_media(mvc_folder + "continuous_mode_activated.wav")
-                time.sleep(.5)
-            elif switch_state == "left" or cont_run:
-                add_command("AN_"+ cfg["option_selected"])
-                time.sleep(.5)
-            elif switch_state == "right":
-                mch.go_to('main_menu')
-                time.sleep(.5)
-            elif switch_state == "three":
-                print("sw three fell")
-                ch_vol("lower")
-                time.sleep(.5)
-            elif switch_state == "four":
-                print("sw four fell")
-                ch_vol("raise")
-                time.sleep(.5)
-            elif switch_state == "five":
-                play_mix(code_folder + "mvc/a.wav")
-            elif switch_state == "five_held":
-                play_mix(code_folder + "mvc/b.wav")
+            if is_button_mode:
+                if switch_state == "left":
+                    add_command(get_button_value(group_index, 1))
+                    time.sleep(.5)
+                elif switch_state == "right":
+                    add_command(get_button_value(group_index, 2))
+                    time.sleep(.5)
+                elif switch_state == "three":
+                    add_command(get_button_value(group_index, 3))
+                    time.sleep(.5)
+                elif switch_state == "four":
+                    add_command(get_button_value(group_index, 4))
+                    time.sleep(.5)
+                elif switch_state == "five":
+                    group_index +=1
+                    if group_index > len(button_groups): group_index = 1
+                    print("Group_index: ", group_index)
+                    play_mix_media(mvc_folder + "button_group.wav")
+                    play_mix_media(mvc_folder + str(group_index) + ".wav")
+                    time.sleep(.5)
+                elif switch_state == "five_held":
+                    print("switch out of button mode")
+                    cfg["option_selected"] = "random all"
+                    is_button_mode = False
+                    play_mix_media(mvc_folder + "button_mode_off.wav")
+                    time.sleep(.5)
+            else:
+                if switch_state == "left_held" and not is_button_mode:
+                    if cont_run:
+                        cont_run = False
+                        play_mix_media(mvc_folder + "continuous_mode_deactivated.wav")
+                    else:
+                        cont_run = True
+                        play_mix_media(mvc_folder + "continuous_mode_activated.wav")
+                    time.sleep(.5)
+                elif switch_state == "left" or cont_run:
+                    add_command("AN_"+ cfg["option_selected"])
+                    time.sleep(.5)
+                elif switch_state == "right":
+                    mch.go_to('main_menu')
+                    time.sleep(.5)
+                elif switch_state == "three":
+                    print("sw three fell")
+                    ch_vol("lower")
+                    time.sleep(.5)
+                elif switch_state == "four":
+                    print("sw four fell")
+                    ch_vol("raise")
+                    time.sleep(.5)
+                elif switch_state == "five_held":
+                    print("switch into button mode")
+                    is_button_mode = True
+                    play_mix_media(mvc_folder + "button_mode_on.wav")
         time.sleep(0.05)
 
 
