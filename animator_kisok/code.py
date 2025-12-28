@@ -91,6 +91,7 @@
 # pip install pydub
 
 
+import re
 from adafruit_servokit import ServoKit
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
@@ -167,6 +168,35 @@ override_switch_state = {}
 override_switch_state["switch_value"] = ""
 group_index = 1
 is_button_mode = False
+
+elves_folder = media_folder + "elves/"
+elves_folder = media_folder + "elves/"
+bells_folder = media_folder + "bells/"
+horns_folder = media_folder + "horns/"
+stops_folder = media_folder + "stops/"
+santa_folder = media_folder + "santa/"
+story_folder = media_folder + "story/"
+cut_folder = media_folder + "cut/"
+recording_folder = media_folder + "recording/"
+shutter_folder = media_folder + "shutter/"
+quotes_folder = media_folder + "quotes/"
+
+FOLDER_MAP = {
+    'E': elves_folder,
+    'B': bells_folder,
+    'H': horns_folder,
+    'T': stops_folder,
+    'S': santa_folder,
+    'Z': story_folder,
+    'C': cut_folder,
+    'R': recording_folder,
+    'X': shutter_folder,
+    'Q': quotes_folder,
+    'M': animations_folder
+}
+
+media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0,
+               'S': 0, 'Z': 0, 'C': 0, 'R': 0, 'X': 0, 'Q': 0, 'M': 0}
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -365,6 +395,7 @@ default_cfg = files.read_json_file(code_folder + "default_cfg.json")
 
 button_groups = {}
 
+
 def parse_button_list(items):
     list_output = {}
     if not isinstance(items, list):
@@ -380,6 +411,7 @@ def parse_button_list(items):
         if key:
             list_output[str(key)] = val
     return list_output
+
 
 def upd_media():
     global snd_opt, menu_snd_opt, button_opt, button_groups
@@ -400,8 +432,10 @@ def upd_media():
         except Exception as e:
             print(f"Failed on {filename}: {e}")
 
-    print("Sound options are:", json.dumps(snd_opt, indent=2, ensure_ascii=False))
-    print("Button groups are:", json.dumps(button_groups, indent=2, ensure_ascii=False))
+    print("Sound options are:", json.dumps(
+        snd_opt, indent=2, ensure_ascii=False))
+    print("Button groups are:", json.dumps(
+        button_groups, indent=2, ensure_ascii=False))
 
     menu_snd_opt = list(snd_opt)
     menu_snd_opt.append("random all")
@@ -416,6 +450,7 @@ def get_button_value(group_idx, button_idx, default=None):
         return default
 
     return group.get(button_key, default)
+
 
 upd_media()
 
@@ -444,8 +479,6 @@ exit_set_hdw = False
 local_ip = ""
 t_s = []
 t_elsp = 0.0
-
-
 
 
 ################################################################################
@@ -486,16 +519,20 @@ mix = None
 mix_media = None
 
 # Setup the mixer to play wav files
+
+
 def pygame_mixer_init():
     global mix, mix_media
-    try:        
-        pygame.mixer.init()
-        mix = pygame.mixer.Channel(0)
-        mix_media = pygame.mixer.Channel(1)
-    except Exception as e:
-        print(f"Error while setting up audio: {e}")
-        mix = None
-        mix_media = None
+    if not mix:
+        try:
+            pygame.mixer.init()
+            mix = pygame.mixer.Channel(0)
+            mix_media = pygame.mixer.Channel(1)
+        except Exception as e:
+            print(f"Error while setting up audio: {e}")
+            mix = None
+            mix_media = None
+
 
 def pygame_mixer_quit():
     global mix, mix_media
@@ -506,7 +543,8 @@ def pygame_mixer_quit():
     mix = None
     mix_media = None
     pygame.mixer.quit()
-    
+
+
 pygame_mixer_init()
 
 ################################################################################
@@ -553,6 +591,7 @@ def media_player_state():
         return "Other state"
 
 ################################################################################
+
 
 kit = ServoKit(channels=16)
 
@@ -1242,22 +1281,22 @@ def get_local_ip():
 
 def close_midori():
     global is_midori_running
-    if cfg["show_webpage"] == False:
-        return
     try:
         subprocess.run(['pkill', 'midori'], check=True)
         is_midori_running = False
         print("Midori closed successfully.")
     except subprocess.CalledProcessError:
         print("Midori was not running.")
+    # if cfg["show_webpage"] == False:
+    #     return
 
 
 def open_midori(midori_url):
     global is_midori_running
-    if cfg["show_webpage"] == False or is_midori_running:
-        return
+    # if cfg["show_webpage"] == False or is_midori_running:
+    #     return
     try:
-        midori_url = "http://" + local_ip + ":" + str(PORT) + "/"
+        # midori_url = "http://" + local_ip + ":" + str(PORT) + "/"
         command = "midori -e Fullscreen " + midori_url
         subprocess.Popen(command, shell=True)
         is_midori_running = True
@@ -1841,7 +1880,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             f_n = animations_folder + snd_f + ".json"
             self.handle_serve_file_name(f_n)
             return
-        
+
     def get_button_post(self, rq_d):
         global cfg, cont_run, ts_mode
         snd_f = rq_d["an"]
@@ -1854,9 +1893,11 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         global data
         f_n = folder_location + rq_d["fn"] + ".json"
         if folder_location == buttons_folder:
-            files.write_json_file(f_n, ["1|QAN_filename", "2|QAN_filename", "3|QAN_filename", "4|QAN_filename"])
+            files.write_json_file(
+                f_n, ["1|QAN_filename", "2|QAN_filename", "3|QAN_filename", "4|QAN_filename"])
         else:
-            files.write_json_file(f_n, ["0.0|MB0name of your track.wav", "1.0|"])
+            files.write_json_file(
+                f_n, ["0.0|MB0name of your track.wav", "1.0|"])
         play_mix_media(mvc_folder + "all_changes_complete.wav")
         upd_media()
         update_folder_name_wavs()
@@ -2294,6 +2335,7 @@ def process_commands():
         else:
             set_hdw(command)
 
+
 def clear_command_queue():
     """Clear all commands from the queue."""
     command_queue.clear()
@@ -2446,6 +2488,7 @@ def play_mix_media(file_name, wait_until_done=True, repeat=0, allow_exit=True):
                 exit_early()
     print("done playing")
 
+
 def wait_snd():
     while (mix_media and mix_media.get_busy()) or media_player.is_playing():
         exit_early()
@@ -2458,13 +2501,14 @@ def stop_all_media():
     if mix_media:
         mix_media.stop()
     media_player.stop()
+    close_midori()
     while (mix and mix.get_busy()) or (mix_media and mix_media.get_busy()) or media_player.is_playing():
         pass
 
 
 def exit_early():
     switch_state = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state)
+        l_sw, r_sw, time.sleep, 3.0, override_switch_state)
     if switch_state == "left":
         stop_all_media()
     time.sleep(0.05)
@@ -2529,6 +2573,7 @@ def spk_web():
         spk_str(cfg["HOST_NAME"], True)
     play_mix(code_folder + "mvc/in_your_browser.wav")
 
+
 def get_snds(dir, typ):
     sds = []
     s = files.return_directory("", dir, ".wav")
@@ -2540,6 +2585,7 @@ def get_snds(dir, typ):
     i = random.randint(0, mx)
     fn = dir + "/" + sds[i] + ".wav"
     return fn
+
 
 def get_random_joke():
     url = "https://official-joke-api.appspot.com/jokes/random"
@@ -2691,7 +2737,6 @@ def update_folder_name_wavs():
             print(f"Deleted orphaned wav: {file}")
 
 
-
 ################################################################################
 # Animation methods
 
@@ -2702,7 +2747,7 @@ def logo_when_idle():
         if not running_mode:
             time_counter += 1
             if time_counter == 2:
-                open_midori("http://" + local_ip + ":" + str(PORT) + "/")
+                # open_midori("http://" + local_ip + ":" + str(PORT) + "/")
                 change_wallpaper(media_folder + 'pictures/logo.jpg')
         else:
             time_counter = 0
@@ -2713,7 +2758,7 @@ def check_switches(stop_event):
     global cont_run, running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
-                l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
+            l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
             rst_an()
@@ -2784,7 +2829,8 @@ def an(f_nm):
             gc_col("animation cleanup")
         else:
             result = an_light(cur_opt)
-            if not mix: pygame_mixer_init()
+            if not mix:
+                pygame_mixer_init()
             gc_col("animation cleanup")
             return result
     except Exception as e:
@@ -2821,7 +2867,7 @@ def an_light(f_nm):
     if (f_exists(animations_folder + f_nm + ".json") == True):
         flsh_t = files.read_json_file(
             animations_folder + f_nm + ".json")
-        
+
     check_thread, stop_event = run_check_switches_thread()
 
     flsh_i = 0
@@ -3009,7 +3055,7 @@ def set_hdw(cmd, dur=3):
             f_nm = ""
             if seg[0] == 'E':  # end an
                 return "STOP"
-            # SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)
+            # SW_XXXX = Switch XXXX (left,right,three,four,five, left_held, ...)
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 if len(segs_split) == 2:
@@ -3024,7 +3070,7 @@ def set_hdw(cmd, dur=3):
                 repeat = seg[2]
                 file_nm = seg[3:]
                 return repeat + "_" + file_nm
-            # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops, S santa, Z christmas story, C cut, R recording, X shutter, Q quotes) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
+            # MALXXX = Play file, A (P play media, W play media wait, S stop media), L = file location (M movies, E elves, B bells, H horns, T stops, S santa, Z christmas story, C cut, R recording, X shutter, Q quotes) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
             elif seg[0] == 'M':  # play file
                 if seg[1] == "S":
                     stop_all_media()
@@ -3032,19 +3078,28 @@ def set_hdw(cmd, dur=3):
                     if seg[2] in FOLDER_MAP:
                         folder = FOLDER_MAP[seg[2]]
                         code = seg[3:]
+                        if seg[2] == "M":
+                            pygame_mixer_quit()
+                            file_type = ".mp4"
+                        else:
+                            pygame_mixer_init()
+                            file_type = ".wav"
                         if code == "SEQN":
                             filename, media_index[seg[2]] = get_indexed_media_file(
-                                folder, "mp3", media_index[seg[2]])
+                                folder, file_type, media_index[seg[2]])
                         elif code == "SEQF":
                             filename, media_index[seg[2]] = get_indexed_media_file(
-                                folder, "mp3", 0)
+                                folder, file_type, 0)
                         elif code == "RAND":
-                            filename = get_random_media_file(folder)
+                            filename = get_random_media_file(folder, file_type)
                         else:
                             filename = code
-                        w1 = folder + filename + ".wav"
-                    if seg[1] == "W" or seg[1] == "P":
-                        play_mix_media(w1, False, 0, False)
+                        w1 = folder + filename + file_type
+                    if (seg[1] == "W" or seg[1] == "P"):
+                        if seg[2] == "M":
+                            play_movie_file(w1)
+                        else:
+                            play_mix_media(w1, False, 0, False)
                     if seg[1] == "W":
                         wait_snd()
             # HA = Blow horn or bell, A (H Horn, B Bell)
@@ -3162,6 +3217,14 @@ def set_hdw(cmd, dur=3):
                         seg_split[1], seg_split[2], seg_split[3])
                     return response
                 return ""
+            # WOPEN_xxxx = Open webpage, XXX web url
+            if seg[:5] == 'WOPEN':
+                seg_split = seg.split("_")
+                print("Segment 1 is: ", seg_split[1])
+                open_midori(seg_split[1])
+            # WCLOSE = Close webpage, XXX web url
+            if seg[:6] == 'WCLOSE':
+                close_midori()
     except Exception as e:
         files.log_item(e)
 
@@ -3187,8 +3250,8 @@ def split_string(seg):
     return parts
 
 
-def get_random_media_file(folder_to_search):
-    myfiles = files.return_directory("", folder_to_search, ".wav")
+def get_random_media_file(folder_to_search, file_type):
+    myfiles = files.return_directory("", folder_to_search, file_type)
     return random.choice(myfiles) if myfiles else None
 
 
@@ -3397,8 +3460,9 @@ class BseSt(Ste):
                     add_command(get_button_value(group_index, 4))
                     time.sleep(.5)
                 elif switch_state == "five":
-                    group_index +=1
-                    if group_index > len(button_groups): group_index = 1
+                    group_index += 1
+                    if group_index > len(button_groups):
+                        group_index = 1
                     print("Group_index: ", group_index)
                     play_mix_media(mvc_folder + "button_group.wav")
                     play_mix_media(mvc_folder + str(group_index) + ".wav")
@@ -3413,13 +3477,15 @@ class BseSt(Ste):
                 if switch_state == "left_held" and not is_button_mode:
                     if cont_run:
                         cont_run = False
-                        play_mix_media(mvc_folder + "continuous_mode_deactivated.wav")
+                        play_mix_media(
+                            mvc_folder + "continuous_mode_deactivated.wav")
                     else:
                         cont_run = True
-                        play_mix_media(mvc_folder + "continuous_mode_activated.wav")
+                        play_mix_media(
+                            mvc_folder + "continuous_mode_activated.wav")
                     time.sleep(.5)
                 elif switch_state == "left" or cont_run:
-                    add_command("AN_"+ cfg["option_selected"])
+                    add_command("AN_" + cfg["option_selected"])
                     time.sleep(.5)
                 elif switch_state == "right":
                     mch.go_to('main_menu')
@@ -3645,7 +3711,8 @@ class WebOpt(Ste):
                 spk_str(local_ip, False, True)
                 sel_web()
             elif selected_menu_item == "update_ssid_password_from_usb":
-                play_mix_media(mvc_folder + "update_ssid_password_from_usb.wav")
+                play_mix_media(
+                    mvc_folder + "update_ssid_password_from_usb.wav")
                 update_ssid_password_from_usb()
                 restart_pi_timer()
             else:
@@ -3692,7 +3759,7 @@ if web:
     websocket_thread.start()
     start_camera_server()
     close_midori()
-    open_midori("http://" + local_ip + ":" + str(PORT) + "/")
+    # open_midori("http://" + local_ip + ":" + str(PORT) + "/")
     spk_web()
 
 st_mch.go_to('base_state')
@@ -3710,6 +3777,7 @@ def run_state_machine():
 state_machine_thread = threading.Thread(target=run_state_machine)
 state_machine_thread.daemon = True
 state_machine_thread.start()
+
 
 def stop_program():
     stop_all_commands()
