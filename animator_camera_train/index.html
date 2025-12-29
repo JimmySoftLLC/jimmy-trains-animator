@@ -367,8 +367,37 @@
                         <div class="knob-label">Rotate driver</div>
                     </div>
                 </div>
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobZoom">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobZoom-text">1.0×</div>
+                        </div>
+                        <div class="knob-label">Zoom (1–6×)</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobFocus">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobFocus-text">1.0</div>
+                        </div>
+                        <div class="knob-label">Focus (0–10)</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobBrightness">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobBrightness-text">0</div>
+                        </div>
+                        <div class="knob-label">Light (0–100)</div>
+                    </div>
+                </div>
             </div>
-            <div class="mui-form-group mui-slider-container">
+            <!-- <div class="mui-form-group mui-slider-container">
                 <label class="mui-form__label" for="zoomSlider">Zoom Level (1x - 6x) beyond 3x resolution
                     decreases:</label>
                 <input type="range" id="zoomSlider" class="mui-slider" min="1" max="6" step="0.1" value="1">
@@ -383,7 +412,7 @@
                 <label class="mui-form__label" for="lightSlider">Light (0-100):</label>
                 <input type="range" id="lightSlider" class="mui-slider" min="0" max="100" step="1" value="0">
                 <span id="lightValue" class="mui-zoom-value">0</span>
-            </div>
+            </div> -->
             <div id="controls">
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
                 <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
@@ -702,6 +731,41 @@
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
+        new KnobController('knob1', 'knob1-text', 180, 0, {
+            sendFunction: createServoSend('S1')
+        });
+        new KnobController('knob2', 'knob2-text', 140, 90, {
+            sendFunction: createServoSend('S2')
+        });
+        new KnobController('knob3', 'knob3-text', 0, 180, {
+            sendFunction: createServoSend('S3')
+        });
+        new KnobController('knob4', 'knob4-text', 0, 180, {
+            sendFunction: createServoSend('S4')
+        });
+
+
+        new KnobController('knobZoom', 'knobZoom-text', 1, 6, {
+            sendFunction: throttledSetZoom,
+            step: 0.1,
+            formatValue: v => v.toFixed(1) + '×',
+            throttleTime: 200
+        });
+
+        new KnobController('knobFocus', 'knobFocus-text', 0, 10, {
+            sendFunction: throttledSetFocus,
+            step: 0.1,
+            formatValue: v => v.toFixed(1),
+            throttleTime: 200
+        });
+
+        new KnobController('knobBrightness', 'knobBrightness-text', 0, 100, {
+            sendFunction: throttledSetLight,
+            step: 1,
+            formatValue: v => Math.round(v),
+            throttleTime: 200
+        });
+
         getWebSiteUrl()
         getVolume()
         getLightString()
@@ -1220,10 +1284,9 @@
     }
 
     class KnobController {
-        constructor(knobId, textId, commandPrefix, minRange, maxRange) {
+        constructor(knobId, textId, minRange, maxRange, options = {}) {
             this.knob = document.getElementById(knobId);
             this.knobText = document.getElementById(textId);
-            this.commandPrefix = commandPrefix;
             this.minRange = minRange;
             this.maxRange = maxRange;
             this.isDragging = false;
@@ -1231,9 +1294,12 @@
             this.currentRotation = 0;
             this.lastSentTime = 0;
             this.throttleTimeout = null;
-            this.throttleTime = 500;
+            this.sendFunction = options.sendFunction;
 
-            // Determine direction of mapping
+            this.formatValue = options.formatValue || (v => Math.round(v).toString());
+            this.step = options.step || 1;
+            this.throttleTime = options.throttleTime || 500;
+
             this.isReversed = minRange > maxRange;
             this.lowerBound = this.isReversed ? maxRange : minRange;
             this.upperBound = this.isReversed ? minRange : maxRange;
@@ -1253,6 +1319,7 @@
             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
             const clientY = event.touches ? event.touches[0].clientY : event.clientY;
             this.previousAngle = this.getAngle(clientX, clientY, centerX, centerY);
+            event.preventDefault();
         }
 
         onMove(event) {
@@ -1296,62 +1363,58 @@
             );
 
             this.knob.style.transform = `rotate(${this.currentRotation}deg)`;
-            this.knobText.innerText = clampedValue;
+            this.knobText.innerText = this.formatValue(clampedValue);
 
-            const newCommand = this.commandPrefix + clampedValue;
-            this.throttleSendCommand(newCommand);
+            this.throttleSend(clampedValue);
 
             this.previousAngle = currentAngle;
+            event.preventDefault();
         }
 
         onEnd() {
             this.isDragging = false;
         }
 
-        throttleSendCommand(command) {
-            if (this.throttleTimeout) {
-                clearTimeout(this.throttleTimeout);
-            }
-
+        throttleSend(value) {
             const now = Date.now();
             if (now - this.lastSentTime >= this.throttleTime) {
-                this.sendThrottledCommand(command);
+                this.sendFunction(value);
+                this.lastSentTime = now;
+                this.throttleTimeout = null;
             } else {
-                this.throttleTimeout = setTimeout(() => this.sendThrottledCommand(command), this.throttleTime);
-            }
-        }
-
-        async sendThrottledCommand(command) {
-            if (!command) return;
-
-            this.lastSentTime = Date.now();
-            this.throttleTimeout = null;
-
-            try {
-                await testAnimationCommand(command);
-            } catch (error) {
-                console.error(`Error sending animation command for ${this.commandPrefix}:`, error);
+                clearTimeout(this.throttleTimeout);
+                this.throttleTimeout = setTimeout(() => {
+                    this.sendFunction(value);
+                    this.lastSentTime = Date.now();
+                }, this.throttleTime);
             }
         }
 
         initializeEventListeners() {
-            this.knob.addEventListener('mousedown', (e) => this.onStart(e));
-            this.knob.addEventListener('touchstart', (e) => this.onStart(e));
-            window.addEventListener('mousemove', (e) => this.onMove(e));
-            window.addEventListener('touchmove', (e) => this.onMove(e));
+            const opts = { passive: false };
+
+            this.knob.addEventListener('mousedown', e => this.onStart(e));
+            this.knob.addEventListener('touchstart', e => this.onStart(e), opts);
+
+            window.addEventListener('mousemove', e => this.onMove(e));
+            window.addEventListener('touchmove', e => this.onMove(e), opts);
+
             window.addEventListener('mouseup', () => this.onEnd());
             window.addEventListener('touchend', () => this.onEnd());
-
-            this.knob.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-            this.knob.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
         }
     }
 
-    // Example usage with both normal and reversed ranges
-    const knob1Controller = new KnobController('knob1', 'knob1-text', 'S1', 180, 0);
-    const knob2Controller = new KnobController('knob2', 'knob2-text', 'S2', 140, 90);
-    const knob3Controller = new KnobController('knob3', 'knob3-text', 'S3', 0, 180);
-    const knob4Controller = new KnobController('knob4', 'knob4-text', 'S4', 0, 180);
+
+    // Helper for servo-style commands (DRY)
+    function createServoSend(prefix) {
+        return function (value) {
+            const command = `${prefix}${Math.round(value)}`;
+            testAnimationCommand(command).catch(err => {
+                console.error(`Failed to send servo command ${command}:`, err);
+            });
+        };
+    }
+
 
     async function testAnimationCommand(command) {
         if (!command) {
@@ -2202,7 +2265,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary test-row-btn";
-        button.innerHTML = 'Tst';
+        button.innerHTML = 'T';
         return button;
     }
 
@@ -2210,7 +2273,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary delete-row-btn";
-        button.innerHTML = 'Del';
+        button.innerHTML = 'D';
         return button;
     }
 
@@ -2218,7 +2281,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary insert-row-btn";
-        button.innerHTML = 'Ins';
+        button.innerHTML = 'I';
         return button;
     }
 
@@ -2226,7 +2289,7 @@
         var button = document.createElement("button");
         button.type = "button";
         button.className = "mui-btn mui-btn--primary add-row-btn";
-        button.innerHTML = 'Add';
+        button.innerHTML = 'A';
         return button;
     }
 
@@ -2559,7 +2622,6 @@
     const thumbnailGallery = document.getElementById('thumbnailGallery');
     const zoomSlider = document.getElementById('zoomSlider');
     const zoomValue = document.getElementById('zoomValue');
-    const setZoomBtn = document.getElementById('setZoomBtn');
     const focusSlider = document.getElementById('focusSlider');
     const focusValue = document.getElementById('focusValue');
     const lightSlider = document.getElementById('lightSlider');
@@ -2610,19 +2672,19 @@
     const throttledSetFocus = throttle(setFocus, 200);
     const throttledSetLight = throttle(setLight, 200);
 
-    zoomSlider.addEventListener('input', () => { const zoom = parseFloat(zoomSlider.value); zoomValue.textContent = `${zoom}x`; throttledSetZoom(zoom); });
-    zoomSlider.addEventListener('change', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
-    zoomSlider.addEventListener('touchend', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+    // zoomSlider.addEventListener('input', () => { const zoom = parseFloat(zoomSlider.value); zoomValue.textContent = `${zoom}x`; throttledSetZoom(zoom); });
+    // zoomSlider.addEventListener('change', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
+    // zoomSlider.addEventListener('touchend', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
 
 
-    focusSlider.addEventListener('input', () => { const focus = parseFloat(focusSlider.value); focusValue.textContent = focus; throttledSetFocus(focus); });
-    focusSlider.addEventListener('change', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
-    focusSlider.addEventListener('touchend', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+    // focusSlider.addEventListener('input', () => { const focus = parseFloat(focusSlider.value); focusValue.textContent = focus; throttledSetFocus(focus); });
+    // focusSlider.addEventListener('change', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
+    // focusSlider.addEventListener('touchend', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
 
 
-    lightSlider.addEventListener('input', () => { const brightness = parseFloat(lightSlider.value); lightValue.textContent = brightness; throttledSetLight(brightness); });
-    lightSlider.addEventListener('change', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
-    lightSlider.addEventListener('touchend', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
+    // lightSlider.addEventListener('input', () => { const brightness = parseFloat(lightSlider.value); lightValue.textContent = brightness; throttledSetLight(brightness); });
+    // lightSlider.addEventListener('change', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
+    // lightSlider.addEventListener('touchend', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
 
 
     function setupCanvas() {

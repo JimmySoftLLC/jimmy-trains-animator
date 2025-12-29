@@ -103,7 +103,6 @@ from zeroconf import ServiceInfo, Zeroconf
 import json
 import os
 import gc
-import vlc
 import board
 import digitalio
 from adafruit_debouncer import Debouncer
@@ -125,7 +124,6 @@ from collections import OrderedDict, deque
 import signal
 import copy
 from pydub import AudioSegment
-import sys
 import asyncio
 import websockets
 import pyautogui
@@ -134,6 +132,7 @@ from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, JpegEncoder
 from picamera2.outputs import FileOutput
 from libcamera import Transform  # Add this import for Transform
+from libcamera import controls
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
