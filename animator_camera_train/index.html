@@ -328,7 +328,15 @@
                 <img id="stream" src="/stream.mjpg" alt="MJPEG Stream">
                 <div id="streamStatus" class="stream-status"></div>
             </div>
-            <div class="mui-tabs__pane mui--is-active" id="tiltControl" style="padding-top:0.5rem;">
+            <ul class="mui-tabs__bar">
+                <li class="mui--is-active">
+                    <a data-mui-toggle="tab" data-mui-controls="camservos">Servos</a>
+                </li>
+                <li>
+                    <a data-mui-toggle="tab" data-mui-controls="camadj">Adjustments</a>
+                </li>
+            </ul>
+            <div class="mui-tabs__pane mui--is-active" id="camservos" style="padding-top:0.5rem;">
                 <div class="knobs-parent-container">
                     <div class="knob-wrapper">
                         <div class="knob-container">
@@ -367,6 +375,8 @@
                         <div class="knob-label">Rotate driver</div>
                     </div>
                 </div>
+            </div>
+            <div class="mui-tabs__pane" id="camadj" style="padding-top:0.5rem;">
                 <div class="knobs-parent-container">
                     <div class="knob-wrapper">
                         <div class="knob-container">
@@ -397,22 +407,6 @@
                     </div>
                 </div>
             </div>
-            <!-- <div class="mui-form-group mui-slider-container">
-                <label class="mui-form__label" for="zoomSlider">Zoom Level (1x - 6x) beyond 3x resolution
-                    decreases:</label>
-                <input type="range" id="zoomSlider" class="mui-slider" min="1" max="6" step="0.1" value="1">
-                <span id="zoomValue" class="mui-zoom-value">1.0x</span>
-            </div>
-            <div class="mui-form-group mui-slider-container">
-                <label class="mui-form__label" for="focusSlider">Focus (0-10):</label>
-                <input type="range" id="focusSlider" class="mui-slider" min="0" max="10" step="0.1" value="1">
-                <span id="focusValue" class="mui-zoom-value">1.0</span>
-            </div>
-            <div class="mui-form-group mui-slider-container">
-                <label class="mui-form__label" for="lightSlider">Light (0-100):</label>
-                <input type="range" id="lightSlider" class="mui-slider" min="0" max="100" step="1" value="0">
-                <span id="lightValue" class="mui-zoom-value">0</span>
-            </div> -->
             <div id="controls">
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
                 <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
@@ -743,24 +737,20 @@
         new KnobController('knob4', 'knob4-text', 0, 180, {
             sendFunction: createServoSend('S4')
         });
-
-
         new KnobController('knobZoom', 'knobZoom-text', 1, 6, {
-            sendFunction: throttledSetZoom,
+            sendFunction: throttle(setZoom, 200),
             step: 0.1,
             formatValue: v => v.toFixed(1) + '×',
             throttleTime: 200
         });
-
         new KnobController('knobFocus', 'knobFocus-text', 0, 10, {
-            sendFunction: throttledSetFocus,
+            sendFunction: throttle(setFocus, 200),
             step: 0.1,
             formatValue: v => v.toFixed(1),
             throttleTime: 200
         });
-
         new KnobController('knobBrightness', 'knobBrightness-text', 0, 100, {
-            sendFunction: throttledSetLight,
+            sendFunction: throttle(setLight, 200),
             step: 1,
             formatValue: v => Math.round(v),
             throttleTime: 200
@@ -1345,27 +1335,23 @@
             let normalizedRotation = (this.currentRotation + 180) / 360; // 0 to 1
 
             // Apply mapping based on direction
-            let displayValue;
+            let sendValue;
             if (this.isReversed) {
-                displayValue = Math.round(
-                    this.upperBound - (normalizedRotation * rangeSpan)
-                );
+                sendValue = this.upperBound - (normalizedRotation * rangeSpan);
             } else {
-                displayValue = Math.round(
-                    this.lowerBound + (normalizedRotation * rangeSpan)
-                );
+                sendValue = this.lowerBound + (normalizedRotation * rangeSpan);
             }
 
             // Clamp the value to the actual specified range
-            const clampedValue = Math.max(
+            const sendValueClamped = Math.max(
                 Math.min(this.minRange, this.maxRange),
-                Math.min(Math.max(this.minRange, this.maxRange), displayValue)
+                Math.min(Math.max(this.minRange, this.maxRange), sendValue)
             );
 
             this.knob.style.transform = `rotate(${this.currentRotation}deg)`;
-            this.knobText.innerText = this.formatValue(clampedValue);
+            this.knobText.innerText = this.formatValue(sendValueClamped);
 
-            this.throttleSend(clampedValue);
+            this.throttleSend(sendValueClamped);
 
             this.previousAngle = currentAngle;
             event.preventDefault();
@@ -2666,26 +2652,6 @@
             else console.error('Failed to set light:', response.status);
         } catch (e) { console.error('Error setting light:', e); }
     }
-
-
-    const throttledSetZoom = throttle(setZoom, 200);
-    const throttledSetFocus = throttle(setFocus, 200);
-    const throttledSetLight = throttle(setLight, 200);
-
-    // zoomSlider.addEventListener('input', () => { const zoom = parseFloat(zoomSlider.value); zoomValue.textContent = `${zoom}x`; throttledSetZoom(zoom); });
-    // zoomSlider.addEventListener('change', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
-    // zoomSlider.addEventListener('touchend', () => { const zoom = parseFloat(zoomSlider.value); setZoom(zoom); });
-
-
-    // focusSlider.addEventListener('input', () => { const focus = parseFloat(focusSlider.value); focusValue.textContent = focus; throttledSetFocus(focus); });
-    // focusSlider.addEventListener('change', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
-    // focusSlider.addEventListener('touchend', () => { const focus = parseFloat(focusSlider.value); setFocus(focus); });
-
-
-    // lightSlider.addEventListener('input', () => { const brightness = parseFloat(lightSlider.value); lightValue.textContent = brightness; throttledSetLight(brightness); });
-    // lightSlider.addEventListener('change', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
-    // lightSlider.addEventListener('touchend', () => { const brightness = parseFloat(lightSlider.value); setLight(brightness); });
-
 
     function setupCanvas() {
         canvas = document.createElement('canvas');
