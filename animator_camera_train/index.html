@@ -2646,6 +2646,7 @@
     }
 
     async function setLight(lightValue) {
+        lightValue = parseInt(lightValue)
         try {
             const response = await fetch('/lights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ an: "LN0_255_255_255," + "BN" + lightValue }) });
             if (response.ok) console.log(`Light set to ${lightValue}`);
