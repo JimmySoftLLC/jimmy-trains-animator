@@ -404,11 +404,11 @@ if (web):
                             "/sd/t_s_def/" + ts_fn + ".json")
                         files.write_json_file(
                             "/sd/snds/"+ts_fn+".json", ts)
-                    ply_a_1("/sd/mvc/all_changes_complete.wav")
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
                 elif rq_d["an"] == "reset_to_defaults":
                     rst_def()
                     files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_1("/sd/mvc/all_changes_complete.wav")
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
                     st_mch.go_to('base_state')
                 return Response(request, "Utility: " + rq_d["an"])
 
@@ -428,20 +428,20 @@ if (web):
                     ovrde_sw_st["switch_value"] = "four"
                 elif rq_d["an"] == "cont_mode_on":
                     cont_run = True
-                    ply_a_1("/sd/mvc/continuous_mode_activated.wav")
+                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
                 elif rq_d["an"] == "cont_mode_off":
                     cont_run = False
                     stp_all_cmds()
-                    ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
+                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
                 elif rq_d["an"] == "timestamp_mode_on":
                     cont_run = False
                     stp_all_cmds()
                     ts_mode = True
-                    ply_a_1("/sd/mvc/timestamp_mode_on.wav")
-                    ply_a_1("/sd/mvc/timestamp_instructions.wav")
+                    ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+                    ply_a_0("/sd/mvc/timestamp_instructions.wav")
                 elif rq_d["an"] == "timestamp_mode_off":
                     ts_mode = False
-                    ply_a_1("/sd/mvc/timestamp_mode_off.wav")
+                    ply_a_0("/sd/mvc/timestamp_mode_off.wav")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/speaker", [POST])
@@ -451,15 +451,15 @@ if (web):
                 stp_a_1()
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
-                    ply_a_1("/sd/mvc/left_speaker_right_speaker.wav")
+                    ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
                 elif rq_d["an"] == "volume_pot_off":
                     cfg["volume_pot"] = False
                     files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_1("/sd/mvc/all_changes_complete.wav")
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
                 elif rq_d["an"] == "volume_pot_on":
                     cfg["volume_pot"] = True
                     files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_1("/sd/mvc/all_changes_complete.wav")
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/lights", [POST])
@@ -746,7 +746,7 @@ def ch_vol(action):
     cfg["volume_pot"] = False
     if not mix.voice[0].playing and not mix.voice[1].playing:
         files.write_json_file("/sd/cfg.json", cfg)
-        ply_a_1("/sd/mvc/volume.wav")
+        ply_a_0("/sd/mvc/volume.wav")
         spk_str(cfg["volume"], False)
 
 
@@ -767,46 +767,47 @@ def stp_a_0():
         print("Invalid character in string to speak")
 
 
-def exit_early_0():
-    upd_vol(0.1, vr)
-    l_sw.update()
-    if l_sw.fell:
-        mix.voice[0].stop()
-
-
-def ply_a_1(file_name):
-    if mix.voice[1].playing:
-        mix.voice[1].stop()
-        while mix.voice[1].playing:
-            upd_vol(0.1, vr)
-    w1 = audiocore.WaveFile(open(file_name, "rb"))
-    mix.voice[1].play(w1, loop=False)
-    while mix.voice[1].playing:
-        exit_early_0()
-
-
-def wait_snd_1():
-    while mix.voice[1].playing:
-        exit_early_1()
-        pass
-
-
-def stp_a_1():
-    try:
-        mix.voice[1].stop()
-        wait_snd_1()
-        time.sleep(0.5)
-        gc_col("stp snd 1")
-    except Exception as e:
-        files.log_item(e)
-        print("Invalid character in string to speak")
-
-
 def exit_early_1():
     upd_vol(0.1, vr)
     l_sw.update()
     if l_sw.fell:
         mix.voice[1].stop()
+
+
+def ply_a_0(file_name):
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
+        while mix.voice[0].playing:
+            upd_vol(0.1, vr)
+    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    mix.voice[1].play(w0, loop=False)
+    while mix.voice[1].playing:
+        exit_early_1()
+
+
+def wait_snd_0():
+    while mix.voice[0].playing:
+        pass
+
+def wait_snd_1():
+    while mix.voice[1].playing:
+        pass
+
+def stp_a_0():
+    mix.voice[0].stop()
+    wait_snd_0()
+
+
+def stp_a_1():
+    mix.voice[1].stop()
+    wait_snd_1()
+
+
+def exit_early_0():
+    upd_vol(0.1)
+    l_sw.update()
+    if l_sw.fell:
+        mix.voice[0].stop()
 
 
 def spk_str(str_to_speak, addLocal):
@@ -818,55 +819,55 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_1("/sd/mvc/" + character + ".wav")
+            ply_a_0("/sd/mvc/" + character + ".wav")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_1("/sd/mvc/dot.wav")
-        ply_a_1("/sd/mvc/local.wav")
+        ply_a_0("/sd/mvc/dot.wav")
+        ply_a_0("/sd/mvc/local.wav")
 
 
 def l_r_but():
-    ply_a_1("/sd/mvc/press_left_button_right_button.wav")
+    ply_a_0("/sd/mvc/press_left_button_right_button.wav")
 
 
 def sel_web():
-    ply_a_1("/sd/mvc/web_menu.wav")
+    ply_a_0("/sd/mvc/web_menu.wav")
     l_r_but()
 
 
 def opt_sel():
-    ply_a_1("/sd/mvc/option_selected.wav")
+    ply_a_0("/sd/mvc/option_selected.wav")
 
 
 def spk_sng_num(song_number):
-    ply_a_1("/sd/mvc/song.wav")
+    ply_a_0("/sd/mvc/song.wav")
     spk_str(song_number, False)
 
 
 def no_trk():
-    ply_a_1("/sd/mvc/no_user_soundtrack_found.wav")
+    ply_a_0("/sd/mvc/no_user_soundtrack_found.wav")
     while True:
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
             break
         if r_sw.fell:
-            ply_a_1("/sd/mvc/create_sound_track_files.wav")
+            ply_a_0("/sd/mvc/create_sound_track_files.wav")
             break
 
 
 def spk_web():
-    ply_a_1("/sd/mvc/animator_available_on_network.wav")
-    ply_a_1("/sd/mvc/to_access_type.wav")
+    ply_a_0("/sd/mvc/animator_available_on_network.wav")
+    ply_a_0("/sd/mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-incline":
-        ply_a_1("/sd/mvc/animator_incline.wav")
-        ply_a_1("/sd/mvc/dot.wav")
-        ply_a_1("/sd/mvc/local.wav")
+        ply_a_0("/sd/mvc/animator_incline.wav")
+        ply_a_0("/sd/mvc/dot.wav")
+        ply_a_0("/sd/mvc/local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    ply_a_1("/sd/mvc/in_your_browser.wav")
+    ply_a_0("/sd/mvc/in_your_browser.wav")
 
 
 def get_snds(dir, typ):
@@ -984,7 +985,7 @@ async def an_light_async(f_nm):
             if cont_run:
                 cont_run = False
                 stp_all_cmds()
-                ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
+                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1 or exit_set_hdw_async:
             print("animation done clean up.")
             exit_set_hdw_async = False
@@ -1030,9 +1031,9 @@ def an_ts(f_nm):
             break
 
     ts_mode = False
-    ply_a_1("/sd/mvc/timestamp_saved.wav")
-    ply_a_1("/sd/mvc/timestamp_mode_off.wav")
-    ply_a_1("/sd/mvc/animations_are_now_active.wav")
+    ply_a_0("/sd/mvc/timestamp_saved.wav")
+    ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+    ply_a_0("/sd/mvc/animations_are_now_active.wav")
 
 ##############################
 # animation effects
@@ -1564,7 +1565,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        ply_a_1("/sd/mvc/animations_are_now_active.wav")
+        ply_a_0("/sd/mvc/animations_are_now_active.wav")
         files.log_item("Entered base state")
         Ste.enter(self, mch)
 
@@ -1580,10 +1581,10 @@ class BseSt(Ste):
                 if cont_run:
                     cont_run = False
                     stp_all_cmds()
-                    ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
+                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
                 else:
                     cont_run = True
-                    ply_a_1("/sd/mvc/continuous_mode_activated.wav")
+                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif sw == "left" or cont_run:
                 if not is_running_an:
                     add_cmd("AN_" + cfg["option_selected"])
@@ -1603,7 +1604,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_1("/sd/mvc/main_menu.wav")
+        ply_a_0("/sd/mvc/main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1614,7 +1615,7 @@ class Main(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_1("/sd/mvc/" + main_m[self.i] + ".wav")
+            ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -1630,7 +1631,7 @@ class Main(Ste):
             elif sel_mnu == "volume_settings":
                 mch.go_to('volume_settings')
             else:
-                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1646,7 +1647,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_1("/sd/mvc/sound_selection_menu.wav")
+        ply_a_0("/sd/mvc/sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1703,7 +1704,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        ply_a_1("/sd/mvc/add_sounds_animate.wav")
+        ply_a_0("/sd/mvc/add_sounds_animate.wav")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -1715,7 +1716,7 @@ class AddSnds(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_1(
+            ply_a_0(
                 "/sd/mvc/" + add_snd[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
@@ -1724,17 +1725,17 @@ class AddSnds(Ste):
         if sw == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                ply_a_1("/sd/mvc/create_sound_track_files.wav")
+                ply_a_0("/sd/mvc/create_sound_track_files.wav")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                ply_a_1("/sd/mvc/timestamp_mode_on.wav")
-                ply_a_1("/sd/mvc/timestamp_instructions.wav")
+                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+                ply_a_0("/sd/mvc/timestamp_instructions.wav")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                ply_a_1("/sd/mvc/timestamp_mode_off.wav")
+                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
             else:
-                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 
@@ -1751,7 +1752,7 @@ class VolSet(Ste):
 
     def enter(s, mch):
         files.log_item('Set Web Options')
-        ply_a_1("/sd/mvc/volume_settings_menu.wav")
+        ply_a_0("/sd/mvc/volume_settings_menu.wav")
         l_r_but()
         s.vol_adj_mode = False
         Ste.enter(s, mch)
@@ -1763,7 +1764,7 @@ class VolSet(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left" and not s.vol_adj_mode:
-            ply_a_1("/sd/mvc/" + vol_set[s.i] + ".wav")
+            ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
@@ -1771,14 +1772,14 @@ class VolSet(Ste):
         if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
             if sw == "right":
                 s.vol_adj_mode = True
-                ply_a_1("/sd/mvc/volume_adjustment_menu.wav")
+                ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
         elif sw == "left" and s.vol_adj_mode:
             ch_vol("lower")
         elif sw == "right" and s.vol_adj_mode:
             ch_vol("raise")
         elif sw == "right_held" and s.vol_adj_mode:
             files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_1("/sd/mvc/all_changes_complete.wav")
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1, vr)
@@ -1787,12 +1788,12 @@ class VolSet(Ste):
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_1("/sd/mvc/all_changes_complete.wav")
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
         if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_1("/sd/mvc/all_changes_complete.wav")
+            ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
 
 
@@ -1817,7 +1818,7 @@ class WebOpt(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_1("/sd/mvc/" + web_m[self.i] + ".wav")
+            ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -1836,11 +1837,11 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             elif selected_menu_item == "hear_instr_web":
-                ply_a_1("/sd/mvc/web_instruct.wav")
+                ply_a_0("/sd/mvc/web_instruct.wav")
                 sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_1("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
 ###############################################################################
