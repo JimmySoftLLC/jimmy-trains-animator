@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smile, you're on camera!</title>
+
+    <link rel="stylesheet" href="/mui.min.css" />
+    <script src="/mui.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0px;
+            background: #111;
+            color: #eee;
+            font-family: Arial, Helvetica, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 12vw;                /* small side padding – feels wide but not edge-to-edge hard */
+        }
+
+        .title {
+            font-size: 3.8rem;             /* slightly bigger on large screens */
+            font-weight: bold;
+            color: #ffeb3b;
+            margin: 30px 0 40px;
+            text-align: center;
+            animation: glow 2s ease-in-out infinite alternate;
+            cursor: default;
+            max-width: 90vw;               /* prevent title from becoming absurdly long line */
+        }
+
+        .title:hover {
+            transform: scale(1.03);
+            transition: transform 0.3s ease;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #ffeb3b, 0 0 20px #ffeb3b; }
+            to   { text-shadow: 0 0 20px #ffeb3b, 0 0 40px #ffeb3b, 0 0 60px #ff9800; }
+        }
+
+        .stream-container {
+            position: relative;
+            width: 100%;
+            max-width: 94vw;               /* ← main change: much wider than before */
+            padding-bottom: 56.25%;        /* 16:9 */
+            height: 0;
+            background: #000;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+            overflow: hidden;
+            border: 4px solid #222;
+        }
+
+        #stream {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50%" font-size="20" text-anchor="middle" fill="%23444">Loading camera...</text></svg>') center/cover no-repeat;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 1.8rem;
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        /* ──────────────────────────────────────── */
+        /* Mobile / tablet adjustments              */
+        /* ──────────────────────────────────────── */
+
+        @media (max-width: 1024px) {
+            .title {
+                font-size: 3.0rem;
+                margin: 25px 0 35px;
+            }
+            .stream-container {
+                max-width: 96vw;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .container {
+                padding: 0 3vw;
+            }
+            .title {
+                font-size: 2.4rem;
+                margin: 20px 0 30px;
+            }
+            .status {
+                font-size: 1rem;
+                margin-top: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .title {
+                font-size: 2.0rem;
+            }
+            .stream-container {
+                max-width: 98vw;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 class="title">Smile, you're on camera!</h2>
+
+        <div class="stream-container">
+            <img id="stream"
+                 src="http://animator-camera-train.local:8083/stream.mjpg"
+                 alt="Live MJPEG Camera Stream">
+        </div>
+    </div>
+
+</body>
+</html>
