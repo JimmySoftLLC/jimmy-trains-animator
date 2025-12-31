@@ -681,15 +681,15 @@ def rst_def():
 # Dialog and sound play methods
 
 
-def upd_vol(s, ratio):
+def upd_vol(s, bckgrnd_snd_ratio):
     if cfg["volume_pot"]:
-        volume = a_in.value / 65536 * ratio/100
+        volume = a_in.value / 65536 * bckgrnd_snd_ratio/100
         mix.voice[0].level = volume
         mix.voice[1].level = volume
         time.sleep(s)
     else:
         try:
-            volume = int(cfg["volume"]) / 100 * ratio/100
+            volume = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100
         except Exception as e:
             files.log_item(e)
             volume = .5
@@ -700,21 +700,26 @@ def upd_vol(s, ratio):
         time.sleep(s)
 
 
-async def upd_vol_async(s, ratio):
+async def upd_vol_async(s, bckgrnd_snd_ratio):
     if cfg["volume_pot"]:
-        volume = a_in.value / 65536 * ratio/100
-        mix.voice[0].level = volume
+        volume = a_in.value / 65536
+        volume_ratio = a_in.value / 65536 * bckgrnd_snd_ratio/100
+        mix.voice[0].level = volume_ratio
         mix.voice[1].level = volume
         await asyncio.sleep(s)
     else:
         try:
-            volume = int(cfg["volume"]) / 100 * ratio/100
+            volume = int(cfg["volume"]) / 100
+            volume_ratio = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100
         except Exception as e:
             files.log_item(e)
             volume = .5
+            volume_ratio = .5
         if volume < 0 or volume > 1:
             volume = .5
-        mix.voice[0].level = volume
+        if volume_ratio < 0 or volume_ratio > 1:
+            volume_ratio = .5
+        mix.voice[0].level = volume_ratio
         mix.voice[1].level = volume
         await asyncio.sleep(s)
 
@@ -1012,7 +1017,7 @@ def an_ts(f_nm):
 
     w0 = audiocore.WaveFile(
         open("/sd/snds/" + f_nm + ".wav", "rb"))
-    mix.voice[1].play(w0, loop=False)
+    mix.voice[0].play(w0, loop=False)
 
     startTime = time.monotonic()
     upd_vol(.1, vr)
@@ -1023,7 +1028,7 @@ def an_ts(f_nm):
         if r_sw.fell:
             t_s.append(str(t_elsp) + "|")
             files.log_item(t_elsp)
-        if not mix.voice[1].playing:
+        if not mix.voice[0].playing:
             led_low.fill((0, 0, 0))
             led_low.show()
             files.write_json_file(
@@ -1291,7 +1296,7 @@ async def set_hdw_async(input_string, dur=3):
                 led_up.show()
                 led_low.show()
                 await upd_vol_async(.1, vr)
-        # VRFXXX = Volume ratio fade up or down XXX 0 to 100
+        # VRFXXX = Volume bckgrnd_snd_ratio fade up or down XXX 0 to 100
         elif seg[:3] == 'VRF':
             v = int(seg[3:])
             while not vr == v:
@@ -1300,7 +1305,7 @@ async def set_hdw_async(input_string, dur=3):
                 else:
                     vr -= 2
                 await upd_vol_async(.03, vr)
-        # VRXXX = Volume ratio set to XXX
+        # VRXXX = Volume bckgrnd_snd_ratio set to XXX
         elif seg[:2] == 'VR':
             vr = int(seg[2:])
             upd_vol(0, vr)
