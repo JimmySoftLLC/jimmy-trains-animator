@@ -1206,9 +1206,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             print(self.path)
             self.handle_serve_file("/code" + self.path,
                                    "application/javascript")
-        elif self.path == "/record_stream":
+        elif self.path == "/stream.html":
             print(self.path)
-            self.handle_serve_file("/code/record_stream.html")
+            self.handle_serve_file("/code/stream.html")
         elif self.path == "/control":
             print(self.path)
             self.handle_serve_file("/code/control.html")

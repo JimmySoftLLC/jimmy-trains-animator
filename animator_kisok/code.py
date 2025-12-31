@@ -227,7 +227,7 @@ def change_wallpaper(image_path):
                 # Output will be 'path/to/your/image.jpg'
                 print(new_image_path)
             else:
-                new_image_path = media_folder + 'pictures/logo.jpg'
+                new_image_path = media_folder + 'pictures/black.jpg'
 
             # Update the wallpaper in the desktop-items-0.conf file
             config_path = get_home_path() + '.config/pcmanfm/LXDE-pi/desktop-items-0.conf'
@@ -261,7 +261,7 @@ def change_wallpaper(image_path):
             print(f"Image load error: {e}")
 
 
-change_wallpaper(media_folder + 'pictures/logo.jpg')
+change_wallpaper(media_folder + 'pictures/black.jpg')
 
 
 def f_exists(filename):
@@ -2748,7 +2748,7 @@ def logo_when_idle():
             time_counter += 1
             if time_counter == 2:
                 # open_midori("http://" + local_ip + ":" + str(PORT) + "/")
-                change_wallpaper(media_folder + 'pictures/logo.jpg')
+                change_wallpaper(media_folder + 'pictures/black.jpg')
         else:
             time_counter = 0
         time.sleep(1)
@@ -2801,7 +2801,7 @@ def run_check_switches_thread():
     return check_thread, stop_event
 
 
-def rst_an(file_name=media_folder + 'pictures/logo.jpg'):
+def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     global current_media_playing, exit_set_hdw
     print("resetting animations")
     exit_set_hdw = True
