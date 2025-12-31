@@ -1292,7 +1292,7 @@ def open_midori(midori_url):
     # if cfg["show_webpage"] == False or is_midori_running:
     #     return
     try:
-        midori_url = "http://" + local_ip + ":" + str(PORT) + "/stream.html"
+        # midori_url = "http://" + local_ip + ":" + str(PORT) + "/stream.html"
         command = "midori -e Fullscreen " + midori_url
         subprocess.Popen(command, shell=True)
         is_midori_running = True
@@ -2160,6 +2160,7 @@ def stop_all_media():
         mix_media.stop()
     media_player.stop()
     close_midori()
+
     while (mix and mix.get_busy()) or (mix_media and mix_media.get_busy()) or media_player.is_playing():
         pass
 
@@ -2554,7 +2555,6 @@ def an_light(f_nm):
                         print("Running mode: ", running_mode)
                         change_wallpaper(media0_basename + ".jpg")
                         mix_is_paused = False
-                        close_midori()
                         if result[0] == "1":
                             repeat = -1
                         else:
@@ -2616,6 +2616,12 @@ def an_light(f_nm):
             return result
         if flsh_i >= len(flsh_t)-1:
             print("all time stamps done")
+            stop_event.set()  # Signal the thread to stop
+            check_thread.join()  # Wait for the thread to finish
+            result = an_done_reset("DONE")
+            return result
+        if exit_set_hdw:
+            print("exit early pressed")
             stop_event.set()  # Signal the thread to stop
             check_thread.join()  # Wait for the thread to finish
             result = an_done_reset("DONE")
@@ -3417,8 +3423,6 @@ if web:
     websocket_thread = threading.Thread(
         target=lambda: asyncio.run(websocket_server()), daemon=True)
     websocket_thread.start()
-    close_midori()
-    # open_midori("http://" + local_ip + ":" + str(PORT) + "/")
     spk_web()
 
 st_mch.go_to('base_state')
