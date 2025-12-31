@@ -2878,7 +2878,10 @@ def an_light(f_nm):
         try:
             ft1 = flsh_t[flsh_i].split("|")
             result = set_hdw(ft1[1])
-            result = result.split("_")
+            try:
+                result = result.split("_")
+            except:
+                result = None
             if result and len(result) > 1:
                 media0 = animations_folder + result[1]
                 media0_exists = f_exists(media0)

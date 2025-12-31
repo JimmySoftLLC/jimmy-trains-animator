@@ -11,7 +11,7 @@
     <style>
         body {
             margin: 0;
-            padding: 20px;
+            padding: 0px;
             background: #111;
             color: #eee;
             font-family: Arial, Helvetica, sans-serif;
@@ -21,27 +21,27 @@
         }
 
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            padding: 0 12vw;                /* small side padding – feels wide but not edge-to-edge hard */
         }
 
         .title {
-            font-size: 3.2rem;
+            font-size: 3.8rem;             /* slightly bigger on large screens */
             font-weight: bold;
             color: #ffeb3b;
-            text-shadow: 0 0 20px rgba(255, 235, 59, 0.7);
-            margin: 20px 0 30px;
+            margin: 30px 0 40px;
             text-align: center;
             animation: glow 2s ease-in-out infinite alternate;
             cursor: default;
+            max-width: 90vw;               /* prevent title from becoming absurdly long line */
         }
 
         .title:hover {
-            transform: scale(1.05);
+            transform: scale(1.03);
             transition: transform 0.3s ease;
         }
 
@@ -53,8 +53,8 @@
         .stream-container {
             position: relative;
             width: 100%;
-            max-width: 100%;
-            padding-bottom: 56.25%;   /* 16:9 */
+            max-width: 94vw;               /* ← main change: much wider than before */
+            padding-bottom: 56.25%;        /* 16:9 */
             height: 0;
             background: #000;
             border-radius: 16px;
@@ -75,28 +75,62 @@
 
         .status {
             text-align: center;
-            margin-top: 1.5rem;
+            margin-top: 1.8rem;
             color: #888;
-            font-size: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* ──────────────────────────────────────── */
+        /* Mobile / tablet adjustments              */
+        /* ──────────────────────────────────────── */
+
+        @media (max-width: 1024px) {
+            .title {
+                font-size: 3.0rem;
+                margin: 25px 0 35px;
+            }
+            .stream-container {
+                max-width: 96vw;
+            }
         }
 
         @media (max-width: 768px) {
-            .title { font-size: 2.5rem; }
+            body {
+                padding: 12px;
+            }
+            .container {
+                padding: 0 3vw;
+            }
+            .title {
+                font-size: 2.4rem;
+                margin: 20px 0 30px;
+            }
+            .status {
+                font-size: 1rem;
+                margin-top: 1.2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .title {
+                font-size: 2.0rem;
+            }
+            .stream-container {
+                max-width: 98vw;
+            }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1 class="title">Smile, you're on camera!</h1>
+        <h2 class="title">Smile, you're on camera!</h2>
 
         <div class="stream-container">
             <img id="stream"
                  src="http://animator-camera-train.local:8083/stream.mjpg"
                  alt="Live MJPEG Camera Stream">
         </div>
-
-        <div class="status">Live view from Animator Camera Car</div>
     </div>
 
 </body>
