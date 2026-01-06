@@ -328,6 +328,7 @@
                 <table id="dataTable" class="mui-table">
                     <thead>
                         <tr>
+                            <th>#</th>
                             <th>TimeStamp</th>
                             <th>TimeCode</th>
                             <th>Animation</th>
@@ -368,6 +369,212 @@
 
     function closeAlert() {
         mui.overlay('off');
+    }
+
+    // ============================================================================
+    // Helper: Extract table data in server-friendly format (seconds|animation)
+    // Ignores row number column and action column
+    // ============================================================================
+    function getTableDataAsServerFormat() {
+        const rows = Array.from(document.querySelectorAll("#dataTable tbody tr"));
+        return rows.map(row => {
+            const cells = row.querySelectorAll("td");
+            // cells[0] = row number (skip)
+            const secondsInput = cells[1]?.querySelector("input")?.value?.trim() || "";
+            const animationInput = cells[3]?.querySelector("input")?.value?.trim() || "";
+
+            // Convert displayed timecode back to seconds if needed, but prefer seconds input
+            let seconds = secondsInput;
+            if (!seconds && cells[2]?.querySelector("input")?.value) {
+                seconds = convertTimeCodeToSeconds(cells[2].querySelector("input").value) || "0.0";
+            }
+
+            if (seconds === "" && animationInput === "") return null; // skip completely empty rows
+
+            return (parseFloat(seconds) || 0).toFixed(1) + "|" + animationInput;
+        }).filter(line => line !== null && line !== "0.0|");
+    }
+
+    // ============================================================================
+    // Save animation script – sends data in blocks to /save-data
+    // ============================================================================
+    function saveAnimationScriptData() {
+        saveAnimationScriptDataButton.setAttribute("disabled", "true");
+
+        const combinedData = getTableDataAsServerFormat();
+        if (combinedData.length === 0) {
+            showAlert("No animation data to save.");
+            saveAnimationScriptDataButton.removeAttribute("disabled");
+            return;
+        }
+
+        const blockSize = 5;
+        const totalBlocks = Math.ceil(combinedData.length / blockSize);
+
+        function sendBlockSequentially(index) {
+            if (index >= totalBlocks) {
+                saveAnimationScriptDataButton.removeAttribute("disabled");
+                showAlert("Animation saved successfully.");
+                return;
+            }
+
+            const startIdx = index * blockSize;
+            const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
+            const block = combinedData.slice(startIdx, endIdx);
+
+            let payload = [index, totalBlocks - 1, block];
+            if (index === totalBlocks - 1) {
+                payload = [index, totalBlocks - 1, block, animationName.value];
+            }
+
+            fetch("/save-data", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error("Error saving block " + (index + 1));
+                    return sendBlockSequentially(index + 1);
+                })
+                .catch(error => {
+                    showAlert("Save failed: " + error.message);
+                    saveAnimationScriptDataButton.removeAttribute("disabled");
+                });
+        }
+
+        sendBlockSequentially(0);
+    }
+
+    // ============================================================================
+    // Populate the main animation table – now includes row number
+    // ============================================================================
+    function populateAnimationsTable(data) {
+        animationTableBody.innerHTML = "";
+
+        data.forEach(function (rowData, index) {
+            const row = createDataRow(rowData, index);
+            animationTableBody.appendChild(row);
+        });
+    }
+
+    // ============================================================================
+    // Create a single table row – now with row number as first cell
+    // ============================================================================
+    function createDataRow(rowData, rowIndex) {
+        const row = document.createElement("tr");
+        const parts = rowData.split("|");
+
+        // Column 0: Row number (static)
+        const rowNumCell = document.createElement("td");
+        rowNumCell.textContent = (rowIndex + 1).toString();
+        rowNumCell.style.width = "45px";
+        rowNumCell.style.textAlign = "center";
+        rowNumCell.style.fontWeight = "bold";
+        rowNumCell.style.color = "#444";
+        rowNumCell.style.backgroundColor = "#f8f9fa";
+        row.appendChild(rowNumCell);
+
+        // Column 1: TimeStamp (seconds)
+        const seconds = parts[0] ? parts[0].trim() : "";
+        const tsCell = createEditableCell(seconds, "85px");
+        tsCell.addEventListener('keydown', e => {
+            if (e.keyCode === 13) timeSecondsCellChanged(e);
+        });
+        row.appendChild(tsCell);
+
+        // Column 2: TimeCode (hh:mm:ss:ff)
+        let timeCode = "";
+        if (seconds) {
+            timeCode = convertSecondsToTimeCode(parseFloat(seconds));
+        }
+        const tcCell = createEditableCell(timeCode, "120px");
+        tcCell.addEventListener('keydown', e => {
+            if (e.keyCode === 13) timeCodeCellChanged(e);
+        });
+        row.appendChild(tcCell);
+
+        // Column 3: Animation commands
+        const animation = parts[1] ? parts[1].trim() : "";
+        const anCell = createEditableCell(animation, "520px");
+        anCell.addEventListener('click', animationCellClicked);
+        row.appendChild(anCell);
+
+        // Column 4: Action buttons
+        const actionCell = document.createElement("td");
+        actionCell.style.whiteSpace = "nowrap";
+        actionCell.appendChild(createTestButton());
+        actionCell.appendChild(createEditButton());
+        actionCell.appendChild(createInsertButton());
+        actionCell.appendChild(createAddButton());
+        actionCell.appendChild(createDeleteButton());
+        row.appendChild(actionCell);
+
+        return row;
+    }
+
+    // ============================================================================
+    // Re-populate table after insert/delete/add – keeps row numbers correct
+    // ============================================================================
+    function copyAndResetTable() {
+        const combinedData = getTableDataAsServerFormat();
+        populateAnimationsTable(combinedData);
+    }
+
+    // ============================================================================
+    // Paste table logic – updated for new column structure
+    // ============================================================================
+    function pasteRowsAndResetTable() {
+        const rows = Array.from(animationTableBody.querySelectorAll("tr"));
+
+        // Extract current table state
+        const currentData = rows.map(row => {
+            const cells = row.querySelectorAll("td");
+            return {
+                seconds: cells[1]?.querySelector("input")?.value?.trim() || "",
+                animation: cells[3]?.querySelector("input")?.value?.trim() || ""
+            };
+        });
+
+        // Apply paste starting from globalRowIndex
+        let pasteIndex = 0;
+        while (globalRowIndex < currentData.length && pasteIndex < globalPasteTable.length) {
+            currentData[globalRowIndex].animation = globalPasteTable[pasteIndex];
+            globalRowIndex++;
+            pasteIndex++;
+        }
+
+        // Convert back to combined format
+        const combinedData = currentData.map(row => {
+            let seconds = row.seconds;
+            if (!seconds && row.animation) {
+                seconds = "0.0"; // default if animation present but no time
+            }
+            const secNum = parseFloat(seconds) || 0;
+            return secNum.toFixed(1) + "|" + (row.animation || "");
+        });
+
+        populateAnimationsTable(combinedData);
+    }
+
+    // ============================================================================
+    // Row insertion / deletion helpers – they now call copyAndResetTable()
+    // which automatically fixes row numbers
+    // ============================================================================
+    function insertRow(row) {
+        const newRow = createDataRow("|", 0); // temporary – numbers will be fixed
+        animationTableBody.insertBefore(newRow, row);
+        copyAndResetTable();
+    }
+
+    function addRow(row) {
+        const newRow = createDataRow("|", 0);
+        animationTableBody.insertBefore(newRow, row.nextSibling);
+        copyAndResetTable();
+    }
+
+    function deleteRow(row) {
+        row.remove();
+        copyAndResetTable();
     }
 
     function removeChildNodes(myDiv) {
@@ -584,7 +791,7 @@
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
-            button.textContent = item.replace("customers_owned_music_", "");
+            button.textContent = item.replace("c_", "");
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
             button.setAttribute("data-url", "/animation");
@@ -630,7 +837,7 @@
         // Loop through the data and create a button for each item
         my_data.forEach((item) => {
             const button = document.createElement("button");
-            button.textContent = item.replace("customers_owned_music_", "");
+            button.textContent = item.replace("c_", "");
             button.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             button.setAttribute("data-value", item);
             button.setAttribute("data-url", "/get-animation");
@@ -793,17 +1000,6 @@
         saveAnimationScriptData();
     });
 
-    function populateAnimationsTable(data) {
-        // Clear existing table rows
-        animationTableBody.innerHTML = "";
-
-        // Populate table with new data
-        data.forEach(function (rowData) {
-            var row = createDataRow(rowData);
-            animationTableBody.appendChild(row);
-        });
-    }
-
     animationTableBody.addEventListener("click", function (event) {
         var target = event.target;
         if (target.classList.contains("insert-row-btn")) {
@@ -883,45 +1079,6 @@
     var globalPasteTableNumRows = 0;
     var globalPasteTable = [];
     var globalRowIndex = 0; // Index for data
-
-    function pasteRowsAndResetTable() {
-        var pasteIndex = 0;
-
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var data = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null;
-                return cellValue;
-            });
-            return values;
-        });
-
-        console.log(globalPasteTable);
-        console.log(data);
-
-        // First mutate the data
-        while (globalRowIndex < data.length && pasteIndex < globalPasteTable.length) {
-            // Replace data[globalRowIndex][2] with the item from globalPasteTable
-            data[globalRowIndex][2] = globalPasteTable[pasteIndex];
-            globalRowIndex++; // Move to the next row in data
-            pasteIndex++; // Move to the next item in globalPasteTable
-        }
-
-        // Now combine the data into combinedData
-        const combinedData = data.map(function (row) {
-            var secondsConverted = convertTimeCodeToSeconds(row[1]);
-            return secondsConverted + "|" + (row[2] || ""); // Ensure a fallback in case row[2] is undefined
-        });
-
-        console.log(combinedData);
-
-        // Populate the table with the combined data
-        populateAnimationsTable(combinedData);
-    }
-
 
     function animationCellClicked(event) {
         var clickedRow = event.target.closest('tr'); // This gets the <tr> element directly
@@ -1218,72 +1375,6 @@
         }
     }
 
-    function createDataRow(rowData) {
-        var row = document.createElement("tr");
-        myRowDataSplit = rowData.split("|")
-
-        if (myRowDataSplit[0]) {
-            var tsCell = createEditableCell(myRowDataSplit[0], "80px");
-            tsCell.addEventListener('keydown', function (event) {
-                if (event.keyCode === 13) {
-                    timeSecondsCellChanged(event);
-                }
-            });
-        } else {
-            var tsCell = createEditableCell("", "80px");
-        }
-        row.appendChild(tsCell);
-
-        if (myRowDataSplit[0]) {
-            var timeCode = convertSecondsToTimeCode(myRowDataSplit[0])
-            var tcCell = createEditableCell(timeCode, "110px");
-            tcCell.addEventListener('keydown', function (event) {
-                if (event.keyCode === 13) {
-                    timeCodeCellChanged(event);
-                }
-            });
-
-        } else {
-            var tcCell = createEditableCell("", "110px");
-        }
-        row.appendChild(tcCell);
-
-        if (myRowDataSplit[1]) {
-            var anCell = createEditableCell(myRowDataSplit[1], "500px");
-            anCell.addEventListener('click', function (event) {
-                animationCellClicked(event);
-            });
-        } else {
-            var anCell = createEditableCell("", "500px");
-            anCell.addEventListener('click', function (event) {
-                animationCellClicked(event);
-            });
-        }
-
-        row.appendChild(anCell);
-
-        var actionCell = document.createElement("td");
-
-        var testButton = createTestButton();
-        actionCell.appendChild(testButton);
-
-        var editButton = createEditButton();
-        actionCell.appendChild(editButton);
-
-        var insertButton = createInsertButton();
-        actionCell.appendChild(insertButton);
-
-        var addButton = createAddButton();
-        actionCell.appendChild(addButton);
-
-        var deleteButton = createDeleteButton();
-        actionCell.appendChild(deleteButton);
-
-        row.appendChild(actionCell);
-
-        return row;
-    }
-
     function createEditableCell(value, widthVal) {
         var cell = document.createElement("td");
         var input = document.createElement("input");
@@ -1338,112 +1429,6 @@
         button.className = "mui-btn mui-btn--primary edit-row-btn";
         button.innerHTML = 'E';
         return button;
-    }
-
-    function deleteRow(row) {
-        row.parentNode.removeChild(row);
-        copyAndResetTable();
-    }
-
-    function addRow(row) {
-        var newRow = createDataRow("|");
-        animationTableBody.insertBefore(newRow, row.nextSibling);
-        copyAndResetTable();
-    }
-
-    function insertRow(row) {
-        var newRow = createDataRow("|");
-        animationTableBody.insertBefore(newRow, row);
-        copyAndResetTable();
-    }
-
-    function copyAndResetTable() {
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var data = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
-                return cellValue;
-            });
-            return values;
-        });
-
-        combinedData = []
-
-        for (let i = 0; i < data.length; i++) {
-            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
-            combinedData.push(secondsConverted + "|" + data[i][2])
-        }
-
-        populateAnimationsTable(combinedData)
-    }
-
-    function saveAnimationScriptData() {
-        saveAnimationScriptDataButton.setAttribute("disabled", "true");
-        var rows = Array.from(animationTableBody.querySelectorAll("tr"));
-
-        // Extract data from table rows
-        var data = rows.map(function (row) {
-            var cells = Array.from(row.querySelectorAll("td"));
-            var values = cells.map(function (cell) {
-                const cellValue = cell.querySelector("input") ? cell.querySelector("input").value : null
-                return cellValue;
-            });
-            return values;
-        });
-
-        combinedData = []
-
-        for (let i = 0; i < data.length; i++) {
-            var secondsConverted = convertTimeCodeToSeconds(data[i][1])
-            combinedData.push(secondsConverted + "|" + data[i][2])
-        }
-
-        const blockSize = 5;
-        const totalBlocks = Math.ceil(combinedData.length / blockSize);
-
-        // Function to send each block sequentially
-        function sendBlockSequentially(index) {
-            if (index >= totalBlocks) {
-                // All blocks have been sent, enable the button
-                saveAnimationScriptDataButton.removeAttribute('disabled');
-                return;
-            }
-
-            const startIdx = index * blockSize;
-            const endIdx = Math.min((index + 1) * blockSize, combinedData.length);
-            const block = combinedData.slice(startIdx, endIdx);
-            let myObject = [index, totalBlocks - 1, block]
-            if (index == totalBlocks - 1) {
-                myObject = [index, totalBlocks - 1, block, animationName.value]
-            }
-
-            // Send data to the server
-            fetch("/save-data", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(myObject)
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error("Error saving data. Please try again.");
-                    }
-                    // Send the next block sequentially
-                    sendBlockSequentially(index + 1);
-                })
-                .catch(function (error) {
-                    showAlert(error.message);
-                    // Enable the button even if an error occurs
-                    saveAnimationScriptDataButton.removeAttribute('disabled');
-                });
-        }
-
-        // Start sending blocks sequentially
-        sendBlockSequentially(0);
     }
 
     // Function to convert DaVinci Resolve timestamp to seconds
