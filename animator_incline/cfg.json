@@ -1,0 +1,12 @@
+{
+  "option_selected": "Demo",
+  "can_cancel": true,
+  "volume_pot": false,
+  "n_trk_sec": "3",
+  "volume": "20",
+  "UPPER": "20",
+  "LOWER": "20",
+  "MIDDLE": "20",
+  "serve_webpage": true,
+  "HOST_NAME": "animator-incline"
+}

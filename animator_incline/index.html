@@ -322,6 +322,24 @@
                 "website-name.local and the ip address will be xx.xx.xx.xx."
             </p>
 
+            <h2>Car positions:</h2>
+            <div class="mui-textfield">
+                <label>Upper:</label>
+                <input type="text" id="settingsUpper" placeholder="Upper"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div class="mui-textfield">
+                <label>Lower:</label>
+                <input type="text" id="settingsLower" placeholder="Lower"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div>
+                <button id="positionsSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/update-positions">
+                    Change
+                </button>
+            </div>
+
             <h2>Utilities:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
                 type="button">
@@ -366,7 +384,7 @@
             <div>TXXX = Train XXX throttle -100 to 100</div>
             <div>C_SSS_XXX_BBB_AAA_RRR = Move car C movement type (C laser, CE encoder, CH home laser), SS speed 0 to
                 100,
-                XXX Position in decimal cm, BBB target band in decimal
+                XXX Position in decimal cm, BBB target band in decimal (UPPER, LOWER, MIDDLE)
                 cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)</div>
             <div>MACLXXX = Play file, A (P play music, W play music wait, S stop music, L loop music), C = channel (0
                 background, 1 overvoice wav, 2 overvoice mp3), L = file location (S sound tracks, M mvc folder, E elves,
@@ -473,6 +491,26 @@
             })
             .then(function (data) {
                 volume.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
+        // get volume
+        fetch('/get-positions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log(data)
+                my_data = JSON.parse(data)
+                settingsUpper.value = my_data.upper; // Set the value of the input field with the received data
+                settingsLower.value = my_data.lower;
             })
             .catch(function (error) {
                 console.log(error);
@@ -1055,6 +1093,41 @@
             .catch(function (error) {
                 console.log(error);
                 websiteSubmitButton.removeAttribute('disabled')
+            });
+    });
+
+    // Add click event listener to website submit button
+    var positionsSubmitButton = document.getElementById('positionsSubmitButton');
+    positionsSubmitButton.addEventListener('click', function () {
+        var settingsUpper = document.getElementById('settingsUpper');
+        var settingsUpperText = settingsUpper.value;
+        var settingsLower = document.getElementById('settingsLower');
+        var settingsLowerText = settingsLower.value;
+        var url = this.getAttribute('data-url');
+
+        var data = {
+            settingsUpper: settingsUpperText,
+            settingsLower: settingsLowerText,
+        };
+
+        positionsSubmitButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                positionsSubmitButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                positionsSubmitButton.removeAttribute('disabled')
             });
     });
 

@@ -308,7 +308,7 @@ n_px_low_house = 4
 
 def update_neo_pixels():
     global led_up, led_low, n_trk_sec, n_px_track, n_px_low
-    n_trk_sec = cfg["n_trk_sec"]
+    n_trk_sec = int(cfg["n_trk_sec"])
     n_px_track = n_trk_sec * 14
     n_px_low = n_px_up_house + n_px_cars + n_px_low_house + n_px_track
 
@@ -529,6 +529,24 @@ if (web):
             @server.route("/get-volume", [POST])
             def btn(request: Request):
                 return Response(request, cfg["volume"])
+
+            @server.route("/update-positions", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                cfg["LOWER"] = rq_d["settingsLower"]
+                cfg["UPPER"] = rq_d["settingsUpper"]
+                files.write_json_file("/sd/cfg.json", cfg)
+                return Response(request, "update positions")
+
+            @server.route("/get-positions", [POST])
+            def btn(request: Request):
+                rq_d = {
+                    "lower": cfg["LOWER"],
+                    "upper": cfg["UPPER"]
+                }
+                my_string = files.json_stringify(rq_d)
+                return Response(request, my_string)
 
             @server.route("/get-encoder", [POST])
             def btn(request: Request):
@@ -1393,7 +1411,7 @@ async def set_hdw_async(input_string, dur=3):
         elif seg[:2] == 'VR':
             vr = int(seg[2:])
             upd_vol(0, vr)
-        # AN_XXX = Animation XXX filename
+        # AN_XXX = Animation XXX filenamen_trk_sec
         elif seg[:2] == 'AN':
             seg_split = seg.split("_")
             # Process each command as an async operation
@@ -1405,15 +1423,19 @@ async def set_hdw_async(input_string, dur=3):
         elif seg[0] == 'T':
             v = int(seg[1:])/100
             car.throttle = v
-        # C_SSS_XXX_BBB_AAA_RRR = Move car SS speed 0 to 100, XXX Position in decimal cm,
+        # C_SSS_XXX_BBB_AAA_RRR = Move car SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal (UPPER, LOWER, MIDDLE),
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)
         elif seg[:2] == 'C_' or seg[:2] == 'CE' or seg[:2] == 'CH':
             MIN_SPEED = 0.2
             global encoder, home_car_pos
             seg_split = seg.split("_")
-
             spd = int(seg_split[1]) / 100
-            target_pos = float(seg_split[2])
+            if seg_split[2] == 'UPPER' or seg_split[2] == 'LOWER':
+                target_pos = float(cfg[seg_split[2]])
+            elif seg_split[2] == 'MIDDLE':
+                target_pos = (float(cfg["LOWER"])+float(cfg["UPPER"]))/2
+            else:
+                target_pos = float(seg_split[2])
             target_band = float(seg_split[3])
             acc = float(seg_split[4])
             if seg_split[5] == "True":
@@ -1446,6 +1468,7 @@ async def set_hdw_async(input_string, dur=3):
 
             num_times_in_band = 0
             if seg[:2] == 'CH':
+                n_trk_sec = int(cfg["n_trk_sec"])
                 give_up = n_trk_sec * 20
             else:
                 give_up = abs(car_pos - target_pos)
