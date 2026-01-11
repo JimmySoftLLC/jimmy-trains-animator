@@ -1423,7 +1423,7 @@ async def set_hdw_async(input_string, dur=3):
         elif seg[0] == 'T':
             v = int(seg[1:])/100
             car.throttle = v
-        # C_SSS_XXX_BBB_AAA_RRR = Move car SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal (UPPER, LOWER, MIDDLE),
+        # C_SSS_XXX_BBB_AAA_RRR = Move car SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal (UPPER, LOWER, MIDDLE, RATIOYYY YYY 0 lower to 1 upper),
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)
         elif seg[:2] == 'C_' or seg[:2] == 'CE' or seg[:2] == 'CH':
             MIN_SPEED = 0.2
@@ -1434,6 +1434,9 @@ async def set_hdw_async(input_string, dur=3):
                 target_pos = float(cfg[seg_split[2]])
             elif seg_split[2] == 'MIDDLE':
                 target_pos = (float(cfg["LOWER"])+float(cfg["UPPER"]))/2
+            elif seg_split[2][:5] == 'RATIO':
+                position_ratio = float(seg_split[2][5:].strip())
+                target_pos = (float(cfg["UPPER"])-float(cfg["LOWER"])) * position_ratio + float(cfg["LOWER"])
             else:
                 target_pos = float(seg_split[2])
             target_band = float(seg_split[3])
