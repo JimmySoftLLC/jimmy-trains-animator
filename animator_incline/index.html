@@ -8,23 +8,34 @@
     <link rel="stylesheet" href="/mui.min.css" />
     <script src="/mui.min.js"></script>
     <style>
-        .parent-container {
-            display: grid;
-            place-items: center;
-            width: max-content;
-            height: max-content;
-            position: relative;
-            margin: auto;
+        .knobs-parent-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            gap: 20px;
+            width: 100%;
+            max-width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            margin: 0 auto;
+        }
+
+        .knob-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
         }
 
         .knob-container {
             display: grid;
-            place-items: center;
+            place-items: left;
             width: 300px;
             height: 300px;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            align-items: left;
+            justify-content: left;
+            position: relative;
         }
 
         .knob {
@@ -94,17 +105,87 @@
             </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="trainControl" style="padding-top:0.5rem;">
-            <div class="parent-container ">
-                <div class="knob-container">
-                    <div class="knob" id="knob">
-                        <div class="indicator"></div>
+            <div class="knobs-parent-container">
+                <div class="knob-wrapper">
+                    <div class="knob-container">
+                        <div class="knob" id="knob">
+                            <div class="indicator"></div>
+                        </div>
+                        <div class="knob-text" id="knob-text">0</div>
                     </div>
-                    <div class="knob-text" id="knob-text">0</div>
                 </div>
             </div>
-            <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
-            <input class="input" id="encoder" type="number" disabled>
-            <button class="mui-btn mui-btn--primary" onclick="getEncoderPos()">Get encoder</button>
+            <div>
+                <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
+                <button class="mui-btn mui-btn--primary animator-action"
+                    data-value="VR0,ML0Mtrolley,CH_30_UPPER_.5_1_True,LN3_0_255_0,LN8_0_255_0,S1130" data-url="/test-animation"
+                    type="button">
+                    Upper house
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action"
+                    data-value="VR0,ML0Mtrolley,S190,LN1_225_255_0,CE_30_MIDDLE_.5_1_True" data-url="/test-animation"
+                    type="button">
+                    Middle
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action"
+                    data-value="VR0,ML0Mtrolley,LN1_0_255_255,CE_30_LOWER_.5_1_True,LN4_0_255_0,LN7_0_255_0,S160" data-url="/test-animation"
+                    type="button">
+                    Lower house
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action"
+                    data-value="MW2Oclosing_doors_left,LN3_255_0_0,LN4_255_0_0,MW2Oclosing_doors_right,LN7_255_0_0,LN8_255_0_0" data-url="/test-animation"
+                    type="button">
+                    Close doors
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action"
+                    data-value="B20,LN0_255_255_255,LN3_255_0_0,LN4_255_0_0,LN7_255_0_0,LN8_255_0_0" data-url="/test-animation"
+                    type="button">
+                    Lights on
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0"
+                    data-url="/test-animation" type="button">
+                    Lights off
+                </button>
+            </div>
+            <div>
+                <input class="input" id="encoder" type="number" disabled>
+                <button class="mui-btn mui-btn--primary" onclick="getEncoderPos()">Get encoder</button>
+            </div>
+            <div>
+                <input class="input" id="trackVoltage" type="number" disabled>
+                <button class="mui-btn mui-btn--primary" onclick="getTrackVoltage()" type="button">Get Voltage</button>
+            </div>
+            <h2>Sounds:</h2>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MP2HRAND" data-url="/test-animation"
+                type="button">
+                Horn
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MP2BRAND" data-url="/test-animation"
+                type="button">
+                Bell
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MP2ERAND" data-url="/test-animation"
+                type="button">
+                Elf
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MP2TRAND" data-url="/test-animation"
+                type="button">
+                Station stops
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MP2ARAND" data-url="/test-animation"
+                type="button">
+                Santa
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MP2CSEQN" data-url="/test-animation"
+                type="button">
+                Christmas story
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="MP2QRAND" data-url="/test-animation"
+                type="button">
+                Comments
+            </button>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
@@ -476,7 +557,15 @@
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
-        // get website url
+        getHostName()
+        getVolume()
+        getPositions()
+        getOptions()
+        getLocalIp()
+        getAnimations()
+    });
+
+    function getHostName() {
         fetch('/get-host-name', {
             method: 'POST',
             headers: {
@@ -492,8 +581,9 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-        // get volume
+    function getVolume() {
         fetch('/get-volume', {
             method: 'POST',
             headers: {
@@ -509,8 +599,9 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-        // get positions
+    function getPositions() {
         fetch('/get-positions', {
             method: 'POST',
             headers: {
@@ -529,8 +620,9 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-        // get options
+    function getOptions() {
         fetch('/get-options', {
             method: 'POST',
             headers: {
@@ -543,15 +635,15 @@
             .then(function (data) {
                 console.log(data)
                 my_data = JSON.parse(data)
-                queuingCheckbox.value = my_data.queuing; // Set the value of the input field with the received data
-                resetLightsCheckbox.value = my_data.reset_lights;
+                queuingCheckbox.checked = my_data.queuing;
+                resetLightsCheckbox.checked = my_data.reset_lights;
             })
             .catch(function (error) {
                 console.log(error);
             });
+    }
 
-
-        // get local ip
+    function getLocalIp() {
         fetch('/get-local-ip', {
             method: 'POST',
             headers: {
@@ -569,9 +661,7 @@
                 console.log(error);
                 showAlert(error);
             });
-
-        getAnimations()
-    });
+    }
 
     function getAnimations() {
         // get Animations
@@ -607,6 +697,25 @@
             })
             .then(function (data) {
                 encoder.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
+    function getTrackVoltage() {
+        fetch('/get-track-voltage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                trackVoltage.value = data; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
@@ -1130,6 +1239,51 @@
                 websiteSubmitButton.removeAttribute('disabled')
             });
     });
+
+    // Get both checkboxes once
+    const queuingCheckbox = document.getElementById('queuingCheckbox');
+    const resetLightsCheckbox = document.getElementById('resetLightsCheckbox');
+    const url = queuingCheckbox.getAttribute('data-url'); // or read from the other one — same value
+
+    // Function to send current state of both checkboxes
+    function sendCheckboxState() {
+        // Disable both while request is in flight
+        queuingCheckbox.disabled = true;
+        resetLightsCheckbox.disabled = true;
+
+        const data = {
+            queuing: queuingCheckbox.checked,
+            reset_lights: resetLightsCheckbox.checked
+        };
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Server responded with error');
+                return response.text();
+            })
+            .then(text => {
+                console.log('Success:', text);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Optional: alert user, revert checkbox, etc.
+            })
+            .finally(() => {
+                // Always re-enable
+                queuingCheckbox.disabled = false;
+                resetLightsCheckbox.disabled = false;
+            });
+    }
+
+    // Attach the same handler to BOTH checkboxes
+    queuingCheckbox.addEventListener('change', sendCheckboxState);
+    resetLightsCheckbox.addEventListener('change', sendCheckboxState);
 
     // Add click event listener to website submit button
     var positionsSubmitButton = document.getElementById('positionsSubmitButton');
@@ -1764,26 +1918,6 @@
 
     function blowWhistle() {
         let newCommand = "WW";
-        testAnimationCommand(newCommand);
-    }
-
-    function home12() {
-        let newCommand = "H_20_12";
-        testAnimationCommand(newCommand);
-    }
-
-    function Home6() {
-        let newCommand = "H_20_6";
-        testAnimationCommand(newCommand);
-    }
-
-    function openGates() {
-        let newCommand = "S190";
-        testAnimationCommand(newCommand);
-    }
-
-    function closeGates() {
-        let newCommand = "S10";
         testAnimationCommand(newCommand);
     }
 

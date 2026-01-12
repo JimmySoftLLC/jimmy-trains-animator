@@ -106,6 +106,7 @@ media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'A': 0, 'C': 0, 'O': 0, 'Q': 0}
 
 # Setup pin for vol
 a_in = AnalogIn(board.A0)
+track_a_in = AnalogIn(board.A2)
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
 aud_en = digitalio.DigitalInOut(board.GP22)
@@ -508,6 +509,11 @@ if (web):
                 mdns.hostname = cfg["HOST_NAME"]
                 spk_web()
                 return Response(request, cfg["HOST_NAME"])
+            
+            @server.route("/get-track-voltage", [POST])
+            def btn(request: Request):
+                track_voltage = get_track_voltage()
+                return Response(request, str(track_voltage))
 
             @server.route("/get-host-name", [POST])
             def btn(request: Request):
@@ -547,7 +553,8 @@ if (web):
                 rq_d = request.json()
                 cfg["LOWER"] = rq_d["settingsLower"]
                 cfg["UPPER"] = rq_d["settingsUpper"]
-                files.write_json_file("/sd/cfg.json", cfg)
+                if not mix.voice[0].playing and not mix.voice[1].playing:
+                    files.write_json_file("/sd/cfg.json", cfg)
                 my_string = files.json_stringify(cfg)
                 return Response(request, my_string)
             
@@ -564,9 +571,11 @@ if (web):
             def btn(request: Request):
                 global cfg
                 rq_d = request.json()
+                print(rq_d)
                 cfg["queuing"] = rq_d["queuing"]
                 cfg["reset_lights"] = rq_d["reset_lights"]
-                files.write_json_file("/sd/cfg.json", cfg)
+                if not mix.voice[0].playing and not mix.voice[1].playing:
+                    files.write_json_file("/sd/cfg.json", cfg)
                 my_string = files.json_stringify(cfg)
                 return Response(request, my_string)
 
@@ -733,7 +742,13 @@ def stp_all_cmds():
 
 ################################################################################
 # Misc Methods
-
+def get_track_voltage():
+    """Get the track voltage from the analog input."""
+    if track_a_in.value is None:
+        return 0.0
+    # Convert the analog value to a voltage (0-3.3V) and scale it for the track voltage
+    # Assuming a 14.7:1 scaling factor for the track voltage
+    return track_a_in.value / 65536 * 3.3 * 14.7
 
 def rst_def():
     global cfg
@@ -960,7 +975,6 @@ def get_snds(dir, typ):
 
 lst_opt = ""
 
-
 async def an_async(f_nm):
     global is_running_an, cfg, lst_opt
     print("Filename: " + f_nm)
@@ -971,7 +985,7 @@ async def an_async(f_nm):
             h_i = len(snd_opt) - 1
             cur_opt = snd_opt[random.randint(
                 0, h_i)]
-            while lst_opt == cur_opt and len(snd_opt) > 1:
+            while (cur_opt == "demo" or lst_opt == cur_opt) and len(snd_opt) > 1:
                 cur_opt = snd_opt[random.randint(
                     0, h_i)]
             lst_opt = cur_opt
@@ -1772,7 +1786,6 @@ class Main(Ste):
             else:
                 ply_a_0(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
-
 
 class Snds(Ste):
 
