@@ -86,6 +86,7 @@ stops_folder = "stops/"
 santa_folder = "santa/"
 story_folder = "story/"
 operator_folder = "operator/"
+quotes_folder = "quotes/"
 
 FOLDER_MAP = {
     'E': elves_folder,
@@ -94,10 +95,11 @@ FOLDER_MAP = {
     'T': stops_folder,
     'A': santa_folder,
     'C': story_folder,
-    'O': operator_folder
+    'O': operator_folder,
+    'Q': quotes_folder
 }
 
-media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'A': 0, 'C': 0, 'O': 0}
+media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'A': 0, 'C': 0, 'O': 0, 'Q': 0}
 
 ################################################################################
 # Setup hardware
@@ -530,15 +532,6 @@ if (web):
             def btn(request: Request):
                 return Response(request, cfg["volume"])
 
-            @server.route("/update-positions", [POST])
-            def btn(request: Request):
-                global cfg
-                rq_d = request.json()
-                cfg["LOWER"] = rq_d["settingsLower"]
-                cfg["UPPER"] = rq_d["settingsUpper"]
-                files.write_json_file("/sd/cfg.json", cfg)
-                return Response(request, "update positions")
-
             @server.route("/get-positions", [POST])
             def btn(request: Request):
                 rq_d = {
@@ -546,6 +539,35 @@ if (web):
                     "upper": cfg["UPPER"]
                 }
                 my_string = files.json_stringify(rq_d)
+                return Response(request, my_string)
+            
+            @server.route("/update-positions", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                cfg["LOWER"] = rq_d["settingsLower"]
+                cfg["UPPER"] = rq_d["settingsUpper"]
+                files.write_json_file("/sd/cfg.json", cfg)
+                my_string = files.json_stringify(cfg)
+                return Response(request, my_string)
+            
+            @server.route("/get-options", [POST])
+            def btn(request: Request):
+                rq_d = {
+                    "queuing": cfg["queuing"],
+                    "reset_lights": cfg["reset_lights"]
+                }
+                my_string = files.json_stringify(rq_d)
+                return Response(request, my_string)
+
+            @server.route("/update-options", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                cfg["queuing"] = rq_d["queuing"]
+                cfg["reset_lights"] = rq_d["reset_lights"]
+                files.write_json_file("/sd/cfg.json", cfg)
+                my_string = files.json_stringify(cfg)
                 return Response(request, my_string)
 
             @server.route("/get-encoder", [POST])
@@ -1040,10 +1062,11 @@ async def an_light_async(f_nm):
             print("animation done clean up.")
             exit_set_hdw_async = False
             mix.voice[0].stop()
-            led_low.fill((0, 0, 0))
-            led_low.show()
-            led_up.fill((0, 0, 0))
-            led_up.show()
+            if cfg["reset_lights"] == True:
+                led_low.fill((0, 0, 0))
+                led_low.show()
+                led_up.fill((0, 0, 0))
+                led_up.show()
             vr = 100
             br = 100
             await set_hdw_async("T0")
@@ -1619,7 +1642,8 @@ async def set_hdw_async(input_string, dur=3):
             set_neo_to(light_n, r, g, b)
         # QXXXX = Add command XXXX any command ie AN_filename to add new animation
         elif seg[0] == 'Q':
-            add_cmd(seg[1:])
+            if cfg["queuing"] == True:
+                add_cmd(seg[1:])
 
 ################################################################################
 # State Machine

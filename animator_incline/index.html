@@ -321,7 +321,19 @@
                 appended with .local. So your website url will be something like
                 "website-name.local and the ip address will be xx.xx.xx.xx."
             </p>
-
+            <h2>Options:</h2>
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="queuingCheckbox" data-url="/update-options">
+                    Queuing
+                </label>
+            </div>
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="resetLightsCheckbox" data-url="/update-options">
+                    Reset lights
+                </label>
+            </div>
             <h2>Car positions:</h2>
             <div class="mui-textfield">
                 <label>Upper:</label>
@@ -384,11 +396,13 @@
             <div>TXXX = Train XXX throttle -100 to 100</div>
             <div>C_SSS_XXX_BBB_AAA_RRR = Move car C movement type (C laser, CE encoder, CH home laser), SS speed 0 to
                 100,
-                XXX Position in decimal cm (UPPER, LOWER, MIDDLE, RATIOYYY YYY 0 lower to 1 upper), BBB target band in decimal 
+                XXX Position in decimal cm (UPPER, LOWER, MIDDLE, RATIOYYY YYY 0 lower to 1 upper), BBB target band in
+                decimal
                 cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)</div>
             <div>MACLXXX = Play file, A (P play music, W play music wait, S stop music, L loop music), C = channel (0
                 background, 1 overvoice wav, 2 overvoice mp3), L = file location (S sound tracks, M mvc folder, E elves,
-                B bells, H horns, T stops, A santa, C story, O operator) XXX (file name, if RAND random selection of
+                B bells, H horns, T stops, A santa, C story, O operator, Q quotes) XXX (file name, if RAND random
+                selection of
                 folder, SEQN play next in sequence, SEQF play first in sequence)</div>
             <div>QXXXX = Add command XXXX any command ie AN_filename to add new animation</div>
             <div>HORN = Blow horn</div>
@@ -496,7 +510,7 @@
                 console.log(error);
             });
 
-        // get volume
+        // get positions
         fetch('/get-positions', {
             method: 'POST',
             headers: {
@@ -515,6 +529,27 @@
             .catch(function (error) {
                 console.log(error);
             });
+
+        // get options
+        fetch('/get-options', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log(data)
+                my_data = JSON.parse(data)
+                queuingCheckbox.value = my_data.queuing; // Set the value of the input field with the received data
+                resetLightsCheckbox.value = my_data.reset_lights;
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+
 
         // get local ip
         fetch('/get-local-ip', {
