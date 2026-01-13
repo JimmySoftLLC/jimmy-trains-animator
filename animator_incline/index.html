@@ -73,6 +73,46 @@
             pointer-events: none;
             text-align: center;
         }
+
+        .settings-container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            padding: 20px;
+            margin: 0;
+            max-width: 1000px;
+        }
+
+        .column {
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .mui-textfield {
+            margin: 12px 0;
+        }
+
+        .mui-textfield label {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .mui-textfield input {
+            width: 100%;
+            max-width: 320px;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        .mui-checkbox {
+            margin: 10px 0;
+        }
+
+        h2 {
+            margin: 0 0 1rem 0;
+            text-align: left;
+        }
     </style>
 </head>
 
@@ -118,22 +158,22 @@
             <div>
                 <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="VR0,ML0Mtrolley,CH_30_UPPER_.5_1_True,LN3_0_255_0,LN8_0_255_0,S1130"
+                    data-value="VR0,ML0Mtrolley,CH_30_UPPER_.5_1_True,LN3_0_255_0,LN8_0_255_0,S1130,MS0"
                     data-url="/test-animation" type="button">
                     Upper house
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="VR0,ML0Mtrolley,S190,LN1_225_255_0,CE_30_MIDDLE_.5_1_True" data-url="/test-animation"
-                    type="button">
+                    data-value="VR0,ML0Mtrolley,S190,LN1_225_255_0,CE_30_MIDDLE_.5_1_True,MS0"
+                    data-url="/test-animation" type="button">
                     Middle
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="VR0,ML0Mtrolley,LN1_0_255_255,CE_30_LOWER_.5_1_True,LN4_0_255_0,LN7_0_255_0,S160"
+                    data-value="VR0,ML0Mtrolley,LN1_0_255_255,CE_30_LOWER_.5_1_True,LN4_0_255_0,LN7_0_255_0,S160,MS0"
                     data-url="/test-animation" type="button">
                     Lower house
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="MW2Oclosing_doors_left,LN3_255_0_0,LN4_255_0_0,MW2Oclosing_doors_right,LN7_255_0_0,LN8_255_0_0"
+                    data-value="MW2Oclosing_doors_left,LN3_255_0_0,LN4_255_0_0,MW2Oclosing_doors_right,LN7_255_0_0,LN8_255_0_0,MS0"
                     data-url="/test-animation" type="button">
                     Close doors
                 </button>
@@ -393,35 +433,54 @@
                 appended with .local. So your website url will be something like
                 "website-name.local and the ip address will be xx.xx.xx.xx."
             </p>
-            <h2>Options:</h2>
-            <div class="mui-checkbox">
-                <label>
-                    <input type="checkbox" id="queuingCheckbox" data-url="/update-options">
-                    Queuing
-                </label>
-            </div>
-            <div class="mui-checkbox">
-                <label>
-                    <input type="checkbox" id="resetLightsCheckbox" data-url="/update-options">
-                    Reset lights
-                </label>
-            </div>
-            <h2>Car positions:</h2>
-            <div class="mui-textfield">
-                <label>Upper:</label>
-                <input type="text" id="settingsUpper" placeholder="Upper"
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div class="mui-textfield">
-                <label>Lower:</label>
-                <input type="text" id="settingsLower" placeholder="Lower"
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div>
-                <button id="positionsSubmitButton" class="mui-btn mui-btn--primary" type="button"
-                    data-url="/update-positions">
-                    Change
-                </button>
+            <div class="settings-container"
+                style="display: flex; gap: 40px; flex-wrap: wrap; max-width: 900px; margin: 0 auto;">
+                <div class="column" style="flex: 1; min-width: 180px;">
+                    <h2>Options</h2>
+                    <div class="mui-checkbox">
+                        <label>
+                            <input type="checkbox" id="queuingCheckbox" data-url="/update-options">
+                            Queuing
+                        </label>
+                    </div>
+                    <div class="mui-checkbox">
+                        <label>
+                            <input type="checkbox" id="resetLightsCheckbox" data-url="/update-options">
+                            Reset lights
+                        </label>
+                    </div>
+                </div>
+                <div class="column" style="flex: 1; min-width: 180px;">
+                    <h2>Car positions</h2>
+
+                    <div class="mui-textfield">
+                        <label>Upper:</label>
+                        <input type="text" id="settingsUpper" placeholder="Upper">
+                    </div>
+                    <div class="mui-textfield">
+                        <label>Lower:</label>
+                        <input type="text" id="settingsLower" placeholder="Lower">
+                    </div>
+                    <div style="margin-top: 1.2rem;">
+                        <button id="positionsSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                            data-url="/update-positions">
+                            Change
+                        </button>
+                    </div>
+                </div>
+                <div class="column" style="flex: 1; min-width: 180px;">
+                    <h2>Track Sections</h2>
+                    <div class="mui-textfield">
+                        <label>Number:</label>
+                        <input type="text" id="numberTrackSections" placeholder="Number">
+                    </div>
+                    <div style="margin-top: 1.2rem;">
+                        <button id="trackSectionsSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                            data-url="/update-track-sections">
+                            Change
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <h2>Utilities:</h2>
@@ -551,6 +610,7 @@
         getHostName()
         getVolume()
         getPositions()
+        getTrackSections()
         getOptions()
         getLocalIp()
         getAnimations()
@@ -607,6 +667,26 @@
                 my_data = JSON.parse(data)
                 settingsUpper.value = my_data.upper; // Set the value of the input field with the received data
                 settingsLower.value = my_data.lower;
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
+
+    function getTrackSections() {
+        fetch('/get-track-sections', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log(data)
+                my_data = JSON.parse(data)
+                numberTrackSections.value = my_data.numberTrackSections; // Set the value of the input field with the received data
             })
             .catch(function (error) {
                 console.log(error);
@@ -1276,7 +1356,7 @@
     queuingCheckbox.addEventListener('change', sendCheckboxState);
     resetLightsCheckbox.addEventListener('change', sendCheckboxState);
 
-    // Add click event listener to website submit button
+    // Add click event listener to positions submit button
     var positionsSubmitButton = document.getElementById('positionsSubmitButton');
     positionsSubmitButton.addEventListener('click', function () {
         var settingsUpper = document.getElementById('settingsUpper');
@@ -1308,6 +1388,38 @@
             .catch(function (error) {
                 console.log(error);
                 positionsSubmitButton.removeAttribute('disabled')
+            });
+    });
+
+    // Add click event listener to positions submit button
+    var trackSectionsSubmitButton = document.getElementById('trackSectionsSubmitButton');
+    trackSectionsSubmitButton.addEventListener('click', function () {
+        var numberTrackSections = document.getElementById('numberTrackSections');
+        var numberTrackSectionsText = numberTrackSections.value;
+        var url = this.getAttribute('data-url');
+
+        var data = {
+            numberTrackSections: numberTrackSectionsText,
+        };
+
+        trackSectionsSubmitButton.setAttribute('disabled', 'true')
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                trackSectionsSubmitButton.removeAttribute('disabled')
+            })
+            .catch(function (error) {
+                console.log(error);
+                trackSectionsSubmitButton.removeAttribute('disabled')
             });
     });
 

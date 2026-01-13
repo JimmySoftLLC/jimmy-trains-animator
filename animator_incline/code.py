@@ -259,11 +259,10 @@ cfg = files.read_json_file("/sd/cfg.json")
 
 snd_opt = []
 menu_snd_opt = []
-ts_jsons = []
 
 
 def upd_media():
-    global snd_opt, menu_snd_opt, ts_jsons
+    global snd_opt, menu_snd_opt
 
     snd_opt = files.return_directory("", "/sd/snds", ".json")
 
@@ -271,9 +270,6 @@ def upd_media():
     menu_snd_opt.extend(snd_opt)
     rnd_opt = ['random all']
     menu_snd_opt.extend(rnd_opt)
-
-    ts_jsons = files.return_directory(
-        "", "/sd/t_s_def", ".json")
 
 
 upd_media()
@@ -318,12 +314,14 @@ def update_neo_pixels():
     # 16 on demo, 17 tiny, 10 on large, 11 on incline motor2 pin
     led_up = neopixel.NeoPixel(board.GP11, n_px_up_house)
     led_up.auto_write = False
+    led_up.brightness = .2
     led_up.fill((100, 100, 100))
     led_up.show()
 
     # 15 on demo 17 tiny 10 on large, 13 on incline motor4 pin
     led_low = neopixel.NeoPixel(board.GP13, n_px_low)
     led_low.auto_write = False
+    led_low.brightness = .2
     led_low.fill((100, 100, 100))
     led_low.show()
 
@@ -426,14 +424,7 @@ if (web):
                 stp_a_0()
                 stp_a_1()
                 rq_d = request.json()
-                if rq_d["an"] == "reset_animation_timing_to_defaults":
-                    for ts_fn in ts_jsons:
-                        ts = files.read_json_file(
-                            "/sd/t_s_def/" + ts_fn + ".json")
-                        files.write_json_file(
-                            "/sd/snds/"+ts_fn+".json", ts)
-                    ply_a_0(mvc_folder + "all_changes_complete.wav")
-                elif rq_d["an"] == "reset_to_defaults":
+                if rq_d["an"] == "reset_to_defaults":
                     rst_def()
                     files.write_json_file("/sd/cfg.json", cfg)
                     ply_a_0(mvc_folder + "all_changes_complete.wav")
@@ -519,15 +510,15 @@ if (web):
                 stp_a_1()
                 return Response(req, local_ip)
 
+            @server.route("/get-volume", [POST])
+            def btn(request: Request):
+                return Response(request, cfg["volume"])
+            
             @server.route("/update-volume", [POST])
             def btn(request: Request):
                 global cfg
                 rq_d = request.json()
                 ch_vol(rq_d["action"])
-                return Response(request, cfg["volume"])
-
-            @server.route("/get-volume", [POST])
-            def btn(request: Request):
                 return Response(request, cfg["volume"])
 
             @server.route("/get-positions", [POST])
@@ -550,6 +541,24 @@ if (web):
                 my_string = files.json_stringify(cfg)
                 return Response(request, my_string)
             
+            @server.route("/get-track-sections", [POST])
+            def btn(request: Request):
+                rq_d = {
+                    "numberTrackSections": cfg["n_trk_sec"]
+                }
+                my_string = files.json_stringify(rq_d)
+                return Response(request, my_string)
+            
+            @server.route("/update-track-sections", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                cfg["n_trk_sec"] = rq_d["numberTrackSections"]
+                if not mix.voice[0].playing and not mix.voice[1].playing:
+                    files.write_json_file("/sd/cfg.json", cfg)
+                my_string = files.json_stringify(cfg)
+                return Response(request, my_string)
+            
             @server.route("/get-options", [POST])
             def btn(request: Request):
                 rq_d = {
@@ -563,7 +572,6 @@ if (web):
             def btn(request: Request):
                 global cfg
                 rq_d = request.json()
-                print(rq_d)
                 cfg["queuing"] = rq_d["queuing"]
                 cfg["reset_lights"] = rq_d["reset_lights"]
                 if not mix.voice[0].playing and not mix.voice[1].playing:
@@ -734,24 +742,47 @@ def stp_all_cmds():
 
 ################################################################################
 # Misc Methods
-def get_track_voltage():
-    """Get the track voltage from the analog input."""
-    if track_a_in.value is None:
+def get_track_voltage(n=10, sample_interval=0.01):
+    if n < 1:
         return 0.0
-    # Convert the analog value to a voltage (0-3.3V) and scale it for the track voltage
-    # Assuming a 14.7:1 scaling factor for the track voltage
-    return track_a_in.value / 65536 * 3.3 * 14.7
+
+    total = 0.0
+    count = 0
+
+    for i in range(n):
+        start = time.monotonic()
+
+        raw = track_a_in.value
+        if raw is not None:
+            # 16-bit ADC 0–3.3V scaled track voltage
+            voltage = (raw / 65536) * 3.3 * 14.7
+            total += voltage
+            count += 1
+
+        # Try to keep consistent timing
+        elapsed = time.monotonic() - start
+        sleep_time = sample_interval - elapsed
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
+    if count == 0:
+        return 0.0
+
+    return total / count
 
 def rst_def():
     global cfg
     cfg["HOST_NAME"] = "animator-incline"
-    cfg["option_selected"] = "random all"
-    cfg["volume"] = "20"
+    cfg["option_selected"] = "ride with comments"
+    cfg["volume"] = "50"
+    cfg["UPPER"] = "8"
+    cfg["LOWER"] = "65"
+    cfg["n_trk_sec"] = "3"
 
 ################################################################################
 # Dialog and sound play methods
 
-volume_trim = 0.3
+volume_trim = 0.5
 
 def upd_vol(s, bckgrnd_snd_ratio):
     try:
