@@ -118,8 +118,8 @@
             <div>
                 <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="VR0,ML0Mtrolley,CH_30_UPPER_.5_1_True,LN3_0_255_0,LN8_0_255_0,S1130" data-url="/test-animation"
-                    type="button">
+                    data-value="VR0,ML0Mtrolley,CE_30_UPPER_.5_1_True,LN3_0_255_0,LN8_0_255_0,S1130"
+                    data-url="/test-animation" type="button">
                     Upper house
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action"
@@ -128,20 +128,20 @@
                     Middle
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="VR0,ML0Mtrolley,LN1_0_255_255,CE_30_LOWER_.5_1_True,LN4_0_255_0,LN7_0_255_0,S160" data-url="/test-animation"
-                    type="button">
+                    data-value="VR0,ML0Mtrolley,LN1_0_255_255,CE_30_LOWER_.5_1_True,LN4_0_255_0,LN7_0_255_0,S160"
+                    data-url="/test-animation" type="button">
                     Lower house
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="MW2Oclosing_doors_left,LN3_255_0_0,LN4_255_0_0,MW2Oclosing_doors_right,LN7_255_0_0,LN8_255_0_0" data-url="/test-animation"
-                    type="button">
+                    data-value="MW2Oclosing_doors_left,LN3_255_0_0,LN4_255_0_0,MW2Oclosing_doors_right,LN7_255_0_0,LN8_255_0_0"
+                    data-url="/test-animation" type="button">
                     Close doors
                 </button>
             </div>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="B20,LN0_255_255_255,LN3_255_0_0,LN4_255_0_0,LN7_255_0_0,LN8_255_0_0" data-url="/test-animation"
-                    type="button">
+                    data-value="B20,LN0_255_255_255,LN3_255_0_0,LN4_255_0_0,LN7_255_0_0,LN8_255_0_0"
+                    data-url="/test-animation" type="button">
                     Lights on
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_0"
@@ -149,15 +149,6 @@
                     Lights off
                 </button>
             </div>
-            <div>
-                <input class="input" id="encoder" type="number" disabled>
-                <button class="mui-btn mui-btn--primary" onclick="getEncoderPos()">Get encoder</button>
-            </div>
-            <div>
-                <input class="input" id="trackVoltage" type="number" disabled>
-                <button class="mui-btn mui-btn--primary" onclick="getTrackVoltage()" type="button">Get Voltage</button>
-            </div>
-            <h2>Sounds:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="MP2HRAND" data-url="/test-animation"
                 type="button">
                 Horn
@@ -186,6 +177,14 @@
                 type="button">
                 Comments
             </button>
+            <div>
+                <input class="input" id="encoder" type="number" disabled>
+                <button class="mui-btn mui-btn--primary" onclick="getEncoderPos()">Get encoder</button>
+            </div>
+            <div>
+                <input class="input" id="trackVoltage" type="number" disabled>
+                <button class="mui-btn mui-btn--primary" onclick="getTrackVoltage()" type="button">Get Voltage</button>
+            </div>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
