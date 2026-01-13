@@ -1516,7 +1516,7 @@ async def set_hdw_async(cmd, dur=3):
                 await an_async(seg_split[1])
         # TXXX = Car XXX throttle -100 to 100
         elif seg[0] == 'T':
-            v = -int(seg[1:])/100
+            v = int(seg[1:])/100
             car.throttle = v
         # C_SSS_XXX_BBB_AAA_RRR = Move car SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal (UPPER, LOWER, MIDDLE, RATIOYYY YYY 0 lower to 1 upper),
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)
