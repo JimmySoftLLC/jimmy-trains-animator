@@ -480,14 +480,6 @@ if (web):
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
                     ply_a_0(mvc_folder + "left_speaker_right_speaker.wav")
-                elif rq_d["an"] == "volume_pot_off":
-                    cfg["volume_pot"] = False
-                    files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.wav")
-                elif rq_d["an"] == "volume_pot_on":
-                    cfg["volume_pot"] = True
-                    files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.wav")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/lights", [POST])
@@ -752,7 +744,6 @@ def get_track_voltage():
 
 def rst_def():
     global cfg
-    cfg["volume_pot"] = True
     cfg["HOST_NAME"] = "animator-incline"
     cfg["option_selected"] = "random all"
     cfg["volume"] = "20"
@@ -760,48 +751,40 @@ def rst_def():
 ################################################################################
 # Dialog and sound play methods
 
+volume_trim = 0.3
 
 def upd_vol(s, bckgrnd_snd_ratio):
-    if cfg["volume_pot"]:
-        volume = a_in.value / 65536 * bckgrnd_snd_ratio/100
-        mix.voice[0].level = volume
-        mix.voice[1].level = volume
-        time.sleep(s)
-    else:
-        try:
-            volume = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100
-        except Exception as e:
-            files.log_item(e)
-            volume = .5
-        if volume < 0 or volume > 1:
-            volume = .5
-        mix.voice[0].level = volume
-        mix.voice[1].level = volume
-        time.sleep(s)
+    try:
+        volume = int(cfg["volume"]) / 100 * volume_trim
+        volume_ratio = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100 * volume_trim
+    except Exception as e:
+        files.log_item(e)
+        volume = .5 * volume_trim
+        volume_ratio = .5 * volume_trim
+    if volume < 0 or volume > 1 * volume_trim:
+        volume = .5 * volume_trim
+    if volume_ratio < 0 or volume_ratio > 1  * volume_trim:
+        volume_ratio = .5 * volume_trim
+    mix.voice[0].level = volume_ratio
+    mix.voice[1].level = volume
+    time.sleep(s)
 
 
 async def upd_vol_async(s, bckgrnd_snd_ratio):
-    if cfg["volume_pot"]:
-        volume = a_in.value / 65536
-        volume_ratio = a_in.value / 65536 * bckgrnd_snd_ratio/100
-        mix.voice[0].level = volume_ratio
-        mix.voice[1].level = volume
-        await asyncio.sleep(s)
-    else:
-        try:
-            volume = int(cfg["volume"]) / 100
-            volume_ratio = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100
-        except Exception as e:
-            files.log_item(e)
-            volume = .5
-            volume_ratio = .5
-        if volume < 0 or volume > 1:
-            volume = .5
-        if volume_ratio < 0 or volume_ratio > 1:
-            volume_ratio = .5
-        mix.voice[0].level = volume_ratio
-        mix.voice[1].level = volume
-        await asyncio.sleep(s)
+    try:
+        volume = int(cfg["volume"]) / 100 * volume_trim
+        volume_ratio = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100 * volume_trim
+    except Exception as e:
+        files.log_item(e)
+        volume = .5 * volume_trim
+        volume_ratio = .5 * volume_trim
+    if volume < 0 or volume > 1 * volume_trim:
+        volume = .5 * volume_trim
+    if volume_ratio < 0 or volume_ratio > 1  * volume_trim:
+        volume_ratio = .5 * volume_trim
+    mix.voice[0].level = volume_ratio
+    mix.voice[1].level = volume
+    await asyncio.sleep(s)
 
 
 def ch_vol(action):
@@ -828,7 +811,6 @@ def ch_vol(action):
     if v < 1:
         v = 0
     cfg["volume"] = str(v)
-    cfg["volume_pot"] = False
     if not mix.voice[0].playing and not mix.voice[1].playing:
         files.write_json_file("/sd/cfg.json", cfg)
         ply_a_0(mvc_folder + "volume.wav")
@@ -1935,18 +1917,6 @@ class VolSet(Ste):
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1, vr)
-        if sw == "right" and vol_set[s.sel_i] == "volume_pot_off":
-            cfg["volume_pot"] = False
-            if cfg["volume"] == 0:
-                cfg["volume"] = 10
-            files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
-            mch.go_to('base_state')
-        if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
-            cfg["volume_pot"] = True
-            files.write_json_file("/sd/cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
-            mch.go_to('base_state')
 
 
 class WebOpt(Ste):
