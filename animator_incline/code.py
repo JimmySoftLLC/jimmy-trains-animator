@@ -286,9 +286,6 @@ main_m = cfg_main["main_menu"]
 cfg_web = files.read_json_file(mvc_folder + "web_menu.json")
 web_m = cfg_web["web_menu"]
 
-cfg_vol = files.read_json_file(mvc_folder + "volume_settings.json")
-vol_set = cfg_vol["volume_settings"]
-
 cfg_add_song = files.read_json_file(mvc_folder + "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
@@ -934,7 +931,7 @@ def spk_web():
     ply_a_0(mvc_folder + "animator_available_on_network.wav")
     ply_a_0(mvc_folder + "to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-incline":
-        ply_a_0(mvc_folder + "animator_incline.wav")
+        ply_a_0(mvc_folder + "animator_dash_incline.wav")
         ply_a_0(mvc_folder + "dot.wav")
         ply_a_0(mvc_folder + "local.wav")
     else:
@@ -1443,7 +1440,7 @@ async def set_hdw_async(input_string, dur=3):
                 await an_async(seg_split[1])
         # TXXX = Car XXX throttle -100 to 100
         elif seg[0] == 'T':
-            v = int(seg[1:])/100
+            v = -int(seg[1:])/100
             car.throttle = v
         # C_SSS_XXX_BBB_AAA_RRR = Move car SS speed 0 to 100, XXX Position in decimal cm, BBB target band in decimal (UPPER, LOWER, MIDDLE, RATIOYYY YYY 0 lower to 1 upper),
         # BBB target band in decimal cm, AAA acceleration decimal cm/sec, RRR = Ramp sound (True, False)
@@ -1762,12 +1759,12 @@ class Main(Ste):
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
+            elif sel_mnu == "volume_level_adjustment":
+                mch.go_to('volume_settings')
             elif sel_mnu == "add_sounds_animate":
                 mch.go_to('add_sounds_animate')
             elif sel_mnu == "web_options":
                 mch.go_to('web_options')
-            elif sel_mnu == "volume_settings":
-                mch.go_to('volume_settings')
             else:
                 ply_a_0(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
@@ -1889,9 +1886,7 @@ class VolSet(Ste):
 
     def enter(s, mch):
         files.log_item('Set Web Options')
-        ply_a_0(mvc_folder + "volume_settings_menu.wav")
-        l_r_but()
-        s.vol_adj_mode = False
+        ply_a_0(mvc_folder + "volume_adjustment_menu.wav")
         Ste.enter(s, mch)
 
     def exit(s, mch):
@@ -1900,21 +1895,11 @@ class VolSet(Ste):
     def upd(s, mch):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left" and not s.vol_adj_mode:
-            ply_a_0(mvc_folder + vol_set[s.i] + ".wav")
-            s.sel_i = s.i
-            s.i += 1
-            if s.i > len(vol_set)-1:
-                s.i = 0
-        if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
-            if sw == "right":
-                s.vol_adj_mode = True
-                ply_a_0(mvc_folder + "volume_adjustment_menu.wav")
-        elif sw == "left" and s.vol_adj_mode:
+        if sw == "left":
             ch_vol("lower")
-        elif sw == "right" and s.vol_adj_mode:
+        elif sw == "right":
             ch_vol("raise")
-        elif sw == "right_held" and s.vol_adj_mode:
+        elif sw == "right_held":
             files.write_json_file("/sd/cfg.json", cfg)
             ply_a_0(mvc_folder + "all_changes_complete.wav")
             s.vol_adj_mode = False
