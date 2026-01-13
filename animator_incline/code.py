@@ -289,6 +289,9 @@ web_m = cfg_web["web_menu"]
 cfg_vol = files.read_json_file(mvc_folder + "volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
 
+cfg_add_song = files.read_json_file(mvc_folder + "add_sounds_animate.json")
+add_snd = cfg_add_song["add_sounds_animate"]
+
 cont_run = False
 ts_mode = False
 
