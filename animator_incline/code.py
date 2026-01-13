@@ -114,15 +114,15 @@ aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
 # Setup the switches
-l_sw = digitalio.DigitalInOut(board.GP6)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
+l_sw_io = digitalio.DigitalInOut(board.GP6)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw_io)
 
-r_sw = digitalio.DigitalInOut(board.GP7)
-r_sw.direction = digitalio.Direction.INPUT
-r_sw.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw)
+r_sw_io = digitalio.DigitalInOut(board.GP7)
+r_sw_io.direction = digitalio.Direction.INPUT
+r_sw_io.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw_io)
 
 # setup i2s audio
 bclk = board.GP18  # BCLK on MAX98357A
@@ -285,16 +285,26 @@ web_m = cfg_web["web_menu"]
 cfg_add_song = files.read_json_file(mvc_folder + "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
-cont_run = False
-ts_mode = False
-
 local_ip = ""
 
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
 
+ts_mode = False
+
+flsh_i = 0
+flsh_t = []
+
+t_s = []
+t_elsp = 0.0
+
+an_running = False
+an_just_added = False
+
+cont_run = False
 exit_set_hdw_async = False
-is_running_an = False
+
+srt_t_an = 0
 
 gc_col("config setup")
 
@@ -492,7 +502,7 @@ if (web):
                 mdns.hostname = cfg["HOST_NAME"]
                 spk_web()
                 return Response(request, cfg["HOST_NAME"])
-            
+
             @server.route("/get-track-voltage", [POST])
             def btn(request: Request):
                 track_voltage = get_track_voltage()
@@ -513,7 +523,7 @@ if (web):
             @server.route("/get-volume", [POST])
             def btn(request: Request):
                 return Response(request, cfg["volume"])
-            
+
             @server.route("/update-volume", [POST])
             def btn(request: Request):
                 global cfg
@@ -529,7 +539,7 @@ if (web):
                 }
                 my_string = files.json_stringify(rq_d)
                 return Response(request, my_string)
-            
+
             @server.route("/update-positions", [POST])
             def btn(request: Request):
                 global cfg
@@ -540,7 +550,7 @@ if (web):
                     files.write_json_file("/sd/cfg.json", cfg)
                 my_string = files.json_stringify(cfg)
                 return Response(request, my_string)
-            
+
             @server.route("/get-track-sections", [POST])
             def btn(request: Request):
                 rq_d = {
@@ -548,7 +558,7 @@ if (web):
                 }
                 my_string = files.json_stringify(rq_d)
                 return Response(request, my_string)
-            
+
             @server.route("/update-track-sections", [POST])
             def btn(request: Request):
                 global cfg
@@ -558,7 +568,7 @@ if (web):
                     files.write_json_file("/sd/cfg.json", cfg)
                 my_string = files.json_stringify(cfg)
                 return Response(request, my_string)
-            
+
             @server.route("/get-options", [POST])
             def btn(request: Request):
                 rq_d = {
@@ -602,7 +612,7 @@ if (web):
                     print(rq_d)
                     f_n = animations_folder + rq_d["fn"] + ".json"
                     print(f_n)
-                    an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
+                    an_data = ["0.0|MP0Sname of your track"]
                     files.write_json_file(f_n, an_data)
                     upd_media()
                     return Response(request, "Created animation successfully.")
@@ -740,8 +750,19 @@ def stp_all_cmds():
     stp_a_1()
     print("Processing stopped and command queue cleared.")
 
+
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
+
 ################################################################################
 # Misc Methods
+
+
 def get_track_voltage(n=10, sample_interval=0.01):
     if n < 1:
         return 0.0
@@ -770,6 +791,7 @@ def get_track_voltage(n=10, sample_interval=0.01):
 
     return total / count
 
+
 def rst_def():
     global cfg
     cfg["HOST_NAME"] = "animator-incline"
@@ -782,19 +804,22 @@ def rst_def():
 ################################################################################
 # Dialog and sound play methods
 
+
 volume_trim = 0.5
+
 
 def upd_vol(s, bckgrnd_snd_ratio):
     try:
         volume = int(cfg["volume"]) / 100 * volume_trim
-        volume_ratio = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100 * volume_trim
+        volume_ratio = int(cfg["volume"]) / 100 * \
+            bckgrnd_snd_ratio/100 * volume_trim
     except Exception as e:
         files.log_item(e)
         volume = .5 * volume_trim
         volume_ratio = .5 * volume_trim
     if volume < 0 or volume > 1 * volume_trim:
         volume = .5 * volume_trim
-    if volume_ratio < 0 or volume_ratio > 1  * volume_trim:
+    if volume_ratio < 0 or volume_ratio > 1 * volume_trim:
         volume_ratio = .5 * volume_trim
     mix.voice[0].level = volume_ratio
     mix.voice[1].level = volume
@@ -804,14 +829,15 @@ def upd_vol(s, bckgrnd_snd_ratio):
 async def upd_vol_async(s, bckgrnd_snd_ratio):
     try:
         volume = int(cfg["volume"]) / 100 * volume_trim
-        volume_ratio = int(cfg["volume"]) / 100 * bckgrnd_snd_ratio/100 * volume_trim
+        volume_ratio = int(cfg["volume"]) / 100 * \
+            bckgrnd_snd_ratio/100 * volume_trim
     except Exception as e:
         files.log_item(e)
         volume = .5 * volume_trim
         volume_ratio = .5 * volume_trim
     if volume < 0 or volume > 1 * volume_trim:
         volume = .5 * volume_trim
-    if volume_ratio < 0 or volume_ratio > 1  * volume_trim:
+    if volume_ratio < 0 or volume_ratio > 1 * volume_trim:
         volume_ratio = .5 * volume_trim
     mix.voice[0].level = volume_ratio
     mix.voice[1].level = volume
@@ -988,11 +1014,12 @@ def get_snds(dir, typ):
 
 lst_opt = ""
 
+
 async def an_async(f_nm):
-    global is_running_an, cfg, lst_opt
+    global an_running, cfg, lst_opt
     print("Filename: " + f_nm)
     cur_opt = f_nm
-    is_running_an = True
+    an_running = True
     try:
         if f_nm == "random all":
             h_i = len(snd_opt) - 1
@@ -1005,7 +1032,7 @@ async def an_async(f_nm):
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
         if ts_mode:
-            an_ts(cur_opt)
+            await an_ts(cur_opt)
             gc_col("animation cleanup")
         else:
             await an_light_async(cur_opt)
@@ -1014,12 +1041,12 @@ async def an_async(f_nm):
         files.log_item(e)
         no_trk()
         cfg["option_selected"] = "random all"
-    is_running_an = False
+    an_running = False
     gc_col("Animation complete.")
 
 
 async def an_light_async(f_nm):
-    global exit_set_hdw_async, ts_mode, cont_run, vr, br
+    global exit_set_hdw_async, ts_mode, cont_run, vr, br, srt_t_an
 
     stp_a_0()
     stp_a_1()
@@ -1032,22 +1059,18 @@ async def an_light_async(f_nm):
 
     flsh_i = 0
 
-    w0_exists = f_exists("/sd/snds/" + f_nm + ".wav")
+    # add end command to time stamps so all table values can be used
+    ft_last = flsh_t[len(flsh_t)-1].split("|")
+    tm_last = float(ft_last[0]) + .1
+    flsh_t.append(str(tm_last) + "|")
 
-    if w0_exists:
-        w0 = audiocore.WaveFile(
-            open("/sd/snds/" + f_nm + ".wav", "rb"))
-        mix.voice[0].play(w0, loop=False)
-    else:
-        print("No wave found for this animation.")
-
-    srt_t = time.monotonic()
+    srt_t_an = time.monotonic()
 
     ft1 = []
     ft2 = []
 
     while True:
-        t_past = time.monotonic()-srt_t
+        t_past_an = time.monotonic() - srt_t_an
 
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
@@ -1057,8 +1080,8 @@ async def an_light_async(f_nm):
             dur = 0.25
         if dur < 0:
             dur = 0
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item("time elapsed: " + str(t_past) +
+        if t_past_an > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
+            files.log_item("time elapsed: " + str(t_past_an) +
                            " Timestamp: " + ft1[0])
             if (len(ft1) == 1 or ft1[1] == ""):
                 result = await set_hdw_async("", dur)
@@ -1085,7 +1108,7 @@ async def an_light_async(f_nm):
                 cont_run = False
                 stp_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1 or exit_set_hdw_async:
+        if not flsh_i < len(flsh_t)-1 or exit_set_hdw_async:
             print("animation done clean up.")
             exit_set_hdw_async = False
             mix.voice[0].stop()
@@ -1102,17 +1125,25 @@ async def an_light_async(f_nm):
         await upd_vol_async(.1, vr)
 
 
-def an_ts(f_nm):
+async def an_ts(f_nm):
     print("time stamp mode")
     global ts_mode
 
-    t_s = []
+    t_elsp = 0
+    t_s = [""]
 
-    f_nm = f_nm.replace("customers_owned_music_", "")
+    if (f_exists(animations_folder + f_nm + ".json") == True):
+        t_s_from_file = files.read_json_file(
+            animations_folder + f_nm + ".json")
+    else:
+        return
 
-    w0 = audiocore.WaveFile(
-        open("/sd/snds/" + f_nm + ".wav", "rb"))
-    mix.voice[0].play(w0, loop=False)
+    if len(t_s) > 0:
+        t_s[0] = t_s_from_file[0]
+        ft1 = t_s[0].split("|")
+        await set_hdw_async(ft1[1])
+    else:
+        return
 
     startTime = time.monotonic()
     upd_vol(.1, vr)
@@ -1222,6 +1253,10 @@ async def rbow(spd, dur):
     te = time.monotonic()-st
     while te < dur:
         for j in range(0, 255, 1):
+            pressed_sw = not  l_sw_io.value
+            if pressed_sw:
+                ovrde_sw_st["switch_value"] = "left"
+                return
             if exit_set_hdw_async:
                 return
             for i in range(n_px_cars, n_px_cars + n_px_track):
@@ -1264,6 +1299,10 @@ def multi_color():
             g1 = 0
             b1 = b
         led_low[i] = (r1, g1, b1)
+        pressed_sw = not  l_sw_io.value
+        if pressed_sw:
+            ovrde_sw_st["switch_value"] = "left"
+            return
     led_low.show()
 
 
@@ -1284,6 +1323,10 @@ async def fire(dur):
             b1 = bnd(b-f, 0, 255)
             led_low[i] = (r1, g1, b1)
             led_low.show()
+        pressed_sw = not  l_sw_io.value
+        if pressed_sw:
+            ovrde_sw_st["switch_value"] = "left"
+            return
         upd_vol(random.uniform(0.05, 0.1), vr)
         te = time.monotonic()-st
         if te > dur:
@@ -1323,10 +1366,12 @@ def get_indexed_media_file(folder_to_search, file_ext, index):
     return selected_file, new_index
 
 
-async def set_hdw_async(input_string, dur=3):
-    global exit_set_hdw_async, br, vr, car_pos, cal_factor
+async def set_hdw_async(cmd, dur=3):
+    global exit_set_hdw_async, br, vr, car_pos, cal_factor, srt_t_an
+    if cmd == "":
+        return "NOCMDS"
     # Split the input string into segments
-    segs = input_string.split(",")
+    segs = cmd.split(",")
 
     # Process each segment
     for seg in segs:
@@ -1486,7 +1531,8 @@ async def set_hdw_async(input_string, dur=3):
                 target_pos = (float(cfg["LOWER"])+float(cfg["UPPER"]))/2
             elif seg_split[2][:5] == 'RATIO':
                 position_ratio = float(seg_split[2][5:].strip())
-                target_pos = (float(cfg["UPPER"])-float(cfg["LOWER"])) * position_ratio + float(cfg["LOWER"])
+                target_pos = (
+                    float(cfg["UPPER"])-float(cfg["LOWER"])) * position_ratio + float(cfg["LOWER"])
             else:
                 target_pos = float(seg_split[2])
             target_band = float(seg_split[3])
@@ -1525,9 +1571,14 @@ async def set_hdw_async(input_string, dur=3):
                 give_up = n_trk_sec * 20
             else:
                 give_up = abs(car_pos - target_pos)
-            srt_t = time.monotonic()
+            srt_t_give_up = time.monotonic()
 
             while True:
+                pressed_sw = not  l_sw_io.value
+                if pressed_sw:
+                    ovrde_sw_st["switch_value"] = "left"
+                    return
+
                 if exit_set_hdw_async:
                     car.throttle = 0
                     return
@@ -1634,8 +1685,8 @@ async def set_hdw_async(input_string, dur=3):
                     f"Pos: {car_pos:.1f}, Speed: {car.throttle:.2f}, Dist: {distance_to_target:.1f}")
                 await upd_vol_async(.01, vr)
 
-                t_past = time.monotonic() - srt_t
-                if t_past > give_up:
+                t_past_give_up = time.monotonic() - srt_t_give_up
+                if t_past_give_up > give_up:
                     car.throttle = 0
                     if seg[:2] == 'CH':
                         encoder.position = 0
@@ -1667,10 +1718,14 @@ async def set_hdw_async(input_string, dur=3):
             g = int(seg_split[2])
             b = int(seg_split[3])
             set_neo_to(light_n, r, g, b)
-        # QXXXX = Add command XXXX any command ie AN_filename to add new animation
+        # QXXXX = Add command XXXX any command ie AN_filename to add new animation not run if queuing is turned off
         elif seg[0] == 'Q':
             if cfg["queuing"] == True:
                 add_cmd(seg[1:])
+        # RSTTME = Reset animation time to 0
+        elif seg[:6] == "RSTTME":
+            srt_t_an = time.monotonic()
+
 
 ################################################################################
 # State Machine
@@ -1739,8 +1794,8 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, is_running_an, exit_set_hdw_async
-        if not is_running_an:
+        global cont_run, an_just_added
+        if not an_running:
             sw = utilities.switch_state(
                 l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
             if sw == "left_held":
@@ -1751,9 +1806,9 @@ class BseSt(Ste):
                 else:
                     cont_run = True
                     ply_a_0(mvc_folder + "continuous_mode_activated.wav")
-            elif sw == "left" or cont_run:
-                if not is_running_an:
-                    add_cmd("AN_" + cfg["option_selected"])
+            elif (sw == "left" or cont_run) and not mix.voice[0].playing and not an_running:
+                add_cmd("AN_" + cfg["option_selected"])
+                an_just_added = True
             elif sw == "right" and not mix.voice[1].playing:
                 mch.go_to('main_menu')
 
@@ -1799,6 +1854,7 @@ class Main(Ste):
             else:
                 ply_a_0(mvc_folder + "all_changes_complete.wav")
                 mch.go_to('base_state')
+
 
 class Snds(Ste):
 
@@ -2049,9 +2105,14 @@ async def server_poll_tsk(server):
 
 
 async def state_mach_upd_task(st_mch):
+    global an_just_added
     while True:
         st_mch.upd()
-        await asyncio.sleep(0)
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
 
 
 async def main():
