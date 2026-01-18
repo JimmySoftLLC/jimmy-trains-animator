@@ -3,6 +3,7 @@ import board
 import pulseio
 import digitalio
 import asyncio
+import neopixel
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*"
 assert len(ALPHABET) == 43
@@ -25,6 +26,17 @@ MIN_MAJ = 5
 
 # NEW: tuple confirmation
 CONFIRM_COUNT = 3   # winning tuple must repeat this many times before we emit
+
+################################################################################
+# Setup neo pixels
+
+n_px = 1
+
+# 16 on demo, 17 tiny, 10 on large, 13 on motor board motor4 pin
+led = neopixel.NeoPixel(board.GP6, n_px)
+led.auto_write = False
+led.fill((0, 0, 20))
+led.show()
 
 def enable_pullup(pin):
     d = digitalio.DigitalInOut(pin)
@@ -183,10 +195,31 @@ async def consumer_task():
     while True:
         await new_char_event.wait()
         new_char_event.clear()
+
+        # Keep your debug print
         print("CHAR:", latest["char"],
               "| digits:", latest["digits"],
               "| votes:", latest["votes"],
               "| latency_ms:", latest["lat_ms"])
+
+        # Set NeoPixel using the PWM-inspired brightness values
+        if latest["digits"] is not None:
+            r_digit, g_digit, b_digit = latest["digits"]
+
+            # Map digits 0–3 to your requested brightness levels
+            brightness_map = [20, 40, 60, 80]   # 0→0, 1→20, 2→40, 3→80
+
+            r_val = brightness_map[r_digit]
+            g_val = brightness_map[g_digit]
+            b_val = brightness_map[b_digit]
+
+            # Apply to the pixel
+            led[0] = (r_val, g_val, b_val)
+            led.show()
+
+            # Optional: confirm in console what we set
+            print(f"NeoPixel updated → R:{r_val} G:{g_val} B:{b_val}")
+
 
 async def main():
     asyncio.create_task(decoder_task())
