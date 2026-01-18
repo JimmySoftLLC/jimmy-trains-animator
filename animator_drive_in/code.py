@@ -883,6 +883,36 @@ def set_neo_module_to(mod_n, ind, v):
 
 gc_col("Neopixels setup")
 
+################################################################################
+# Setup neo command encoding
+
+ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*"
+assert len(ALPHABET) == 43
+
+DIGIT_PWM = [20, 40, 60, 80]  # base-4 bins
+
+def char_to_base4_digits(ch: str) -> tuple[int, int, int]:
+    idx = ALPHABET.find(ch)
+    if idx < 0:
+        raise ValueError(f"Character {ch!r} not in alphabet")
+
+    r = idx // 16
+    g = (idx % 16) // 4
+    b = idx % 4
+    return r, g, b
+
+def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
+    """
+    One-step: character -> (R, G, B) PWM values (0..255)
+    """
+    r_d, g_d, b_d = char_to_base4_digits(ch)
+    return (
+        DIGIT_PWM[r_d],
+        DIGIT_PWM[g_d],
+        DIGIT_PWM[b_d],
+    )
+
+
 
 ################################################################################
 # Setup lifx lights
@@ -2652,6 +2682,20 @@ def set_hdw(cmd, dur):
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_neo_to(light_n, r, g, b)
+            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>    
+            elif seg[0] == 'NR':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0][1:])
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_module_to(mod_n, index, v)
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-* 
+            elif seg[0] == 'NP':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0][1:])
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_module_to(mod_n, index, v)
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")
@@ -2667,7 +2711,7 @@ def set_hdw(cmd, dur):
                 power = segs_split[1]
                 set_light_power(light_n, power)
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            elif seg[0] == 'N':
+            elif seg[:2] == 'NM':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0][1:])
                 index = int(segs_split[1])

@@ -32,11 +32,16 @@ CONFIRM_COUNT = 3   # winning tuple must repeat this many times before we emit
 
 n_px = 1
 
-# 16 on demo, 17 tiny, 10 on large, 13 on motor board motor4 pin
-led = neopixel.NeoPixel(board.GP6, n_px)
-led.auto_write = False
-led.fill((0, 0, 20))
-led.show()
+# 6 output line, 14 indicator light
+led_output = neopixel.NeoPixel(board.GP6, n_px)
+led_output.auto_write = False
+led_output.fill((0, 0, 20))
+led_output.show()
+
+led_indicator = neopixel.NeoPixel(board.GP14, n_px)
+led_indicator.auto_write = False
+led_indicator.fill((0, 0, 20))
+led_indicator.show()
 
 def enable_pullup(pin):
     d = digitalio.DigitalInOut(pin)
@@ -111,9 +116,12 @@ async def decoder_task():
     last_char = None
     last_emit_t = time.monotonic()
 
-    # NEW: confirmation state
+    # Confirmation state
     candidate = None
     candidate_n = 0
+
+    # NEW: track when the current candidate first appeared
+    candidate_start_t = None
 
     while True:
         # parallel capture
@@ -163,13 +171,15 @@ async def decoder_task():
             # reset confirmation when we hit a reserved/transient combo
             candidate = None
             candidate_n = 0
+            candidate_start_t = None
             await asyncio.sleep(0)
             continue
 
-        # NEW: require the same best tuple to repeat CONFIRM_COUNT times
+        # Detect when candidate changes → start timing the confirmation process
         if best_t != candidate:
             candidate = best_t
             candidate_n = 1
+            candidate_start_t = time.monotonic()   # ← record start time here
         else:
             candidate_n += 1
 
@@ -177,11 +187,18 @@ async def decoder_task():
             await asyncio.sleep(0)
             continue
 
+        # At this point: we have a confirmed new value
+        # Only emit if it's different from the last emitted char
         if ch_out != last_char:
-            last_char = ch_out
             now = time.monotonic()
-            lat_ms = int((now - last_emit_t) * 1000)
-            last_emit_t = now
+
+            # Calculate latency: time from first sighting of this candidate to confirmation
+            if candidate_start_t is not None:
+                lat_ms = int((now - candidate_start_t) * 1000)
+            else:
+                lat_ms = 0  # fallback (shouldn't happen)
+
+            last_char = ch_out
 
             latest["char"] = ch_out
             latest["digits"] = best_t
@@ -189,9 +206,15 @@ async def decoder_task():
             latest["lat_ms"] = lat_ms
             new_char_event.set()
 
+            # Reset timer for the next candidate
+            candidate_start_t = None
+
         await asyncio.sleep(0)
 
+color_index = 0
+
 async def consumer_task():
+    global color_index
     while True:
         await new_char_event.wait()
         new_char_event.clear()
@@ -214,8 +237,17 @@ async def consumer_task():
             b_val = brightness_map[b_digit]
 
             # Apply to the pixel
-            led[0] = (r_val, g_val, b_val)
-            led.show()
+            led_indicator[0] = (r_val, g_val, b_val)
+            led_indicator.show()
+            
+            color_index +=1
+            if color_index > 2:
+                color_index = 0
+
+            if color_index == 0: led_output.fill((20,0,0))
+            if color_index == 1: led_output.fill((0,20,0))
+            if color_index == 2: led_output.fill((0,0,20))
+            led_output.show()
 
             # Optional: confirm in console what we set
             print(f"NeoPixel updated → R:{r_val} G:{g_val} B:{b_val}")
@@ -226,3 +258,4 @@ async def main():
     await consumer_task()
 
 asyncio.run(main())
+
