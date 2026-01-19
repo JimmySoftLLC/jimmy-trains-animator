@@ -575,10 +575,14 @@ bars = []
 bolts = []
 noods = []
 neos = []
+neorelays = []
+neopicos = []
 
 bar_arr = []
 bolt_arr = []
 neo_arr = []
+neorelay_arr = []
+neopico_arr = []
 
 n_px = 0
 led = neopixel_spi.NeoPixel_SPI(
@@ -654,6 +658,26 @@ def bld_neo():
             i.append(l+si)
     return i
 
+def bld_neorelay():
+    i = []
+    for n in neorelays:
+        for l in n:
+            si = l
+            break
+        for l in range(0, 6):
+            i.append(l+si)
+    return i
+
+def bld_neopico():
+    i = []
+    for n in neopicos:
+        for l in n:
+            si = l
+            break
+        for l in range(0, 6):
+            i.append(l+si)
+    return i
+
 
 def show_l():
     led.show()
@@ -663,7 +687,7 @@ def show_l():
 
 
 def l_tst():
-    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
+    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr, neorelay_arr, neopico_arr
 
     # Christmas items
     ornmnts = bld_tree("ornaments")
@@ -678,6 +702,12 @@ def l_tst():
 
     # Neo items
     neo_arr = bld_neo()
+
+    # Neorelay items
+    neorelay_arr = bld_neorelay()
+
+    # Neopico items
+    neopico_arr = bld_neopico()
 
     # cane test
     cnt = 0
@@ -745,27 +775,60 @@ def l_tst():
     for n in neos:
         for i in n:
             led[i] = (0, 50, 0)
-            time.sleep(.3)
             led.show()
+            time.sleep(.3)
             led[i] = (50, 0, 0)
-            time.sleep(.3)
             led.show()
+            time.sleep(.3)
             led[i] = (0, 0, 50)
+            led.show()
+            time.sleep(.3)
             time.sleep(.3)
             led.show()
             time.sleep(.3)
-            led.fill((0, 0, 0))
-            led.show()
 
+    # reorelay test
+    for n in neorelays:
+        for i in n:
+            led[i] = (255, 0, 0)
+            led.show()
+            time.sleep(.3)
+            led[i] = (0, 255, 0)
+            led.show()
+            time.sleep(.3)
+            led[i] = (0, 0, 255)
+            led.show()
+            time.sleep(.3)
+            led[i] = (0, 0, 0)
+            led.show()
+            time.sleep(.3)
+
+    # neopico test
+    for n in neopicos:
+        for i in n:
+            led[i] = (20, 20, 20)
+            led.show()
+            time.sleep(.3)
+            led[i] = (20, 20, 40)
+            led.show()
+            time.sleep(.3)
+            led[i] = (20, 20, 60)
+            led.show()
+            time.sleep(.3)
+            led[i] = (20, 20, 80)
+            led.show()
+            time.sleep(.3)
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, n_px, led
+    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, n_px, led
     trees = []
     canes = []
     bars = []
     bolts = []
     noods = []
     neos = []
+    neorelays = []
+    neopicos = []
 
     n_px = 0
 
@@ -804,6 +867,16 @@ def upd_l_str():
                 s = list(range(n_px, n_px + neoqty))
                 neos.append(s)
                 n_px += neoqty
+            if typ == 'neorelay':
+                if qty == 3:
+                    neorelayqty = 1
+                s = list(range(n_px, n_px + neorelayqty))
+                neorelays.append(s)
+                n_px += neorelayqty
+            if typ == 'neopico':
+                s = list(range(n_px, n_px + qty))
+                neopicos.append(s)
+                n_px += qty
 
     print("Number of pixels total: ", n_px)
     led = None

@@ -236,18 +236,15 @@ async def consumer_task():
             g_val = brightness_map[g_digit]
             b_val = brightness_map[b_digit]
 
-            # Apply to the pixel
-            led_indicator[0] = (r_val, g_val, b_val)
+            if r_val == 20 and g_val == 20 and b_val == 20:
+                led_indicator[0] = (20, 0, 0)
+            if r_val == 20 and g_val == 20 and b_val == 40:
+                led_indicator[0] = (0, 20, 0)
+            if r_val == 20 and g_val == 20 and b_val == 60:
+                led_indicator[0] = (0, 0, 20)
+            if r_val == 20 and g_val == 20 and b_val == 80:
+                led_indicator[0] = (0, 0, 0)
             led_indicator.show()
-            
-            color_index +=1
-            if color_index > 2:
-                color_index = 0
-
-            if color_index == 0: led_output.fill((20,0,0))
-            if color_index == 1: led_output.fill((0,20,0))
-            if color_index == 2: led_output.fill((0,0,20))
-            led_output.show()
 
             # Optional: confirm in console what we set
             print(f"NeoPixel updated → R:{r_val} G:{g_val} B:{b_val}")
@@ -258,4 +255,5 @@ async def main():
     await consumer_task()
 
 asyncio.run(main())
+
 
