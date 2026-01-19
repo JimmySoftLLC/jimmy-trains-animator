@@ -353,10 +353,10 @@ gc_col("Neopixels setup")
 # PWM RGB (base-4) decoder + mapping to queue
 # (This is separate from your main light-string NeoPixels)
 
-ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*"
-assert len(ALPHABET) == 43
+ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^"
+assert len(ALPHABET) == 49
 
-PINS = {"R": board.GP2, "G": board.GP3, "B": board.GP4}
+PINS = {"R": board.GP3, "G": board.GP2, "B": board.GP4}
 
 IDLE_STATE = False
 MAXLEN = 1200
@@ -432,13 +432,6 @@ def _majority_tuple(buf):
 comm_latest = {"char": None, "digits": None, "votes": 0, "lat_ms": 0}
 comm_new_char_event = asyncio.Event()
 
-# Map decoded characters to *hardware command strings* (enqueued)
-# Change these to whatever you want.
-CHAR_TO_HDW = {
-    "a": "LN1_255_0_0",   # example
-    "b": "LN1_0_255_0",   # example
-    "c": "LN1_0_0_255",   # example
-}
 
 async def decoder_task():
     for pin in PINS.values():
@@ -602,7 +595,7 @@ if web:
             global cfg
             rq_d = request.json()
             cfg["option_selected"] = rq_d["an"]
-            add_command(cfg["option_selected"])
+            add_command("AN_" + cfg["option_selected"])
             files.write_json_file("cfg.json", cfg)
             return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
@@ -798,18 +791,23 @@ def add_command(command, to_start=False):
 
 async def process_commands():
     while command_queue:
-        command = command_queue.pop(0)
-        print("Processing command:", command)
-        await an_async(command)
+        cmd = command_queue.pop(0)
+        print("Processing command:", cmd) 
+        if cmd[:2] == 'AN':  # AN_XXX = Animation XXX filename
+            cmd_split = cmd.split("_")
+            clr_cmd_queue()
+            await an_async(cmd_split[1])
+        else:
+            await set_hdw_async(cmd)
         await asyncio.sleep(0)
 
-def clear_command_queue():
+def clr_cmd_queue():
     command_queue.clear()
     print("Command queue cleared.")
 
 def stop_all_commands():
     global exit_set_hdw_async
-    clear_command_queue()
+    clr_cmd_queue()
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
 
@@ -1009,7 +1007,7 @@ def bnd(c, l, u):
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
-async def set_hdw_async(input_string, dur):
+async def set_hdw_async(input_string, dur=0):
     global sp, br, exit_set_hdw_async
     segs = input_string.split(",")
 
@@ -1019,6 +1017,27 @@ async def set_hdw_async(input_string, dur):
                 return "STOP"
             if seg[0] == 'E':
                 return "STOP"
+            elif seg[:5] == 'UPDLS':
+                upd_l_str()
+                led_indicator.fill((20, 0, 0))
+                led_indicator.show()
+                time.sleep(.3)
+                led_indicator.fill((0, 20, 0))
+                led_indicator.show()
+                time.sleep(.3)
+                led_indicator.fill((0, 0, 20))
+                led_indicator.show()
+                time.sleep(.3)
+                led_indicator.fill((0, 0, 0))
+                led_indicator.show()
+                time.sleep(.3)
+            elif seg[:2] == 'LI':
+                segs_split = seg.split("_")
+                r = int(segs_split[1])
+                g = int(segs_split[2])
+                b = int(segs_split[3])
+                led_indicator.fill((r, g, b))
+                led_indicator.show()
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
                 light_n = int(segs_split[0][2:]) - 1
@@ -1123,6 +1142,12 @@ def set_neo_module_to(mod_n, ind, v):
 
 ################################################################################
 # Decoder consumer: map a/b/c -> hardware command string, then enqueue
+# Map decoded characters to *hardware command strings* (enqueued)
+# Change these to whatever you want.
+CHAR_TO_HDW = {
+    "^": "UPDLS",   # example
+    "!": ""
+}
 
 async def consumer_task():
     while True:
@@ -1144,9 +1169,7 @@ async def consumer_task():
             add_command(CHAR_TO_HDW[ch])
             print("Enqueued mapped HW:", CHAR_TO_HDW[ch])
         else:
-            # If you want *all* chars enqueued too, keep this line.
-            # Otherwise delete it.
-            add_command(ch)
+            add_command("AN_" + ch)
 
         await asyncio.sleep(0)
 

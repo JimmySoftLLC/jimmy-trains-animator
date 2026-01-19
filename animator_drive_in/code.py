@@ -809,16 +809,10 @@ def l_tst():
     # neopico test
     for n in neopicos:
         for i in n:
+            led[i] = (80, 20, 20)
+            led.show()
+            time.sleep(1)
             led[i] = (20, 20, 20)
-            led.show()
-            time.sleep(.3)
-            led[i] = (20, 20, 40)
-            led.show()
-            time.sleep(.3)
-            led[i] = (20, 20, 60)
-            led.show()
-            time.sleep(.3)
-            led[i] = (20, 20, 80)
             led.show()
             time.sleep(.3)
 
@@ -1060,8 +1054,8 @@ gc_col("Neopixels setup")
 ################################################################################
 # Setup neo command encoding
 
-ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*"
-assert len(ALPHABET) == 43
+ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^"
+assert len(ALPHABET) == 49
 
 DIGIT_PWM = [20, 40, 60, 80]  # base-4 bins
 
@@ -2884,7 +2878,7 @@ def set_hdw(cmd, dur):
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_relay_to(mod_n, index, v)
-            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-* 
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^) 
             elif seg[:2] == 'NP':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0].replace("NP", ""))
