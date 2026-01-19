@@ -584,6 +584,9 @@ neo_arr = []
 neorelay_arr = []
 neopico_arr = []
 
+only_lights = []
+only_lights_set = set()
+
 n_px = 0
 led = neopixel_spi.NeoPixel_SPI(
     board.SPI(), n_px, brightness=1.0, auto_write=False)
@@ -783,7 +786,7 @@ def l_tst():
             led[i] = (0, 0, 50)
             led.show()
             time.sleep(.3)
-            time.sleep(.3)
+            led[i] = (0, 0, 0)
             led.show()
             time.sleep(.3)
 
@@ -820,7 +823,7 @@ def l_tst():
             time.sleep(.3)
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, n_px, led
+    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, led
     trees = []
     canes = []
     bars = []
@@ -829,6 +832,7 @@ def upd_l_str():
     neos = []
     neorelays = []
     neopicos = []
+    only_lights = []
 
     n_px = 0
 
@@ -884,12 +888,38 @@ def upd_l_str():
         board.SPI(), n_px, brightness=1.0, auto_write=False)
     led.auto_write = False
     led.brightness = 1.0
+
+    # --- flatten + sort + dedupe only_lights ---
+    only_lights = sorted(
+        px
+        for group in (trees, canes, bars, noods, bolts, neos)
+        for segment in group
+        for px in segment
+    )
+
+    # fast membership lookup
+    only_lights_set = set(only_lights)
+
+    print("only_lights:", only_lights)
+    print("only_lights count:", len(only_lights_set), "n_px:", n_px)
+
     l_tst()
 
 
 upd_l_str()
 
+
+########################################################################################################################
 # Neo pixel / neo 6 module methods
+
+def is_allowed_led(i: int) -> bool:
+    return i in only_lights_set
+
+def safe_set_led(i: int, rgb):
+    if is_allowed_led(i):
+        led[i] = rgb
+        return True
+    return False
 
 br = 0
 
@@ -900,17 +930,25 @@ def is_neo(number, nested_array):
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
-        for i in range(n_px):  # in range(n_px)
+        for i in range(n_px):
+            if not is_allowed_led(i):
+                continue
+
             if is_neo(i, neos):
                 led[i] = (g, r, b)
             else:
                 led[i] = (r, g, b)
     else:
+        if not is_allowed_led(light_n):
+            return
+
         if is_neo(light_n, neos):
             led[light_n] = (g, r, b)
         else:
             led[light_n] = (r, g, b)
+
     led.show()
+
 
 
 def get_neo_ids():
@@ -922,36 +960,82 @@ def get_neo_ids():
 
 
 def set_neo_module_to(mod_n, ind, v):
-    cur = []
     neo_ids = get_neo_ids()
     print(mod_n, ind, v, neo_ids)
+
+    def set_pair(base):
+        safe_set_led(base, (v, v, v))
+        safe_set_led(base + 1, (v, v, v))
+
     if mod_n == 0:
-        for i in neo_ids:
-            led[i] = (v, v, v)
-            led[i+1] = (v, v, v)
+        for base in neo_ids:
+            set_pair(base)
+
     elif ind == 0:
-        led[neo_ids[mod_n-1]] = (v, v, v)
-        led[neo_ids[mod_n-1]+1] = (v, v, v)
+        set_pair(neo_ids[mod_n - 1])
+
+    elif ind < 4:
+        base = neo_ids[mod_n - 1]
+
+        ind -= 1
+        if ind == 0:
+            ind = 1
+        elif ind == 1:
+            ind = 0
+
+        if is_allowed_led(base):
+            cur = list(led[base])
+            cur[ind] = v
+            led[base] = tuple(cur)
+
+    else:
+        base = neo_ids[mod_n - 1] + 1
+
+        ind -= 1
+        if ind == 3:
+            ind = 4
+        elif ind == 4:
+            ind = 3
+
+        if is_allowed_led(base):
+            cur = list(led[base])
+            cur[ind - 3] = v
+            led[base] = tuple(cur)
+
+    led.show()
+
+def get_neo_relay_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neorelays):
+            matches.append(num)
+    return matches
+
+def set_neo_relay_to(mod_n, ind, off_on):
+    cur = []
+    neo_relay_ids = get_neo_relay_ids()
+    print(mod_n, ind, off_on, neo_relay_ids)
+    if off_on == 0:
+        off_on = 0
+    else:
+        off_on = 255
+    if mod_n == 0:
+        for i in neo_relay_ids:
+            led[i] = (off_on, off_on, off_on)
+    elif ind == 0:
+        led[neo_relay_ids[mod_n-1]] = (off_on, off_on, off_on)
     elif ind < 4:
         ind -= 1
         if ind == 0:
             ind = 1
         elif ind == 1:
             ind = 0
-        cur = list(led[neo_ids[mod_n-1]])
-        cur[ind] = v
-        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n-1]])
-    else:
-        ind -= 1
-        if ind == 3:
-            ind = 4
-        elif ind == 4:
-            ind = 3
-        cur = list(led[neo_ids[mod_n-1]+1])
-        cur[ind-3] = v
-        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
+        cur = list(led[neo_relay_ids[mod_n-1]])
+        cur[ind] = off_on
+        led[neo_relay_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+        print(led[neo_relay_ids[mod_n-1]])
     led.show()
+
 
 
 gc_col("Neopixels setup")
@@ -2755,20 +2839,6 @@ def set_hdw(cmd, dur):
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_neo_to(light_n, r, g, b)
-            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>    
-            elif seg[0] == 'NR':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_module_to(mod_n, index, v)
-            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-* 
-            elif seg[0] == 'NP':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_module_to(mod_n, index, v)
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")
@@ -2786,12 +2856,26 @@ def set_hdw(cmd, dur):
             # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[:2] == 'NM':
                 segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])
+                mod_n = int(segs_split[0].replace("NM", ""))
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
+            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>    
+            elif seg[:2] == 'NR':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("NR", ""))
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_relay_to(mod_n, index, v)
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-* 
+            elif seg[:2] == 'NP':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("NP", ""))
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_relay_to(mod_n, index, v)
             # brightness BXXX = Brightness XXX 000 to 100
-            elif seg[0:2] == 'BN':
+            elif seg[:2] == 'BN':
                 br = int(seg[2:])
                 led.brightness = float(br/100)
                 led.show()
@@ -2910,118 +2994,120 @@ def random_effect(il, ih, d):
     elif i == 3:
         fire(d)
 
-
 def rbow(spd, dur):
     global exit_set_hdw
     st = time.monotonic()
-    te = time.monotonic()-st
-    while te < dur:
+
+    # work on only the allowed pixels
+    pxs = only_lights
+    n = len(pxs)
+    if n == 0:
+        return
+
+    while (time.monotonic() - st) < dur:
         for j in range(0, 255, 1):
             if exit_set_hdw:
                 return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
+
+            for k, i in enumerate(pxs):
+                pixel_index = (k * 256 // n) + j
                 led[i] = colorwheel(pixel_index & 255)
+
             led.show()
             time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
+            if (time.monotonic() - st) > dur:
                 return
+
         for j in reversed(range(0, 255, 1)):
             if exit_set_hdw:
                 return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
+
+            for k, i in enumerate(pxs):
+                pixel_index = (k * 256 // n) + j
                 led[i] = colorwheel(pixel_index & 255)
+
             led.show()
             time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
+            if (time.monotonic() - st) > dur:
                 return
-
 
 def fire(dur):
     global exit_set_hdw
     st = time.monotonic()
 
     firei = []
-
     firei.extend(ornmnts)
     firei.extend(cane_s)
     firei.extend(cane_e)
 
-    stari = []
-    stari.extend(stars)
+    # overlays: guard them
+    for i in stars:
+        if i in only_lights_set:
+            led[i] = (255, 255, 255)
 
-    for i in stari:
-        led[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend((brnchs))
-
-    for i in brnchsi:
-        led[i] = (50, 50, 50)
+    for i in brnchs:
+        if i in only_lights_set:
+            led[i] = (50, 50, 50)
 
     r = random.randint(0, 255)
     g = random.randint(0, 255)
     b = random.randint(0, 255)
 
-    # Flicker, based on our initial RGB values
+    # Flicker
     while True:
         for i in firei:
             if exit_set_hdw:
                 return
+            if i not in only_lights_set:
+                continue
             f = random.randint(0, 110)
-            r1 = bnd(r-f, 0, 255)
-            g1 = bnd(g-f, 0, 255)
-            b1 = bnd(b-f, 0, 255)
+            r1 = bnd(r - f, 0, 255)
+            g1 = bnd(g - f, 0, 255)
+            b1 = bnd(b - f, 0, 255)
             led[i] = (r1, g1, b1)
             led.show()
         time.sleep(random.uniform(0.05, 0.1))
-        te = time.monotonic()-st
-        if te > dur:
-            return
 
+        if (time.monotonic() - st) > dur:
+            return
 
 def multi_color():
-    for i in range(0, n_px):
+    pxs = only_lights
+    if not pxs:
+        return
+
+    for i in pxs:
         if not running_mode:
             return
+
         r = random.randint(128, 255)
         g = random.randint(128, 255)
         b = random.randint(128, 255)
         c = random.randint(0, 2)
+
         if c == 0:
-            r1 = r
-            g1 = 0
-            b1 = 0
+            r1, g1, b1 = r, 0, 0
         elif c == 1:
-            r1 = 0
-            g1 = g
-            b1 = 0
-        elif c == 2:
-            r1 = 0
-            g1 = 0
-            b1 = b
+            r1, g1, b1 = 0, g, 0
+        else:
+            r1, g1, b1 = 0, 0, b
+
         led[i] = (r1, g1, b1)
 
-    stari = []
-    stari.extend(stars)
+    for i in stars:
+        if i in only_lights_set:
+            led[i] = (255, 255, 255)
 
-    for i in stari:
-        led[i] = (255, 255, 255)
+    for i in brnchs:
+        if i in only_lights_set:
+            led[i] = (7, 163, 30)
 
-    brnchsi = []
-    brnchsi.extend((brnchs))
+    for i in cane_e:
+        if i in only_lights_set:
+            led[i] = (255, 255, 255)
 
-    for i in brnchsi:
-        led[i] = (7, 163, 30)
-
-    canei = []
-    canei.extend(cane_e)
-    for i in canei:
-        led[i] = (255, 255, 255)
     led.show()
+
 
 
 def bnd(c, l, u):
