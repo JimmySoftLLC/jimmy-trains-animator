@@ -1011,6 +1011,13 @@ def get_neo_relay_ids():
             matches.append(num)
     return matches
 
+def get_neo_pico_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neopicos):
+            matches.append(num)
+    return matches
+
 def set_neo_relay_to(mod_n, ind, off_on):
     cur = []
     neo_relay_ids = get_neo_relay_ids()
@@ -1036,6 +1043,16 @@ def set_neo_relay_to(mod_n, ind, off_on):
         print(led[neo_relay_ids[mod_n-1]])
     led.show()
 
+def set_neo_pico_to(mod_n, char):
+    neo_relay_ids = get_neo_pico_ids()
+    r, g, b = char_to_pwm_rgb(char)
+    print("r: ", r,"g: ", g,"b: ", b )
+    if mod_n == 0:
+        for i in neo_relay_ids:
+            led[i] = (r, g, b)
+    else:
+        led[neo_relay_ids[mod_n-1]] = (r, g, b)
+    led.show()
 
 
 gc_col("Neopixels setup")
@@ -2853,14 +2870,14 @@ def set_hdw(cmd, dur):
                 light_n = int(segs_split[0][2:])-1
                 power = segs_split[1]
                 set_light_power(light_n, power)
-            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
+            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
             elif seg[:2] == 'NM':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0].replace("NM", ""))
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
-            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>    
+            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on   
             elif seg[:2] == 'NR':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0].replace("NR", ""))
@@ -2871,9 +2888,8 @@ def set_hdw(cmd, dur):
             elif seg[:2] == 'NP':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0].replace("NP", ""))
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_relay_to(mod_n, index, v)
+                char = segs_split[1]
+                set_neo_pico_to(mod_n, char)
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[:2] == 'BN':
                 br = int(seg[2:])
