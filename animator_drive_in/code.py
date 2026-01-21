@@ -152,12 +152,13 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
-plylst_folder = get_home_path() + "media/play lists/"
+animators_folder = get_home_path() + "media/play lists/"
 snd_opt_folder = code_folder + "snd_opt/"
 current_media_playing = ""
 current_scene = ""
 current_neo = ""
 is_midori_running = False
+tmp_wav_file_name = code_folder + "tmp.wav"
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
 
@@ -265,6 +266,7 @@ gc_col("Imports gc, files")
 
 cfg = files.read_json_file(code_folder + "cfg.json")
 default_cfg = files.read_json_file(code_folder + "default_cfg.json")
+animator_configs = []
 
 
 def get_media_files(folder_to_search, extensions):
@@ -293,14 +295,15 @@ def upd_media():
 
     extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
+
     # gets folders in the random_config directory, currently only all and play lists, the folders are empty
     rand_files = get_media_files(media_folder + "random_config/", extensions)
     media_files.update(rand_files)  # add rand_files to media_files dictionary
     # print("All media: " + str(media_files))
 
-    # play_list_options = files.return_directory(
-    #     "plylst_", plylst_folder, ".json", True)
-    # # print("Play lists: " + str(plylst_opt))
+    extensions = ['.json']  # List of extensions to filter by
+    animator_files = get_media_files(media_folder + "animator/", extensions)
+    # print("Animators: " + str(animator_files))
 
     media_list_all = []
     for topic, my_files in media_files.items():
@@ -322,6 +325,11 @@ def upd_media():
             menu_snd_opt.append("random_" + myKey + ".wav")
 
     # print("Menu sound tracks: " + str(menu_snd_opt))
+
+    animator_configs = []
+    for animator_file in animator_files["animators"]:
+        cfg_animator = files.read_json_file(animators_folder + animator_file)
+        animator_configs.append(cfg_animator)
 
 
 upd_media()
@@ -355,6 +363,7 @@ exit_set_hdw = False
 local_ip = ""
 t_s = []
 t_elsp = 0.0
+mdns_to_ip = {}
 
 
 ################################################################################
@@ -661,6 +670,7 @@ def bld_neo():
             i.append(l+si)
     return i
 
+
 def bld_neorelay():
     i = []
     for n in neorelays:
@@ -670,6 +680,7 @@ def bld_neorelay():
         for l in range(0, 6):
             i.append(l+si)
     return i
+
 
 def bld_neopico():
     i = []
@@ -816,6 +827,7 @@ def l_tst():
             led.show()
             time.sleep(.3)
 
+
 def upd_l_str():
     global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, led
     trees = []
@@ -909,11 +921,13 @@ upd_l_str()
 def is_allowed_led(i: int) -> bool:
     return i in only_lights_set
 
+
 def safe_set_led(i: int, rgb):
     if is_allowed_led(i):
         led[i] = rgb
         return True
     return False
+
 
 br = 0
 
@@ -942,7 +956,6 @@ def set_neo_to(light_n, r, g, b):
             led[light_n] = (r, g, b)
 
     led.show()
-
 
 
 def get_neo_ids():
@@ -998,6 +1011,7 @@ def set_neo_module_to(mod_n, ind, v):
 
     led.show()
 
+
 def get_neo_relay_ids():
     matches = []
     for num in range(n_px + 1):
@@ -1005,12 +1019,14 @@ def get_neo_relay_ids():
             matches.append(num)
     return matches
 
+
 def get_neo_pico_ids():
     matches = []
     for num in range(n_px + 1):
         if any(num == sublist[0] for sublist in neopicos):
             matches.append(num)
     return matches
+
 
 def set_neo_relay_to(mod_n, ind, off_on):
     cur = []
@@ -1037,10 +1053,11 @@ def set_neo_relay_to(mod_n, ind, off_on):
         print(led[neo_relay_ids[mod_n-1]])
     led.show()
 
+
 def set_neo_pico_to(mod_n, char):
     neo_relay_ids = get_neo_pico_ids()
     r, g, b = char_to_pwm_rgb(char)
-    print("r: ", r,"g: ", g,"b: ", b )
+    print("r: ", r, "g: ", g, "b: ", b)
     if mod_n == 0:
         for i in neo_relay_ids:
             led[i] = (r, g, b)
@@ -1059,6 +1076,7 @@ assert len(ALPHABET) == 49
 
 DIGIT_PWM = [20, 40, 60, 80]  # base-4 bins
 
+
 def char_to_base4_digits(ch: str) -> tuple[int, int, int]:
     idx = ALPHABET.find(ch)
     if idx < 0:
@@ -1068,6 +1086,7 @@ def char_to_base4_digits(ch: str) -> tuple[int, int, int]:
     g = (idx % 16) // 4
     b = idx % 4
     return r, g, b
+
 
 def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
     """
@@ -1079,7 +1098,6 @@ def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
         DIGIT_PWM[g_d],
         DIGIT_PWM[b_d],
     )
-
 
 
 ################################################################################
@@ -1312,21 +1330,32 @@ class ApiClient:
     def handle_response(self, response):
         """Handle the HTTP response."""
         if response.status_code == 200:
-            return response.json()  # or response.text for raw text
+            try:
+                # Try to parse the response as JSON
+                return response.json()
+            except ValueError:
+                # If JSON parsing fails, treat it as plain text
+                return response.text
         else:
-            response.raise_for_status()  # Raise an error for bd responses
+            response.raise_for_status()  # Raise an error for bad responses
 
 
-def send_animator_post(url, endpoint, new_data):
+def send_animator_post(url, endpoint, new_data=None):
     try:
         new_url = "http://" + url
-        new_data_loads = json.loads(new_data)
         api_client = ApiClient(new_url)
-        created_data = api_client.post(endpoint, data=new_data_loads)
+
+        if new_data is not None:
+            new_data_loads = json.loads(new_data)
+            created_data = api_client.post(endpoint, data=new_data_loads)
+        else:
+            created_data = api_client.post(endpoint)
+
         print("POST response:", created_data)
         return created_data
     except Exception as e:
         print(f"Comms issue: {e}")
+        return None  # Optionally return None or raise the exception, depending on your needs
 
 
 ################################################################################
@@ -1612,8 +1641,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def rename_playlist_post(self, rq_d):
         global data
         snd = rq_d["fo"].replace("plylst_", "")
-        fo = plylst_folder + snd + ".json"
-        fn = plylst_folder + rq_d["fn"] + ".json"
+        fo = animators_folder + snd + ".json"
+        fn = animators_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
         upd_media()
         self.send_response(200)
@@ -1638,7 +1667,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     snd_f = rq_d[3].replace("plylst_", "")
                     snd_f = snd_f.replace(".mp4", "")
                     snd_f = snd_f.replace(".wav", "")
-                    f_n = plylst_folder + \
+                    f_n = animators_folder + \
                         snd_f + ".json"
                 else:
                     snd_f = rq_d[3].replace(".mp4", "")
@@ -1665,7 +1694,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def delete_playlist_post(self, rq_d):
         snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = plylst_folder + snd_f + ".json"
+        f_n = animators_folder + snd_f + ".json"
         os.remove(f_n)
         upd_media()
         self.send_response(200)
@@ -1681,8 +1710,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         snd_f = snd_f.replace(".wav", "")
         if "plylst_" in snd_f:
             snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(plylst_folder + snd_f + ".json") == True):
-                f_n = plylst_folder + snd_f + ".json"
+            if (f_exists(animators_folder + snd_f + ".json") == True):
+                f_n = animators_folder + snd_f + ".json"
                 self.handle_serve_file_name(f_n)
                 return
             else:
@@ -1710,7 +1739,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def create_playlist_post(self, rq_d):
         global data
-        f_n = plylst_folder + rq_d["fn"] + ".json"
+        f_n = animators_folder + rq_d["fn"] + ".json"
         files.write_json_file(f_n, ["0.0|", "1.0|"])
         upd_media()
         gc_col("created playlist")
@@ -2621,12 +2650,12 @@ def an_light(f_nm):
 
     if plylst_f:
         f_nm = f_nm.replace("plylst_", "")
-        if (f_exists(plylst_folder + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(plylst_folder + f_nm + ".json")
+        if (f_exists(animators_folder + f_nm + ".json") == True):
+            flsh_t = files.read_json_file(animators_folder + f_nm + ".json")
         else:
             flsh_t.append("0.0|")
             flsh_t.append("5000.0|")
-            files.write_json_file(plylst_folder + f_nm + ".json", flsh_t)
+            files.write_json_file(animators_folder + f_nm + ".json", flsh_t)
     else:
         if (f_exists(media_folder + json_fn + ".json") == True):
             flsh_t = files.read_json_file(media_folder + json_fn + ".json")
@@ -2871,14 +2900,14 @@ def set_hdw(cmd, dur):
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
-            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on   
+            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
             elif seg[:2] == 'NR':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0].replace("NR", ""))
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_relay_to(mod_n, index, v)
-            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^) 
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^)
             elif seg[:2] == 'NP':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0].replace("NP", ""))
@@ -3004,6 +3033,7 @@ def random_effect(il, ih, d):
     elif i == 3:
         fire(d)
 
+
 def rbow(spd, dur):
     global exit_set_hdw
     st = time.monotonic()
@@ -3040,6 +3070,7 @@ def rbow(spd, dur):
             time.sleep(spd)
             if (time.monotonic() - st) > dur:
                 return
+
 
 def fire(dur):
     global exit_set_hdw
@@ -3081,6 +3112,7 @@ def fire(dur):
         if (time.monotonic() - st) > dur:
             return
 
+
 def multi_color():
     pxs = only_lights
     if not pxs:
@@ -3117,7 +3149,6 @@ def multi_color():
             led[i] = (255, 255, 255)
 
     led.show()
-
 
 
 def bnd(c, l, u):
