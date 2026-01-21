@@ -32,6 +32,8 @@ import time
 import gc
 import files
 import os
+from adafruit_motor import servo
+import pwmio
 
 # ADDED (decoder)
 import pulseio
@@ -348,6 +350,16 @@ def upd_l_str():
 upd_l_str()
 
 gc_col("Neopixels setup")
+
+################################################################################
+# Setup the servos
+s_1 = pwmio.PWMOut(board.GP7, duty_cycle=2 ** 15, frequency=50)
+s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+
+s_2 = pwmio.PWMOut(board.GP8, duty_cycle=2 ** 15, frequency=50)
+s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
+
+s_arr = [s_1, s_2]
 
 ################################################################################
 # PWM RGB (base-4) decoder + mapping to queue
@@ -1080,6 +1092,15 @@ async def set_hdw_async(input_string, dur=0):
             if seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
+            # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
+            elif seg[0] == 'S':
+                num = int(seg[1])
+                v = int(seg[2:])
+                if num == 0:
+                    for i in range(len(s_arr)):
+                        s_arr[i].angle = v
+                else:
+                    s_arr[num-1].angle = int(v)
     except Exception as e:
         files.log_item(e)
 
@@ -1177,15 +1198,22 @@ async def consumer_task():
 ################################################################################
 # Start server
 
-if web:
+if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
+        led_indicator[0] = (0, 20, 0)
+        led_indicator.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-    except OSError:
+    except Exception as e:
+        files.log_item(e)
         time.sleep(5)
         files.log_item("restarting...")
         rst()
+else:
+    led_indicator[0] = (20, 0, 0)
+    led_indicator.show()
+    time.sleep(3)
 
 files.log_item("animator has started...")
 gc_col("animations started.")
