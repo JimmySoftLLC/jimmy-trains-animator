@@ -220,6 +220,14 @@
                     data-url="/update-light-string">
                     neo-6
                 </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neorelay-3"
+                    data-url="/update-light-string">
+                    neorelay-3
+                </button>
+                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="neopico-1"
+                    data-url="/update-light-string">
+                    neopico-1
+                </button>
                 <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="bolt-1"
                     data-url="/update-light-string">
                     bolt-1
@@ -686,7 +694,7 @@
         getLocalIp()
         getWebSiteUrl()
         getVolume()
-        getAnimators()
+        // getAnimators()
         getLightString()
         getMedia()
         getSceneChanges()
@@ -876,7 +884,7 @@
     }
 
     function getAnimators() {
-        fetch('/get-scripts', {
+        fetch('/get-animators', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
