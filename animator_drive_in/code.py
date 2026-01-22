@@ -291,7 +291,7 @@ def get_media_files(folder_to_search, extensions):
 
 
 def upd_media():
-    global play_list_options, media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission
+    global media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission, animator_files, animator_configs
 
     extensions = ['.wav', '.mp4']  # List of extensions to filter by
     media_files = get_media_files(media_folder, extensions)
@@ -1583,8 +1583,10 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
             self.get_host_name_post(post_data_obj)
-        elif self.path == "/update-volume":
-            self.update_volume_post(post_data_obj)
+        elif self.path == "/set-reset-hdw":
+            self.set_reset_hdw(post_data_obj)
+        elif self.path == "/get-reset-hdw":
+            self.get_reset_hdw_post(post_data_obj)
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
         elif self.path == "/set-lifx-enabled":
@@ -1593,18 +1595,20 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
             self.get_lifx_enabled(post_data_obj)
-        # elif self.path == "/get-scripts":
-        #     self.get_scripts_post(post_data_obj)
-        elif self.path == "/create-playlist":
-            self.create_playlist_post(post_data_obj)
+        elif self.path == "/create-animator":
+            self.create_animator_post(post_data_obj)
         elif self.path == "/get-animation":
             self.get_animation_post(post_data_obj)
-        elif self.path == "/delete-playlist":
-            self.delete_playlist_post(post_data_obj)
-        elif self.path == "/save-data":
-            self.save_data_post(post_data_obj)
-        elif self.path == "/rename-playlist":
-            self.rename_playlist_post(post_data_obj)
+        elif self.path == "/get-animator":
+            self.get_animator_post(post_data_obj)
+        elif self.path == "/delete-animator":
+            self.delete_animator_post(post_data_obj)
+        elif self.path == "/save-animation-data":
+            self.save_animation_data_post(post_data_obj)
+        elif self.path == "/save-animator-data":
+            self.save_animator_data_post(post_data_obj)
+        elif self.path == "/rename-animator":
+            self.rename_animator_post(post_data_obj)
         elif self.path == "/stop":
             self.stop_post(post_data_obj)
         elif self.path == "/test-animation":
@@ -1615,7 +1619,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def test_animation_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        response = set_hdw(rq_d["an"], 3)
+        # Replace "default_value" with whatever you want
+        url = rq_d.get("ip", "")
+        response = set_hdw(rq_d["an"], 3, url)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1623,11 +1629,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def get_local_ip(self, rq_d):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
         response = local_ip
-        self.wfile.write(response.encode('utf-8'))
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def stop_post(self, rq_d):
         rst_an()
@@ -1638,10 +1645,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def rename_playlist_post(self, rq_d):
+    def rename_animator_post(self, rq_d):
         global data
-        snd = rq_d["fo"].replace("plylst_", "")
-        fo = animators_folder + snd + ".json"
+        fo = animators_folder + rq_d["fo"]
         fn = animators_folder + rq_d["fn"] + ".json"
         os.rename(fo, fn)
         upd_media()
@@ -1654,7 +1660,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     data = []
 
-    def save_data_post(self, rq_d):
+    def save_animation_data_post(self, rq_d):
         global data
         try:
             if rq_d[0] == 0:
@@ -1692,33 +1698,31 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
         print("Response sent:", response)
 
-    def delete_playlist_post(self, rq_d):
-        snd_f = rq_d["fn"].replace("plylst_", "")
-        f_n = animators_folder + snd_f + ".json"
+    def save_animator_data_post(self, rq_d):
+        f_n = animators_folder + rq_d["fn"]
+        files.write_json_file(f_n, rq_d)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "file save successfully"
+        self.wfile.write(response.encode('utf-8'))
+
+    def delete_animator_post(self, rq_d):
+        f_n = animators_folder + rq_d["fn"]
         os.remove(f_n)
         upd_media()
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = rq_d["fn"] + " playlist file deleted"
+        response = rq_d["fn"] + " animator file deleted"
         self.wfile.write(response.encode('utf-8'))
 
     def get_animation_post(self, rq_d):
-        global cfg, ts_mode
+        global cfg
         snd_f = rq_d["an"]
         snd_f = snd_f.replace(".mp4", "")
         snd_f = snd_f.replace(".wav", "")
-        if "plylst_" in snd_f:
-            snd_f = snd_f.replace("plylst_", "")
-            if (f_exists(animators_folder + snd_f + ".json") == True):
-                f_n = animators_folder + snd_f + ".json"
-                self.handle_serve_file_name(f_n)
-                return
-            else:
-                f_n = code_folder + "t_s_def/timestamp mode.json"
-                self.handle_serve_file_name(f_n)
-                return
-        elif (f_exists(media_folder + snd_f + ".json") == True):
+        if (f_exists(media_folder + snd_f + ".json") == True):
             f_n = media_folder + snd_f + ".json"
             self.handle_serve_file_name(f_n)
             return
@@ -1727,26 +1731,42 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_serve_file_name(f_n)
             return
 
-    def get_scripts_post(self, rq_d):
-        sounds = []
-        sounds.extend(play_list_options)
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        response = sounds
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
+    def get_animator_post(self, rq_d):
+        global cfg
+        if (f_exists(animators_folder + rq_d["an"]) == True):
+            f_n = animators_folder + rq_d["an"]
+            self.handle_serve_file_name(f_n)
+            return
+        else:
+            f_n = code_folder + "animator_def/animator.json"
+            self.handle_serve_file_name(f_n)
+            return
 
-    def create_playlist_post(self, rq_d):
+    def create_animator_post(self, rq_d):
         global data
         f_n = animators_folder + rq_d["fn"] + ".json"
-        files.write_json_file(f_n, ["0.0|", "1.0|"])
+        an_data = {
+            "fn": f_n,
+            "device": "accessory",
+            "address": 1,
+            "table_data": [
+                [
+                    "AUX1",
+                    ""
+                ],
+                [
+                    "AUX2",
+                    ""
+                ]
+            ]
+        }
+        files.write_json_file(f_n, an_data)
         upd_media()
-        gc_col("created playlist")
+        gc_col("created animator")
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        response = "created " + rq_d["fn"] + " playlist"
+        response = "created " + rq_d["fn"] + " animator"
         self.wfile.write(response.encode('utf-8'))
 
     def update_light_string_post(self, rq_d):
@@ -1788,6 +1808,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             cfg["cont_run"] = True
             files.write_json_file(code_folder + "cfg.json", cfg)
         elif rq_d["an"] == "cont_mode_off":
+            stop_all_commands()
             play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
             cfg["cont_run"] = False
             files.write_json_file(code_folder + "cfg.json", cfg)
@@ -1907,11 +1928,28 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         response = cfg["HOST_NAME"]
         self.wfile.write(response.encode('utf-8'))
 
+    def set_reset_hdw(self, rq_d):
+        global cfg
+        cfg["reset_hdw"] = rq_d["text"]
+        files.write_json_file(code_folder + "cfg.json", cfg)
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = cfg["reset_hdw"]
+        self.wfile.write(response.encode('utf-8'))
+
     def get_host_name_post(self, rq_d):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = cfg["HOST_NAME"]
+        self.wfile.write(response.encode('utf-8'))
+
+    def get_reset_hdw_post(self, rq_d):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = cfg["reset_hdw"]
         self.wfile.write(response.encode('utf-8'))
 
     def update_volume_post(self, rq_d):
@@ -2516,7 +2554,7 @@ def logo_when_idle():
 
 
 def check_switches(stop_event):
-    global running_mode, mix_is_paused, exit_set_hdw
+    global running_mode, mix_is_paused, exit_set_hdw, override_switch_state
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
@@ -2525,8 +2563,7 @@ def check_switches(stop_event):
             rst_an()
         elif switch_state == "left_held" and cfg["can_cancel"]:
             stop_event.set()  # Signal to stop the thread
-            clear_command_queue()
-            rst_an()
+            stop_all_commands()
             if cfg["cont_run"]:
                 cfg["cont_run"] = False
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
@@ -2567,8 +2604,11 @@ def rst_an(file_name=media_folder + 'pictures/black.jpg'):
     led.brightness = 1.0
     led.fill((0, 0, 0))
     led.show()
-    change_wallpaper(file_name)
     time.sleep(0.5)
+    exit_set_hdw = False
+    set_hdw(cfg["reset_hdw"], 0, "")
+    exit_set_hdw = True
+    change_wallpaper(file_name)
     l_sw.update()
     r_sw.update()
     three_sw.update()
@@ -2599,19 +2639,9 @@ def an(f_nm):
 
 
 def return_file_to_use(f_nm):
-    global cfg, lst_opt, running_mode
+    global lst_opt
     cur_opt = f_nm
-    if f_nm == "random_play lists":
-        h_i = len(play_list_options) - 1
-        cur_opt = play_list_options[random.randint(
-            0, h_i)]
-        while lst_opt == cur_opt and len(play_list_options) > 1:
-            cur_opt = play_list_options[random.randint(
-                0, h_i)]
-        lst_opt = cur_opt
-        print("Random sound option: " + f_nm)
-        print("Sound file: " + cur_opt)
-    elif f_nm == "random_all":
+    if f_nm == "random_all":
         h_i = len(media_list_all_no_intermission) - 1
         cur_opt = media_list_all_no_intermission[random.randint(
             0, h_i)]
@@ -2843,7 +2873,7 @@ def rnd_prob(random_value):
     return False
 
 
-def set_hdw(cmd, dur):
+def set_hdw(cmd, dur, url=""):
     global sp, br, running_mode, exit_set_hdw
 
     if cmd == "":
@@ -2900,19 +2930,6 @@ def set_hdw(cmd, dur):
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
-            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
-            elif seg[:2] == 'NR':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0].replace("NR", ""))
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_relay_to(mod_n, index, v)
-            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^)
-            elif seg[:2] == 'NP':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0].replace("NP", ""))
-                char = segs_split[1]
-                set_neo_pico_to(mod_n, char)
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[:2] == 'BN':
                 br = int(seg[2:])
@@ -2932,6 +2949,19 @@ def set_hdw(cmd, dur):
                         led.brightness = float(br/100)
                     led.show()
                     time.sleep(s)
+            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
+            elif seg[:2] == 'NR':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("NR", ""))
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_relay_to(mod_n, index, v)
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^)
+            elif seg[:2] == 'NP':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("NP", ""))
+                char = segs_split[1]
+                set_neo_pico_to(mod_n, char)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 random_effect(1, 3, dur)
@@ -2986,12 +3016,39 @@ def set_hdw(cmd, dur):
                     return response
                 elif len(seg_split) == 4:
                     print("four params")
-                    response = send_animator_post(
-                        seg_split[1], seg_split[2], seg_split[3])
-                    return response
-                return ""
+                    max_retries = 2
+                    attempts = 0
+                    while attempts < max_retries:
+                        ip_from_mdns = get_ip_from_mdns(
+                            seg_split[1], overwrite=(attempts > 0))
+                        print(
+                            f"Attempt {attempts + 1}: Resolved {seg_split[1]} to {ip_from_mdns}")
+                        if ip_from_mdns:
+                            try:
+                                response = send_animator_post(
+                                    ip_from_mdns, seg_split[2], seg_split[3])
+                                if response is not None:  # Assuming None indicates failure
+                                    return response
+                                print(
+                                    f"send_animator_post failed with {ip_from_mdns}, retrying...")
+                            except Exception as e:
+                                print(
+                                    f"Error with {ip_from_mdns}: {e}, retrying...")
+                        else:
+                            print(
+                                f"Failed to resolve {seg_split[1]} to an IP, retrying...")
+                        attempts += 1
+
+                    # If all retries fail, assume the mDNS entry no longer exists and clean up
+                    if attempts >= max_retries:
+                        if seg_split[1] in mdns_to_ip:
+                            del mdns_to_ip[seg_split[1]]
+                            print(
+                                f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
+                        return "host not found after retries"
     except Exception as e:
         files.log_item(e)
+
 
     def split_string(seg):
         # Find the position of the first '_{' and the last '}'
@@ -3018,6 +3075,52 @@ def set_hdw(cmd, dur):
             parts.append(object_part)
 
         return parts
+    
+
+def get_ip_address(hostname):
+    response = send_animator_post(hostname, "get-local-ip")
+    return response
+
+
+def get_ip_from_mdns(mdns_name, overwrite=False):
+    # Check if mdns_name itself looks like an IP address (with or without port)
+    ip_part = mdns_name.split(':')[0] if ':' in mdns_name else mdns_name
+    is_ip = '.' in ip_part and all(part.isdigit()
+                                   for part in ip_part.split('.'))
+
+    if is_ip:
+        # If it's already an IP, return it as-is without adding to dictionary
+        print(f"{mdns_name} is already an IP address, skipping dictionary")
+        return mdns_name
+    else:
+        # Use the full mdns_name (with port if present) as the key
+        if mdns_name in mdns_to_ip and not overwrite:
+            ip_with_port = mdns_to_ip[mdns_name]
+            print(f"Found {mdns_name} in dictionary: {ip_with_port}")
+        else:
+            # Extract port from mdns_name if it exists
+            port = None
+            if ':' in mdns_name:
+                _, port = mdns_name.rsplit(':', 1)
+                if not port.isdigit():
+                    port = None
+
+            # Get the IP address using the full mdns_name (including port if present)
+            ip_address = get_ip_address(mdns_name)
+
+            # Validate the IP address and append the port if it exists
+            if ip_address and isinstance(ip_address, str) and '.' in ip_address and all(part.isdigit() for part in ip_address.split('.')):
+                # Append the original port to the IP if it exists
+                ip_with_port = f"{ip_address}:{port}" if port else ip_address
+                mdns_to_ip[mdns_name] = ip_with_port
+                print(
+                    f"Resolved and added {mdns_name}: {ip_with_port} to the dictionary")
+            else:
+                print(
+                    f"Resolved {mdns_name} to {ip_address}, but it doesn't look like an IP - not adding to dictionary")
+                ip_with_port = None
+
+        return ip_with_port
 
 ##############################
 # Led color effects
@@ -3232,7 +3335,7 @@ class BseSt(Ste):
                 l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
             if switch_state == "left_held":
                 if cfg["cont_run"]:
-                    cfg["cont_run"] = False
+                    stop_all_commands()
                     play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
                 else:
                     cfg["cont_run"] = True
