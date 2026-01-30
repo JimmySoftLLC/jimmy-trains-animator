@@ -465,7 +465,6 @@ cfg_add_song = files.read_json_file(
     mvc_folder + "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
-cont_run = False
 ts_mode = False
 lst_opt = ''
 running_mode = ""
@@ -1577,7 +1576,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
 
     def get_animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg, ts_mode
         snd_f = rq_d["an"]
         if (f_exists(animations_folder + snd_f + ".json") == True):
             f_n = animations_folder + snd_f + ".json"
@@ -1585,7 +1584,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             return
 
     def get_button_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg, ts_mode
         snd_f = rq_d["an"]
         if (f_exists(buttons_folder + snd_f + ".json") == True):
             f_n = buttons_folder + snd_f + ".json"
@@ -1644,13 +1643,15 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     def mode_post(self, rq_d):
         print(rq_d)
-        global cfg, cont_run, ts_mode
+        global cfg, ts_mode
         if rq_d["an"] == "cont_mode_on":
             play_mix_media(mvc_folder + "continuous_mode_activated.wav")
-            cont_run = True
+            cfg["cont_run"] = True
+            files.write_json_file(code_folder + "cfg.json", cfg)
         elif rq_d["an"] == "cont_mode_off":
             play_mix_media(mvc_folder + "continuous_mode_deactivated.wav")
-            cont_run = False
+            cfg["cont_run"] = False
+            files.write_json_file(code_folder + "cfg.json", cfg)
         elif rq_d["an"] == "timestamp_mode_on":
             play_mix_media(mvc_folder + "timestamp_mode_on.wav")
             play_mix_media(mvc_folder + "timestamp_instructions.wav")
@@ -1686,7 +1687,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def animation_post(self, rq_d):
-        global cfg, cont_run, ts_mode
+        global cfg, ts_mode
         cfg["option_selected"] = rq_d["an"]
         add_command("AN_" + cfg["option_selected"])
         files.write_json_file(code_folder + "cfg.json", cfg)
@@ -2002,7 +2003,7 @@ def clear_command_queue():
 
 def stop_all_commands():
     """Stop all commands and clear the queue."""
-    global running_mode, cont_run, exit_set_hdw
+    global running_mode, exit_set_hdw
     clear_command_queue()
     running_mode = ""
     exit_set_hdw = True
@@ -2011,7 +2012,7 @@ def stop_all_commands():
     if mix_media:
         mix_media.stop()
     media_player.stop()
-    cont_run = False
+    cfg["cont_run"] = False
     rst_an()
     print("Processing stopped and command queue cleared.")
 
@@ -2413,7 +2414,7 @@ def logo_when_idle():
 
 
 def check_switches(stop_event):
-    global cont_run, running_mode, mix_is_paused, exit_set_hdw
+    global running_mode, mix_is_paused, exit_set_hdw
     while not stop_event.is_set():  # Check the stop event
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
@@ -2424,9 +2425,10 @@ def check_switches(stop_event):
             stop_event.set()  # Signal to stop the thread
             clear_command_queue()
             rst_an()
-            if cont_run:
-                cont_run = False
+            if cfg["cont_run"]:
+                cfg["cont_run"] = False
                 pygame_mixer_init()
+                files.write_json_file(code_folder + "cfg.json", cfg)
                 play_mix(code_folder + "mvc/continuous_mode_deactivated.wav")
         elif switch_state == "right" and cfg["can_cancel"]:
             if running_mode == "media_player":
@@ -3107,7 +3109,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, running_mode, override_switch_state, is_button_mode, group_index
+        global running_mode, override_switch_state, is_button_mode, group_index
         if running_mode != "time_stamp_mode":
             process_commands()
             switch_state = utilities.switch_state_five_switches(
@@ -3141,16 +3143,18 @@ class BseSt(Ste):
                     time.sleep(.5)
             else:
                 if switch_state == "left_held" and not is_button_mode:
-                    if cont_run:
-                        cont_run = False
+                    if cfg["cont_run"]:
+                        cfg["cont_run"] = False
+                        files.write_json_file(code_folder + "cfg.json", cfg)
                         play_mix_media(
                             mvc_folder + "continuous_mode_deactivated.wav")
                     else:
-                        cont_run = True
+                        cfg["cont_run"] = True
+                        files.write_json_file(code_folder + "cfg.json", cfg)
                         play_mix_media(
                             mvc_folder + "continuous_mode_activated.wav")
                     time.sleep(.5)
-                elif switch_state == "left" or cont_run:
+                elif switch_state == "left" or cfg["cont_run"]:
                     add_command("AN_" + cfg["option_selected"])
                     time.sleep(.5)
                 elif switch_state == "right":
