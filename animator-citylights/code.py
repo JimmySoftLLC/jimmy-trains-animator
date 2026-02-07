@@ -365,7 +365,6 @@ t_s = []
 t_elsp = 0.0
 mdns_to_ip = {}
 
-
 ################################################################################
 # Setup io hardware
 
@@ -562,7 +561,7 @@ def m_servo(n, p):
     if p > 180:
         p = 180
     s_arr[n].angle = p
-    p_arr[n][n] = p
+    p_arr[n] = p
 
 
 ################################################################################
@@ -599,6 +598,41 @@ only_lights_set = set()
 n_px = 0
 led = neopixel_spi.NeoPixel_SPI(
     board.SPI(), n_px, brightness=1.0, auto_write=False)
+
+pixel_scale = [(1.0, 1.0, 1.0)] * n_px
+logical_led = {}
+
+
+def clear_pixel_scale_all():
+    """Clear ALL calibration (persistent) + reset runtime scalers to 1.0 on allowed light pixels."""
+    cfg["pixel_scale"] = {}
+    files.write_json_file(code_folder + "cfg.json", cfg)
+
+    # reset runtime list
+    for i in only_lights:
+        pixel_scale[i] = (1.0, 1.0, 1.0)
+
+    refresh_allowed_leds()
+
+
+def clear_pixel_scale_one(i0: int):
+    """Clear ONE pixel calibration (0-based), persistent + runtime."""
+    if i0 < 0 or i0 >= n_px:
+        return
+    if i0 not in only_lights_set:
+        return  # IMPORTANT: relays/picos/etc are NOT lights
+
+    # remove from cfg if present
+    ps = cfg.get("pixel_scale", {}) or {}
+    if str(i0) in ps:
+        del ps[str(i0)]
+        cfg["pixel_scale"] = ps
+        files.write_json_file(code_folder + "cfg.json", cfg)
+
+    # reset runtime
+    pixel_scale[i0] = (1.0, 1.0, 1.0)
+
+    refresh_allowed_leds()
 
 
 def bld_tree(p):
@@ -827,9 +861,27 @@ def l_tst():
             led.show()
             time.sleep(.3)
 
+def clamp01(x: float) -> float:
+    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+
+
+def load_pixel_scale_from_cfg():
+    """Load sparse per-pixel RGB scalers from cfg['pixel_scale'] into pixel_scale list."""
+    scales = cfg.get("pixel_scale", {}) or {}
+    for k, v in scales.items():
+        try:
+            i = int(k)
+            if i < 0 or i >= n_px:
+                continue
+            if i not in only_lights_set:
+                continue  # IMPORTANT: relays/picos/etc are NOT lights
+            rs, gs, bs = float(v[0]), float(v[1]), float(v[2])
+            pixel_scale[i] = (clamp01(rs), clamp01(gs), clamp01(bs))
+        except Exception:
+            continue
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, led
+    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, led, pixel_scale, logical_led
     trees = []
     canes = []
     bars = []
@@ -895,38 +947,116 @@ def upd_l_str():
     led.auto_write = False
     led.brightness = 1.0
 
-    # --- flatten + sort + dedupe only_lights ---
-    only_lights = sorted(
-        px
-        for group in (trees, canes, bars, noods, bolts, neos)
-        for segment in group
-        for px in segment
-    )
+    # reset per-pixel scalers and logical cache whenever the light string changes
+    pixel_scale = [(1.0, 1.0, 1.0)] * n_px
+    logical_led = {}
 
-    # fast membership lookup
+    # --- flatten + sort + dedupe only_lights ---
+    only_lights = []
+
+    # normal groups (segments are lists of pixel indices)
+    for group in (trees, canes, bars, bolts, neos):
+        for seg in group:
+            only_lights.extend(seg)
+
+    # noods are [pixel_index, qty] — only first element is a pixel index
+    for n in noods:
+        only_lights.append(n[0])
+
+    only_lights = sorted(set(only_lights))
     only_lights_set = set(only_lights)
 
-    print("only_lights:", only_lights)
-    print("only_lights count:", len(only_lights_set), "n_px:", n_px)
+    load_pixel_scale_from_cfg()
+
+    print("only_lights min/max:", min(only_lights), max(only_lights))
+    print("n_px:", n_px, "only_lights count:", len(only_lights))
+    print("bad only_lights:", [i for i in only_lights if i < 0 or i >= n_px])
 
     l_tst()
-
 
 upd_l_str()
 
 
 ########################################################################################################################
 # Neo pixel / neo 6 module methods
+# ---------------------------------------------------------------------------
+# Per-allowed-pixel brightness (software brightness, NOT led.brightness)
+
+neo_brightness = 1.0  # 0.0 .. 1.0
+
+# Shadow buffer of "logical" (unscaled) colors for allowed pixels only
+# key: pixel index, value: (r,g,b) UNBRIGHTENED (0..255)
+logical_led = {}
+
+def persist_pixel_scale(i: int, rs: float, gs: float, bs: float):
+    """Save a single pixel scaler to cfg.json (sparse dict). i is 0-based."""
+    cfg.setdefault("pixel_scale", {})
+    cfg["pixel_scale"][str(i)] = [clamp01(rs), clamp01(gs), clamp01(bs)]
+    files.write_json_file(code_folder + "cfg.json", cfg)
+
+
+def persist_pixel_scale_all(rs: float, gs: float, bs: float):
+    """Apply to all allowed light pixels and persist."""
+    cfg.setdefault("pixel_scale", {})
+    for i in only_lights:
+        cfg["pixel_scale"][str(i)] = [clamp01(rs), clamp01(gs), clamp01(bs)]
+    files.write_json_file(code_folder + "cfg.json", cfg)
+
+def apply_brightness(i: int, rgb, br: float):
+    """Scale rgb by global brightness AND per-pixel (r,g,b) scaler. All clamped."""
+    br = clamp01(br)
+    r, g, b = rgb
+
+    try:
+        rs, gs, bs = pixel_scale[i]
+    except Exception:
+        rs, gs, bs = (1.0, 1.0, 1.0)
+
+    r = int(r * br * rs)
+    g = int(g * br * gs)
+    b = int(b * br * bs)
+
+    r = 0 if r < 0 else (255 if r > 255 else r)
+    g = 0 if g < 0 else (255 if g > 255 else g)
+    b = 0 if b < 0 else (255 if b > 255 else b)
+    return (r, g, b)
+
+
+def set_pixel_scale(i: int, rs: float = 1.0, gs: float = 1.0, bs: float = 1.0) -> None:
+    """Per-pixel per-channel scaler; each channel is clamped to 0..1 (no boosting)."""
+    global pixel_scale
+    if i < 0:
+        return
+    if i >= len(pixel_scale):
+        pixel_scale.extend([(1.0, 1.0, 1.0)] * (i - len(pixel_scale) + 1))
+    pixel_scale[i] = (clamp01(rs), clamp01(gs), clamp01(bs))
+
 
 def is_allowed_led(i: int) -> bool:
     return i in only_lights_set
 
 
-def safe_set_led(i: int, rgb):
-    if is_allowed_led(i):
-        led[i] = rgb
-        return True
-    return False
+def safe_set_led(i: int, rgb: tuple[int, int, int], store_logical: bool = True) -> bool:
+    """
+    Set an LED ONLY if allowed. Applies pixel_scale + neo_brightness automatically.
+    rgb is 'logical' (pre-scale, pre-brightness).
+    """
+    if not is_allowed_led(i):
+        return False
+
+    if store_logical:
+        logical_led[i] = rgb  # store unscaled/unbrightened
+
+    led[i] = apply_brightness(i, rgb, neo_brightness)
+    return True
+
+
+def refresh_allowed_leds():
+    """Re-apply current pixel_scale and neo_brightness to all allowed pixels using logical_led."""
+    for i in only_lights:
+        if i in logical_led:
+            led[i] = apply_brightness(i, logical_led[i], neo_brightness)
+    led.show()
 
 
 br = 0
@@ -943,17 +1073,17 @@ def set_neo_to(light_n, r, g, b):
                 continue
 
             if is_neo(i, neos):
-                led[i] = (g, r, b)
+                safe_set_led(i, (g, r, b))
             else:
-                led[i] = (r, g, b)
+                safe_set_led(i, (r, g, b))
     else:
         if not is_allowed_led(light_n):
             return
 
         if is_neo(light_n, neos):
-            led[light_n] = (g, r, b)
+            safe_set_led(light_n, (g, r, b))
         else:
-            led[light_n] = (r, g, b)
+            safe_set_led(light_n, (r, g, b))
 
     led.show()
 
@@ -991,9 +1121,9 @@ def set_neo_module_to(mod_n, ind, v):
             ind = 0
 
         if is_allowed_led(base):
-            cur = list(led[base])
+            cur = list(logical_led.get(base, (0, 0, 0)))
             cur[ind] = v
-            led[base] = tuple(cur)
+            safe_set_led(base, tuple(cur))
 
     else:
         base = neo_ids[mod_n - 1] + 1
@@ -1005,9 +1135,9 @@ def set_neo_module_to(mod_n, ind, v):
             ind = 3
 
         if is_allowed_led(base):
-            cur = list(led[base])
+            cur = list(logical_led.get(base, (0, 0, 0)))
             cur[ind - 3] = v
-            led[base] = tuple(cur)
+            safe_set_led(base, tuple(cur))
 
     led.show()
 
@@ -2597,11 +2727,12 @@ def run_check_switches_thread():
 
 
 def rst_an(file_name=media_folder + 'pictures/black.jpg'):
-    global current_media_playing, exit_set_hdw
+    global current_media_playing, exit_set_hdw, neo_brightness
     exit_set_hdw = True
     stop_all_media()
     hide_terminal()
-    led.brightness = 1.0
+    neo_brightness = 1.0
+    refresh_allowed_leds()
     led.fill((0, 0, 0))
     led.show()
     time.sleep(0.5)
@@ -2760,7 +2891,6 @@ def an_light(f_nm):
                 check_thread.join()  # Wait for the thread to finish
                 change_wallpaper(media_folder + 'pictures/black.jpg')
                 hide_terminal()
-                led.brightness = 1.0
                 led.fill((0, 0, 0))
                 led.show()
                 current_media_playing = ""
@@ -2874,7 +3004,7 @@ def rnd_prob(random_value):
 
 
 def set_hdw(cmd, dur, url=""):
-    global sp, br, running_mode, exit_set_hdw
+    global sp, br, running_mode, exit_set_hdw, neo_brightness
 
     if cmd == "":
         return "NOCMDS"
@@ -2933,22 +3063,55 @@ def set_hdw(cmd, dur, url=""):
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0:2] == 'BN':
                 br = int(seg[2:])
-                led.brightness = float(br/100)
-                led.show()
+                neo_brightness = clamp01(br / 100.0)
+                refresh_allowed_leds()
             # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
             elif seg[0] == 'F':
                 segs_split = seg.split("_")
-                v = int(segs_split[0][1:])
-                s = float(segs_split[1])
-                while not br == v:
-                    if br < v:
-                        br += 1
-                        led.brightness = float(br/100)
-                    else:
-                        br -= 1
-                        led.brightness = float(br/100)
-                    led.show()
-                    time.sleep(s)
+                target = int(segs_split[0][1:])
+                step_s = float(segs_split[1])
+
+                target = max(0, min(100, target))
+
+                while br != target:
+                    if exit_set_hdw:
+                        return "STOP"
+
+                    br += 1 if br < target else -1
+                    neo_brightness = clamp01(br / 100.0)
+                    refresh_allowed_leds()
+                    time.sleep(step_s)
+            # SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index
+            elif seg[:3] =='SCN':
+                parts = seg.split('_')
+                px_n = int(parts[0][3:])   # after 'SCN'
+                rs = clamp01(float(parts[1]))
+                gs = clamp01(float(parts[2]))
+                bs = clamp01(float(parts[3]))
+
+                if px_n == 0:
+                    for i in only_lights:
+                        pixel_scale[i] = (rs, gs, bs)
+                    persist_pixel_scale_all(rs, gs, bs)
+                else:
+                    i = px_n - 1
+                    if i in only_lights_set:
+                        pixel_scale[i] = (rs, gs, bs)
+                        persist_pixel_scale(i, rs, gs, bs)
+
+                refresh_allowed_leds()
+            # SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)
+            elif seg[:3] == 'SCC':
+                try:
+                    n = int(seg[3:])  # SCC0, SCC12, etc.
+                except Exception:
+                    n = -1
+
+                if n == 0:
+                    clear_pixel_scale_all()
+                elif n > 0:
+                    clear_pixel_scale_one(n - 1)  # convert to 0-based
+
             # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
             elif seg[:2] == 'NR':
                 segs_split = seg.split("_")
@@ -2993,7 +3156,7 @@ def set_hdw(cmd, dur, url=""):
                 f_nm = media_folder + seg[1:]
                 change_wallpaper(f_nm)
             # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-            if seg[0] == 'S':  # servos S
+            elif seg[0] == 'S':  # servos S
                 num = int(seg[1])
                 v = int(seg[2:])
                 if num == 0:
@@ -3002,11 +3165,11 @@ def set_hdw(cmd, dur, url=""):
                 else:
                     s_arr[num-1].angle = int(v)
             # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
-            if seg[0] == 'Q':
+            elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
-            if seg[:3] == 'API':
+            elif seg[:3] == 'API':
                 seg_split = split_string(seg)
                 print(seg_split)
                 if len(seg_split) == 3:
@@ -3154,7 +3317,8 @@ def rbow(spd, dur):
 
             for k, i in enumerate(pxs):
                 pixel_index = (k * 256 // n) + j
-                led[i] = colorwheel(pixel_index & 255)
+                safe_set_led(i, colorwheel(pixel_index & 255),
+                             store_logical=False)
 
             led.show()
             time.sleep(spd)
@@ -3167,7 +3331,8 @@ def rbow(spd, dur):
 
             for k, i in enumerate(pxs):
                 pixel_index = (k * 256 // n) + j
-                led[i] = colorwheel(pixel_index & 255)
+                safe_set_led(i, colorwheel(pixel_index & 255),
+                             store_logical=False)
 
             led.show()
             time.sleep(spd)
@@ -3187,11 +3352,11 @@ def fire(dur):
     # overlays: guard them
     for i in stars:
         if i in only_lights_set:
-            led[i] = (255, 255, 255)
+            safe_set_led(i, (255, 255, 255), store_logical=False)
 
     for i in brnchs:
         if i in only_lights_set:
-            led[i] = (50, 50, 50)
+            safe_set_led(i, (50, 50, 50), store_logical=False)
 
     r = random.randint(0, 255)
     g = random.randint(0, 255)
@@ -3208,7 +3373,7 @@ def fire(dur):
             r1 = bnd(r - f, 0, 255)
             g1 = bnd(g - f, 0, 255)
             b1 = bnd(b - f, 0, 255)
-            led[i] = (r1, g1, b1)
+            safe_set_led(i, (r1, g1, b1), store_logical=False)
             led.show()
         time.sleep(random.uniform(0.05, 0.1))
 
@@ -3237,19 +3402,18 @@ def multi_color():
         else:
             r1, g1, b1 = 0, 0, b
 
-        led[i] = (r1, g1, b1)
+        safe_set_led(i, (r1, g1, b1), store_logical=False)
 
     for i in stars:
         if i in only_lights_set:
-            led[i] = (255, 255, 255)
-
+            safe_set_led(i, (255, 255, 255), store_logical=False)
     for i in brnchs:
         if i in only_lights_set:
-            led[i] = (7, 163, 30)
+            safe_set_led(i, (7, 163, 30), store_logical=False)
 
     for i in cane_e:
         if i in only_lights_set:
-            led[i] = (255, 255, 255)
+            safe_set_led(i, (255, 255, 255), store_logical=False)
 
     led.show()
 
