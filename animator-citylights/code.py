@@ -968,9 +968,7 @@ def upd_l_str():
 
     load_pixel_scale_from_cfg()
 
-    print("only_lights min/max:", min(only_lights), max(only_lights))
     print("n_px:", n_px, "only_lights count:", len(only_lights))
-    print("bad only_lights:", [i for i in only_lights if i < 0 or i >= n_px])
 
     l_tst()
 
@@ -983,6 +981,7 @@ upd_l_str()
 # Per-allowed-pixel brightness (software brightness, NOT led.brightness)
 
 neo_brightness = 1.0  # 0.0 .. 1.0
+br = 100
 
 # Shadow buffer of "logical" (unscaled) colors for allowed pixels only
 # key: pixel index, value: (r,g,b) UNBRIGHTENED (0..255)
@@ -1057,9 +1056,6 @@ def refresh_allowed_leds():
         if i in logical_led:
             led[i] = apply_brightness(i, logical_led[i], neo_brightness)
     led.show()
-
-
-br = 0
 
 
 def is_neo(number, nested_array):
@@ -2727,14 +2723,10 @@ def run_check_switches_thread():
 
 
 def rst_an(file_name=media_folder + 'pictures/black.jpg'):
-    global current_media_playing, exit_set_hdw, neo_brightness
+    global current_media_playing, exit_set_hdw
     exit_set_hdw = True
     stop_all_media()
     hide_terminal()
-    neo_brightness = 1.0
-    refresh_allowed_leds()
-    led.fill((0, 0, 0))
-    led.show()
     time.sleep(0.5)
     exit_set_hdw = False
     set_hdw(cfg["reset_hdw"], 0, "")
@@ -2891,8 +2883,6 @@ def an_light(f_nm):
                 check_thread.join()  # Wait for the thread to finish
                 change_wallpaper(media_folder + 'pictures/black.jpg')
                 hide_terminal()
-                led.fill((0, 0, 0))
-                led.show()
                 current_media_playing = ""
                 running_mode = ""
                 return "DONE"
