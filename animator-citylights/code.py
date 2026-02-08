@@ -1320,7 +1320,7 @@ def set_light_power(light_n, off_on):
 
 def scene_change(type, start, end, time=5, increments=100):
     """Handle a scene change by interpolating between two times and cycling RGB values."""
-    rgb_cycle = interpolate(type, start, end)
+    rgb_cycle = interpolate_rgb_cycle(type, start, end)
     cycle_rgb_values(type, rgb_cycle, time, increments)
 
 
@@ -1341,7 +1341,7 @@ def interpolate_color(start_color, end_color, steps):
     return interpolated_colors
 
 
-def interpolate(type, start_key: str, end_key: str):
+def interpolate_rgb_cycle(type, start_key: str, end_key: str):
     """Interpolate between the start and end keys in the scene_changes dictionary."""
     try:
         if type == "lifx":
@@ -2342,7 +2342,7 @@ print("Linear values:", linear_values)
 print("Log values:", log_values)
 
 
-def interpolate(x, x_values, y_values):
+def interpolate_sound(x, x_values, y_values):
     # Ensure x is within the valid range of x_values
     if x <= x_values[0]:
         return y_values[0]
@@ -2360,14 +2360,14 @@ def interpolate(x, x_values, y_values):
 
 # Example: Interpolate for linear input of 0.75
 linear_input = 0.75
-log_output = interpolate(linear_input, linear_values, log_values)
+log_output = interpolate_sound(linear_input, linear_values, log_values)
 print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 
 
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    log_to_linear = int(interpolate(volume_0_1, log_values, linear_values)*100)
+    log_to_linear = int(interpolate_sound(volume_0_1, log_values, linear_values)*100)
     mix.set_volume(volume_0_1*0.7)
     mix_media.set_volume(volume_0_1*0.7)
     media_player.audio_set_volume(log_to_linear)
