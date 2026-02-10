@@ -1289,16 +1289,18 @@ def set_all_lights_parallel(r, g, b):
             future.result()  # Wait for all threads to complete
 
 
-def set_light_color(light_n, r, g, b):
-    if cfg["lifx_enabled"] == "false":
+def set_light_color(light_n, r, g, b, brightness01=1.0, duration_s=0.0):
+    if cfg.get("lifx_enabled") in (False, "false", "False", 0, "0", None):
         return
-    """Set color for a specific light or all lights."""
+
+    dur_ms = int(max(0.0, float(duration_s)) * 1000)
+    hsbk = rgb_to_hsbk(r, g, b, brightness01=brightness01)
+
     if light_n == -1:
-        lifx.set_color_all_lights(rgb_to_hsbk(r, g, b), 0, True)
-        # set_all_lights_parallel(r, g, b)
+        lifx.set_color_all_lights(hsbk, dur_ms, True)
     else:
-        # Set color for a specific light
-        devices[light_n].set_color(rgb_to_hsbk(r, g, b), 0, True)
+        devices[light_n].set_color(hsbk, dur_ms, True)
+
 
 
 def set_light_power(light_n, off_on):
@@ -1322,6 +1324,37 @@ def scene_change(type, start, end, time=5, increments=100):
     """Handle a scene change by interpolating between two times and cycling RGB values."""
     rgb_cycle = interpolate_rgb_cycle(type, start, end)
     cycle_rgb_values(type, rgb_cycle, time, increments)
+
+def scene_change_smooth(
+    start_key: str,
+    end_key: str,
+    fade_s: float = 30.0,
+    wait_s: float = 0.0,
+):
+    """
+    Smooth LIFX scene transitions using keyframes.
+    Each keyframe is [r,g,b,br_pct]. We rely on LIFX firmware fade.
+    """
+
+    rgb_cycle = interpolate_rgb_cycle("lifx", start_key, end_key)
+    if not rgb_cycle or len(rgb_cycle) < 2:
+        return
+
+    # Snap to first keyframe instantly
+    r0, g0, b0, br0 = rgb_cycle[0]
+    set_light_color(-1, r0, g0, b0, brightness01=br0 / 100.0, duration_s=0.0)
+
+    # Fade through remaining keyframes
+    for i in range(1, len(rgb_cycle)):
+        r, g, b, br = rgb_cycle[i]
+        set_light_color(-1, r, g, b, brightness01=br / 100.0, duration_s=fade_s)
+
+        time.sleep(fade_s)
+
+        if wait_s > 0:
+            time.sleep(wait_s)
+
+
 
 
 def interpolate_color(start_color, end_color, steps):
@@ -1384,27 +1417,27 @@ def interpolate_rgb_cycle(type, start_key: str, end_key: str):
     return interpolated_values
 
 
-def rgb_to_hsbk(r, g, b, brightness_multiplier=1.0):
+def rgb_to_hsbk(r, g, b, brightness01=1.0, kelvin=3500):
     import colorsys
 
-    # Normalize RGB values to the range 0-1
-    r, g, b = r / 255.0, g / 255.0, b / 255.0
+    # Normalize RGB
+    r_n, g_n, b_n = r / 255.0, g / 255.0, b / 255.0
 
-    # Convert RGB to HSB (Hue, Saturation, Brightness)
-    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    # Hue/Sat from color only
+    h, s, _ = colorsys.rgb_to_hsv(r_n, g_n, b_n)
 
-    # Scale brightness with multiplier
-    v = max(0, min(1, v * brightness_multiplier))  # Clamp between 0 and 1
+    # Clamp brightness
+    if brightness01 < 0.0:
+        brightness01 = 0.0
+    elif brightness01 > 1.0:
+        brightness01 = 1.0
 
-    # Convert HSB to LIFX HSBK
-    hue = int(h * 65535)          # Hue in range 0-65535
-    saturation = int(s * 65535)    # Saturation in range 0-65535
-    brightness = int(v * 65535)    # Brightness in range 0-65535
+    hue = int(h * 65535)
+    sat = int(s * 65535)
+    bri = int(brightness01 * 65535)
 
-    # Fixed Kelvin value (can adjust for white balance)
-    kelvin = 3500
+    return [hue, sat, bri, kelvin]
 
-    return [hue, saturation, brightness, kelvin]
 
 
 def cycle_rgb_values(type, rgb_values, transition_time=2, steps=100):
@@ -2154,13 +2187,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def lights_scene_post(self, rq_d):
         global current_scene, exit_set_hdw
         current_scene = rq_d["an"]
-        rgb_value = cfg["scene_changes"][current_scene]
+        rgba = cfg["scene_changes"][current_scene]  # [r,g,b,br]
+        command = "LX0_" + str(rgba[0]) + "_" + str(rgba[1]) + "_" + str(rgba[2]) + "_" + str(rgba[3])
         exit_set_hdw = False
-        command = "LX0_" + str(rgb_value[0]) + "_" + \
-            str(rgb_value[1]) + "_" + str(rgb_value[2])
         add_command_to_ts(command)
         set_hdw(command, 0, "")
-        response = rgb_value
+        response = rgba
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2171,13 +2203,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         global current_neo, current_scene, exit_set_hdw
         exit_set_hdw = False
         if rq_d["item"] == "lifx":
-            command = "LX0_" + str(rq_d["r"]) + "_" + \
-                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            br = int(rq_d.get("br", 100))  # default if UI doesn’t send it yet
+            command = "LX0_" + str(rq_d["r"]) + "_" + str(rq_d["g"]) + "_" + str(rq_d["b"]) + "_" + str(br)
             add_command_to_ts(command)
             set_hdw(command, 0, "")
             if current_scene != "":
-                cfg["scene_changes"][current_scene] = [
-                    rq_d["r"], rq_d["g"], rq_d["b"]]
+                cfg["scene_changes"][current_scene] = [rq_d["r"], rq_d["g"], rq_d["b"], br]
         elif rq_d["item"] == "neo":
             command = "LN0_" + str(rq_d["r"]) + "_" + \
                 str(rq_d["g"]) + "_" + str(rq_d["b"])
@@ -3032,11 +3063,19 @@ def set_hdw(cmd, dur, url=""):
             # lights LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LX':
                 segs_split = seg.split("_")
-                light_n = int(segs_split[0][2:])-1
+                light_n = int(segs_split[0][2:]) - 1
+
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
-                set_light_color(light_n, r, g, b)
+
+                # NEW: optional brightness + optional fade seconds
+                br_pct = int(segs_split[4]) if len(segs_split) > 4 else 100
+                fade_s = float(segs_split[5]) if len(segs_split) > 5 else 0.0
+
+                brightness01 = max(0.0, min(1.0, br_pct / 100.0))
+                set_light_color(light_n, r, g, b, brightness01=brightness01, duration_s=fade_s)
+
             # lights LPZZZ_YYY = Lifx lights ZZZ (0 All, 1 to 999) YYY power ON or OFF
             elif seg[:2] == 'LP':
                 segs_split = seg.split("_")
@@ -3128,10 +3167,10 @@ def set_hdw(cmd, dur, url=""):
             # ZCOLCH = Color change
             elif seg[0:] == 'ZCOLCH':
                 random_effect(2, 2, dur)
-            # ZL_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments
+            # ZL_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), fade, wait
             elif seg[:2] == 'ZL':
                 segs_split = seg[3:].split("_")
-                scene_change("lifx", segs_split[0], segs_split[1],
+                scene_change_smooth(segs_split[0], segs_split[1],
                              float(segs_split[2]), int(segs_split[3]))
             # ZN_S_E_T_I = Scene change S start E end using (red,green,....), time, increments
             elif seg[:2] == 'ZN':

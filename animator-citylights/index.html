@@ -36,6 +36,56 @@
         .bottom-gap {
             height: 100px;
         }
+
+        /* MUI-like slider styling */
+        .mui-slider-wrap {
+            margin-top: 12px;
+            margin-bottom: 12px;
+        }
+
+        .mui-slider-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .mui-slider-label-row .mui--text-caption {
+            opacity: 0.8;
+        }
+
+        input[type="range"].mui-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: #e0e0e0;
+            outline: none;
+        }
+
+        input[type="range"].mui-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #1976d2;
+            /* MUI primary-ish */
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            margin-top: -6px;
+        }
+
+        input[type="range"].mui-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #1976d2;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
     </style>
 </head>
 
@@ -211,12 +261,12 @@
             </div>
             <h2>City diorama:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="NM2_1_255,NM2_2_255,NM2_3_255" data-url="/lights"
-                    type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM2_1_255,NM2_2_255,NM2_3_255"
+                    data-url="/lights" type="button">
                     Street lights on
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="NM2_1_0,NM2_2_0,NM2_3_0" data-url="/lights"
-                    type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM2_1_0,NM2_2_0,NM2_3_0"
+                    data-url="/lights" type="button">
                     Street lights off
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_0_255" data-url="/lights"
@@ -227,8 +277,8 @@
                     type="button">
                     Buildings off
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="NM2_4_255,NM2_6_255" data-url="/lights"
-                    type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM2_4_255,NM2_6_255"
+                    data-url="/lights" type="button">
                     Cars on
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="NM2_4_0,NM2_6_0" data-url="/lights"
@@ -333,6 +383,11 @@
                         data-url="/defaults" type="button">
                         Reset scene colors to defaults
                     </button>
+                </div>
+                <div class="mui-textfield" style="margin-top: 10px;">
+                    <label for="lifxBrightnessSlider">Brightness: <span id="lifxBrightnessValue">100</span>%</label>
+                    <input id="lifxBrightnessSlider" type="range" min="0" max="100" value="100" class="mui-slider"
+                        style="width:100%;">
                 </div>
                 <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
             </div>
@@ -563,7 +618,8 @@
                 between
                 transitions in decimal seconds
             </div>
-            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index</div>
+            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based
+                pixel index</div>
             <div>SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
             <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
@@ -1226,69 +1282,74 @@
 
         instructions = instructions.slice(0, -2);
 
-        neoInstructionsContainer.innerHTML = 'ZN_S_E_T_I = Neopixel scene change S start E end using(' + instructions + '), time, increments';
+        neoInstructionsContainer.innerHTML = 'ZN_S_E_T_I = Neopixel scene change S start E end using(' + instructions + '), fade, wait';
     }
-
 
     function setSceneChangeButtons(my_data) {
         // Clear the existing buttons (if needed)
         const sceneButtonContainer = document.getElementById("sceneButtonContainer");
         sceneButtonContainer.innerHTML = '';
 
-        // Clear the existing buttons (if needed)
+        // Clear the existing instructions (if needed)
         const sceneInstructionsContainer = document.getElementById("sceneInstructionsContainer");
         sceneInstructionsContainer.innerHTML = '';
 
-        instructions = ""
+        let instructions = "";
 
         // Loop through scene in my_data
         Object.keys(my_data).forEach((scene) => {
-            // Create and add a button for the scene and add to the instructions string
-            instructions += scene + ", "
+            instructions += scene + ", ";
+
             const sceneButton = document.createElement("button");
             sceneButton.textContent = scene;
             sceneButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
             sceneButton.setAttribute("data-value", scene);
             sceneButton.setAttribute("data-url", "/lights-scene");
             sceneButton.setAttribute("type", "button");
-            sceneButton.addEventListener('click', function () {
-                var url = sceneButton.getAttribute('data-url');
-                var animation = sceneButton.getAttribute('data-value');
-                var redirectUrl = sceneButton.getAttribute('data-redirect');
 
-                // Create an object with the data to be sent in the request
-                var data = {
-                    an: animation,
-                };
+            sceneButton.addEventListener('click', function () {
+                const url = sceneButton.getAttribute('data-url');
+                const animation = sceneButton.getAttribute('data-value');
+
+                // Remember which scene is "selected" so slider/picker edits update that scene
+                currentLifxSceneKey = animation;
+
+                const data = { an: animation };
 
                 sceneButton.setAttribute('disabled', 'true');
 
-                // Make a POST request using fetch
                 fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),
                 })
                     .then(response => response.json())
-                    .then(data => {
-                        colorPickerLifx.value = rgbToHex(data[0], data[1], data[2]);
+                    .then(resp => {
+                        // Server should return: [r,g,b,brightness] (brightness 0..100)
+                        // If it returns only [r,g,b], we default brightness to 100.
+                        const r = resp[0];
+                        const g = resp[1];
+                        const b = resp[2];
+                        const br = (resp.length >= 4 && resp[3] != null) ? resp[3] : 100;
+
+                        // Update UI (picker + slider)
+                        colorPickerLifx.value = rgbToHex(r, g, b);
+                        setLifxBrightnessUI(br);   // <-- THIS is what makes the slider update
+
                         sceneButton.removeAttribute('disabled');
                     })
                     .catch(error => {
                         sceneButton.removeAttribute('disabled');
-                        console.error('Error fetching default color:', error);
+                        console.error('Error fetching default color/brightness:', error);
                     });
             });
 
-            // Append the topic button to the topic button container
             sceneButtonContainer.appendChild(sceneButton);
         });
 
         instructions = instructions.slice(0, -2);
-
-        sceneInstructionsContainer.innerHTML = 'ZL_S_E_T_I = Lifx scene change S start E end using(' + instructions + '), time, increments';
+        sceneInstructionsContainer.innerHTML =
+            'ZL_S_E_T_I = Lifx scene change S start E end using(' + instructions + '), fade, wait';
     }
 
     // Get all buttons with the 'animator-action' class
@@ -2641,25 +2702,27 @@
 
     const colorPickerLifx = document.getElementById('colorPickerLifx');
     colorPickerLifx.addEventListener('input', function () {
-        const color = colorPickerLifx.value;
-        const rgb = hexToRgb(color);
-        // Send RGB values to the server only if no request is in progress
+        const rgb = hexToRgb(colorPickerLifx.value);
+
         if (!isRequestInProgress) {
             isRequestInProgress = true;
+            // sends RGB + current brightness + (if available) currentLifxSceneKey
             sendRGBValues("lifx", rgb.r, rgb.g, rgb.b);
         }
     });
 
+    // (Neo doesn't use the lifx scene key, but we still send brightness so server can choose to ignore or use it.)
     const colorPickerNeo = document.getElementById('colorPickerNeo');
     colorPickerNeo.addEventListener('input', function () {
-        const color = colorPickerNeo.value;
-        const rgb = hexToRgb(color);
-        // Send RGB values to the server only if no request is in progress
+        const rgb = hexToRgb(colorPickerNeo.value);
+
         if (!isRequestInProgress) {
             isRequestInProgress = true;
+            // sends RGB + brightness (server may ignore for neo if not supported)
             sendRGBValues("neo", rgb.r, rgb.g, rgb.b);
         }
     });
+
 
     // Add click event listener to file input button
     document.getElementById('fileInput').addEventListener('change', function () {
@@ -2718,35 +2781,70 @@
         return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase()}`;
     }
 
+    let currentLifxSceneKey = null; // set when a scene button is clicked
+    let lifxBrightness = 100;        // 0..100
+
+    const lifxBrightnessSlider = document.getElementById('lifxBrightnessSlider');
+    const lifxBrightnessValue = document.getElementById('lifxBrightnessValue');
+
+    function setLifxBrightnessUI(val) {
+        val = Math.max(0, Math.min(100, parseInt(val ?? 100, 10)));
+        lifxBrightness = val;
+        lifxBrightnessSlider.value = String(val);
+        lifxBrightnessValue.textContent = String(val);
+    }
+
+    // Send brightness changes (also resend the current RGB so server gets both together)
+    lifxBrightnessSlider.addEventListener('input', function () {
+        const val = parseInt(lifxBrightnessSlider.value, 10);
+        setLifxBrightnessUI(val);
+
+        // Grab current RGB from the picker and send both RGB+brightness
+        const rgb = hexToRgb(colorPickerLifx.value);
+
+        if (!isRequestInProgress) {
+            isRequestInProgress = true;
+            sendRGBValues("lifx", rgb.r, rgb.g, rgb.b);
+        }
+    });
+
     function sendRGBValues(item, r, g, b) {
-        console.log(r)
-        console.log(g)
-        console.log(b)
         const endpoint = "/set-item-lights";
-        const data = {
+
+        // Always include brightness (0..100)
+        const bri = (typeof lifxBrightness !== "undefined" && lifxBrightness != null)
+            ? parseInt(lifxBrightness, 10)
+            : 100;
+
+        const payload = {
             item: item,
             r: r,
             g: g,
-            b: b
+            b: b,
+            brightness: bri
         };
+
+        // If this is lifx, also include which scene key we're editing (so server can store it)
+        if (item === "lifx") {
+            payload.scene = currentLifxSceneKey; // can be null if user hasn't clicked a scene button yet
+        }
 
         fetch(endpoint, {
             method: 'POST',
-            body: JSON.stringify(data),
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            body: JSON.stringify(payload),
+            headers: { 'Content-Type': 'application/json' }
         })
             .then(response => response.text())
             .then(data => {
-                console.log(data)
-                isRequestInProgress = false; // Reset the flag after the request is completed
+                console.log(data);
+                isRequestInProgress = false;
             })
             .catch(error => {
-                console.error('Error:', error)
-                isRequestInProgress = false; // Reset the flag in case of save-animation-data error
+                console.error('Error:', error);
+                isRequestInProgress = false;
             });
     }
+
 
     // Function to enable or disable elements in lifxDiv
     function toggleLifxDiv() {
