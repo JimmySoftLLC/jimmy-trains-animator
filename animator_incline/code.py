@@ -1701,7 +1701,7 @@ async def set_hdw_async(cmd, dur=3):
                     car_pos = vl53.distance
                 elif seg[:2] == 'CE':
                     car_pos = encoder.position / cal_factor + home_car_pos
-        # lights LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start (1 to 999), EEE end (1 to 999), RGB 0 to 255
+        # lights range LNR_SSS_EEE_R_G_B = Neo pixel lights SSS start, EEE end (0 All, 1-4 upper house, 5-8 lower house, 9-10 cars, track 11-52 + 14 * track sections over 3), RGB 0 to 255
         elif seg[:3] == 'LNR':
             seg_split = seg.split("_")
             start = int(seg_split[1]) - 1
@@ -1710,7 +1710,7 @@ async def set_hdw_async(cmd, dur=3):
             g = int(seg_split[4])
             b = int(seg_split[5])
             set_neo_range(start, end, r, g, b)
-        # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+        # LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1-4 upper house, 5-8 lower house, 9-10 cars, track 11-52 + 14 * track sections over 3) RGB 0 to 255
         elif seg[:2] == 'LN':
             seg_split = seg.split("_")
             light_n = int(seg_split[0][2:])-1
