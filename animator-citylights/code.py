@@ -1239,24 +1239,46 @@ devices = []
 lifx = {}
 
 
-def discover_lights():
-    if web == False:
+def discover_lights(max_attempts=4, delay_s=0.75, known_count=None):
+    if web is False:
         return False
-    if cfg["lifx_enabled"] == False:
+    if cfg.get("lifx_enabled") is False:
         return
+
     global devices, lifx
+
     play_mix(code_folder + "mvc/" + "discovering_lifx_lights" + ".wav")
-    lifx = LifxLAN()
 
-    # Discover LIFX devices on the local network
-    devices = lifx.get_devices()
+    # If you know how many bulbs you expect, this can speed discovery
+    # (per lifxlan README). Otherwise leave it None.
+    lifx = LifxLAN(known_count) if known_count else LifxLAN()
 
-    # Report the count of discovered devices
+    last_exc = None
+    devices = []
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            found = lifx.get_devices()  # UDP discovery
+            if found:
+                devices = found
+                break
+        except Exception as e:
+            last_exc = e
+
+        # brief backoff before retry
+        time.sleep(delay_s)
+
     device_count = len(devices)
+
     spk_str(str(device_count), False)
     play_mix(code_folder + "mvc/" + "lifx_lights_found" + ".wav")
-
     print(f"Discovered {device_count} device(s).")
+
+    if device_count == 0 and last_exc:
+        print(f"LIFX discovery exception (last): {last_exc!r}")
+
+    return devices
+
 
     # lifx.set_power_all_lights("on")
 
