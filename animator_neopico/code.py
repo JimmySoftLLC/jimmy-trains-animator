@@ -35,10 +35,9 @@ import os
 from adafruit_motor import servo
 import pwmio
 
-# ADDED (decoder)
+# used for the neo decoder
 import pulseio
 import digitalio
-
 
 def gc_col(collection_point):
     gc.collect()
@@ -409,11 +408,6 @@ s_arr = [s_1, s_2]
 #   etc.
 # If any channel returns 0 → skip the whole capture (digits = None)
 ################################################################################
-
-import asyncio
-import time
-import digitalio
-import pulseio
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^"
 assert len(ALPHABET) == 49
