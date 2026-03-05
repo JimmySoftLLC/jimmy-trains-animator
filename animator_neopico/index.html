@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - City Lights CLHV-6</title>
+    <title>Animator - Neo Pico</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
@@ -12,9 +12,9 @@
 <body>
     <div id="modalEl"></div>
     <div class="mui-container">
-        <h1>Animator - City Lights CLHV-6</h1>
+        <h1>Animator - Neo Pico</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your Animator - City Lights CLHV-6
+            Use this web app to control and setup your Animator - Neo Pico
             product. Have fun animating.
         </p>
         <ul class="mui-tabs__bar">
@@ -174,7 +174,47 @@
                 type="button">
                 Reset to defaults
             </button>
-
+            <h2>WiFi RSSI Signal</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary" onclick="getWifiSignal()" type="button">Get</button>
+                <input class="input" id="wifiSignal" type="number" disabled>
+            </div>
+            <table class="mui-table">
+                <thead>
+                    <tr>
+                        <th>RSSI Range (dBm)</th>
+                        <th>Quality</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="excellent">
+                        <td>-30 to -50</td>
+                        <td>Excellent</td>
+                        <td>Very strong signal rock-solid connection</td>
+                    </tr>
+                    <tr class="good">
+                        <td>-50 to -65</td>
+                        <td>Good</td>
+                        <td>Strong & reliable for most uses</td>
+                    </tr>
+                    <tr class="fair">
+                        <td>-65 to -75</td>
+                        <td>Fair / Weak</td>
+                        <td>Marginal occasional retries</td>
+                    </tr>
+                    <tr class="poor">
+                        <td>Below -75 to -85</td>
+                        <td>Poor</td>
+                        <td>Weak frequent dropouts, timeouts, retransmissions likely</td>
+                    </tr>
+                    <tr class="unusable">
+                        <td>Below -90</td>
+                        <td>Basically unusable</td>
+                        <td>Very poor connection often fails completely</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
@@ -212,8 +252,7 @@
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop"
-                    type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop" type="button">
                     Stop
                 </button>
                 <table id="dataTable" class="mui-table">
@@ -389,6 +428,25 @@
 
         // Show modal
         mui.overlay('on', modalEl);
+    }
+
+    function getWifiSignal() {
+        fetch('/get-wifi-signal', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                wifiSignal.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
     }
 
 

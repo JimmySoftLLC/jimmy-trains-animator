@@ -63,6 +63,35 @@ def rst():
 gc_col("Imports gc, files")
 
 ################################################################################
+# pin setups prototype
+
+# prototype unit
+# neo_branch_pin = board.GP6
+# led_indicator_pin = board.GP14
+
+# s_1_pin = board.GP8
+# s_2_pin = board.GP9
+
+# red_pin = board.GP3
+# green_pin = board.GP2
+# blue_pin = board.GP4
+
+# animator pico board
+neo_branch_pin = board.GP16
+led_indicator_pin = board.GP17
+
+s_1_pin = board.GP10
+s_2_pin = board.GP11
+s_3_pin = board.GP12
+s_4_pin = board.GP13
+s_5_pin = board.GP14
+s_6_pin = board.GP22
+
+red_pin = board.GP6
+green_pin = board.GP8
+blue_pin = board.GP9
+
+################################################################################
 # Sd card config variables
 
 animators_folder = "/animations/"
@@ -77,9 +106,11 @@ exit_set_hdw_async = False
 
 gc_col("config setup")
 
+
 def upd_media():
     global animations
     animations = files.return_directory("", "animations", ".json")
+
 
 upd_media()
 
@@ -104,13 +135,13 @@ bolt_arr = []
 neo_arr = []
 
 n_px = 1  # keep non-zero so NeoPixel init doesn't choke before we rebuild
-neo_pixel_pin = board.GP6
-led = neopixel.NeoPixel(neo_pixel_pin, n_px)
-led.auto_write = False
-led.fill((0, 0, 20))
-led.show()
 
-led_indicator = neopixel.NeoPixel(board.GP14, 1)
+neo_branch = neopixel.NeoPixel(neo_branch_pin, n_px)
+neo_branch.auto_write = False
+neo_branch.fill((0, 0, 20))
+neo_branch.show()
+
+led_indicator = neopixel.NeoPixel(led_indicator_pin, 1)
 led_indicator.auto_write = False
 led_indicator.fill((0, 0, 20))
 led_indicator.show()
@@ -187,10 +218,10 @@ def bld_neo():
 
 
 def show_l():
-    led.show()
+    neo_branch.show()
     time.sleep(.05)
-    led.fill((0, 0, 0))
-    led.show()
+    neo_branch.fill((0, 0, 0))
+    neo_branch.show()
 
 
 def l_tst():
@@ -213,13 +244,13 @@ def l_tst():
     # cane test
     cnt = 0
     for i in cane_s:
-        led[i] = (50, 50, 50)
+        neo_branch[i] = (50, 50, 50)
         cnt += 1
         if cnt > 1:
             show_l()
             cnt = 0
     for i in cane_e:
-        led[i] = (50, 50, 50)
+        neo_branch[i] = (50, 50, 50)
         cnt += 1
         if cnt > 1:
             show_l()
@@ -228,19 +259,19 @@ def l_tst():
     # tree test
     cnt = 0
     for i in ornmnts:
-        led[i] = (50, 50, 50)
+        neo_branch[i] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
             show_l()
             cnt = 0
     for i in stars:
-        led[i] = (50, 50, 50)
+        neo_branch[i] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
             show_l()
             cnt = 0
     for i in brnchs:
-        led[i] = (50, 50, 50)
+        neo_branch[i] = (50, 50, 50)
         cnt += 1
         if cnt > 6:
             show_l()
@@ -249,48 +280,48 @@ def l_tst():
     # bar test
     for b in bars:
         for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
+            neo_branch[l] = (50, 50, 50)
+        neo_branch.show()
         time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
+        neo_branch.fill((0, 0, 0))
+        neo_branch.show()
 
     # bolt test
     for b in bolts:
         for l in b:
-            led[l] = (50, 50, 50)
-        led.show()
+            neo_branch[l] = (50, 50, 50)
+        neo_branch.show()
         time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
+        neo_branch.fill((0, 0, 0))
+        neo_branch.show()
 
     # nood test
     for n in noods:
-        led[n[0]] = (50, 50, 50)
-        led.show()
+        neo_branch[n[0]] = (50, 50, 50)
+        neo_branch.show()
         time.sleep(.3)
-        led.fill((0, 0, 0))
-        led.show()
+        neo_branch.fill((0, 0, 0))
+        neo_branch.show()
 
     # neo test
     for n in neos:
         for i in n:
-            led[i] = (0, 50, 0)
+            neo_branch[i] = (0, 50, 0)
             time.sleep(.3)
-            led.show()
-            led[i] = (50, 0, 0)
+            neo_branch.show()
+            neo_branch[i] = (50, 0, 0)
             time.sleep(.3)
-            led.show()
-            led[i] = (0, 0, 50)
+            neo_branch.show()
+            neo_branch[i] = (0, 0, 50)
             time.sleep(.3)
-            led.show()
+            neo_branch.show()
             time.sleep(.3)
-            led.fill((0, 0, 0))
-            led.show()
+            neo_branch.fill((0, 0, 0))
+            neo_branch.show()
 
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, n_px, led
+    global trees, canes, bars, bolts, noods, neos, n_px, neo_branch
     trees = []
     canes = []
     bars = []
@@ -338,12 +369,12 @@ def upd_l_str():
 
     print("Number of pixels total: ", n_px)
     try:
-        led.deinit()
+        neo_branch.deinit()
     except Exception:
         pass
-    led = neopixel.NeoPixel(neo_pixel_pin, n_px)
-    led.auto_write = False
-    led.brightness = 1.0
+    neo_branch = neopixel.NeoPixel(neo_branch_pin, n_px)
+    neo_branch.auto_write = False
+    neo_branch.brightness = 1.0
     l_tst()
 
 
@@ -353,10 +384,10 @@ gc_col("Neopixels setup")
 
 ################################################################################
 # Setup the servos
-s_1 = pwmio.PWMOut(board.GP8, duty_cycle=2 ** 15, frequency=50)
+s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
 s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
 
-s_2 = pwmio.PWMOut(board.GP9, duty_cycle=2 ** 15, frequency=50)
+s_2 = pwmio.PWMOut(s_2_pin, duty_cycle=2 ** 15, frequency=50)
 s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
 
 s_arr = [s_1, s_2]
@@ -364,11 +395,30 @@ s_arr = [s_1, s_2]
 ################################################################################
 # PWM RGB (base-4) decoder + mapping to queue
 # (This is separate from your main light-string NeoPixels)
+#
+# Digits returned by decoder:
+#   0     = invalid / no signal / too low / noisy / out of tolerance
+#   1     = closest to 20/255
+#   2     = closest to 40/255
+#   3     = closest to 60/255
+#   4     = closest to 80/255
+#
+# In _rgb_digits_to_char: subtract 1 from each digit so that
+#   (1,1,1) → index 0 → 'a'
+#   (2,2,2) → index 21 → 'v'
+#   etc.
+# If any channel returns 0 → skip the whole capture (digits = None)
+################################################################################
+
+import asyncio
+import time
+import digitalio
+import pulseio
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^"
 assert len(ALPHABET) == 49
 
-PINS = {"R": board.GP3, "G": board.GP2, "B": board.GP4}
+PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
 
 IDLE_STATE = False
 MAXLEN = 1200
@@ -376,21 +426,23 @@ MAXLEN = 1200
 CAPTURE_S = 0.02
 MIN_DURS = 40
 
-T01 = 0.2512
-T12 = 0.3293
-T23 = 0.4040
+# Centers for the four valid levels
+CENTERS = [20/255, 40/255, 60/255, 80/255]
+TOLERANCE = 10/255          # ±10/255 — tune based on real measured noise
+MIN_VALID_DUTY = 8/255      # below this → definitely invalid (0)
 
 ALPHA = 0.20
 WIN = 5
 MIN_MAJ = 5
-
 CONFIRM_COUNT = 3
+
 
 def _enable_pullup(pin):
     d = digitalio.DigitalInOut(pin)
     d.direction = digitalio.Direction.INPUT
     d.pull = digitalio.Pull.UP
     d.deinit()
+
 
 def _duty_raw_from_pulsein(pulses: pulseio.PulseIn):
     n = len(pulses)
@@ -415,20 +467,52 @@ def _duty_raw_from_pulsein(pulses: pulseio.PulseIn):
         return None
 
     duty_even = even_sum / total_sum
-    duty_odd  = odd_sum  / total_sum
+    duty_odd = odd_sum / total_sum
     return duty_even if duty_even <= duty_odd else duty_odd
 
+
 def _duty_to_digit(d):
-    if d < T01: return 0
-    if d < T12: return 1
-    if d < T23: return 2
-    return 3
+    """
+    Returns:
+      0 = invalid / no signal / too low / noisy / out of tolerance
+      1 = closest to 20/255
+      2 = closest to 40/255
+      3 = closest to 60/255
+      4 = closest to 80/255
+    """
+    if d < MIN_VALID_DUTY:
+        return 0
+
+    min_dist = float('inf')
+    best = 0  # default to invalid
+
+    for i, center in enumerate(CENTERS):
+        dist = abs(d - center)
+        if dist < min_dist:
+            min_dist = dist
+            best = i + 1   # 1,2,3,4
+
+    if min_dist <= TOLERANCE:
+        return best
+    else:
+        return 0
+
 
 def _rgb_digits_to_char(r, g, b):
-    idx = r * 16 + g * 4 + b
+    # Subtract 1 from each digit so (1,1,1) becomes index 0 → 'a'
+    r_adj = r - 1
+    g_adj = g - 1
+    b_adj = b - 1
+
+    if r_adj < 0 or g_adj < 0 or b_adj < 0:
+        return None
+
+    idx = r_adj * 16 + g_adj * 4 + b_adj
     if idx >= len(ALPHABET):
         return None
+
     return ALPHABET[idx]
+
 
 def _majority_tuple(buf):
     counts = {}
@@ -440,6 +524,7 @@ def _majority_tuple(buf):
         if n > best_n:
             best_t, best_n = t, n
     return best_t, best_n
+
 
 comm_latest = {"char": None, "digits": None, "votes": 0, "lat_ms": 0}
 comm_new_char_event = asyncio.Event()
@@ -481,6 +566,8 @@ async def decoder_task():
             if d is None:
                 digits = None
                 break
+            # else:
+            #     print("Ch:", ch, "Duty:", d)
 
             if filt[ch] is None:
                 filt[ch] = d
@@ -488,6 +575,10 @@ async def decoder_task():
                 filt[ch] = ALPHA * d + (1.0 - ALPHA) * filt[ch]
 
             digits[ch] = _duty_to_digit(filt[ch])
+
+            if digits[ch] == 0:
+                digits = None
+                break
 
         if digits is None:
             await asyncio.sleep(0)
@@ -541,6 +632,53 @@ async def decoder_task():
 
 ################################################################################
 # Setup wifi and web server
+
+
+def measure_signal_strength(MY_SSID, cycles):
+    print("Monitoring signal for:", MY_SSID)
+    print("Showing current RSSI + running average (simple sum + count)\n")
+
+    total_sum = 0.0      # running sum of all valid RSSI values
+    count = 0            # number of valid readings so far
+
+    while True:
+        current_rssi = None
+        found = False
+
+        try:
+            for network in wifi.radio.start_scanning_networks():
+                if network.ssid == MY_SSID:
+                    current_rssi = network.rssi
+                    print(
+                        f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
+                    found = True
+                    break
+
+            wifi.radio.stop_scanning_networks()
+
+            if found and current_rssi is not None:
+                # Update running total
+                total_sum += current_rssi
+                count += 1
+
+                # Calculate and show average
+                if count > 0:
+                    avg_rssi = total_sum / count
+                    print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
+                else:
+                    print("   |   Avg: waiting...")
+            else:
+                print(
+                    "   |   Could not see your SSID (hidden, out of range, or scan miss)")
+
+        except Exception as e:
+            print(f"Scan error: {e}")
+            wifi.radio.stop_scanning_networks()  # cleanup on error
+
+        time.sleep(0.1)  # your fast polling; increase to 1–5 if needed
+        if count > cycles:
+            return avg_rssi
+
 
 if web:
     import socketpool
@@ -726,7 +864,12 @@ if web:
         @server.route("/get-local-ip", [POST])
         def get_local_ip(request: Request):
             return Response(request, local_ip)
-
+        
+        @server.route("/get-wifi-signal", [POST])
+        def get_local_ip(request: Request):
+            avg_rssi = measure_signal_strength(WIFI_SSID, 10)
+            return Response(request, str(avg_rssi))
+        
         @server.route("/get-animations", [POST])
         def get_animations(request: Request):
             sounds = []
@@ -786,48 +929,6 @@ if web:
 
 gc_col("web server")
 
-def measure_signal_strength(MY_SSID, cycles):
-    print("Monitoring signal for:", MY_SSID)
-    print("Showing current RSSI + running average (simple sum + count)\n")
-
-    total_sum = 0.0      # running sum of all valid RSSI values
-    count = 0            # number of valid readings so far
-
-    while True:
-        current_rssi = None
-        found = False
-        
-        try:
-            for network in wifi.radio.start_scanning_networks():
-                if network.ssid == MY_SSID:
-                    current_rssi = network.rssi
-                    print(f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
-                    found = True
-                    break
-            
-            wifi.radio.stop_scanning_networks()
-            
-            if found and current_rssi is not None:
-                # Update running total
-                total_sum += current_rssi
-                count += 1
-                
-                # Calculate and show average
-                if count > 0:
-                    avg_rssi = total_sum / count
-                    print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
-                else:
-                    print("   |   Avg: waiting...")
-            else:
-                print("   |   Could not see your SSID (hidden, out of range, or scan miss)")
-        
-        except Exception as e:
-            print(f"Scan error: {e}")
-            wifi.radio.stop_scanning_networks()  # cleanup on error
-        
-        time.sleep(0.1)  # your fast polling; increase to 1–5 if needed
-        if count > cycles:
-            return avg_rssi
 
 cycles = 10
 avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
@@ -837,6 +938,7 @@ print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
 ################################################################################
 # Command queue
 command_queue = []
+
 
 def add_command(command, to_start=False):
     global exit_set_hdw_async
@@ -848,10 +950,11 @@ def add_command(command, to_start=False):
         command_queue.append(command)
         print("Command added to the end:", command)
 
+
 async def process_commands():
     while command_queue:
         cmd = command_queue.pop(0)
-        print("Processing command:", cmd) 
+        print("Processing command:", cmd)
         if cmd[:2] == 'AN':  # AN_XXX = Animation XXX filename
             cmd_split = cmd.split("_")
             clr_cmd_queue()
@@ -860,9 +963,11 @@ async def process_commands():
             await set_hdw_async(cmd)
         await asyncio.sleep(0)
 
+
 def clr_cmd_queue():
     command_queue.clear()
     print("Command queue cleared.")
+
 
 def stop_all_commands():
     global exit_set_hdw_async
@@ -891,6 +996,7 @@ async def an_async(f_nm):
     except Exception as e:
         files.log_item(e)
     gc_col("Animation complete.")
+
 
 async def an_light_async(f_nm):
     flsh_t = []
@@ -946,6 +1052,7 @@ async def an_light_async(f_nm):
 ##############################
 # animation effects
 
+
 async def random_effect(il, ih, d):
     i = random.randint(il, ih)
     if i == 1:
@@ -955,6 +1062,7 @@ async def random_effect(il, ih, d):
         await asyncio.sleep(d)
     elif i == 3:
         await fire(d)
+
 
 async def rbow(spd, dur):
     global exit_set_hdw_async
@@ -966,8 +1074,8 @@ async def rbow(spd, dur):
                 return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
-            led.show()
+                neo_branch[i] = colorwheel(pixel_index & 255)
+            neo_branch.show()
             await asyncio.sleep(spd)
             te = time.monotonic() - st
             if te > dur:
@@ -977,12 +1085,13 @@ async def rbow(spd, dur):
                 return
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
-            led.show()
+                neo_branch[i] = colorwheel(pixel_index & 255)
+            neo_branch.show()
             await asyncio.sleep(spd)
             te = time.monotonic() - st
             if te > dur:
                 return
+
 
 async def fire(dur):
     global exit_set_hdw_async
@@ -997,13 +1106,13 @@ async def fire(dur):
     stari.extend(stars)
 
     for i in stari:
-        led[i] = (255, 255, 255)
+        neo_branch[i] = (255, 255, 255)
 
     brnchsi = []
     brnchsi.extend(brnchs)
 
     for i in brnchsi:
-        led[i] = (50, 50, 50)
+        neo_branch[i] = (50, 50, 50)
 
     r = random.randint(0, 255)
     g = random.randint(0, 255)
@@ -1017,12 +1126,13 @@ async def fire(dur):
             r1 = bnd(r - f, 0, 255)
             g1 = bnd(g - f, 0, 255)
             b1 = bnd(b - f, 0, 255)
-            led[i] = (r1, g1, b1)
-            led.show()
+            neo_branch[i] = (r1, g1, b1)
+            neo_branch.show()
         await asyncio.sleep(random.uniform(0.05, 0.1))
         te = time.monotonic() - st
         if te > dur:
             return
+
 
 def multi_color():
     for i in range(0, n_px):
@@ -1042,18 +1152,19 @@ def multi_color():
             r1 = 0
             g1 = 0
             b1 = b
-        led[i] = (r1, g1, b1)
+        neo_branch[i] = (r1, g1, b1)
 
     for i in stars:
-        led[i] = (255, 255, 255)
+        neo_branch[i] = (255, 255, 255)
 
     for i in brnchs:
-        led[i] = (7, 163, 30)
+        neo_branch[i] = (7, 163, 30)
 
     for i in cane_e:
-        led[i] = (255, 255, 255)
+        neo_branch[i] = (255, 255, 255)
 
-    led.show()
+    neo_branch.show()
+
 
 def bnd(c, l, u):
     if c < l:
@@ -1065,6 +1176,7 @@ def bnd(c, l, u):
 
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
+
 
 async def set_hdw_async(input_string, dur=0):
     global sp, br, exit_set_hdw_async
@@ -1112,8 +1224,8 @@ async def set_hdw_async(input_string, dur=0):
                 set_neo_module_to(mod_n, index, v)
             elif seg[0:2] == 'BN':
                 br = int(seg[2:])
-                led.brightness = float(br / 100)
-                led.show()
+                neo_branch.brightness = float(br / 100)
+                neo_branch.show()
             elif seg[0] == 'F':
                 segs_split = seg.split("_")
                 v = int(segs_split[0][1:])
@@ -1123,8 +1235,8 @@ async def set_hdw_async(input_string, dur=0):
                         br += 1
                     else:
                         br -= 1
-                    led.brightness = float(br / 100)
-                    led.show()
+                    neo_branch.brightness = float(br / 100)
+                    neo_branch.show()
                     await asyncio.sleep(s)
             elif seg[0:] == 'ZRAND':
                 await random_effect(1, 3, dur)
@@ -1151,22 +1263,25 @@ async def set_hdw_async(input_string, dur=0):
     except Exception as e:
         files.log_item(e)
 
+
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
+
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
         for i in range(n_px):
             if is_neo(i, neos):
-                led[i] = (g, r, b)
+                neo_branch[i] = (g, r, b)
             else:
-                led[i] = (r, g, b)
+                neo_branch[i] = (r, g, b)
     else:
         if is_neo(light_n, neos):
-            led[light_n] = (g, r, b)
+            neo_branch[light_n] = (g, r, b)
         else:
-            led[light_n] = (r, g, b)
-    led.show()
+            neo_branch[light_n] = (r, g, b)
+    neo_branch.show()
+
 
 def get_neo_ids():
     matches = []
@@ -1175,37 +1290,38 @@ def get_neo_ids():
             matches.append(num)
     return matches
 
+
 def set_neo_module_to(mod_n, ind, v):
     cur = []
     neo_ids = get_neo_ids()
     print(mod_n, ind, v, neo_ids)
     if mod_n == 0:
         for i in neo_ids:
-            led[i] = (v, v, v)
-            led[i + 1] = (v, v, v)
+            neo_branch[i] = (v, v, v)
+            neo_branch[i + 1] = (v, v, v)
     elif ind == 0:
-        led[neo_ids[mod_n - 1]] = (v, v, v)
-        led[neo_ids[mod_n - 1] + 1] = (v, v, v)
+        neo_branch[neo_ids[mod_n - 1]] = (v, v, v)
+        neo_branch[neo_ids[mod_n - 1] + 1] = (v, v, v)
     elif ind < 4:
         ind -= 1
         if ind == 0:
             ind = 1
         elif ind == 1:
             ind = 0
-        cur = list(led[neo_ids[mod_n - 1]])
+        cur = list(neo_branch[neo_ids[mod_n - 1]])
         cur[ind] = v
-        led[neo_ids[mod_n - 1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n - 1]])
+        neo_branch[neo_ids[mod_n - 1]] = (cur[0], cur[1], cur[2])
+        print(neo_branch[neo_ids[mod_n - 1]])
     else:
         ind -= 1
         if ind == 3:
             ind = 4
         elif ind == 4:
             ind = 3
-        cur = list(led[neo_ids[mod_n - 1] + 1])
+        cur = list(neo_branch[neo_ids[mod_n - 1] + 1])
         cur[ind - 3] = v
-        led[neo_ids[mod_n - 1] + 1] = (cur[0], cur[1], cur[2])
-    led.show()
+        neo_branch[neo_ids[mod_n - 1] + 1] = (cur[0], cur[1], cur[2])
+    neo_branch.show()
 
 
 ################################################################################
@@ -1216,6 +1332,7 @@ CHAR_TO_HDW = {
     "^": "UPDLS",   # example
     "!": ""
 }
+
 
 async def consumer_task():
     while True:
@@ -1268,6 +1385,7 @@ gc_col("animations started.")
 ################################################################################
 # Main task handling
 
+
 async def process_commands_task():
     while True:
         try:
@@ -1275,6 +1393,7 @@ async def process_commands_task():
         except Exception as e:
             files.log_item(e)
         await asyncio.sleep(0)
+
 
 async def server_poll_task(server):
     while True:
@@ -1284,10 +1403,12 @@ async def server_poll_task(server):
             files.log_item(e)
         await asyncio.sleep(0)
 
+
 async def garbage_collection_task():
     while True:
         gc.collect()
         await asyncio.sleep(10)
+
 
 async def main():
     tasks = [
