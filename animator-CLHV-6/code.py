@@ -74,10 +74,12 @@ exit_set_hdw_async = False
 
 gc_col("config setup")
 
+
 def upd_media():
     global animations
 
     animations = files.return_directory("", "animations", ".json")
+
 
 upd_media()
 
@@ -103,10 +105,11 @@ neo_arr = []
 
 n_px = 0
 
-#15 on demo 17 tiny 10 on large, GP11 on clhv-6
+# 15 on demo 17 tiny 10 on large, GP11 on clhv-6
 neo_pixel_pin = board.GP15
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
+
 
 def bld_tree(p):
     i = []
@@ -183,6 +186,7 @@ def show_l():
     time.sleep(.05)
     led.fill((0, 0, 0))
     led.show()
+
 
 def l_tst():
     global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
@@ -430,7 +434,7 @@ if (web):
                 rst_def()
                 files.write_json_file("cfg.json", cfg)
             return Response(request, "Utility: " + rq_d["an"])
-        
+
         @server.route("/stop", [POST])
         def btn(request: Request):
             stop_all_commands()
@@ -443,12 +447,13 @@ if (web):
             """Handle lights route synchronously but process async operation in background."""
             try:
                 rq_d = request.json()  # Parse the incoming JSON
-                asyncio.create_task(set_hdw_async(rq_d["an"],0))  # Schedule the async task
+                # Schedule the async task
+                asyncio.create_task(set_hdw_async(rq_d["an"], 0))
                 return Response(request, "Utility: set lights successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.")
-            
+
         @server.route("/create-animation", [POST])
         def btn(request: Request):
             try:
@@ -457,14 +462,15 @@ if (web):
                 print(rq_d)
                 f_n = animators_folder + rq_d["fn"] + ".json"
                 print(f_n)
-                an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0", "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
+                an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0",
+                           "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
                 files.write_json_file(f_n, an_data)
                 upd_media()
                 return Response(request, "Created animation successfully.")
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error creating animation.")
-        
+
         @server.route("/rename-animation", [POST])
         def btn(request: Request):
             try:
@@ -478,7 +484,7 @@ if (web):
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.")
-            
+
         @server.route("/delete-animation", [POST])
         def btn(request: Request):
             try:
@@ -493,7 +499,7 @@ if (web):
             except Exception as e:
                 files.log_item(e)  # Log any errors
                 return Response(request, "Error setting lights.")
-            
+
         @server.route("/update-light-string", [POST])
         def btn(req: Request):
             global cfg
@@ -519,7 +525,7 @@ if (web):
         @server.route("/get-light-string", [POST])
         def btn(req: Request):
             return Response(req, cfg["light_string"])
-        
+
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
             global cfg
@@ -532,7 +538,7 @@ if (web):
         @server.route("/get-host-name", [POST])
         def btn(request: Request):
             return Response(request, cfg["HOST_NAME"])
-        
+
         @server.route("/get-local-ip", [POST])
         def btn(request: Request):
             return Response(request, local_ip)
@@ -552,7 +558,8 @@ if (web):
                 rq_d = request.json()
                 print(rq_d["an"])
                 gc_col("Save Data.")
-                asyncio.create_task(set_hdw_async(rq_d["an"], 3))  # Schedule the async task
+                # Schedule the async task
+                asyncio.create_task(set_hdw_async(rq_d["an"], 3))
                 return Response(request, "Test animation successfully")
             except Exception as e:
                 files.log_item(e)  # Log any errors
@@ -600,9 +607,61 @@ if (web):
 gc_col("web server")
 
 
+def measure_signal_strength(MY_SSID, cycles):
+    print("Monitoring signal for:", MY_SSID)
+    print("Showing current RSSI + running average (simple sum + count)\n")
+
+    total_sum = 0.0      # running sum of all valid RSSI values
+    count = 0            # number of valid readings so far
+
+    while True:
+        current_rssi = None
+        found = False
+
+        try:
+            for network in wifi.radio.start_scanning_networks():
+                if network.ssid == MY_SSID:
+                    current_rssi = network.rssi
+                    print(
+                        f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
+                    found = True
+                    break
+
+            wifi.radio.stop_scanning_networks()
+
+            if found and current_rssi is not None:
+                # Update running total
+                total_sum += current_rssi
+                count += 1
+
+                # Calculate and show average
+                if count > 0:
+                    avg_rssi = total_sum / count
+                    print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
+                else:
+                    print("   |   Avg: waiting...")
+            else:
+                print(
+                    "   |   Could not see your SSID (hidden, out of range, or scan miss)")
+
+        except Exception as e:
+            print(f"Scan error: {e}")
+            wifi.radio.stop_scanning_networks()  # cleanup on error
+
+        time.sleep(0.1)  # your fast polling; increase to 1–5 if needed
+        if count > cycles:
+            return avg_rssi
+
+
+cycles = 10
+avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+
+
 ################################################################################
 # Command queue
 command_queue = []
+
 
 def add_command(command, to_start=False):
     global exit_set_hdw_async
@@ -615,6 +674,7 @@ def add_command(command, to_start=False):
         command_queue.append(command)  # Add to the end
         print("Command added to the end:", command)
 
+
 async def process_commands():
     """Asynchronous function to process commands in a FIFO order."""
     while command_queue:
@@ -623,10 +683,12 @@ async def process_commands():
         await an_async(command)  # Process each command as an async operation
         await asyncio.sleep(0)  # Yield control to the event loop
 
+
 def clear_command_queue():
     """Clear all commands from the queue."""
     command_queue.clear()
     print("Command queue cleared.")
+
 
 def stop_all_commands():
     """Stop all commands and clear the queue."""
@@ -692,17 +754,17 @@ async def an_light_async(f_nm):
             if len(ft1) == 1 or ft1[1] == "":
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                result = await set_hdw_async(f"L0{lgt},S0{pos}",dur)
+                result = await set_hdw_async(f"L0{lgt},S0{pos}", dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                result = await set_hdw_async(ft1[1],dur)
+                result = await set_hdw_async(ft1[1], dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-            
+
         # print (flsh_i)
 
         await asyncio.sleep(0)  # Yield control to other tasks
@@ -716,6 +778,7 @@ async def an_light_async(f_nm):
 ##############################
 # animation effects
 
+
 async def random_effect(il, ih, d):
     i = random.randint(il, ih)
     if i == 1:
@@ -725,6 +788,7 @@ async def random_effect(il, ih, d):
         await asyncio.sleep(d)
     elif i == 3:
         await fire(d)
+
 
 async def rbow(spd, dur):
     global exit_set_hdw_async
@@ -753,7 +817,8 @@ async def rbow(spd, dur):
             te = time.monotonic()-st
             if te > dur:
                 return
-            
+
+
 async def fire(dur):
     global exit_set_hdw_async
     st = time.monotonic()
@@ -847,6 +912,7 @@ def bnd(c, l, u):
 sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
+
 async def set_hdw_async(input_string, dur):
     """Async hardware control for NeoPixel lights."""
     global sp, br, exit_set_hdw_async
@@ -910,10 +976,12 @@ async def set_hdw_async(input_string, dur):
                 file_nm = seg[1:]
                 add_command(file_nm)
     except Exception as e:
-            files.log_item(e)
+        files.log_item(e)
+
 
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
+
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -929,12 +997,14 @@ def set_neo_to(light_n, r, g, b):
             led[light_n] = (r, g, b)
     led.show()
 
+
 def get_neo_ids():
     matches = []
     for num in range(n_px + 1):
         if any(num == sublist[0] for sublist in neos):
             matches.append(num)
-    return matches    
+    return matches
+
 
 def set_neo_module_to(mod_n, ind, v):
     cur = []
@@ -968,6 +1038,7 @@ def set_neo_module_to(mod_n, ind, v):
         led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
     led.show()
 
+
 if (web):
     files.log_item("starting server...")
     try:
@@ -982,6 +1053,8 @@ files.log_item("animator has started...")
 gc_col("animations started.")
 
 # Main task handling
+
+
 async def process_commands_task():
     """Task to continuously process commands."""
     while True:
@@ -990,6 +1063,7 @@ async def process_commands_task():
         except Exception as e:
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
+
 
 async def server_poll_task(server):
     """Poll the web server."""
@@ -1000,10 +1074,12 @@ async def server_poll_task(server):
             files.log_item(e)
         await asyncio.sleep(0)  # Yield control to other tasks
 
+
 async def garbage_collection_task():
     while True:
         gc.collect()  # Collect garbage
         await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
+
 
 async def main():
     # Create asyncio tasks
@@ -1023,5 +1099,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
-
