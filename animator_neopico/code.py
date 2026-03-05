@@ -417,18 +417,17 @@ PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
 IDLE_STATE = False
 MAXLEN = 1200
 
-CAPTURE_S = 0.02
-MIN_DURS = 40
+
 
 # Centers for the four valid levels
-CENTERS = [20/255, 40/255, 60/255, 80/255]
+CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255]
 TOLERANCE = 10/255          # ±10/255 — tune based on real measured noise
-MIN_VALID_DUTY = 8/255      # below this → definitely invalid (0)
 
-ALPHA = 0.20
+CAPTURE_S = 0.002
 WIN = 5
 MIN_MAJ = 5
 CONFIRM_COUNT = 3
+ALPHA = 0.20
 
 
 def _enable_pullup(pin):
@@ -439,43 +438,42 @@ def _enable_pullup(pin):
 
 
 def _duty_raw_from_pulsein(pulses: pulseio.PulseIn):
-    n = len(pulses)
-    if n < MIN_DURS:
-        return None
+    try:
+        n = len(pulses)
 
-    data = [pulses[i] for i in range(n)]
-    if len(data) % 2:
-        data = data[1:]
+        data = [pulses[i] for i in range(n)]
+        if len(data) % 2:
+            data = data[1:]
 
-    even_sum = 0
-    odd_sum = 0
-    total_sum = 0
-    for i in range(0, len(data), 2):
-        a = data[i]
-        b = data[i + 1]
-        even_sum += a
-        odd_sum += b
-        total_sum += (a + b)
+        even_sum = 0
+        odd_sum = 0
+        total_sum = 0
+        for i in range(0, len(data), 2):
+            a = data[i]
+            b = data[i + 1]
+            even_sum += a
+            odd_sum += b
+            total_sum += (a + b)
 
-    if total_sum == 0:
-        return None
+        if total_sum == 0:
+            return 0
 
-    duty_even = even_sum / total_sum
-    duty_odd = odd_sum / total_sum
-    return duty_even if duty_even <= duty_odd else duty_odd
+        duty_even = even_sum / total_sum
+        duty_odd = odd_sum / total_sum
+        return duty_even if duty_even <= duty_odd else duty_odd
+    except Exception as e:
+            print(f"Error: {e}")
 
 
 def _duty_to_digit(d):
     """
     Returns:
-      0 = invalid / no signal / too low / noisy / out of tolerance
+      0 = closest to 0/255  / out of tolerance
       1 = closest to 20/255
       2 = closest to 40/255
       3 = closest to 60/255
       4 = closest to 80/255
     """
-    if d < MIN_VALID_DUTY:
-        return 0
 
     min_dist = float('inf')
     best = 0  # default to invalid
@@ -484,7 +482,7 @@ def _duty_to_digit(d):
         dist = abs(d - center)
         if dist < min_dist:
             min_dist = dist
-            best = i + 1   # 1,2,3,4
+            best = i
 
     if min_dist <= TOLERANCE:
         return best
@@ -493,19 +491,14 @@ def _duty_to_digit(d):
 
 
 def _rgb_digits_to_char(r, g, b):
-    # Subtract 1 from each digit so (1,1,1) becomes index 0 → 'a'
-    r_adj = r - 1
-    g_adj = g - 1
-    b_adj = b - 1
+    if r == 0 and g == 0 and b == 0:
+        return "RESET"
 
-    if r_adj < 0 or g_adj < 0 or b_adj < 0:
-        return None
-
-    idx = r_adj * 16 + g_adj * 4 + b_adj
-    if idx >= len(ALPHABET):
-        return None
-
-    return ALPHABET[idx]
+    if r != 0 and g != 0 and b != 0:
+        idx = (r - 1) * 16 + (g-1) * 4 + (b-1)
+        if idx >= len(ALPHABET):
+            return None
+        return ALPHABET[idx]
 
 
 def _majority_tuple(buf):
@@ -557,11 +550,6 @@ async def decoder_task():
 
         for ch in ("R", "G", "B"):
             d = _duty_raw_from_pulsein(pulseins[ch])
-            if d is None:
-                digits = None
-                break
-            # else:
-            #     print("Ch:", ch, "Duty:", d)
 
             if filt[ch] is None:
                 filt[ch] = d
@@ -569,14 +557,6 @@ async def decoder_task():
                 filt[ch] = ALPHA * d + (1.0 - ALPHA) * filt[ch]
 
             digits[ch] = _duty_to_digit(filt[ch])
-
-            if digits[ch] == 0:
-                digits = None
-                break
-
-        if digits is None:
-            await asyncio.sleep(0)
-            continue
 
         t = (digits["R"], digits["G"], digits["B"])
 
@@ -591,7 +571,10 @@ async def decoder_task():
             continue
 
         ch_out = _rgb_digits_to_char(*best_t)
-        if ch_out is None:
+        if ch_out is "RESET":
+            last_char = None
+            ch_out = None
+        elif ch_out is None:
             candidate = None
             candidate_n = 0
             candidate_start_t = None
@@ -1180,7 +1163,7 @@ async def set_hdw_async(input_string, dur=0):
         for seg in segs:
             if exit_set_hdw_async:
                 return "STOP"
-            if seg[0] == 'E':
+            elif seg[0] == 'E':
                 return "STOP"
             elif seg[:5] == 'UPDLS':
                 upd_l_str()
@@ -1242,7 +1225,7 @@ async def set_hdw_async(input_string, dur=0):
             elif seg[0:] == 'ZCOLCH':
                 multi_color()
                 await asyncio.sleep(dur)
-            if seg[0] == 'Q':
+            elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
             # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
@@ -1254,6 +1237,10 @@ async def set_hdw_async(input_string, dur=0):
                         s_arr[i].angle = v
                 else:
                     s_arr[num-1].angle = int(v)
+            # WXXX = Wait XXX decimal seconds
+            elif seg[0] == 'W':  # wait time
+                s = float(seg[1:])
+                await asyncio.sleep(s)
     except Exception as e:
         files.log_item(e)
 
@@ -1343,6 +1330,8 @@ async def consumer_task():
               "| digits:", comm_latest["digits"],
               "| votes:", comm_latest["votes"],
               "| latency_ms:", comm_latest["lat_ms"])
+        
+
 
         if ch in CHAR_TO_HDW:
             add_command(CHAR_TO_HDW[ch])
