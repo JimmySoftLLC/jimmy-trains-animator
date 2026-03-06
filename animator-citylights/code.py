@@ -1197,20 +1197,21 @@ gc_col("Neopixels setup")
 ################################################################################
 # Setup neo command encoding
 
-ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^"
-assert len(ALPHABET) == 49
+ALPHABET = "?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ <>[]"
 
-DIGIT_PWM = [20, 40, 60, 80]  # base-4 bins
+# Encoding
+
+DIGIT_PWM = [0, 20, 40, 60, 80]  # base-5 bins
 
 
-def char_to_base4_digits(ch: str) -> tuple[int, int, int]:
+def char_to_base5_digits(ch: str) -> tuple[int, int, int]:
     idx = ALPHABET.find(ch)
     if idx < 0:
         raise ValueError(f"Character {ch!r} not in alphabet")
 
-    r = idx // 16
-    g = (idx % 16) // 4
-    b = idx % 4
+    r = idx // 25
+    g = (idx % 25) // 5
+    b = idx % 5
     return r, g, b
 
 
@@ -1218,7 +1219,7 @@ def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
     """
     One-step: character -> (R, G, B) PWM values (0..255)
     """
-    r_d, g_d, b_d = char_to_base4_digits(ch)
+    r_d, g_d, b_d = char_to_base5_digits(ch)
     return (
         DIGIT_PWM[r_d],
         DIGIT_PWM[g_d],

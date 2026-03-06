@@ -71,6 +71,10 @@ gc_col("Imports gc, files")
 
 # s_1_pin = board.GP8
 # s_2_pin = board.GP9
+# s_3_pin = board.GP12
+# s_4_pin = board.GP13
+# s_5_pin = board.GP14
+# s_6_pin = board.GP22
 
 # red_pin = board.GP3
 # green_pin = board.GP2
@@ -102,17 +106,40 @@ ts_jsons = files.return_directory("", "t_s_def", ".json")
 
 web = cfg["serve_webpage"]
 
-exit_set_hdw_async = False
+exit_set_hdw = False
 
 gc_col("config setup")
-
 
 def upd_media():
     global animations
     animations = files.return_directory("", "animations", ".json")
 
-
 upd_media()
+
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
+
+################################################################################
+# Setup the servos
+s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
+s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+
+s_2 = pwmio.PWMOut(s_2_pin, duty_cycle=2 ** 15, frequency=50)
+s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
+
+s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
+s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
+
+s_4 = pwmio.PWMOut(s_4_pin, duty_cycle=2 ** 15, frequency=50)
+s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
+
+s_5 = pwmio.PWMOut(s_5_pin, duty_cycle=2 ** 15, frequency=50)
+s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
+
+s_6 = pwmio.PWMOut(s_6_pin, duty_cycle=2 ** 15, frequency=50)
+s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
+
+s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
 
 ################################################################################
 # Setup neo pixels (main light string)
@@ -135,13 +162,8 @@ neopicos = []
 bar_arr = []
 bolt_arr = []
 neo_arr = []
-neorelay_arr = []
-neopico_arr = []
 
-only_lights = []
-only_lights_set = set()
-
-n_px = 0
+n_px = 1  # keep non-zero so NeoPixel init doesn't choke before we rebuild
 
 neo_branch = neopixel.NeoPixel(neo_branch_pin, n_px)
 neo_branch.auto_write = False
@@ -390,27 +412,27 @@ def l_tst():
     # reorelay test
     for n in neorelays:
         for i in n:
-            led[i] = (255, 0, 0)
-            led.show()
+            neo_branch[i] = (255, 0, 0)
+            neo_branch.show()
             time.sleep(.3)
-            led[i] = (0, 255, 0)
-            led.show()
+            neo_branch[i] = (0, 255, 0)
+            neo_branch.show()
             time.sleep(.3)
-            led[i] = (0, 0, 255)
-            led.show()
+            neo_branch[i] = (0, 0, 255)
+            neo_branch.show()
             time.sleep(.3)
-            led[i] = (0, 0, 0)
-            led.show()
+            neo_branch[i] = (0, 0, 0)
+            neo_branch.show()
             time.sleep(.3)
 
     # neopico test
     for n in neopicos:
         for i in n:
-            led[i] = (80, 20, 20)
-            led.show()
+            neo_branch[i] = (80, 20, 20)
+            neo_branch.show()
             time.sleep(1)
-            led[i] = (20, 20, 20)
-            led.show()
+            neo_branch[i] = (20, 20, 20)
+            neo_branch.show()
             time.sleep(.3)
 
 def clamp01(x: float) -> float:
@@ -432,7 +454,7 @@ def load_pixel_scale_from_cfg():
             continue
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, led, pixel_scale, logical_led
+    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, neo_branch, pixel_scale, logical_led
     trees = []
     canes = []
     bars = []
@@ -507,7 +529,7 @@ upd_l_str()
 ########################################################################################################################
 # Neo pixel / neo 6 module methods
 # ---------------------------------------------------------------------------
-# Per-allowed-pixel brightness (software brightness, NOT led.brightness)
+# Per-allowed-pixel brightness (software brightness, NOT neo_branch.brightness)
 
 neo_brightness = 1.0  # 0.0 .. 1.0
 br = 100
@@ -568,7 +590,7 @@ def is_allowed_led(i: int) -> bool:
 
 def safe_set_led(i: int, rgb: tuple[int, int, int], store_logical: bool = True) -> bool:
     """
-    Set an LED ONLY if allowed. Applies pixel_scale + neo_brightness automatically.
+    Set an neo_branch ONLY if allowed. Applies pixel_scale + neo_brightness automatically.
     rgb is 'logical' (pre-scale, pre-brightness).
     """
     if not is_allowed_led(i):
@@ -577,7 +599,7 @@ def safe_set_led(i: int, rgb: tuple[int, int, int], store_logical: bool = True) 
     if store_logical:
         logical_led[i] = rgb  # store unscaled/unbrightened
 
-    led[i] = apply_brightness(i, rgb, neo_brightness)
+    neo_branch[i] = apply_brightness(i, rgb, neo_brightness)
     return True
 
 
@@ -585,8 +607,8 @@ def refresh_allowed_leds():
     """Re-apply current pixel_scale and neo_brightness to all allowed pixels using logical_led."""
     for i in only_lights:
         if i in logical_led:
-            led[i] = apply_brightness(i, logical_led[i], neo_brightness)
-    led.show()
+            neo_branch[i] = apply_brightness(i, logical_led[i], neo_brightness)
+    neo_branch.show()
 
 
 def is_neo(number, nested_array):
@@ -612,7 +634,7 @@ def set_neo_to(light_n, r, g, b):
         else:
             safe_set_led(light_n, (r, g, b))
 
-    led.show()
+    neo_branch.show()
 
 
 def get_neo_ids():
@@ -666,7 +688,7 @@ def set_neo_module_to(mod_n, ind, v):
             cur[ind - 3] = v
             safe_set_led(base, tuple(cur))
 
-    led.show()
+    neo_branch.show()
 
 
 def get_neo_relay_ids():
@@ -695,20 +717,20 @@ def set_neo_relay_to(mod_n, ind, off_on):
         off_on = 255
     if mod_n == 0:
         for i in neo_relay_ids:
-            led[i] = (off_on, off_on, off_on)
+            neo_branch[i] = (off_on, off_on, off_on)
     elif ind == 0:
-        led[neo_relay_ids[mod_n-1]] = (off_on, off_on, off_on)
+        neo_branch[neo_relay_ids[mod_n-1]] = (off_on, off_on, off_on)
     elif ind < 4:
         ind -= 1
         if ind == 0:
             ind = 1
         elif ind == 1:
             ind = 0
-        cur = list(led[neo_relay_ids[mod_n-1]])
+        cur = list(neo_branch[neo_relay_ids[mod_n-1]])
         cur[ind] = off_on
-        led[neo_relay_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_relay_ids[mod_n-1]])
-    led.show()
+        neo_branch[neo_relay_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+        print(neo_branch[neo_relay_ids[mod_n-1]])
+    neo_branch.show()
 
 
 def set_neo_pico_to(mod_n, char):
@@ -717,24 +739,14 @@ def set_neo_pico_to(mod_n, char):
     print("r: ", r, "g: ", g, "b: ", b)
     if mod_n == 0:
         for i in neo_relay_ids:
-            led[i] = (r, g, b)
+            neo_branch[i] = (r, g, b)
     else:
-        led[neo_relay_ids[mod_n-1]] = (r, g, b)
-    led.show()
+        neo_branch[neo_relay_ids[mod_n-1]] = (r, g, b)
+    neo_branch.show()
 
 
 gc_col("Neopixels setup")
 
-
-################################################################################
-# Setup the servos
-s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
-s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
-
-s_2 = pwmio.PWMOut(s_2_pin, duty_cycle=2 ** 15, frequency=50)
-s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
-
-s_arr = [s_1, s_2]
 
 ################################################################################
 # PWM RGB (base-5) encoder and decoder
@@ -956,7 +968,7 @@ async def decoder_task():
 
         if ch_out != last_char:
             if ch_out == "?":
-                print("Led is off")
+                print("Optocoupler is off")
             elif ch_out == "[":
                 built_string = ""
                 is_building_string = True
@@ -1125,8 +1137,8 @@ if web:
 
         @server.route("/lights", [POST])
         def lights_btn(request: Request):
-            global exit_set_hdw_async
-            exit_set_hdw_async = False
+            global exit_set_hdw
+            exit_set_hdw = False
             try:
                 rq_d = request.json()
                 asyncio.create_task(set_hdw_async(rq_d["an"], 0))
@@ -1235,8 +1247,8 @@ if web:
 
         @server.route("/test-animation", [POST])
         def test_animation(request: Request):
-            global exit_set_hdw_async
-            exit_set_hdw_async = False
+            global exit_set_hdw
+            exit_set_hdw = False
             try:
                 rq_d = request.json()
                 asyncio.create_task(set_hdw_async(rq_d["an"], 3))
@@ -1297,8 +1309,8 @@ command_queue = []
 
 
 def add_command(command, to_start=False):
-    global exit_set_hdw_async
-    exit_set_hdw_async = False
+    global exit_set_hdw
+    exit_set_hdw = False
     if to_start:
         command_queue.insert(0, command)
         print("Command added to the start:", command)
@@ -1326,9 +1338,9 @@ def clr_cmd_queue():
 
 
 def stop_all_commands():
-    global exit_set_hdw_async
+    global exit_set_hdw
     clr_cmd_queue()
-    exit_set_hdw_async = True
+    exit_set_hdw = True
     print("Processing stopped and command queue cleared.")
 
 
@@ -1421,36 +1433,47 @@ async def random_effect(il, ih, d):
 
 
 async def rbow(spd, dur):
-    global exit_set_hdw_async
+    global exit_set_hdw
     st = time.monotonic()
-    te = time.monotonic() - st
-    while te < dur:
+
+    # work on only the allowed pixels
+    pxs = only_lights
+    n = len(pxs)
+    if n == 0:
+        return
+
+    while (time.monotonic() - st) < dur:
         for j in range(0, 255, 1):
-            if exit_set_hdw_async:
+            if exit_set_hdw:
                 return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                neo_branch[i] = colorwheel(pixel_index & 255)
+            
+            for k, i in enumerate(pxs):
+                pixel_index = (k * 256 // n) + j
+                safe_set_led(i, colorwheel(pixel_index & 255),
+                             store_logical=False)
+                
             neo_branch.show()
             await asyncio.sleep(spd)
-            te = time.monotonic() - st
-            if te > dur:
+            if (time.monotonic() - st) > dur:
                 return
+            
         for j in reversed(range(0, 255, 1)):
-            if exit_set_hdw_async:
+            if exit_set_hdw:
                 return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                neo_branch[i] = colorwheel(pixel_index & 255)
+            
+            for k, i in enumerate(pxs):
+                pixel_index = (k * 256 // n) + j
+                safe_set_led(i, colorwheel(pixel_index & 255),
+                             store_logical=False)
+                
             neo_branch.show()
             await asyncio.sleep(spd)
-            te = time.monotonic() - st
-            if te > dur:
+            if (time.monotonic() - st) > dur:
                 return
 
 
 async def fire(dur):
-    global exit_set_hdw_async
+    global exit_set_hdw
     st = time.monotonic()
 
     firei = []
@@ -1458,66 +1481,68 @@ async def fire(dur):
     firei.extend(cane_s)
     firei.extend(cane_e)
 
-    stari = []
-    stari.extend(stars)
+    # overlays: guard them
+    for i in stars:
+        if i in only_lights_set:
+            safe_set_led(i, (255, 255, 255), store_logical=False)
 
-    for i in stari:
-        neo_branch[i] = (255, 255, 255)
-
-    brnchsi = []
-    brnchsi.extend(brnchs)
-
-    for i in brnchsi:
-        neo_branch[i] = (50, 50, 50)
+    for i in brnchs:
+        if i in only_lights_set:
+            safe_set_led(i, (50, 50, 50), store_logical=False)
 
     r = random.randint(0, 255)
     g = random.randint(0, 255)
     b = random.randint(0, 255)
 
+    # Flicker
     while True:
         for i in firei:
-            if exit_set_hdw_async:
+            if exit_set_hdw:
                 return
+            if i not in only_lights_set:
+                continue
             f = random.randint(0, 110)
             r1 = bnd(r - f, 0, 255)
             g1 = bnd(g - f, 0, 255)
             b1 = bnd(b - f, 0, 255)
-            neo_branch[i] = (r1, g1, b1)
+            safe_set_led(i, (r1, g1, b1), store_logical=False)
             neo_branch.show()
         await asyncio.sleep(random.uniform(0.05, 0.1))
-        te = time.monotonic() - st
-        if te > dur:
+        
+        if (time.monotonic() - st) > dur:
             return
 
 
 def multi_color():
-    for i in range(0, n_px):
+    pxs = only_lights
+    if not pxs:
+        return
+
+    for i in pxs:
         r = random.randint(128, 255)
         g = random.randint(128, 255)
         b = random.randint(128, 255)
         c = random.randint(0, 2)
+
         if c == 0:
-            r1 = r
-            g1 = 0
-            b1 = 0
+            r1, g1, b1 = r, 0, 0
         elif c == 1:
-            r1 = 0
-            g1 = g
-            b1 = 0
+            r1, g1, b1 = 0, g, 0
         else:
-            r1 = 0
-            g1 = 0
-            b1 = b
-        neo_branch[i] = (r1, g1, b1)
+            r1, g1, b1 = 0, 0, b
+
+        safe_set_led(i, (r1, g1, b1), store_logical=False)
 
     for i in stars:
-        neo_branch[i] = (255, 255, 255)
-
+        if i in only_lights_set:
+            safe_set_led(i, (255, 255, 255), store_logical=False)
     for i in brnchs:
-        neo_branch[i] = (7, 163, 30)
+        if i in only_lights_set:
+            safe_set_led(i, (7, 163, 30), store_logical=False)
 
     for i in cane_e:
-        neo_branch[i] = (255, 255, 255)
+        if i in only_lights_set:
+            safe_set_led(i, (255, 255, 255), store_logical=False)
 
     neo_branch.show()
 
@@ -1530,20 +1555,27 @@ def bnd(c, l, u):
     return c
 
 
-sp = [0, 0, 0, 0, 0, 0]
-br = 0
-
-
 async def set_hdw_async(input_string, dur=0):
-    global sp, br, exit_set_hdw_async
+    global br, exit_set_hdw, neo_brightness
     segs = input_string.split(",")
 
     try:
         for seg in segs:
-            if exit_set_hdw_async:
+            if exit_set_hdw:
                 return "STOP"
             elif seg[0] == 'E':
                 return "STOP"
+            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)
+            elif seg[:2] == 'SW':
+                segs_split = seg.split("_")
+                if len(segs_split) == 2:
+                    override_switch_state["switch_value"] = segs_split[1]
+                elif len(segs_split) == 3:
+                    override_switch_state["switch_value"] = segs_split[1] + \
+                        "_" + segs_split[2]
+                else:
+                    override_switch_state["switch_value"] = "none"
+            # UPDLS = update light string    
             elif seg[:5] == 'UPDLS':
                 upd_l_str()
                 led_indicator.fill((20, 0, 0))
@@ -1558,6 +1590,7 @@ async def set_hdw_async(input_string, dur=0):
                 led_indicator.fill((0, 0, 0))
                 led_indicator.show()
                 time.sleep(.3)
+            # lights LI_R_G_B = Nep pico indicator RGB 0 to 255
             elif seg[:2] == 'LI':
                 segs_split = seg.split("_")
                 r = int(segs_split[1])
@@ -1565,35 +1598,85 @@ async def set_hdw_async(input_string, dur=0):
                 b = int(segs_split[3])
                 led_indicator.fill((r, g, b))
                 led_indicator.show()
+            # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
-                light_n = int(segs_split[0][2:]) - 1
+                light_n = int(segs_split[0][2:])-1
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 set_neo_to(light_n, r, g, b)
+            # modules NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             elif seg[:2] == 'NM':
                 segs_split = seg.split("_")
                 mod_n = int(segs_split[0][2:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
+            # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0:2] == 'BN':
                 br = int(seg[2:])
-                neo_branch.brightness = float(br / 100)
-                neo_branch.show()
+                neo_brightness = clamp01(br / 100.0)
+                refresh_allowed_leds()
+            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
             elif seg[0] == 'F':
                 segs_split = seg.split("_")
-                v = int(segs_split[0][1:])
-                s = float(segs_split[1])
-                while not br == v:
-                    if br < v:
-                        br += 1
-                    else:
-                        br -= 1
-                    neo_branch.brightness = float(br / 100)
-                    neo_branch.show()
+                target = int(segs_split[0][1:])
+                step_s = float(segs_split[1])
+
+                target = max(0, min(100, target))
+
+                while br != target:
+                    if exit_set_hdw:
+                        return "STOP"
+                    br += 1 if br < target else -1
+                    neo_brightness = clamp01(br / 100.0)
+                    refresh_allowed_leds()
                     await asyncio.sleep(s)
+                        # SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index
+            elif seg[:3] =='SCN':
+                parts = seg.split('_')
+                px_n = int(parts[0][3:])   # after 'SCN'
+                rs = clamp01(float(parts[1]))
+                gs = clamp01(float(parts[2]))
+                bs = clamp01(float(parts[3]))
+
+                if px_n == 0:
+                    for i in only_lights:
+                        pixel_scale[i] = (rs, gs, bs)
+                    persist_pixel_scale_all(rs, gs, bs)
+                else:
+                    i = px_n - 1
+                    if i in only_lights_set:
+                        pixel_scale[i] = (rs, gs, bs)
+                        persist_pixel_scale(i, rs, gs, bs)
+
+                refresh_allowed_leds()
+            # SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)
+            elif seg[:3] == 'SCC':
+                try:
+                    n = int(seg[3:])  # SCC0, SCC12, etc.
+                except Exception:
+                    n = -1
+
+                if n == 0:
+                    clear_pixel_scale_all()
+                elif n > 0:
+                    clear_pixel_scale_one(n - 1)  # convert to 0-based
+
+            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
+            elif seg[:2] == 'NR':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("NR", ""))
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_relay_to(mod_n, index, v)
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^)
+            elif seg[:2] == 'NP':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("NP", ""))
+                char = segs_split[1]
+                set_neo_pico_to(mod_n, char)
             elif seg[0:] == 'ZRAND':
                 await random_effect(1, 3, dur)
             elif seg[:2] == 'ZR':
@@ -1725,8 +1808,7 @@ def set_neo_module_to(mod_n, ind, v):
 # Map decoded characters to *hardware command strings* (enqueued)
 # Change these to whatever you want.
 CHAR_TO_HDW = {
-    "^": "",   # example
-    "!": ""
+    "^": "UPDLS"
 }
 
 
@@ -1740,17 +1822,16 @@ async def consumer_task():
             await asyncio.sleep(0)
             continue
 
-        # Debug (keep or remove)
         print("CHAR:", ch,
               "| digits:", comm_latest["digits"],
               "| votes:", comm_latest["votes"],
               "| latency_ms:", comm_latest["lat_ms"])
 
-        # if ch in CHAR_TO_HDW:
-        #     add_command(CHAR_TO_HDW[ch])
-        #     print("Enqueued mapped HW:", CHAR_TO_HDW[ch])
-        # else:
-        add_command(ch)
+        if ch in CHAR_TO_HDW:
+            add_command(CHAR_TO_HDW[ch])
+            print("Enqueued mapped HW:", CHAR_TO_HDW[ch])
+        else:
+            add_command(ch)
 
         await asyncio.sleep(0)
 
