@@ -39,6 +39,7 @@ import pwmio
 import pulseio
 import digitalio
 
+
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
@@ -128,12 +129,19 @@ bars = []
 bolts = []
 noods = []
 neos = []
+neorelays = []
+neopicos = []
 
 bar_arr = []
 bolt_arr = []
 neo_arr = []
+neorelay_arr = []
+neopico_arr = []
 
-n_px = 1  # keep non-zero so NeoPixel init doesn't choke before we rebuild
+only_lights = []
+only_lights_set = set()
+
+n_px = 0
 
 neo_branch = neopixel.NeoPixel(neo_branch_pin, n_px)
 neo_branch.auto_write = False
@@ -144,6 +152,41 @@ led_indicator = neopixel.NeoPixel(led_indicator_pin, 1)
 led_indicator.auto_write = False
 led_indicator.fill((0, 0, 20))
 led_indicator.show()
+
+pixel_scale = [(1.0, 1.0, 1.0)] * n_px
+logical_led = {}
+
+
+def clear_pixel_scale_all():
+    """Clear ALL calibration (persistent) + reset runtime scalers to 1.0 on allowed light pixels."""
+    cfg["pixel_scale"] = {}
+    files.write_json_file("cfg.json", cfg)
+
+    # reset runtime list
+    for i in only_lights:
+        pixel_scale[i] = (1.0, 1.0, 1.0)
+
+    refresh_allowed_leds()
+
+
+def clear_pixel_scale_one(i0: int):
+    """Clear ONE pixel calibration (0-based), persistent + runtime."""
+    if i0 < 0 or i0 >= n_px:
+        return
+    if i0 not in only_lights_set:
+        return  # IMPORTANT: relays/picos/etc are NOT lights
+
+    # remove from cfg if present
+    ps = cfg.get("pixel_scale", {}) or {}
+    if str(i0) in ps:
+        del ps[str(i0)]
+        cfg["pixel_scale"] = ps
+        files.write_json_file("cfg.json", cfg)
+
+    # reset runtime
+    pixel_scale[i] = (1.0, 1.0, 1.0)
+
+    refresh_allowed_leds()
 
 
 def bld_tree(p):
@@ -215,6 +258,26 @@ def bld_neo():
             i.append(l + si)
     return i
 
+def bld_neorelay():
+    i = []
+    for n in neorelays:
+        for l in n:
+            si = l
+            break
+        for l in range(0, 6):
+            i.append(l+si)
+    return i
+
+
+def bld_neopico():
+    i = []
+    for n in neopicos:
+        for l in n:
+            si = l
+            break
+        for l in range(0, 6):
+            i.append(l+si)
+    return i
 
 def show_l():
     neo_branch.show()
@@ -224,7 +287,7 @@ def show_l():
 
 
 def l_tst():
-    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr
+    global ornmnts, stars, brnchs, cane_s, cane_e, bar_arr, bolt_arr, neo_arr, neorelay_arr, neopico_arr
 
     # Christmas items
     ornmnts = bld_tree("ornaments")
@@ -239,6 +302,12 @@ def l_tst():
 
     # Neo items
     neo_arr = bld_neo()
+
+    # Neorelay items
+    neorelay_arr = bld_neorelay()
+
+    # Neopico items
+    neopico_arr = bld_neopico()
 
     # cane test
     cnt = 0
@@ -318,15 +387,61 @@ def l_tst():
             neo_branch.fill((0, 0, 0))
             neo_branch.show()
 
+    # reorelay test
+    for n in neorelays:
+        for i in n:
+            led[i] = (255, 0, 0)
+            led.show()
+            time.sleep(.3)
+            led[i] = (0, 255, 0)
+            led.show()
+            time.sleep(.3)
+            led[i] = (0, 0, 255)
+            led.show()
+            time.sleep(.3)
+            led[i] = (0, 0, 0)
+            led.show()
+            time.sleep(.3)
+
+    # neopico test
+    for n in neopicos:
+        for i in n:
+            led[i] = (80, 20, 20)
+            led.show()
+            time.sleep(1)
+            led[i] = (20, 20, 20)
+            led.show()
+            time.sleep(.3)
+
+def clamp01(x: float) -> float:
+    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+
+def load_pixel_scale_from_cfg():
+    """Load sparse per-pixel RGB scalers from cfg['pixel_scale'] into pixel_scale list."""
+    scales = cfg.get("pixel_scale", {}) or {}
+    for k, v in scales.items():
+        try:
+            i = int(k)
+            if i < 0 or i >= n_px:
+                continue
+            if i not in only_lights_set:
+                continue  # IMPORTANT: relays/picos/etc are NOT lights
+            rs, gs, bs = float(v[0]), float(v[1]), float(v[2])
+            pixel_scale[i] = (clamp01(rs), clamp01(gs), clamp01(bs))
+        except Exception:
+            continue
 
 def upd_l_str():
-    global trees, canes, bars, bolts, noods, neos, n_px, neo_branch
+    global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, led, pixel_scale, logical_led
     trees = []
     canes = []
     bars = []
     bolts = []
     noods = []
     neos = []
+    neorelays = []
+    neopicos = []
+    only_lights = []
 
     n_px = 0
 
@@ -365,6 +480,16 @@ def upd_l_str():
                 s = list(range(n_px, n_px + neoqty))
                 neos.append(s)
                 n_px += neoqty
+            if typ == 'neorelay':
+                if qty == 3:
+                    neorelayqty = 1
+                s = list(range(n_px, n_px + neorelayqty))
+                neorelays.append(s)
+                n_px += neorelayqty
+            if typ == 'neopico':
+                s = list(range(n_px, n_px + qty))
+                neopicos.append(s)
+                n_px += qty
 
     print("Number of pixels total: ", n_px)
     try:
@@ -379,7 +504,227 @@ def upd_l_str():
 
 upd_l_str()
 
+########################################################################################################################
+# Neo pixel / neo 6 module methods
+# ---------------------------------------------------------------------------
+# Per-allowed-pixel brightness (software brightness, NOT led.brightness)
+
+neo_brightness = 1.0  # 0.0 .. 1.0
+br = 100
+
+# Shadow buffer of "logical" (unscaled) colors for allowed pixels only
+# key: pixel index, value: (r,g,b) UNBRIGHTENED (0..255)
+logical_led = {}
+
+
+def persist_pixel_scale(i: int, rs: float, gs: float, bs: float):
+    """Save a single pixel scaler to cfg.json (sparse dict). i is 0-based."""
+    cfg.setdefault("pixel_scale", {})
+    cfg["pixel_scale"][str(i)] = [clamp01(rs), clamp01(gs), clamp01(bs)]
+    files.write_json_file(code_folder + "cfg.json", cfg)
+
+
+def persist_pixel_scale_all(rs: float, gs: float, bs: float):
+    """Apply to all allowed light pixels and persist."""
+    cfg.setdefault("pixel_scale", {})
+    for i in only_lights:
+        cfg["pixel_scale"][str(i)] = [clamp01(rs), clamp01(gs), clamp01(bs)]
+    files.write_json_file(code_folder + "cfg.json", cfg)
+
+
+def apply_brightness(i: int, rgb, br: float):
+    """Scale rgb by global brightness AND per-pixel (r,g,b) scaler. All clamped."""
+    br = clamp01(br)
+    r, g, b = rgb
+
+    try:
+        rs, gs, bs = pixel_scale[i]
+    except Exception:
+        rs, gs, bs = (1.0, 1.0, 1.0)
+
+    r = int(r * br * rs)
+    g = int(g * br * gs)
+    b = int(b * br * bs)
+
+    r = 0 if r < 0 else (255 if r > 255 else r)
+    g = 0 if g < 0 else (255 if g > 255 else g)
+    b = 0 if b < 0 else (255 if b > 255 else b)
+    return (r, g, b)
+
+
+def set_pixel_scale(i: int, rs: float = 1.0, gs: float = 1.0, bs: float = 1.0) -> None:
+    """Per-pixel per-channel scaler; each channel is clamped to 0..1 (no boosting)."""
+    global pixel_scale
+    if i < 0:
+        return
+    if i >= len(pixel_scale):
+        pixel_scale.extend([(1.0, 1.0, 1.0)] * (i - len(pixel_scale) + 1))
+    pixel_scale[i] = (clamp01(rs), clamp01(gs), clamp01(bs))
+
+
+def is_allowed_led(i: int) -> bool:
+    return i in only_lights_set
+
+
+def safe_set_led(i: int, rgb: tuple[int, int, int], store_logical: bool = True) -> bool:
+    """
+    Set an LED ONLY if allowed. Applies pixel_scale + neo_brightness automatically.
+    rgb is 'logical' (pre-scale, pre-brightness).
+    """
+    if not is_allowed_led(i):
+        return False
+
+    if store_logical:
+        logical_led[i] = rgb  # store unscaled/unbrightened
+
+    led[i] = apply_brightness(i, rgb, neo_brightness)
+    return True
+
+
+def refresh_allowed_leds():
+    """Re-apply current pixel_scale and neo_brightness to all allowed pixels using logical_led."""
+    for i in only_lights:
+        if i in logical_led:
+            led[i] = apply_brightness(i, logical_led[i], neo_brightness)
+    led.show()
+
+
+def is_neo(number, nested_array):
+    return any(number in sublist for sublist in nested_array)
+
+
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):
+            if not is_allowed_led(i):
+                continue
+
+            if is_neo(i, neos):
+                safe_set_led(i, (g, r, b))
+            else:
+                safe_set_led(i, (r, g, b))
+    else:
+        if not is_allowed_led(light_n):
+            return
+
+        if is_neo(light_n, neos):
+            safe_set_led(light_n, (g, r, b))
+        else:
+            safe_set_led(light_n, (r, g, b))
+
+    led.show()
+
+
+def get_neo_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neos):
+            matches.append(num)
+    return matches
+
+
+def set_neo_module_to(mod_n, ind, v):
+    neo_ids = get_neo_ids()
+    print(mod_n, ind, v, neo_ids)
+
+    def set_pair(base):
+        safe_set_led(base, (v, v, v))
+        safe_set_led(base + 1, (v, v, v))
+
+    if mod_n == 0:
+        for base in neo_ids:
+            set_pair(base)
+
+    elif ind == 0:
+        set_pair(neo_ids[mod_n - 1])
+
+    elif ind < 4:
+        base = neo_ids[mod_n - 1]
+
+        ind -= 1
+        if ind == 0:
+            ind = 1
+        elif ind == 1:
+            ind = 0
+
+        if is_allowed_led(base):
+            cur = list(logical_led.get(base, (0, 0, 0)))
+            cur[ind] = v
+            safe_set_led(base, tuple(cur))
+
+    else:
+        base = neo_ids[mod_n - 1] + 1
+
+        ind -= 1
+        if ind == 3:
+            ind = 4
+        elif ind == 4:
+            ind = 3
+
+        if is_allowed_led(base):
+            cur = list(logical_led.get(base, (0, 0, 0)))
+            cur[ind - 3] = v
+            safe_set_led(base, tuple(cur))
+
+    led.show()
+
+
+def get_neo_relay_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neorelays):
+            matches.append(num)
+    return matches
+
+
+def get_neo_pico_ids():
+    matches = []
+    for num in range(n_px + 1):
+        if any(num == sublist[0] for sublist in neopicos):
+            matches.append(num)
+    return matches
+
+
+def set_neo_relay_to(mod_n, ind, off_on):
+    cur = []
+    neo_relay_ids = get_neo_relay_ids()
+    print(mod_n, ind, off_on, neo_relay_ids)
+    if off_on == 0:
+        off_on = 0
+    else:
+        off_on = 255
+    if mod_n == 0:
+        for i in neo_relay_ids:
+            led[i] = (off_on, off_on, off_on)
+    elif ind == 0:
+        led[neo_relay_ids[mod_n-1]] = (off_on, off_on, off_on)
+    elif ind < 4:
+        ind -= 1
+        if ind == 0:
+            ind = 1
+        elif ind == 1:
+            ind = 0
+        cur = list(led[neo_relay_ids[mod_n-1]])
+        cur[ind] = off_on
+        led[neo_relay_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+        print(led[neo_relay_ids[mod_n-1]])
+    led.show()
+
+
+def set_neo_pico_to(mod_n, char):
+    neo_relay_ids = get_neo_pico_ids()
+    r, g, b = char_to_pwm_rgb(char)
+    print("r: ", r, "g: ", g, "b: ", b)
+    if mod_n == 0:
+        for i in neo_relay_ids:
+            led[i] = (r, g, b)
+    else:
+        led[neo_relay_ids[mod_n-1]] = (r, g, b)
+    led.show()
+
+
 gc_col("Neopixels setup")
+
 
 ################################################################################
 # Setup the servos
@@ -407,6 +752,7 @@ ALPHABET = "?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+
 
 DIGIT_PWM = [0, 20, 40, 60, 80]  # base-5 bins
 
+
 def char_to_base5_digits(ch: str) -> tuple[int, int, int]:
     idx = ALPHABET.find(ch)
     if idx < 0:
@@ -416,6 +762,7 @@ def char_to_base5_digits(ch: str) -> tuple[int, int, int]:
     g = (idx % 25) // 5
     b = idx % 5
     return r, g, b
+
 
 def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
     """
@@ -429,6 +776,7 @@ def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
     )
 
 # Decoding
+
 
 PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
 
@@ -478,7 +826,7 @@ def _duty_raw_from_pulsein(pulses: pulseio.PulseIn):
         duty_odd = odd_sum / total_sum
         return duty_even if duty_even <= duty_odd else duty_odd
     except Exception as e:
-            print(f"Error: {e}")
+        print(f"Error: {e}")
 
 
 def _duty_to_digit(d):
@@ -511,6 +859,7 @@ def _rgb_digits_to_char(r, g, b):
     if idx >= len(ALPHABET):
         return None
     return ALPHABET[idx]
+
 
 def _majority_tuple(buf):
     counts = {}
@@ -610,10 +959,11 @@ async def decoder_task():
                 print("Led is off")
             elif ch_out == "[":
                 built_string = ""
-                is_building_string = True  
+                is_building_string = True
             elif ch_out == "]":
                 now = time.monotonic()
-                lat_ms = int((now - candidate_start_t) * 1000) if candidate_start_t is not None else 0
+                lat_ms = int((now - candidate_start_t) *
+                             1000) if candidate_start_t is not None else 0
                 comm_latest["char"] = built_string
                 comm_latest["digits"] = best_t
                 comm_latest["votes"] = best_n
@@ -624,7 +974,8 @@ async def decoder_task():
                 built_string = built_string + ch_out
             else:
                 now = time.monotonic()
-                lat_ms = int((now - candidate_start_t) * 1000) if candidate_start_t is not None else 0
+                lat_ms = int((now - candidate_start_t) *
+                             1000) if candidate_start_t is not None else 0
                 comm_latest["char"] = ch_out
                 comm_latest["digits"] = best_t
                 comm_latest["votes"] = best_n
@@ -869,12 +1220,12 @@ if web:
         @server.route("/get-local-ip", [POST])
         def get_local_ip(request: Request):
             return Response(request, local_ip)
-        
+
         @server.route("/get-wifi-signal", [POST])
         def get_local_ip(request: Request):
             avg_rssi = measure_signal_strength(WIFI_SSID, 10)
             return Response(request, str(avg_rssi))
-        
+
         @server.route("/get-animations", [POST])
         def get_animations(request: Request):
             sounds = []
@@ -1291,7 +1642,7 @@ async def set_hdw_async(input_string, dur=0):
                         set_neo_to(0, r, g, b)
                         await asyncio.sleep(my_wait)
 
-                    is_first= False
+                    is_first = False
 
                     r, g, b = char_to_pwm_rgb(v)
                     set_neo_to(0, r, g, b)
@@ -1303,8 +1654,8 @@ async def set_hdw_async(input_string, dur=0):
                 set_neo_to(0, r, g, b)
                 await asyncio.sleep(my_wait)
                 end_time = time.monotonic()
-                
-                print ("Time it took: ", end_time-start_time)
+
+                print("Time it took: ", end_time-start_time)
     except Exception as e:
         files.log_item(e)
 
@@ -1394,7 +1745,7 @@ async def consumer_task():
               "| digits:", comm_latest["digits"],
               "| votes:", comm_latest["votes"],
               "| latency_ms:", comm_latest["lat_ms"])
-        
+
         # if ch in CHAR_TO_HDW:
         #     add_command(CHAR_TO_HDW[ch])
         #     print("Enqueued mapped HW:", CHAR_TO_HDW[ch])
