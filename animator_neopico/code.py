@@ -401,13 +401,13 @@ s_arr = [s_1, s_2]
 #   3     = closest to 60/255
 #   4     = closest to 80/255
 
-ALPHABET = "?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ <>"
+ALPHABET = "?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ <>[]"
 
 # Encoding
 
 DIGIT_PWM = [0, 20, 40, 60, 80]  # base-5 bins
 
-def char_to_base4_digits(ch: str) -> tuple[int, int, int]:
+def char_to_base5_digits(ch: str) -> tuple[int, int, int]:
     idx = ALPHABET.find(ch)
     if idx < 0:
         raise ValueError(f"Character {ch!r} not in alphabet")
@@ -421,7 +421,7 @@ def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
     """
     One-step: character -> (R, G, B) PWM values (0..255)
     """
-    r_d, g_d, b_d = char_to_base4_digits(ch)
+    r_d, g_d, b_d = char_to_base5_digits(ch)
     return (
         DIGIT_PWM[r_d],
         DIGIT_PWM[g_d],
@@ -529,6 +529,7 @@ comm_new_char_event = asyncio.Event()
 
 
 async def decoder_task():
+
     for pin in PINS.values():
         _enable_pullup(pin)
 
@@ -545,6 +546,9 @@ async def decoder_task():
     candidate = None
     candidate_n = 0
     candidate_start_t = None
+
+    is_building_string = False
+    built_string = ""
 
     while True:
         # parallel capture
@@ -604,6 +608,20 @@ async def decoder_task():
         if ch_out != last_char:
             if ch_out == "?":
                 print("Led is off")
+            elif ch_out == "[":
+                built_string = ""
+                is_building_string = True  
+            elif ch_out == "]":
+                now = time.monotonic()
+                lat_ms = int((now - candidate_start_t) * 1000) if candidate_start_t is not None else 0
+                comm_latest["char"] = built_string
+                comm_latest["digits"] = best_t
+                comm_latest["votes"] = best_n
+                comm_latest["lat_ms"] = lat_ms
+                comm_new_char_event.set()
+                is_building_string = False
+            elif is_building_string:
+                built_string = built_string + ch_out
             else:
                 now = time.monotonic()
                 lat_ms = int((now - candidate_start_t) * 1000) if candidate_start_t is not None else 0
@@ -1251,6 +1269,42 @@ async def set_hdw_async(input_string, dur=0):
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
                 await asyncio.sleep(s)
+            elif seg[0:2] == 'NS':
+                start_time = time.monotonic()
+                my_wait = 0.1
+
+                r, g, b = char_to_pwm_rgb("?")
+                set_neo_to(0, r, g, b)
+                await asyncio.sleep(my_wait)
+
+                r, g, b = char_to_pwm_rgb("[")
+                set_neo_to(0, r, g, b)
+                await asyncio.sleep(my_wait)
+
+                prev = None
+                is_first = True
+
+                for v in seg[2:]:
+                    is_first
+                    if v == prev and not is_first:
+                        r, g, b = char_to_pwm_rgb("?")
+                        set_neo_to(0, r, g, b)
+                        await asyncio.sleep(my_wait)
+
+                    is_first= False
+
+                    r, g, b = char_to_pwm_rgb(v)
+                    set_neo_to(0, r, g, b)
+                    await asyncio.sleep(my_wait)
+
+                    prev = v
+
+                r, g, b = char_to_pwm_rgb("]")
+                set_neo_to(0, r, g, b)
+                await asyncio.sleep(my_wait)
+                end_time = time.monotonic()
+                
+                print ("Time it took: ", end_time-start_time)
     except Exception as e:
         files.log_item(e)
 
@@ -1341,13 +1395,11 @@ async def consumer_task():
               "| votes:", comm_latest["votes"],
               "| latency_ms:", comm_latest["lat_ms"])
         
-
-
-        if ch in CHAR_TO_HDW:
-            add_command(CHAR_TO_HDW[ch])
-            print("Enqueued mapped HW:", CHAR_TO_HDW[ch])
-        else:
-            add_command("AN_" + ch)
+        # if ch in CHAR_TO_HDW:
+        #     add_command(CHAR_TO_HDW[ch])
+        #     print("Enqueued mapped HW:", CHAR_TO_HDW[ch])
+        # else:
+        add_command(ch)
 
         await asyncio.sleep(0)
 
