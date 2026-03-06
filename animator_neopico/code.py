@@ -191,17 +191,17 @@ def clear_pixel_scale_all():
     refresh_allowed_leds()
 
 
-def clear_pixel_scale_one(i0: int):
+def clear_pixel_scale_one(i: int):
     """Clear ONE pixel calibration (0-based), persistent + runtime."""
-    if i0 < 0 or i0 >= n_px:
+    if i < 0 or i >= n_px:
         return
-    if i0 not in only_lights_set:
+    if i not in only_lights_set:
         return  # IMPORTANT: relays/picos/etc are NOT lights
 
     # remove from cfg if present
     ps = cfg.get("pixel_scale", {}) or {}
-    if str(i0) in ps:
-        del ps[str(i0)]
+    if str(i) in ps:
+        del ps[str(i)]
         cfg["pixel_scale"] = ps
         files.write_json_file("cfg.json", cfg)
 
@@ -521,8 +521,29 @@ def upd_l_str():
     neo_branch = neopixel.NeoPixel(neo_branch_pin, n_px)
     neo_branch.auto_write = False
     neo_branch.brightness = 1.0
-    l_tst()
 
+    # reset per-pixel scalers and logical cache whenever the light string changes
+    pixel_scale = [(1.0, 1.0, 1.0)] * n_px
+    logical_led = {}
+
+    # --- flatten + sort + dedupe only_lights ---
+    only_lights = []
+
+    # normal groups (segments are lists of pixel indices)
+    for group in (trees, canes, bars, bolts, neos):
+        for seg in group:
+            only_lights.extend(seg)
+
+    # noods are [pixel_index, qty] — only first element is a pixel index
+    for n in noods:
+        only_lights.append(n[0])
+
+    only_lights = sorted(set(only_lights))
+    only_lights_set = set(only_lights)
+
+    load_pixel_scale_from_cfg()
+
+    l_tst()
 
 upd_l_str()
 
@@ -543,7 +564,7 @@ def persist_pixel_scale(i: int, rs: float, gs: float, bs: float):
     """Save a single pixel scaler to cfg.json (sparse dict). i is 0-based."""
     cfg.setdefault("pixel_scale", {})
     cfg["pixel_scale"][str(i)] = [clamp01(rs), clamp01(gs), clamp01(bs)]
-    files.write_json_file(code_folder + "cfg.json", cfg)
+    files.write_json_file("cfg.json", cfg)
 
 
 def persist_pixel_scale_all(rs: float, gs: float, bs: float):
@@ -551,12 +572,16 @@ def persist_pixel_scale_all(rs: float, gs: float, bs: float):
     cfg.setdefault("pixel_scale", {})
     for i in only_lights:
         cfg["pixel_scale"][str(i)] = [clamp01(rs), clamp01(gs), clamp01(bs)]
-    files.write_json_file(code_folder + "cfg.json", cfg)
+    files.write_json_file("cfg.json", cfg)
 
 
 def apply_brightness(i: int, rgb, br: float):
-    """Scale rgb by global brightness AND per-pixel (r,g,b) scaler. All clamped."""
+    """Scale rgb by global brightness AND per-pixel (r,g,b) scaler. Accepts tuple or packed int."""
     br = clamp01(br)
+
+    if isinstance(rgb, int):
+        rgb = ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF)
+
     r, g, b = rgb
 
     try:
@@ -736,7 +761,7 @@ def set_neo_relay_to(mod_n, ind, off_on):
 def set_neo_pico_to(mod_n, char):
     neo_relay_ids = get_neo_pico_ids()
     r, g, b = char_to_pwm_rgb(char)
-    print("r: ", r, "g: ", g, "b: ", b)
+    # print("r: ", r, "g: ", g, "b: ", b)
     if mod_n == 0:
         for i in neo_relay_ids:
             neo_branch[i] = (r, g, b)
@@ -1436,38 +1461,37 @@ async def rbow(spd, dur):
     global exit_set_hdw
     st = time.monotonic()
 
-    # work on only the allowed pixels
     pxs = only_lights
     n = len(pxs)
     if n == 0:
         return
 
     while (time.monotonic() - st) < dur:
-        for j in range(0, 255, 1):
+        for j in range(0, 255):
             if exit_set_hdw:
                 return
-            
+
             for k, i in enumerate(pxs):
                 pixel_index = (k * 256 // n) + j
-                safe_set_led(i, colorwheel(pixel_index & 255),
-                             store_logical=False)
-                
+                safe_set_led(i, colorwheel(pixel_index & 255), store_logical=False)
+
             neo_branch.show()
             await asyncio.sleep(spd)
+
             if (time.monotonic() - st) > dur:
                 return
-            
-        for j in reversed(range(0, 255, 1)):
+
+        for j in range(254, -1, -1):
             if exit_set_hdw:
                 return
-            
+
             for k, i in enumerate(pxs):
                 pixel_index = (k * 256 // n) + j
-                safe_set_led(i, colorwheel(pixel_index & 255),
-                             store_logical=False)
-                
+                safe_set_led(i, colorwheel(pixel_index & 255), store_logical=False)
+
             neo_branch.show()
             await asyncio.sleep(spd)
+
             if (time.monotonic() - st) > dur:
                 return
 
@@ -1632,8 +1656,8 @@ async def set_hdw_async(input_string, dur=0):
                     br += 1 if br < target else -1
                     neo_brightness = clamp01(br / 100.0)
                     refresh_allowed_leds()
-                    await asyncio.sleep(s)
-                        # SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index
+                    await asyncio.sleep(step_s)
+            # SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index
             elif seg[:3] =='SCN':
                 parts = seg.split('_')
                 px_n = int(parts[0][3:])   # after 'SCN'
@@ -1703,6 +1727,43 @@ async def set_hdw_async(input_string, dur=0):
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
                 await asyncio.sleep(s)
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command using these characters ?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ <>[]
+            elif seg[:2] == 'PN':
+                start_time = time.monotonic()
+                my_wait = 0.1
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("PN", ""))
+
+                if len(segs_split[1])==1:
+                    set_neo_pico_to(mod_n, segs_split[1])
+                    await asyncio.sleep(my_wait) 
+                else:
+                    set_neo_pico_to(mod_n, "?")
+                    await asyncio.sleep(my_wait)
+
+                    set_neo_pico_to(mod_n, "[")
+                    await asyncio.sleep(my_wait)
+
+                    prev = None
+                    is_first = True
+
+                    for v in segs_split[1]:
+                        if v == prev and not is_first:
+                            set_neo_pico_to(mod_n, "?")
+                            await asyncio.sleep(my_wait)
+
+                        is_first = False
+
+                        set_neo_pico_to(mod_n, v)
+                        await asyncio.sleep(my_wait)
+
+                        prev = v
+
+                    set_neo_pico_to(mod_n, "[")
+                    await asyncio.sleep(my_wait)
+
+                    end_time = time.monotonic()
+                    print("Time it took: ", end_time-start_time)
             elif seg[0:2] == 'NS':
                 start_time = time.monotonic()
                 my_wait = 0.1
@@ -1741,67 +1802,7 @@ async def set_hdw_async(input_string, dur=0):
                 print("Time it took: ", end_time-start_time)
     except Exception as e:
         files.log_item(e)
-
-
-def is_neo(number, nested_array):
-    return any(number in sublist for sublist in nested_array)
-
-
-def set_neo_to(light_n, r, g, b):
-    if light_n == -1:
-        for i in range(n_px):
-            if is_neo(i, neos):
-                neo_branch[i] = (g, r, b)
-            else:
-                neo_branch[i] = (r, g, b)
-    else:
-        if is_neo(light_n, neos):
-            neo_branch[light_n] = (g, r, b)
-        else:
-            neo_branch[light_n] = (r, g, b)
-    neo_branch.show()
-
-
-def get_neo_ids():
-    matches = []
-    for num in range(n_px + 1):
-        if any(num == sublist[0] for sublist in neos):
-            matches.append(num)
-    return matches
-
-
-def set_neo_module_to(mod_n, ind, v):
-    cur = []
-    neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
-    if mod_n == 0:
-        for i in neo_ids:
-            neo_branch[i] = (v, v, v)
-            neo_branch[i + 1] = (v, v, v)
-    elif ind == 0:
-        neo_branch[neo_ids[mod_n - 1]] = (v, v, v)
-        neo_branch[neo_ids[mod_n - 1] + 1] = (v, v, v)
-    elif ind < 4:
-        ind -= 1
-        if ind == 0:
-            ind = 1
-        elif ind == 1:
-            ind = 0
-        cur = list(neo_branch[neo_ids[mod_n - 1]])
-        cur[ind] = v
-        neo_branch[neo_ids[mod_n - 1]] = (cur[0], cur[1], cur[2])
-        print(neo_branch[neo_ids[mod_n - 1]])
-    else:
-        ind -= 1
-        if ind == 3:
-            ind = 4
-        elif ind == 4:
-            ind = 3
-        cur = list(neo_branch[neo_ids[mod_n - 1] + 1])
-        cur[ind - 3] = v
-        neo_branch[neo_ids[mod_n - 1] + 1] = (cur[0], cur[1], cur[2])
-    neo_branch.show()
-
+    
 
 ################################################################################
 # Decoder consumer: map a/b/c -> hardware command string, then enqueue
