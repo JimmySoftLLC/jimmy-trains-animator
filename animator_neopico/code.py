@@ -392,36 +392,52 @@ s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
 s_arr = [s_1, s_2]
 
 ################################################################################
-# PWM RGB (base-4) decoder + mapping to queue
-# (This is separate from your main light-string NeoPixels)
-#
+# PWM RGB (base-5) encoder and decoder
+
 # Digits returned by decoder:
-#   0     = invalid / no signal / too low / noisy / out of tolerance
+#   0     = closest to 0/255
 #   1     = closest to 20/255
 #   2     = closest to 40/255
 #   3     = closest to 60/255
 #   4     = closest to 80/255
-#
-# In _rgb_digits_to_char: subtract 1 from each digit so that
-#   (1,1,1) → index 0 → 'a'
-#   (2,2,2) → index 21 → 'v'
-#   etc.
-# If any channel returns 0 → skip the whole capture (digits = None)
-################################################################################
 
-ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^"
-assert len(ALPHABET) == 49
+ALPHABET = "?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ <>"
+
+# Encoding
+
+DIGIT_PWM = [0, 20, 40, 60, 80]  # base-5 bins
+
+def char_to_base4_digits(ch: str) -> tuple[int, int, int]:
+    idx = ALPHABET.find(ch)
+    if idx < 0:
+        raise ValueError(f"Character {ch!r} not in alphabet")
+
+    r = idx // 25
+    g = (idx % 25) // 5
+    b = idx % 5
+    return r, g, b
+
+def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
+    """
+    One-step: character -> (R, G, B) PWM values (0..255)
+    """
+    r_d, g_d, b_d = char_to_base4_digits(ch)
+    return (
+        DIGIT_PWM[r_d],
+        DIGIT_PWM[g_d],
+        DIGIT_PWM[b_d],
+    )
+
+# Decoding
 
 PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
 
 IDLE_STATE = False
 MAXLEN = 1200
 
-
-
-# Centers for the four valid levels
+# Centers for the five valid levels
 CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255]
-TOLERANCE = 10/255          # ±10/255 — tune based on real measured noise
+TOLERANCE = 8/255
 
 CAPTURE_S = 0.002
 WIN = 5
@@ -468,7 +484,7 @@ def _duty_raw_from_pulsein(pulses: pulseio.PulseIn):
 def _duty_to_digit(d):
     """
     Returns:
-      0 = closest to 0/255  / out of tolerance
+      0 = closest to 0/255
       1 = closest to 20/255
       2 = closest to 40/255
       3 = closest to 60/255
@@ -491,15 +507,10 @@ def _duty_to_digit(d):
 
 
 def _rgb_digits_to_char(r, g, b):
-    if r == 0 and g == 0 and b == 0:
-        return "RESET"
-
-    if r != 0 and g != 0 and b != 0:
-        idx = (r - 1) * 16 + (g-1) * 4 + (b-1)
-        if idx >= len(ALPHABET):
-            return None
-        return ALPHABET[idx]
-
+    idx = r * 25 + g * 5 + b
+    if idx >= len(ALPHABET):
+        return None
+    return ALPHABET[idx]
 
 def _majority_tuple(buf):
     counts = {}
@@ -571,10 +582,8 @@ async def decoder_task():
             continue
 
         ch_out = _rgb_digits_to_char(*best_t)
-        if ch_out is "RESET":
-            last_char = None
-            ch_out = None
-        elif ch_out is None:
+
+        if ch_out is None:
             candidate = None
             candidate_n = 0
             candidate_start_t = None
@@ -593,16 +602,17 @@ async def decoder_task():
             continue
 
         if ch_out != last_char:
-            now = time.monotonic()
-            lat_ms = int((now - candidate_start_t) * 1000) if candidate_start_t is not None else 0
-
+            if ch_out == "?":
+                print("Led is off")
+            else:
+                now = time.monotonic()
+                lat_ms = int((now - candidate_start_t) * 1000) if candidate_start_t is not None else 0
+                comm_latest["char"] = ch_out
+                comm_latest["digits"] = best_t
+                comm_latest["votes"] = best_n
+                comm_latest["lat_ms"] = lat_ms
+                comm_new_char_event.set()
             last_char = ch_out
-            comm_latest["char"] = ch_out
-            comm_latest["digits"] = best_t
-            comm_latest["votes"] = best_n
-            comm_latest["lat_ms"] = lat_ms
-            comm_new_char_event.set()
-
             candidate_start_t = None
 
         await asyncio.sleep(0)
@@ -1310,7 +1320,7 @@ def set_neo_module_to(mod_n, ind, v):
 # Map decoded characters to *hardware command strings* (enqueued)
 # Change these to whatever you want.
 CHAR_TO_HDW = {
-    "^": "UPDLS",   # example
+    "^": "",   # example
     "!": ""
 }
 
