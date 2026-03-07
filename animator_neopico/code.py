@@ -1637,102 +1637,14 @@ async def set_hdw_async(input_string, dur=0):
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
-            # brightness BXXX = Brightness XXX 000 to 100
-            elif seg[0:2] == 'BN':
-                br = int(seg[2:])
-                neo_brightness = clamp01(br / 100.0)
-                refresh_allowed_leds()
-            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
-            elif seg[0] == 'F':
-                segs_split = seg.split("_")
-                target = int(segs_split[0][1:])
-                step_s = float(segs_split[1])
-
-                target = max(0, min(100, target))
-
-                while br != target:
-                    if exit_set_hdw:
-                        return "STOP"
-                    br += 1 if br < target else -1
-                    neo_brightness = clamp01(br / 100.0)
-                    refresh_allowed_leds()
-                    await asyncio.sleep(step_s)
-            # SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index
-            elif seg[:3] =='SCN':
-                parts = seg.split('_')
-                px_n = int(parts[0][3:])   # after 'SCN'
-                rs = clamp01(float(parts[1]))
-                gs = clamp01(float(parts[2]))
-                bs = clamp01(float(parts[3]))
-
-                if px_n == 0:
-                    for i in only_lights:
-                        pixel_scale[i] = (rs, gs, bs)
-                    persist_pixel_scale_all(rs, gs, bs)
-                else:
-                    i = px_n - 1
-                    if i in only_lights_set:
-                        pixel_scale[i] = (rs, gs, bs)
-                        persist_pixel_scale(i, rs, gs, bs)
-
-                refresh_allowed_leds()
-            # SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)
-            elif seg[:3] == 'SCC':
-                try:
-                    n = int(seg[3:])  # SCC0, SCC12, etc.
-                except Exception:
-                    n = -1
-
-                if n == 0:
-                    clear_pixel_scale_all()
-                elif n > 0:
-                    clear_pixel_scale_one(n - 1)  # convert to 0-based
-
-            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
-            elif seg[:2] == 'NR':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0].replace("NR", ""))
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_relay_to(mod_n, index, v)
-            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^)
-            elif seg[:2] == 'NP':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0].replace("NP", ""))
-                char = segs_split[1]
-                set_neo_pico_to(mod_n, char)
-            elif seg[0:] == 'ZRAND':
-                await random_effect(1, 3, dur)
-            elif seg[:2] == 'ZR':
-                v = float(seg[2:])
-                await rbow(v, dur)
-            elif seg[0:] == 'ZFIRE':
-                await fire(dur)
-            elif seg[0:] == 'ZCOLCH':
-                multi_color()
-                await asyncio.sleep(dur)
-            elif seg[0] == 'Q':
-                file_nm = seg[1:]
-                add_command(file_nm)
-            # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-            elif seg[0] == 'S':
-                num = int(seg[1])
-                v = int(seg[2:])
-                if num == 0:
-                    for i in range(len(s_arr)):
-                        s_arr[i].angle = v
-                else:
-                    s_arr[num-1].angle = int(v)
-            # WXXX = Wait XXX decimal seconds
-            elif seg[0] == 'W':  # wait time
-                s = float(seg[1:])
-                await asyncio.sleep(s)
             # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command using these characters ?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ <>[]
-            elif seg[:2] == 'PN':
+            elif seg[:2] == 'NP':
                 start_time = time.monotonic()
-                my_wait = 0.1
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0].replace("PN", ""))
+                my_wait = .1
+                segs_split = seg.split("_", 1)
+                mod_n = int(segs_split[0].replace("NP", ""))
+
+                print(segs_split)
 
                 if len(segs_split[1])==1:
                     set_neo_pico_to(mod_n, segs_split[1])
@@ -1759,47 +1671,90 @@ async def set_hdw_async(input_string, dur=0):
 
                         prev = v
 
-                    set_neo_pico_to(mod_n, "[")
+                    set_neo_pico_to(mod_n, "]")
                     await asyncio.sleep(my_wait)
 
                     end_time = time.monotonic()
-                    print("Time it took: ", end_time-start_time)
-            elif seg[0:2] == 'NS':
-                start_time = time.monotonic()
-                my_wait = 0.1
+                    print("Neo pico command time: ", end_time-start_time)
+            # brightness BXXX = Brightness XXX 000 to 100
+            elif seg[0:2] == 'BN':
+                br = int(seg[2:])
+                neo_brightness = clamp01(br / 100.0)
+                refresh_allowed_leds()
+            # fade in or out FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+            elif seg[0] == 'F':
+                segs_split = seg.split("_")
+                target = int(segs_split[0][1:])
+                step_s = float(segs_split[1])
+                target = max(0, min(100, target))
+                while br != target:
+                    if exit_set_hdw:
+                        return "STOP"
+                    br += 1 if br < target else -1
+                    neo_brightness = clamp01(br / 100.0)
+                    refresh_allowed_leds()
+                    await asyncio.sleep(step_s)
+            # SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index
+            elif seg[:3] =='SCN':
+                parts = seg.split('_')
+                px_n = int(parts[0][3:])   # after 'SCN'
+                rs = clamp01(float(parts[1]))
+                gs = clamp01(float(parts[2]))
+                bs = clamp01(float(parts[3]))
+                if px_n == 0:
+                    for i in only_lights:
+                        pixel_scale[i] = (rs, gs, bs)
+                    persist_pixel_scale_all(rs, gs, bs)
+                else:
+                    i = px_n - 1
+                    if i in only_lights_set:
+                        pixel_scale[i] = (rs, gs, bs)
+                        persist_pixel_scale(i, rs, gs, bs)
+                refresh_allowed_leds()
+            # SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)
+            elif seg[:3] == 'SCC':
+                try:
+                    n = int(seg[3:])  # SCC0, SCC12, etc.
+                except Exception:
+                    n = -1
 
-                r, g, b = char_to_pwm_rgb("?")
-                set_neo_to(0, r, g, b)
-                await asyncio.sleep(my_wait)
-
-                r, g, b = char_to_pwm_rgb("[")
-                set_neo_to(0, r, g, b)
-                await asyncio.sleep(my_wait)
-
-                prev = None
-                is_first = True
-
-                for v in seg[2:]:
-                    is_first
-                    if v == prev and not is_first:
-                        r, g, b = char_to_pwm_rgb("?")
-                        set_neo_to(0, r, g, b)
-                        await asyncio.sleep(my_wait)
-
-                    is_first = False
-
-                    r, g, b = char_to_pwm_rgb(v)
-                    set_neo_to(0, r, g, b)
-                    await asyncio.sleep(my_wait)
-
-                    prev = v
-
-                r, g, b = char_to_pwm_rgb("]")
-                set_neo_to(0, r, g, b)
-                await asyncio.sleep(my_wait)
-                end_time = time.monotonic()
-
-                print("Time it took: ", end_time-start_time)
+                if n == 0:
+                    clear_pixel_scale_all()
+                elif n > 0:
+                    clear_pixel_scale_one(n - 1)  # convert to 0-based
+            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
+            elif seg[:2] == 'NR':
+                segs_split = seg.split("_")
+                mod_n = int(segs_split[0].replace("NR", ""))
+                index = int(segs_split[1])
+                v = int(segs_split[2])
+                set_neo_relay_to(mod_n, index, v)
+            elif seg[0:] == 'ZRAND':
+                await random_effect(1, 3, dur)
+            elif seg[:2] == 'ZR':
+                v = float(seg[2:])
+                await rbow(v, dur)
+            elif seg[0:] == 'ZFIRE':
+                await fire(dur)
+            elif seg[0:] == 'ZCOLCH':
+                multi_color()
+                await asyncio.sleep(dur)
+            elif seg[0] == 'Q':
+                file_nm = seg[1:]
+                add_command(file_nm)
+            # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
+            elif seg[0] == 'S':
+                num = int(seg[1])
+                v = int(seg[2:])
+                if num == 0:
+                    for i in range(len(s_arr)):
+                        s_arr[i].angle = v
+                else:
+                    s_arr[num-1].angle = int(v)
+            # WXXX = Wait XXX decimal seconds
+            elif seg[0] == 'W':  # wait time
+                s = float(seg[1:])
+                await asyncio.sleep(s)
     except Exception as e:
         files.log_item(e)
     
