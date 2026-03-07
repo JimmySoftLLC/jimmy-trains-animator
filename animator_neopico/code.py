@@ -681,7 +681,6 @@ def get_neo_ids():
 
 def set_neo_module_to(mod_n, ind, v):
     neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
 
     def set_pair(base):
         safe_set_led(base, (v, v, v))
@@ -744,7 +743,7 @@ def get_neo_pico_ids():
 def set_neo_relay_to(mod_n, ind, off_on):
     cur = []
     neo_relay_ids = get_neo_relay_ids()
-    print(mod_n, ind, off_on, neo_relay_ids)
+
     if off_on == 0:
         off_on = 0
     else:
@@ -763,14 +762,12 @@ def set_neo_relay_to(mod_n, ind, off_on):
         cur = list(neo_branch[neo_relay_ids[mod_n-1]])
         cur[ind] = off_on
         neo_branch[neo_relay_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(neo_branch[neo_relay_ids[mod_n-1]])
     neo_branch.show()
 
 
 def set_neo_pico_to(mod_n, char):
     neo_relay_ids = get_neo_pico_ids()
     r, g, b = char_to_pwm_rgb(char)
-    # print("r: ", r, "g: ", g, "b: ", b)
     if mod_n == 0:
         for i in neo_relay_ids:
             neo_branch[i] = (r, g, b)
@@ -1368,7 +1365,6 @@ async def process_commands():
         print("Processing command:", cmd)
         if cmd[:2] == 'AN':  # AN_XXX = Animation XXX filename
             cmd_split = cmd.split("_")
-            clr_cmd_queue()
             await an_async(cmd_split[1])
         else:
             await set_hdw_async(cmd)
@@ -1597,10 +1593,13 @@ def bnd(c, l, u):
     return c
 
 
-async def set_hdw_async(input_string, dur=0):
+async def set_hdw_async(cmd, dur=0):
     global br, exit_set_hdw, neo_brightness
-    segs = input_string.split(",")
 
+    if cmd[:2]=="NP" in cmd:
+        segs = [cmd]
+    else:
+        segs = cmd.split(",")
     try:
         for seg in segs:
             if exit_set_hdw:
@@ -1649,8 +1648,6 @@ async def set_hdw_async(input_string, dur=0):
                 my_wait = .1
                 segs_split = seg.split("_", 1)
                 mod_n = int(segs_split[0].replace("NP", ""))
-
-                print(segs_split)
 
                 if len(segs_split[1])==1:
                     set_neo_pico_to(mod_n, segs_split[1])
