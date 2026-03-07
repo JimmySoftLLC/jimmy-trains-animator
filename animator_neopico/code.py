@@ -66,34 +66,67 @@ gc_col("Imports gc, files")
 # pin setups prototype
 
 # prototype unit
-# neo_branch_pin = board.GP6
-# led_indicator_pin = board.GP14
+neo_branch_pin = board.GP6
+led_indicator_pin = board.GP14
 
-# s_1_pin = board.GP8
-# s_2_pin = board.GP9
-# s_3_pin = board.GP12
-# s_4_pin = board.GP13
-# s_5_pin = board.GP21
-# s_6_pin = board.GP22
-
-# red_pin = board.GP3
-# green_pin = board.GP2
-# blue_pin = board.GP4
-
-# animator pico board
-neo_branch_pin = board.GP16
-led_indicator_pin = board.GP17
-
-s_1_pin = board.GP10
-s_2_pin = board.GP11
+s_1_pin = board.GP8
+s_2_pin = board.GP9
 s_3_pin = board.GP12
 s_4_pin = board.GP13
-s_5_pin = board.GP14
+s_5_pin = board.GP21
 s_6_pin = board.GP22
 
-red_pin = board.GP6
-green_pin = board.GP8
-blue_pin = board.GP9
+red_pin = board.GP3
+green_pin = board.GP2
+blue_pin = board.GP4
+
+DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
+MP_CMD_WAIT = .1
+IDLE_STATE = False
+MAXLEN = 1200
+CENTERS = [0, 0.18, 0.26, 0.34, 0.42]
+TOLERANCE = .04
+CAPTURE_S = 0.02
+WIN = 5
+MIN_MAJ = 5
+CONFIRM_COUNT = 3
+ALPHA = 0.20
+CHAR_TO_HDW = {
+    "^": "UPDLS",
+    "a": "AN_a",
+    "b": "AN_b",
+    "c": "AN_c"
+}
+
+# animator pico board
+# neo_branch_pin = board.GP16
+# led_indicator_pin = board.GP17
+
+# s_1_pin = board.GP10
+# s_2_pin = board.GP11
+# s_3_pin = board.GP12
+# s_4_pin = board.GP13
+# s_5_pin = board.GP14
+# s_6_pin = board.GP22
+
+# red_pin = board.GP6
+# green_pin = board.GP8
+# blue_pin = board.GP9
+
+# DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
+# MP_CMD_WAIT = .1
+# IDLE_STATE = False
+# MAXLEN = 1200
+# CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255]
+# TOLERANCE = 8/255
+# CAPTURE_S = 0.002
+# WIN = 5
+# MIN_MAJ = 5
+# CONFIRM_COUNT = 3
+# ALPHA = 0.20
+# CHAR_TO_HDW = {
+#     "^": "UPDLS"
+# }
 
 ################################################################################
 # Sd card config variables
@@ -177,7 +210,6 @@ led_indicator.show()
 
 pixel_scale = [(1.0, 1.0, 1.0)] * n_px
 logical_led = {}
-
 
 def clear_pixel_scale_all():
     """Clear ALL calibration (persistent) + reset runtime scalers to 1.0 on allowed light pixels."""
@@ -818,23 +850,7 @@ def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
         DIGIT_PWM[b_d],
     )
 
-# Decoding
 
-
-PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
-
-IDLE_STATE = False
-MAXLEN = 1200
-
-# Centers for the five valid levels
-CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255]
-TOLERANCE = 8/255
-
-CAPTURE_S = 0.002
-WIN = 5
-MIN_MAJ = 5
-CONFIRM_COUNT = 3
-ALPHA = 0.20
 
 
 def _enable_pullup(pin):
@@ -922,11 +938,11 @@ comm_new_char_event = asyncio.Event()
 
 async def decoder_task():
 
-    for pin in PINS.values():
+    for pin in DECODING_PINS.values():
         _enable_pullup(pin)
 
     pulseins = {}
-    for k, pin in PINS.items():
+    for k, pin in DECODING_PINS.items():
         pi = pulseio.PulseIn(pin, maxlen=MAXLEN, idle_state=IDLE_STATE)
         pi.pause()
         pulseins[k] = pi
@@ -964,6 +980,8 @@ async def decoder_task():
                 filt[ch] = ALPHA * d + (1.0 - ALPHA) * filt[ch]
 
             digits[ch] = _duty_to_digit(filt[ch])
+
+        # print("R: ",filt["R"], "G: ", filt["G"], "B: ", filt["B"])
 
         t = (digits["R"], digits["G"], digits["B"])
 
@@ -1645,19 +1663,17 @@ async def set_hdw_async(cmd, dur=0):
             # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command using these characters ?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ <>[]
             elif seg[:2] == 'NP':
                 start_time = time.monotonic()
-                my_wait = .1
                 segs_split = seg.split("_", 1)
                 mod_n = int(segs_split[0].replace("NP", ""))
 
                 if len(segs_split[1])==1:
                     set_neo_pico_to(mod_n, segs_split[1])
-                    await asyncio.sleep(my_wait) 
                 else:
                     set_neo_pico_to(mod_n, "?")
-                    await asyncio.sleep(my_wait)
+                    await asyncio.sleep(MP_CMD_WAIT)
 
                     set_neo_pico_to(mod_n, "[")
-                    await asyncio.sleep(my_wait)
+                    await asyncio.sleep(MP_CMD_WAIT)
 
                     prev = None
                     is_first = True
@@ -1665,17 +1681,17 @@ async def set_hdw_async(cmd, dur=0):
                     for v in segs_split[1]:
                         if v == prev and not is_first:
                             set_neo_pico_to(mod_n, "?")
-                            await asyncio.sleep(my_wait)
+                            await asyncio.sleep(MP_CMD_WAIT)
 
                         is_first = False
 
                         set_neo_pico_to(mod_n, v)
-                        await asyncio.sleep(my_wait)
+                        await asyncio.sleep(MP_CMD_WAIT)
 
                         prev = v
 
                     set_neo_pico_to(mod_n, "]")
-                    await asyncio.sleep(my_wait)
+                    await asyncio.sleep(MP_CMD_WAIT)
 
                     end_time = time.monotonic()
                     print("Neo pico command time: ", end_time-start_time)
@@ -1763,13 +1779,9 @@ async def set_hdw_async(cmd, dur=0):
     
 
 ################################################################################
-# Decoder consumer: map a/b/c -> hardware command string, then enqueue
-# Map decoded characters to *hardware command strings* (enqueued)
-# Change these to whatever you want.
-CHAR_TO_HDW = {
-    "^": "UPDLS"
-}
-
+# Decoder consumer
+# CHAR_TO_HDW used to send command fast, this only used on the prototype board or future
+# software design where we want quick command that are tied to specific operations
 
 async def consumer_task():
     while True:
