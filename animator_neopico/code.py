@@ -66,67 +66,67 @@ gc_col("Imports gc, files")
 # pin setups prototype
 
 # prototype unit
-neo_branch_pin = board.GP6
-led_indicator_pin = board.GP14
+# neo_branch_pin = board.GP6
+# led_indicator_pin = board.GP14
 
-s_1_pin = board.GP8
-s_2_pin = board.GP9
-s_3_pin = board.GP12
-s_4_pin = board.GP13
-s_5_pin = board.GP21
-s_6_pin = board.GP22
-
-red_pin = board.GP3
-green_pin = board.GP2
-blue_pin = board.GP4
-
-DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
-MP_CMD_WAIT = .1
-IDLE_STATE = False
-MAXLEN = 1200
-CENTERS = [0, 0.18, 0.26, 0.34, 0.42]
-TOLERANCE = .04
-CAPTURE_S = 0.02
-WIN = 5
-MIN_MAJ = 5
-CONFIRM_COUNT = 3
-ALPHA = 0.20
-CHAR_TO_HDW = {
-    "^": "UPDLS",
-    "a": "AN_a",
-    "b": "AN_b",
-    "c": "AN_c"
-}
-
-# animator pico board
-# neo_branch_pin = board.GP16
-# led_indicator_pin = board.GP17
-
-# s_1_pin = board.GP10
-# s_2_pin = board.GP11
+# s_1_pin = board.GP8
+# s_2_pin = board.GP9
 # s_3_pin = board.GP12
 # s_4_pin = board.GP13
-# s_5_pin = board.GP14
+# s_5_pin = board.GP21
 # s_6_pin = board.GP22
 
-# red_pin = board.GP6
-# green_pin = board.GP8
-# blue_pin = board.GP9
+# red_pin = board.GP3
+# green_pin = board.GP2
+# blue_pin = board.GP4
 
 # DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
 # MP_CMD_WAIT = .1
 # IDLE_STATE = False
 # MAXLEN = 1200
-# CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255]
-# TOLERANCE = 8/255
-# CAPTURE_S = 0.002
+# CENTERS = [0, 0.18, 0.26, 0.34, 0.42]
+# TOLERANCE = .04
+# CAPTURE_S = 0.02
 # WIN = 5
 # MIN_MAJ = 5
 # CONFIRM_COUNT = 3
 # ALPHA = 0.20
 # CHAR_TO_HDW = {
-#     "^": "UPDLS"
+#     "^": "UPDLS",
+#     "a": "AN_a",
+#     "b": "AN_b",
+#     "c": "AN_c"
 # }
+
+# animator pico board
+neo_branch_pin = board.GP16
+led_indicator_pin = board.GP17
+
+s_1_pin = board.GP10
+s_2_pin = board.GP11
+s_3_pin = board.GP12
+s_4_pin = board.GP13
+s_5_pin = board.GP14
+s_6_pin = board.GP22
+
+red_pin = board.GP6
+green_pin = board.GP8
+blue_pin = board.GP9
+
+DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
+MP_CMD_WAIT = .1
+IDLE_STATE = False
+MAXLEN = 1200
+CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255]
+TOLERANCE = 8/255
+CAPTURE_S = 0.002
+WIN = 5
+MIN_MAJ = 5
+CONFIRM_COUNT = 3
+ALPHA = 0.20
+CHAR_TO_HDW = {
+    "^": "UPDLS"
+}
 
 ################################################################################
 # Sd card config variables
