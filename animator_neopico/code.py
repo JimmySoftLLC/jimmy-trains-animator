@@ -73,7 +73,7 @@ gc_col("Imports gc, files")
 # s_2_pin = board.GP9
 # s_3_pin = board.GP12
 # s_4_pin = board.GP13
-# s_5_pin = board.GP14
+# s_5_pin = board.GP21
 # s_6_pin = board.GP22
 
 # red_pin = board.GP3
