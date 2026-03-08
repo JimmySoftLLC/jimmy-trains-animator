@@ -161,6 +161,7 @@ is_midori_running = False
 tmp_wav_file_name = code_folder + "tmp.wav"
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
+MP_CMD_WAIT=.1
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -854,12 +855,12 @@ def l_tst():
     # neopico test
     for n in neopicos:
         for i in n:
-            led[i] = (80, 20, 20)
+            led[i] = (0,0,0)
             led.show()
-            time.sleep(1)
-            led[i] = (20, 20, 20)
+            time.sleep(MP_CMD_WAIT)
+            led[i] = (60,0,0)
             led.show()
-            time.sleep(.3)
+            time.sleep(MP_CMD_WAIT)
 
 def clamp01(x: float) -> float:
     return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
@@ -3075,6 +3076,9 @@ def set_hdw(cmd, dur, url=""):
                         "_" + segs_split[2]
                 else:
                     override_switch_state["switch_value"] = "none"
+            # UPDLS = update light string    
+            elif seg[:5] == 'UPDLS':
+                upd_l_str()
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
@@ -3112,6 +3116,41 @@ def set_hdw(cmd, dur, url=""):
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
+            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^)
+            elif seg[:2] == 'NP':
+                start_time = time.monotonic()
+                segs_split = seg.split("_", 1)
+                mod_n = int(segs_split[0].replace("NP", ""))
+
+                if len(segs_split[1])==1:
+                    set_neo_pico_to(mod_n, segs_split[1])
+                else:
+                    set_neo_pico_to(mod_n, "?")
+                    time.sleep(MP_CMD_WAIT)
+
+                    set_neo_pico_to(mod_n, "[")
+                    time.sleep(MP_CMD_WAIT)
+
+                    prev = None
+                    is_first = True
+
+                    for v in segs_split[1]:
+                        if v == prev and not is_first:
+                            set_neo_pico_to(mod_n, "?")
+                            time.sleep(MP_CMD_WAIT)
+
+                        is_first = False
+
+                        set_neo_pico_to(mod_n, v)
+                        time.sleep(MP_CMD_WAIT)
+
+                        prev = v
+
+                    set_neo_pico_to(mod_n, "]")
+                    time.sleep(MP_CMD_WAIT)
+
+                    end_time = time.monotonic()
+                    print("Neo pico command time: ", end_time-start_time)
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0:2] == 'BN':
                 br = int(seg[2:])
@@ -3171,12 +3210,6 @@ def set_hdw(cmd, dur, url=""):
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_relay_to(mod_n, index, v)
-            # modules NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^)
-            elif seg[:2] == 'NP':
-                segs_split = seg.split("_")
-                mod_n = int(segs_split[0].replace("NP", ""))
-                char = segs_split[1]
-                set_neo_pico_to(mod_n, char)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 random_effect(1, 3, dur)
