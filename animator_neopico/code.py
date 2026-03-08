@@ -22,22 +22,31 @@
 
 #######################################################
 
-from rainbowio import colorwheel
+import utilities
+from adafruit_debouncer import Debouncer
 import neopixel
+from rainbowio import colorwheel
+from analogio import AnalogIn
 import asyncio
+from adafruit_motor import servo
+import pwmio
 import microcontroller
+import rtc
 import random
 import board
+import digitalio
+import busio
+import storage
+import sdcardio
+import audiobusio
+import audiomixer
+import audiocore
 import time
 import gc
 import files
 import os
-from adafruit_motor import servo
-import pwmio
-
-# used for the neo decoder
 import pulseio
-import digitalio
+
 
 
 def gc_col(collection_point):
@@ -66,11 +75,13 @@ gc_col("Imports gc, files")
 # pin setups prototype
 
 # prototype unit
+# top_sw = board.GP20
+# bot_sw = board.GP11
+
 # neo_branch_pin = board.GP6
 # led_indicator_pin = board.GP14
 
 # s_1_pin = board.GP8
-# s_2_pin = board.GP9
 # s_3_pin = board.GP12
 # s_4_pin = board.GP13
 # s_5_pin = board.GP21
@@ -99,11 +110,25 @@ gc_col("Imports gc, files")
 # }
 
 # animator pico board
+a_in_pin = board.A0
+aud_en_pin = board.GP21
+
+bclk = board.GP18  # BCLK on MAX98357A i2s audio
+lrc = board.GP19  # LRC on MAX98357A i2s audio
+din = board.GP20  # DIN on MAX98357A i2s audio
+
+sck = board.GP2 # serial clock sdCard
+si = board.GP3 # MOSI sdCard
+so = board.GP4 # MISO sdCard
+cs = board.GP5 # chip select sdCard
+
+l_sw = board.GP11
+r_sw = board.GP15
+
 neo_branch_pin = board.GP16
 led_indicator_pin = board.GP17
 
 s_1_pin = board.GP10
-s_2_pin = board.GP11
 s_3_pin = board.GP12
 s_4_pin = board.GP13
 s_5_pin = board.GP14
@@ -129,6 +154,93 @@ CHAR_TO_HDW = {
 }
 
 ################################################################################
+# Setup hardware
+
+# Setup for vol
+a_in = AnalogIn(a_in_pin)
+
+# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+aud_en = digitalio.DigitalInOut(aud_en_pin)
+aud_en.direction = digitalio.Direction.OUTPUT
+aud_en.value = False
+
+# Setup the switches
+l_sw = digitalio.DigitalInOut(l_sw)
+l_sw.direction = digitalio.Direction.INPUT
+l_sw.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw)
+
+r_sw = digitalio.DigitalInOut(r_sw)
+r_sw.direction = digitalio.Direction.INPUT
+r_sw.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw)
+
+aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
+
+aud_en.value = True
+
+spi = busio.SPI(sck, si, so)
+
+# Setup the mixer to play wav files
+mix = audiomixer.Mixer(voice_count=1, sample_rate=22050, channel_count=2,
+                       bits_per_sample=16, samples_signed=True, buffer_size=8192)
+aud.play(mix)
+
+mix.voice[0].level = .8
+
+try:
+    sd = sdcardio.SDCard(spi, cs)
+    vfs = storage.VfsFat(sd)
+    storage.mount(vfs, "/sd")
+except Exception as e:
+    files.log_item(e)
+    w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+    mix.voice[0].play(w0, loop=False)
+    while mix.voice[0].playing:
+        pass
+    card_in = False
+    while not card_in:
+        l_sw.update()
+        if l_sw.fell:
+            try:
+                sd = sdcardio.SDCard(spi, cs)
+                vfs = storage.VfsFat(sd)
+                storage.mount(vfs, "/sd")
+                card_in = True
+                w0 = audiocore.WaveFile(
+                    open("/sd/mvc/micro_sd_card_success.wav", "rb"))
+                mix.voice[0].play(w0, loop=False)
+                while mix.voice[0].playing:
+                    pass
+            except Exception as e:
+                files.log_item(e)
+                w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+                mix.voice[0].play(w0, loop=False)
+                while mix.voice[0].playing:
+                    pass
+
+aud_en.value = False
+
+# Setup the servos, s_2 is used by left switch
+s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
+s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
+s_4 = pwmio.PWMOut(s_4_pin, duty_cycle=2 ** 15, frequency=50)
+s_5 = pwmio.PWMOut(s_5_pin, duty_cycle=2 ** 15, frequency=50)
+s_6 = pwmio.PWMOut(s_6_pin, duty_cycle=2 ** 15, frequency=50)
+
+s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
+s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
+s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
+s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
+
+s_arr = [s_1, s_3, s_4, s_5, s_6]
+
+# Setup time
+r = rtc.RTC()
+r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
+
+################################################################################
 # Sd card config variables
 
 animators_folder = "/animations/"
@@ -149,30 +261,18 @@ def upd_media():
 
 upd_media()
 
-override_switch_state = {}
-override_switch_state["switch_value"] = ""
+c_run = False
+ts_mode = False
 
-################################################################################
-# Setup the servos
-s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
-s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+local_ip = ""
 
-s_2 = pwmio.PWMOut(s_2_pin, duty_cycle=2 ** 15, frequency=50)
-s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
 
-s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
-s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
+gc_col("config setup")
 
-s_4 = pwmio.PWMOut(s_4_pin, duty_cycle=2 ** 15, frequency=50)
-s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
-
-s_5 = pwmio.PWMOut(s_5_pin, duty_cycle=2 ** 15, frequency=50)
-s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
-
-s_6 = pwmio.PWMOut(s_6_pin, duty_cycle=2 ** 15, frequency=50)
-s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
-
-s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
 
 ################################################################################
 # Setup neo pixels (main light string)
@@ -464,6 +564,9 @@ def l_tst():
             neo_branch.show()
             time.sleep(MP_CMD_WAIT)
             neo_branch[i] = (60,0,0)
+            neo_branch.show()
+            time.sleep(MP_CMD_WAIT)
+            neo_branch[i] = (0,0,0)
             neo_branch.show()
             time.sleep(MP_CMD_WAIT)
 
@@ -1416,6 +1519,177 @@ def rst_def():
 
 
 ################################################################################
+# Dialog and sound play methods
+
+
+def upd_vol(s):
+    if cfg["volume_pot"]:
+        v = a_in.value / 65536
+        mix.voice[0].level = v
+        time.sleep(s)
+    else:
+        try:
+            v = int(cfg["volume"]) / 100
+        except:
+            v = .5
+        if v < 0 or v > 1:
+            v = .5
+        mix.voice[0].level = v
+        time.sleep(s)
+
+
+async def upd_vol_async(s):
+    if cfg["volume_pot"]:
+        v = a_in.value / 65536
+        mix.voice[0].level = v
+        await asyncio.sleep(s)
+    else:
+        try:
+            v = int(cfg["volume"]) / 100
+        except Exception as e:
+            files.log_item(e)
+            v = .5
+        if v < 0 or v > 1:
+            v = .5
+        mix.voice[0].level = v
+        await asyncio.sleep(s)
+
+
+def ch_vol(action):
+    v = int(cfg["volume"])
+    if "volume" in action:
+        v = action.split("volume")
+        v = int(v[1])
+    if action == "lower1":
+        v -= 1
+    elif action == "raise1":
+        v += 1
+    elif action == "lower":
+        if v <= 10:
+            v -= 1
+        else:
+            v -= 10
+    elif action == "raise":
+        if v < 10:
+            v += 1
+        else:
+            v += 10
+    if v > 100:
+        v = 100
+    if v < 1:
+        v = 1
+    cfg["volume"] = str(v)
+    cfg["volume_pot"] = False
+    if not mix.voice[0].playing:
+        files.write_json_file("/sd/cfg.json", cfg)
+        ply_a_0("/sd/mvc/volume.wav")
+        spk_str(cfg["volume"], False)
+
+
+def ply_a_0(file_name):
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
+        while mix.voice[0].playing:
+            upd_vol(0.02)
+    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    mix.voice[0].play(w0, loop=False)
+    while mix.voice[0].playing:
+        exit_early()
+
+
+def stp_a_0():
+    mix.voice[0].stop()
+    while mix.voice[0].playing:
+        pass
+
+
+def exit_early():
+    global c_run
+    sw = utilities.switch_state(
+        l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+    if sw == "left" and cfg["can_cancel"]:
+        mix.voice[0].stop()
+    if sw == "left_held":
+        mix.voice[0].stop()
+        c_run = False
+        stp_all_cmds()
+        ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+
+
+def spk_str(str_to_speak, addLocal):
+    for character in str_to_speak:
+        try:
+            if character == " ":
+                character = "space"
+            if character == "-":
+                character = "dash"
+            if character == ".":
+                character = "dot"
+            ply_a_0("/sd/mvc/" + character + ".wav")
+        except:
+            print("Invalid character in string to speak")
+    if addLocal:
+        ply_a_0("/sd/mvc/dot.wav")
+        ply_a_0("/sd/mvc/local.wav")
+
+
+def l_r_but():
+    ply_a_0("/sd/mvc/press_left_button_right_button.wav")
+
+
+def sel_web():
+    ply_a_0("/sd/mvc/web_menu.wav")
+    l_r_but()
+
+
+def opt_sel():
+    ply_a_0("/sd/mvc/option_selected.wav")
+
+
+def spk_sng_num(song_number):
+    ply_a_0("/sd/mvc/song.wav")
+    spk_str(song_number, False)
+
+
+def spk_lght(play_intro):
+    try:
+        elements = cfg["light_string"].split(',')
+        if play_intro:
+            ply_a_0("/sd/mvc/current_light_settings_are.wav")
+        for index, element in enumerate(elements):
+            ply_a_0("/sd/mvc/position.wav")
+            ply_a_0("/sd/mvc/" + str(index+1) + ".wav")
+            ply_a_0("/sd/mvc/is.wav")
+            ply_a_0("/sd/mvc/" + element + ".wav")
+    except:
+        ply_a_0("/sd/mvc/no_lights_in_light_string.wav")
+        return
+
+
+def no_trk():
+    ply_a_0("/sd/mvc/no_user_soundtrack_found.wav")
+    while True:
+        l_sw.update()
+        r_sw.update()
+        if l_sw.fell:
+            break
+        if r_sw.fell:
+            ply_a_0("/sd/mvc/create_sound_track_files.wav")
+            break
+
+
+def spk_web():
+    ply_a_0("/sd/mvc/animator_available_on_network.wav")
+    ply_a_0("/sd/mvc/to_access_type.wav")
+    if cfg["HOST_NAME"] == "animator-lightning":
+        ply_a_0("/sd/mvc/animator_dash_lightning.wav")
+        ply_a_0("/sd/mvc/dot.wav")
+        ply_a_0("/sd/mvc/local.wav")
+    else:
+        spk_str(cfg["HOST_NAME"], True)
+    ply_a_0("/sd/mvc/in_your_browser.wav")
+
+################################################################################
 # animations
 
 async def an_async(f_nm):
@@ -1633,12 +1907,12 @@ async def set_hdw_async(cmd, dur=0):
             elif seg[:2] == 'SW':
                 segs_split = seg.split("_")
                 if len(segs_split) == 2:
-                    override_switch_state["switch_value"] = segs_split[1]
+                    ovrde_sw_st["switch_value"] = segs_split[1]
                 elif len(segs_split) == 3:
-                    override_switch_state["switch_value"] = segs_split[1] + \
+                    ovrde_sw_st["switch_value"] = segs_split[1] + \
                         "_" + segs_split[2]
                 else:
-                    override_switch_state["switch_value"] = "none"
+                    ovrde_sw_st["switch_value"] = "none"
             # UPDLS = update light string    
             elif seg[:5] == 'UPDLS':
                 upd_l_str()
@@ -1815,6 +2089,8 @@ async def consumer_task():
 ################################################################################
 # Start server
 
+aud_en.value = True
+
 if (web):
     files.log_item("starting server...")
     try:
@@ -1822,6 +2098,7 @@ if (web):
         led_indicator[0] = (0, 20, 0)
         led_indicator.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        spk_web()
     except Exception as e:
         files.log_item(e)
         time.sleep(5)
