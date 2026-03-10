@@ -703,7 +703,7 @@ async def set_hdw_async(input_string, dur):
             elif seg[0:] == 'ZCOLCH':
                 multi_color()
                 await asyncio.sleep(dur)
-            # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
+            # QXXXX = Add command XXXX any command ie AN_filename to add new animation
             elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)

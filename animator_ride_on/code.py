@@ -57,7 +57,7 @@ def gc_col(collection_point):
 
 def f_exists(filename):
     try:
-        _ = os.stat(filename)
+        status = os.stat(filename)
         f_exists = True
     except OSError:
         f_exists = False
@@ -249,9 +249,6 @@ local_ip = ""
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
 
-exit_set_hdw_async = False
-is_running_an = False
-
 gc_col("config setup")
 
 ################################################################################
@@ -381,9 +378,11 @@ if (web):
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
             elif rq_d["an"] == "cont_mode_off":
+                cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             elif rq_d["an"] == "timestamp_mode_on":
+                cont_run = False
                 stp_all_cmds()
                 ts_mode = True
                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
@@ -597,10 +596,9 @@ def clr_cmd_queue():
 
 
 def stp_all_cmds():
-    global exit_set_hdw_async, cont_run
+    global exit_set_hdw_async
     clr_cmd_queue()
     exit_set_hdw_async = True
-    cont_run = False
     print("Processing stopped and command queue cleared.")
 
 ################################################################################
@@ -828,10 +826,9 @@ lst_opt = ""
 
 
 async def an_async(f_nm):
-    global is_running_an, cfg, lst_opt
+    global cfg, lst_opt
     print("Filename: " + f_nm)
     cur_opt = f_nm
-    is_running_an = True
     try:
         if f_nm == "random all":
             h_i = len(rand_opt) - 1
@@ -853,7 +850,7 @@ async def an_async(f_nm):
         files.log_item(e)
         no_trk()
         cfg["option_selected"] = "random all"
-    is_running_an = False
+        return
     gc_col("Animation complete.")
 
 
@@ -881,8 +878,6 @@ async def an_light_async(f_nm):
     ft1 = []
     ft2 = []
 
-    hdw_rtn = ""
-
     while True:
         t_past = time.monotonic()-srt_t
 
@@ -900,13 +895,13 @@ async def an_light_async(f_nm):
             if (len(ft1) == 1 or ft1[1] == ""):
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
-                hdw_rtn = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
-                if hdw_rtn == "STOP":
+                result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
+                if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
-                hdw_rtn = await set_hdw_async(ft1[1])
-                if hdw_rtn == "STOP":
+                result = await set_hdw_async(ft1[1])
+                if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
@@ -919,9 +914,10 @@ async def an_light_async(f_nm):
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
             if cont_run:
+                cont_run = False
                 stp_all_cmds()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-        if hdw_rtn != "STOP" and (not mix.voice[0].playing and w0_exists or flsh_i >= len(flsh_t)-1):
+        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             led.fill((0, 0, 0))
             led.show()
@@ -1076,12 +1072,7 @@ async def set_hdw_async(input_string, dur = 3):
 
     # Process each segment
     for seg in segs:
-        if exit_set_hdw_async:
-            return "STOP"
-        # end animation
-        elif seg[0] == 'E':
-            return "STOP"
-        elif seg == "":
+        if seg == "":
             print("no command")
         # WXXX = Wait XXX decimal seconds
         elif seg[0] == 'W':  # wait time
@@ -1129,7 +1120,7 @@ async def set_hdw_async(input_string, dur = 3):
             stp_a_0()
             fn = get_snds("/sd/mvc", "horn")
             w0 = audiocore.WaveFile(open(fn, "rb"))
-            mix.voice[0].play(w0, loop=False)        
+            mix.voice[0].play(w0, loop=False)         
         # BELL = Ring bell
         elif seg[:4] == 'BELL':  # play file
             wait_snd()
@@ -1169,7 +1160,7 @@ async def set_hdw_async(input_string, dur = 3):
                     br -= 1
                     led.brightness = float(br/100)
                 upd_vol_async(.01)
-        # QCCC = add command CCC
+        # QXXXX = Add command XXXX any command ie AN_filename to add new animation
         elif seg[0] == 'Q':
                 cmd = seg[1:]
                 add_cmd(cmd)
@@ -1344,22 +1335,21 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, is_running_an
-        if not is_running_an:
-            sw = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-            if sw == "left_held":
-                if cont_run:
-                    stp_all_cmds()
-                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-                else:
-                    cont_run = True
-                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif (sw == "left" or cont_run) and not mix.voice[0].playing:
-                if not is_running_an:
-                    add_cmd("AN_" + cfg["option_selected"])
-            elif sw == "right" and not mix.voice[0].playing:
-                mch.go_to('main_menu')
+        global cont_run
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left_held":
+            if cont_run:
+                cont_run = False
+                stp_all_cmds()
+                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+            else:
+                cont_run = True
+                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
+        elif (sw == "left" or cont_run) and not mix.voice[0].playing:
+            add_cmd("AN_" + cfg["option_selected"])
+        elif sw == "right" and not mix.voice[0].playing:
+            mch.go_to('main_menu')
 
 
 class Main(Ste):

@@ -3249,10 +3249,9 @@ def set_hdw(cmd, dur, url=""):
                         s_arr[i].angle = v
                 else:
                     s_arr[num-1].angle = int(v)
-            # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
+            # QXXXX = Add command XXXX any command ie AN_filename to add new animation
             elif seg[0] == 'Q':
-                file_nm = seg[1:]
-                add_command(file_nm)
+                add_command(seg[1:])
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             elif seg[:3] == 'API':
                 seg_split = split_string(seg)
