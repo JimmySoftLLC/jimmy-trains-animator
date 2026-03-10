@@ -2098,6 +2098,8 @@ if (web):
         led_indicator[0] = (0, 20, 0)
         led_indicator.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        dbm_string = str(-int(avg_rssi))+"dbm"
+        spk_str(dbm_string,False)
         spk_web()
     except Exception as e:
         files.log_item(e)
