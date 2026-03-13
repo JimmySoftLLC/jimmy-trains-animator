@@ -2061,8 +2061,8 @@ print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    mix_voice_0.set_volume(volume_0_1*0.7)
-    mix_voice_1.set_volume(volume_0_1*0.7)
+    mix_voice_0.set_volume(volume_0_1) # was x 0.7 turning up since have new speakers
+    mix_voice_1.set_volume(volume_0_1)
     time.sleep(seconds)
 
 
