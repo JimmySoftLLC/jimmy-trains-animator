@@ -1840,8 +1840,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
         exit_set_hdw = False
-        command = "LN0_" + str(rgb_value[0]) + "_" + \
-            str(rgb_value[1]) + "_" + str(rgb_value[2])
+        command = "NM0_0_0,NM1_1_" + str(rgb_value[0]) + ",NM1_3_" + str(rgb_value[1]) + ",NM1_5_" + str(rgb_value[2])
         add_command_to_ts(command)
         set_hdw(command, 0)
         response = rgb_value
@@ -1879,8 +1878,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
         elif rq_d["item"] == "neo":
-            command = "LN0_" + str(rq_d["r"]) + "_" + \
-                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            command = "NM0_0_0,NM1_1_" + str(rq_d["r"]) + ",NM1_3_" + str(rq_d["g"]) + ",NM1_5_" + str(rq_d["b"])
             add_command_to_ts(command)
             set_hdw(command, 0)
             if current_neo != "":

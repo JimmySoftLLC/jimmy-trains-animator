@@ -398,12 +398,39 @@
                     </div>
                     <div class="knob-wrapper">
                         <div class="knob-container">
-                            <div class="knob" id="knobBrightness">
+                            <div class="knob" id="knobWhite">
                                 <div class="indicator"></div>
                             </div>
-                            <div class="knob-text" id="knobBrightness-text">0</div>
+                            <div class="knob-text" id="knobWhite-text">0</div>
                         </div>
-                        <div class="knob-label">Light (0–100)</div>
+                        <div class="knob-label">White (0–255)</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobRed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobRed-text">0</div>
+                        </div>
+                        <div class="knob-label">Red (0–255)</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobGreen">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobGreen-text">0</div>
+                        </div>
+                        <div class="knob-label">Green (0–255)</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobBlue">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobBlue-text">0</div>
+                        </div>
+                        <div class="knob-label">Blue (0–255)</div>
                     </div>
                 </div>
             </div>
@@ -434,21 +461,25 @@
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
             <h2>Test neopixel lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_0_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_1_255" data-url="/lights"
                     type="button">
                     Red
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_255_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_3_255" data-url="/lights"
                     type="button">
                     Green
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_0_0_255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_5_255" data-url="/lights"
                     type="button">
                     Blue
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LN0_255_255_255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_2_255,NM1_4_255,NM1_6_255" data-url="/lights"
                     type="button">
                     White
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM0_0_0" data-url="/lights"
+                    type="button">
+                    All off
                 </button>
             </div>
             <div>
@@ -749,8 +780,26 @@
             formatValue: v => v.toFixed(1),
             throttleTime: 200
         });
-        new KnobController('knobBrightness', 'knobBrightness-text', 0, 100, {
-            sendFunction: throttle(setLight, 200),
+        new KnobController('knobWhite', 'knobWhite-text', 0, 255, {
+            sendFunction: throttle(setWhite, 200),
+            step: 1,
+            formatValue: v => Math.round(v),
+            throttleTime: 200
+        });
+        new KnobController('knobRed', 'knobRed-text', 0, 255, {
+            sendFunction: throttle(setRed, 200),
+            step: 1,
+            formatValue: v => Math.round(v),
+            throttleTime: 200
+        });
+        new KnobController('knobGreen', 'knobGreen-text', 0, 255, {
+            sendFunction: throttle(setGreen, 200),
+            step: 1,
+            formatValue: v => Math.round(v),
+            throttleTime: 200
+        });
+        new KnobController('knobBlue', 'knobBlue-text', 0, 255, {
+            sendFunction: throttle(setBlue, 200),
             step: 1,
             formatValue: v => Math.round(v),
             throttleTime: 200
@@ -2645,10 +2694,37 @@
         } catch (e) { console.error('Error setting focus:', e); }
     }
 
-    async function setLight(lightValue) {
+    async function setWhite(lightValue) {
         lightValue = parseInt(lightValue)
         try {
-            const response = await fetch('/lights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ an: "LN0_255_255_255," + "BN" + lightValue }) });
+            const response = await fetch('/lights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ an: "NM1_2_" + lightValue + "," + "NM1_4_" + lightValue + "," + "NM1_6_" + lightValue + ",BN100" }) });
+            if (response.ok) console.log(`Light set to ${lightValue}`);
+            else console.error('Failed to set light:', response.status);
+        } catch (e) { console.error('Error setting light:', e); }
+    }
+
+    async function setRed(lightValue) {
+        lightValue = parseInt(lightValue)
+        try {
+            const response = await fetch('/lights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ an: "NM1_1_" + lightValue + ",BN100" }) });
+            if (response.ok) console.log(`Light set to ${lightValue}`);
+            else console.error('Failed to set light:', response.status);
+        } catch (e) { console.error('Error setting light:', e); }
+    }
+
+    async function setGreen(lightValue) {
+        lightValue = parseInt(lightValue)
+        try {
+            const response = await fetch('/lights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ an: "NM1_3_" + lightValue + ",BN100" }) });
+            if (response.ok) console.log(`Light set to ${lightValue}`);
+            else console.error('Failed to set light:', response.status);
+        } catch (e) { console.error('Error setting light:', e); }
+    }
+
+    async function setBlue(lightValue) {
+        lightValue = parseInt(lightValue)
+        try {
+            const response = await fetch('/lights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ an: "NM1_5_" + lightValue + ",BN100" }) });
             if (response.ok) console.log(`Light set to ${lightValue}`);
             else console.error('Failed to set light:', response.status);
         } catch (e) { console.error('Error setting light:', e); }
