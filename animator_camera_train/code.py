@@ -636,35 +636,41 @@ def get_neo_ids():
 def set_neo_module_to(mod_n, ind, v):
     cur = []
     neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
     if mod_n == 0:
         for i in neo_ids:
             led[i] = (v, v, v)
             led[i+1] = (v, v, v)
-    elif ind == 0:
-        led[neo_ids[mod_n-1]] = (v, v, v)
-        led[neo_ids[mod_n-1]+1] = (v, v, v)
-    elif ind < 4:
-        ind -= 1
+        led.show()
+        return
+    elif mod_n == 1:
         if ind == 0:
-            ind = 1
-        elif ind == 1:
-            ind = 0
-        cur = list(led[neo_ids[mod_n-1]])
-        cur[ind] = v
-        led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n-1]])
-    else:
+            led[neo_ids[mod_n-1]] = (v, v, v)
+            led[neo_ids[mod_n-1]+1] = (v, v, v)
+            led.show()
+            return
         ind -= 1
-        if ind == 3:
-            ind = 4
-        elif ind == 4:
-            ind = 3
-        cur = list(led[neo_ids[mod_n-1]+1])
-        cur[ind-3] = v
-        led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
-    led.show()
-
+        if ind < 3:
+            if ind == 0:
+                ind = 2
+            elif ind == 1:
+                ind = 0
+            elif ind == 2:
+                ind = 1
+            cur = list(led[neo_ids[mod_n-1]+1])
+            cur[ind] = v
+            led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
+            led.show()
+        else:
+            if ind == 3:
+                ind = 2
+            elif ind == 4:
+                ind = 0
+            elif ind == 5:
+                ind = 1
+            cur = list(led[neo_ids[mod_n-1]])
+            cur[ind] = v
+            led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
+            led.show()
 
 gc_col("Neopixels setup")
 
@@ -2732,9 +2738,9 @@ def set_hdw(cmd, dur=3):
                 power = segs_split[1]
                 set_light_power(light_n, power)
             # NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            elif seg[0] == 'N':
+            elif seg[0:2] == 'NM':
                 segs_split = seg.split("_")
-                mod_n = int(segs_split[0][1:])
+                mod_n = int(segs_split[0][2:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
                 set_neo_module_to(mod_n, index, v)
