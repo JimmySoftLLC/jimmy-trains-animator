@@ -438,7 +438,9 @@
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
                 <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
                 <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
-                <button id="refreshBtn" class="mui-btn mui-btn--primary">Refresh</button>
+                <button id="refreshBtn" class="mui-btn mui-btn--primary">Refresh Videos</button>
+                <button id="refreshSnapshotsBtn" class="mui-btn mui-btn--primary" type="button">Refresh
+                    Snapshots</button>
             </div>
             <div id="controls">
                 <button class="mui-btn mui-btn--primary" onclick="startCamera()" type="button">
@@ -457,6 +459,18 @@
             <div id="thumbnailGallery">
                 <h3>Recordings</h3>
             </div>
+
+            <div id="snapshotViewer" style="margin:20px;">
+                <img id="snapshotPreview" src="" alt="Selected still shot"
+                    style="max-width:100%; max-height:500px; display:none; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+                <button id="downloadSnapshotBtn" class="mui-btn mui-btn--primary" type="button"
+                    disabled>Download</button>
+            </div>
+
+            <div id="snapshotGallery" style="margin:20px; display:flex; flex-wrap:wrap; gap:10px;">
+                <h3 style="width:100%;">Snapshots</h3>
+            </div>
+
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
             <h2>Test neopixel lights:</h2>
@@ -1264,16 +1278,22 @@
             headers: {
                 'Content-Type': 'application/json',
             },
+            body: JSON.stringify({})
         })
             .then(function (response) {
                 return response.text();
             })
             .then(function (data) {
-                streamStatus.textContent = "";
                 const stream = document.getElementById('stream');
+                streamStatus.textContent = "";
+
+                // Clear first
+                stream.src = '';
+
+                // Then force a brand new request
                 setTimeout(() => {
                     stream.src = window.location.origin + '/stream.mjpg?ts=' + Date.now();
-                }, 1000);
+                }, 500);
             })
             .catch(function (error) {
                 console.log(error);
@@ -1281,29 +1301,34 @@
             });
     }
 
+
     function stopCamera() {
         const stream = document.getElementById('stream');
-        stream.src = ''; // Clear the src before stopping the camera
 
-        // Ensure the src is cleared before proceeding
+        // Fully disconnect browser from MJPEG stream
+        stream.src = '';
+        stream.removeAttribute('src');
+
         setTimeout(() => {
             fetch('/stop-camera', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({})
             })
                 .then(function (response) {
-                    return response.text(); // assuming the response is plain text
+                    return response.text();
                 })
                 .then(function (data) {
                     console.log('Camera stopped:', data);
+                    streamStatus.textContent = 'Streaming stopped. Press start stream to continue streaming.';
                 })
                 .catch(function (error) {
                     console.log(error);
                     showAlert(error);
                 });
-        }, 100);
+        }, 150);
     }
 
     function snapshot() {
@@ -2656,8 +2681,13 @@
     const videoPlayer = document.getElementById('videoPlayer');
     const gallery = document.getElementById('thumbnailGallery');
     const downloadBtn = document.getElementById('downloadBtn');
+    const refreshSnapshotsBtn = document.getElementById('refreshSnapshotsBtn');
+    const downloadSnapshotBtn = document.getElementById('downloadSnapshotBtn');
+    const snapshotGallery = document.getElementById('snapshotGallery');
+    const snapshotPreview = document.getElementById('snapshotPreview');
 
     let selected = null;
+    let selectedSnapshot = null;
 
     // ---------- RECORD ----------
     startBtn.onclick = async () => {
@@ -2697,7 +2727,18 @@
             return;
         }
 
-        showAlert(text);
+        await loadSnapshots();
+
+        const parts = text.split(/[\\/]/);
+        const filename = parts[parts.length - 1];
+        const url = `/snapshots/${filename}`;
+
+        selectedSnapshot = filename;
+        snapshotPreview.src = url;
+        snapshotPreview.style.display = 'block';
+        downloadSnapshotBtn.disabled = false;
+
+        showAlert(`Snapshot saved: ${filename}`);
     };
 
     // ---------- LOAD GALLERY ----------
@@ -2705,39 +2746,81 @@
         const res = await fetch('/list-recordings', { method: 'POST' });
         const data = await res.json();
 
-        gallery.innerHTML = '<h3>Recordings</h3>';
+        gallery.innerHTML = '<h3 style="width:100%;">Recordings</h3>';
 
         for (const rec of data) {
-            const url = `/recordings/${rec.name}`;
+            const videoUrl = `/recordings/${rec.name}`;
+
+            // Use server-side thumbnail
+            const thumbUrl = rec.thumbnail
+                ? `/recordings/${rec.thumbnail}`
+                : '';
 
             const img = document.createElement('img');
             img.className = 'thumbnail';
+            img.src = thumbUrl || '';
+            img.title = rec.name;
 
             img.onclick = () => {
                 selected = rec.name;
-                videoPlayer.src = url;
+                videoPlayer.src = videoUrl;
                 downloadBtn.disabled = false;
 
-                document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('#thumbnailGallery .thumbnail')
+                    .forEach(t => t.classList.remove('active'));
+
                 img.classList.add('active');
-            };
-
-            const video = document.createElement('video');
-            video.src = url;
-            video.muted = true;
-            video.playsInline = true;
-
-            video.onloadeddata = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth || 320;
-                canvas.height = video.videoHeight || 180;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                img.src = canvas.toDataURL('image/jpeg');
             };
 
             gallery.appendChild(img);
         }
     }
+
+    // ---------- LOAD SNAPSHOT GALLERY -----------------------
+
+    async function loadSnapshots() {
+        const res = await fetch('/list-snapshots', { method: 'POST' });
+        const data = await res.json();
+
+        snapshotGallery.innerHTML = '<h3 style="width:100%;">Still Shots</h3>';
+
+        for (const shot of data) {
+            const url = `/snapshots/${shot.name}`;
+
+            const img = document.createElement('img');
+            img.className = 'thumbnail';
+            img.src = url;
+            img.title = shot.name;
+
+            img.onclick = () => {
+                selectedSnapshot = shot.name;
+
+                snapshotPreview.src = url;
+                snapshotPreview.style.display = 'block';
+
+                downloadSnapshotBtn.disabled = false;
+
+                document.querySelectorAll('#snapshotGallery .thumbnail')
+                    .forEach(t => t.classList.remove('active'));
+
+                img.classList.add('active');
+            };
+
+            snapshotGallery.appendChild(img);
+        }
+    }
+    
+    function downloadSelectedSnapshot() {
+        if (!selectedSnapshot) return;
+
+        const a = document.createElement('a');
+        a.href = `/snapshots/${selectedSnapshot}`;
+        a.download = selectedSnapshot;
+        a.click();
+    }
+
+    refreshSnapshotsBtn.onclick = loadSnapshots;
+    downloadSnapshotBtn.onclick = downloadSelectedSnapshot;
 
     // ---------- DOWNLOAD ----------
     downloadBtn.onclick = () => {
@@ -2753,6 +2836,7 @@
 
     // initial load
     loadGallery();
+    loadSnapshots();
 
 
     // Camera settings -----------------------------------------------------------------------------

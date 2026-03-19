@@ -131,8 +131,7 @@ import io
 from picamera2 import Picamera2
 from picamera2.encoders import MJPEGEncoder, H264Encoder, Quality
 from picamera2.outputs import FileOutput
-from libcamera import Transform  # Add this import for Transform
-from libcamera import controls
+from libcamera import Transform
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -153,6 +152,7 @@ def get_home_path(subpath=""):
 
 code_folder = get_home_path() + "code/"
 media_folder = get_home_path() + "media/"
+recording_folder = get_home_path() + "recordings/"
 mvc_folder = code_folder + "mvc/"
 animations_folder = get_home_path() + "media/animations/"
 snd_opt_folder = code_folder + "snd_opt/"
@@ -170,8 +170,8 @@ stops_folder = media_folder + "stops/"
 santa_folder = media_folder + "santa/"
 story_folder = media_folder + "story/"
 cut_folder = media_folder + "cut/"
-recording_folder = media_folder + "recording/"
-shutter_folder = media_folder + "shutter/"
+recording_sound_folder = media_folder + "recording/"
+shutter_sound_folder = media_folder + "shutter/"
 quotes_folder = media_folder + "quotes/"
 
 FOLDER_MAP = {
@@ -182,12 +182,13 @@ FOLDER_MAP = {
     'S': santa_folder,
     'Z': story_folder,
     'C': cut_folder,
-    'R': recording_folder,
-    'X': shutter_folder,
+    'R': recording_sound_folder,
+    'X': shutter_sound_folder,
     'Q': quotes_folder
 }
 
-media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'Z': 0, 'C': 0, 'R': 0, 'X': 0, 'Q': 0 }
+media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0,
+               'S': 0, 'Z': 0, 'C': 0, 'R': 0, 'X': 0, 'Q': 0}
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -397,6 +398,7 @@ def upd_media():
 
     # ts_jsons = files.return_directory("", "/sd/t_s_def", ".json")
 
+
 upd_media()
 
 web = True
@@ -531,6 +533,7 @@ n_px = 0
 led = neopixel_spi.NeoPixel_SPI(
     board.SPI(), n_px, brightness=1.0, auto_write=False)
 
+
 def bld_neo():
     i = []
     for n in neos:
@@ -540,6 +543,7 @@ def bld_neo():
         for l in range(0, 6):
             i.append(l+si)
     return i
+
 
 def show_l():
     led.show()
@@ -602,14 +606,17 @@ def upd_l_str():
     led.brightness = 1.0
     l_tst()
 
+
 upd_l_str()
 
 # Neo pixel / neo 6 module methods
 
 br = 0
 
+
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
+
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -632,6 +639,7 @@ def get_neo_ids():
         if any(num == sublist[0] for sublist in neos):
             matches.append(num)
     return matches
+
 
 def set_neo_module_to(mod_n, ind, v):
     cur = []
@@ -671,6 +679,7 @@ def set_neo_module_to(mod_n, ind, v):
             cur[ind] = v
             led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
             led.show()
+
 
 gc_col("Neopixels setup")
 
@@ -1054,6 +1063,25 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(b'Recording stopped')
+
+        elif self.path.startswith("/recordings/"):
+            filename = os.path.basename(self.path)
+            full_path = os.path.join(recording_folder, filename)
+
+            if filename.lower().endswith(".mp4"):
+                content_type = "video/mp4"
+            elif filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
+                content_type = "image/jpeg"
+            else:
+                content_type = "application/octet-stream"
+
+            self.handle_serve_file_name(full_path, content_type)
+
+        elif self.path.startswith("/snapshots/"):
+            filename = os.path.basename(self.path)
+            full_path = os.path.join(recording_folder, filename)
+            self.handle_serve_file_name(full_path, "image/jpeg")
+            
         else:
             self.send_error(404)
             self.end_headers()
@@ -1088,30 +1116,8 @@ def set_zoom(zoom_factor):
             return False
     return False
 
-# [Rest of code unchanged, including MyHttpRequestHandler with /set-zoom...]
-
-
-def take_snapshot():
-    global stream_output
-    filename = f'snapshot_{time.strftime("%Y%m%d_%H%M%S")}.jpg'
-    print(f"Attempting to save snapshot as {filename}")
-    with stream_output.condition:
-        stream_output.condition.wait(timeout=2.0)
-        if stream_output.frame is None:
-            raise Exception("No frame available")
-        frame = stream_output.frame
-    with open(filename, 'wb') as f:
-        f.write(frame)
-    return filename
-
-
 # ================= CAMERA SECTION =================
 
-import io, threading, time, os, subprocess
-from picamera2 import Picamera2
-from picamera2.encoders import MJPEGEncoder, H264Encoder, Quality
-from picamera2.outputs import FileOutput
-from libcamera import Transform
 
 camera_running = False
 recording = False
@@ -1128,6 +1134,8 @@ current_recording_file = None
 snapshot_lock = threading.Lock()
 
 # ---------- STREAM OUTPUT (FRAME DROPPING) ----------
+
+
 class StreamingOutput(io.BufferedIOBase):
     def __init__(self, preview_divisor=2):
         self.frame = None
@@ -1155,6 +1163,7 @@ def start_camera_server():
     global video_config, still_config
 
     if camera_running:
+        print("Camera already running")
         return
 
     picam2 = Picamera2()
@@ -1204,10 +1213,22 @@ def stop_camera_server():
         if recording:
             stop_recording()
 
-        if picam2:
-            picam2.stop_encoder(mjpeg_encoder)
-            picam2.stop()
-            picam2.close()
+        if picam2 is not None:
+            try:
+                if mjpeg_encoder is not None:
+                    picam2.stop_encoder(mjpeg_encoder)
+            except Exception as e:
+                print(f"Warning stopping MJPEG encoder: {e}")
+
+            try:
+                picam2.stop()
+            except Exception as e:
+                print(f"Warning stopping camera: {e}")
+
+            try:
+                picam2.close()
+            except Exception as e:
+                print(f"Warning closing camera: {e}")
 
         camera_running = False
         picam2 = None
@@ -1255,15 +1276,30 @@ def stop_recording():
     if not recording:
         return False, None
 
-    picam2.stop_encoder(h264_encoder)
-    h264_encoder = H264Encoder()
+    try:
+        picam2.stop_encoder(h264_encoder)
+        h264_encoder = H264Encoder()
+        recording = False
 
-    recording = False
+        final_video = current_recording_file
 
-    mp4 = remux_h264_to_mp4(current_recording_file)
+        if current_recording_file:
+            mp4_path = remux_h264_to_mp4(current_recording_file)
+            if mp4_path and os.path.exists(mp4_path):
+                final_video = mp4_path
+                generate_video_thumbnail(mp4_path, "00:00:00.2")
 
-    print("Recording stopped")
-    return True, mp4
+                try:
+                    os.remove(current_recording_file)
+                except Exception as e:
+                    print(f"Could not remove raw h264 file: {e}")
+
+        print(f"Recording stopped: {final_video}")
+        return True, final_video
+
+    except Exception as e:
+        print(f"Failed to stop recording: {e}")
+        return False, None
 
 
 # ---------- REMUX ----------
@@ -1282,9 +1318,33 @@ def remux_h264_to_mp4(h264_path):
     return mp4_path
 
 
+def generate_video_thumbnail(video_path, time_offset="00:00:00.2"):
+    thumb_path = os.path.splitext(video_path)[0] + ".jpg"
+
+    try:
+        subprocess.run([
+            "ffmpeg",
+            "-y",
+            "-ss", time_offset,
+            "-i", video_path,
+            "-frames:v", "1",
+            "-q:v", "2",
+            thumb_path
+        ], check=True, capture_output=True, text=True)
+
+        print(f"Thumbnail created: {thumb_path}")
+        return thumb_path
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to create thumbnail: {e.stderr}")
+        return None
+
 # ---------- SNAPSHOT ----------
+
+
 def take_snapshot():
     global picam2, mjpeg_encoder
+
+    os.makedirs(recording_folder, exist_ok=True)
 
     filename = os.path.join(
         recording_folder,
@@ -1301,7 +1361,27 @@ def take_snapshot():
 
         picam2.start_encoder(mjpeg_encoder, name="lores")
 
+    print(f"Snapshot saved: {filename}")
     return filename
+
+# ---------- SNAPSHOT LIST ----------
+
+
+def list_snapshots():
+    os.makedirs(recording_folder, exist_ok=True)
+
+    files = []
+    for f in os.listdir(recording_folder):
+        if f.lower().startswith("snapshot_") and (
+            f.lower().endswith(".jpg") or f.lower().endswith(".jpeg")
+        ):
+            path = os.path.join(recording_folder, f)
+            files.append({
+                "name": f,
+                "mtime": os.path.getmtime(path)
+            })
+
+    return sorted(files, key=lambda x: x["mtime"], reverse=True)
 
 
 # ---------- RECORDING LIST ----------
@@ -1310,10 +1390,14 @@ def list_recordings():
 
     files = []
     for f in os.listdir(recording_folder):
-        if f.endswith(".mp4"):
+        if f.lower().startswith("recording_") and f.lower().endswith(".mp4"):
             path = os.path.join(recording_folder, f)
+            thumb_name = os.path.splitext(f)[0] + ".jpg"
+            thumb_path = os.path.join(recording_folder, thumb_name)
+
             files.append({
                 "name": f,
+                "thumbnail": thumb_name if os.path.exists(thumb_path) else None,
                 "mtime": os.path.getmtime(path)
             })
 
@@ -1347,7 +1431,18 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path.startswith("/recordings/"):
             filename = os.path.basename(self.path)
             full_path = os.path.join(recording_folder, filename)
-            self.handle_serve_file_name(full_path, "video/mp4")
+            if filename.lower().endswith(".mp4"):
+                content_type = "video/mp4"
+            elif filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
+                content_type = "image/jpeg"
+            else:
+                content_type = "application/octet-stream"
+
+            self.handle_serve_file_name(full_path, content_type)
+        elif self.path.startswith("/snapshots/"):
+            filename = os.path.basename(self.path)
+            full_path = os.path.join(recording_folder, filename)
+            self.handle_serve_file_name(full_path, "image/jpeg")
         else:
             self.handle_serve_file(self.path)
 
@@ -1571,6 +1666,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.set_camera_focus(post_data_obj)
         elif self.path == "/list-recordings":
             self.list_recordings_post(post_data_obj)
+        elif self.path == "/list-snapshots":
+            self.list_snapshots_post(post_data_obj)
 
     def set_camera_zoom(self, rq_d):
         zoom_factor = float(rq_d.get("zoom", 1.0))
@@ -1822,13 +1919,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
 
     def snapshot(self, rq_d):
-        global cfg
-        take_snapshot()
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "took snapshot"
-        self.wfile.write(response.encode('utf-8'))
+        try:
+            filename = take_snapshot()
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(filename.encode('utf-8'))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"snapshot failed: {e}".encode('utf-8'))
 
     def start_recording(self, rq_d):
         ok, filename = start_recording()
@@ -1857,9 +1958,16 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             response = "not recording"
         self.wfile.write(response.encode('utf-8'))
-    
+
     def list_recordings_post(self, rq_d):
         response = list_recordings()
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode("utf-8"))
+
+    def list_snapshots_post(self, rq_d):
+        response = list_snapshots()
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1969,7 +2077,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         current_neo = rq_d["an"]
         rgb_value = cfg["neo_changes"][current_neo]
         exit_set_hdw = False
-        command = "NM0_0_0,NM1_1_" + str(rgb_value[0]) + ",NM1_3_" + str(rgb_value[1]) + ",NM1_5_" + str(rgb_value[2])
+        command = "NM0_0_0,NM1_1_" + \
+            str(rgb_value[0]) + ",NM1_3_" + \
+            str(rgb_value[1]) + ",NM1_5_" + str(rgb_value[2])
         add_command_to_ts(command)
         set_hdw(command, 0)
         response = rgb_value
@@ -2007,7 +2117,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
         elif rq_d["item"] == "neo":
-            command = "NM0_0_0,NM1_1_" + str(rq_d["r"]) + ",NM1_3_" + str(rq_d["g"]) + ",NM1_5_" + str(rq_d["b"])
+            command = "NM0_0_0,NM1_1_" + \
+                str(rq_d["r"]) + ",NM1_3_" + \
+                str(rq_d["g"]) + ",NM1_5_" + str(rq_d["b"])
             add_command_to_ts(command)
             set_hdw(command, 0)
             if current_neo != "":
@@ -2117,6 +2229,7 @@ def process_commands():
         else:
             set_hdw(command)
 
+
 def clear_command_queue():
     """Clear all commands from the queue."""
     command_queue.clear()
@@ -2194,7 +2307,8 @@ print(f"Linear input: {linear_input}, Interpolated Log output: {log_output}")
 def upd_vol(seconds):
     volume = int(cfg["volume"])
     volume_0_1 = volume/100
-    mix_voice_0.set_volume(volume_0_1) # was x 0.7 turning up since have new speakers
+    # was x 0.7 turning up since have new speakers
+    mix_voice_0.set_volume(volume_0_1)
     mix_voice_1.set_volume(volume_0_1)
     time.sleep(seconds)
 
@@ -2259,15 +2373,18 @@ def ply_a_1(file_name, wait_until_done=True, repeat=0, allow_exit=True):
             exit_early()
     print("done playing")
 
+
 def wait_snd_0():
     while mix_voice_0.get_busy():
         exit_early()
     print("done playing")
 
+
 def wait_snd_1():
     while mix_voice_1.get_busy():
         exit_early()
     print("done playing")
+
 
 def stp_a_0():
     mix_voice_0.stop()
@@ -2277,6 +2394,7 @@ def stp_a_0():
 def stp_a_1():
     mix_voice_1.stop()
     wait_snd_1()
+
 
 def stop_all_media():
     mix_voice_0.stop()
@@ -2352,6 +2470,7 @@ def spk_web():
         spk_str(cfg["HOST_NAME"], True)
     ply_a_1(mvc_folder + "in_your_browser.wav")
 
+
 def get_snds(dir, typ):
     sds = []
     s = files.return_directory("", dir, ".wav")
@@ -2363,6 +2482,7 @@ def get_snds(dir, typ):
     i = random.randint(0, mx)
     fn = dir + "/" + sds[i] + ".wav"
     return fn
+
 
 def get_random_joke():
     url = "https://official-joke-api.appspot.com/jokes/random"
@@ -2514,7 +2634,6 @@ def update_folder_name_wavs():
             print(f"Deleted orphaned wav: {file}")
 
 
-
 ################################################################################
 # Animation methods
 
@@ -2633,7 +2752,7 @@ def an_light(f_nm):
     if (f_exists(animations_folder + f_nm + ".json") == True):
         flsh_t = files.read_json_file(
             animations_folder + f_nm + ".json")
-        
+
     check_thread, stop_event = run_check_switches_thread()
 
     flsh_i = 0
@@ -3178,7 +3297,7 @@ class BseSt(Ste):
                     ply_a_1(mvc_folder + "continuous_mode_activated.wav")
                 time.sleep(.5)
             elif switch_state == "left" or cont_run:
-                add_command("AN_"+ cfg["option_selected"])
+                add_command("AN_" + cfg["option_selected"])
                 time.sleep(.5)
             elif switch_state == "right":
                 mch.go_to('main_menu')
