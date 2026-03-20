@@ -438,9 +438,6 @@
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
                 <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
                 <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
-                <button id="refreshBtn" class="mui-btn mui-btn--primary">Refresh Videos</button>
-                <button id="refreshSnapshotsBtn" class="mui-btn mui-btn--primary" type="button">Refresh
-                    Snapshots</button>
             </div>
             <div id="controls">
                 <button class="mui-btn mui-btn--primary" onclick="startCamera()" type="button">
@@ -450,27 +447,23 @@
                     Stop stream
                 </button>
             </div>
+            <h3>Videos</h3>
             <div id="playerContainer">
                 <video id="videoPlayer" controls style="width:100%; max-width:800px;"></video>
                 <br>
                 <button id="downloadBtn" class="mui-btn mui-btn--primary" disabled>Download</button>
+                <button id="deleteVideoBtn" class="mui-btn mui-btn--danger" disabled>Delete</button>
             </div>
-
-            <div id="thumbnailGallery">
-                <h3>Recordings</h3>
-            </div>
-
+            <div id="thumbnailGallery"></div>
+            <h3 style="width:100%;">Snapshots</h3>
             <div id="snapshotViewer" style="margin:20px;">
                 <img id="snapshotPreview" src="" alt="Selected still shot"
                     style="max-width:100%; max-height:500px; display:none; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
-                <button id="downloadSnapshotBtn" class="mui-btn mui-btn--primary" type="button"
-                    disabled>Download</button>
+                <button id="downloadSnapshotBtn" class="mui-btn mui-btn--primary" type="button" disabled>Download
+                </button>
+                <button id="deleteSnapshotBtn" class="mui-btn mui-btn--danger" type="button" disabled>Delete</button>
             </div>
-
-            <div id="snapshotGallery" style="margin:20px; display:flex; flex-wrap:wrap; gap:10px;">
-                <h3 style="width:100%;">Snapshots</h3>
-            </div>
-
+            <div id="snapshotGallery" style="margin:20px; display:flex; flex-wrap:wrap; gap:10px;"></div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
             <h2>Test neopixel lights:</h2>
@@ -1216,7 +1209,7 @@
 
         var saveBtn = document.createElement('button');
         saveBtn.type = 'button';
-        saveBtn.className = 'mui-btn mui-btn--primary';
+        saveBtn.className = 'mui-btn mui-btn--danger';
         saveBtn.textContent = 'Delete';
         saveBtn.addEventListener('click', deleteAnimation);
         form.appendChild(saveBtn);
@@ -2677,53 +2670,63 @@
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const snapshotBtn = document.getElementById('snapshotBtn');
-    const refreshBtn = document.getElementById('refreshBtn');
     const videoPlayer = document.getElementById('videoPlayer');
     const gallery = document.getElementById('thumbnailGallery');
     const downloadBtn = document.getElementById('downloadBtn');
-    const refreshSnapshotsBtn = document.getElementById('refreshSnapshotsBtn');
     const downloadSnapshotBtn = document.getElementById('downloadSnapshotBtn');
     const snapshotGallery = document.getElementById('snapshotGallery');
     const snapshotPreview = document.getElementById('snapshotPreview');
+    const deleteVideoBtn = document.getElementById('deleteVideoBtn');
+    const deleteSnapshotBtn = document.getElementById('deleteSnapshotBtn');
 
     let selected = null;
     let selectedSnapshot = null;
 
     // ---------- RECORD ----------
     startBtn.onclick = async () => {
+        startBtn.disabled = true;
         const res = await fetch('/start-recording', { method: 'POST' });
         const text = await res.text();
 
         if (!res.ok) {
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
             showAlert(text || 'Failed to start recording');
             return;
         }
 
-        startBtn.disabled = true;
         stopBtn.disabled = false;
     };
 
     stopBtn.onclick = async () => {
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+
         const res = await fetch('/stop-recording', { method: 'POST' });
         const text = await res.text();
 
         if (!res.ok) {
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
             showAlert(text || 'Failed to stop recording');
             return;
         }
 
+        loadGallery();
+
         startBtn.disabled = false;
         stopBtn.disabled = true;
-        loadGallery();
     };
 
     // ---------- SNAPSHOT ----------
     snapshotBtn.onclick = async () => {
+        snapshotBtn.disabled = true;
         const res = await fetch('/snapshot', { method: 'POST' });
         const text = await res.text();
 
         if (!res.ok) {
             showAlert(text || 'Snapshot failed');
+            snapshotBtn.disabled = false;
             return;
         }
 
@@ -2737,8 +2740,7 @@
         snapshotPreview.src = url;
         snapshotPreview.style.display = 'block';
         downloadSnapshotBtn.disabled = false;
-
-        showAlert(`Snapshot saved: ${filename}`);
+        snapshotBtn.disabled = false;
     };
 
     // ---------- LOAD GALLERY ----------
@@ -2746,7 +2748,7 @@
         const res = await fetch('/list-recordings', { method: 'POST' });
         const data = await res.json();
 
-        gallery.innerHTML = '<h3 style="width:100%;">Recordings</h3>';
+        gallery.innerHTML = ''
 
         for (const rec of data) {
             const videoUrl = `/recordings/${rec.name}`;
@@ -2765,6 +2767,7 @@
                 selected = rec.name;
                 videoPlayer.src = videoUrl;
                 downloadBtn.disabled = false;
+                deleteVideoBtn.disabled = false;
 
                 document.querySelectorAll('#thumbnailGallery .thumbnail')
                     .forEach(t => t.classList.remove('active'));
@@ -2782,7 +2785,7 @@
         const res = await fetch('/list-snapshots', { method: 'POST' });
         const data = await res.json();
 
-        snapshotGallery.innerHTML = '<h3 style="width:100%;">Still Shots</h3>';
+        snapshotGallery.innerHTML = ''
 
         for (const shot of data) {
             const url = `/snapshots/${shot.name}`;
@@ -2799,6 +2802,7 @@
                 snapshotPreview.style.display = 'block';
 
                 downloadSnapshotBtn.disabled = false;
+                deleteSnapshotBtn.disabled = false;
 
                 document.querySelectorAll('#snapshotGallery .thumbnail')
                     .forEach(t => t.classList.remove('active'));
@@ -2807,9 +2811,10 @@
             };
 
             snapshotGallery.appendChild(img);
+
         }
     }
-    
+
     function downloadSelectedSnapshot() {
         if (!selectedSnapshot) return;
 
@@ -2819,7 +2824,45 @@
         a.click();
     }
 
-    refreshSnapshotsBtn.onclick = loadSnapshots;
+    deleteSnapshotBtn.onclick = async () => {
+        if (!selectedSnapshot) return;
+        deleteItemDialog(selectedSnapshot, "Delete snapshot", deleteSnapShot);
+    };
+
+    async function deleteSnapShot() {
+
+        if (!selectedSnapshot) {
+            var modalEl = document.getElementById("modalEl")
+            mui.overlay('off', modalEl)
+            return;
+        }
+
+        const res = await fetch('/delete-snapshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: selectedSnapshot })
+        });
+
+        const text = await res.text();
+
+        if (!res.ok) {
+            showAlert(text || 'Failed to delete still');
+            return;
+        }
+
+        selectedSnapshot = null;
+        snapshotPreview.removeAttribute('src');
+        snapshotPreview.style.display = 'none';
+
+        var modalEl = document.getElementById("modalEl")
+        mui.overlay('off', modalEl)
+
+        downloadSnapshotBtn.disabled = true;
+        deleteSnapshotBtn.disabled = true;
+
+        await loadSnapshots();
+    }
+
     downloadSnapshotBtn.onclick = downloadSelectedSnapshot;
 
     // ---------- DOWNLOAD ----------
@@ -2832,7 +2875,99 @@
         a.click();
     };
 
-    refreshBtn.onclick = loadGallery;
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+
+    function deleteItemDialog(fileNameText, titleText, passedFunction) {
+        let modalEl = document.getElementById("modalEl")
+        removeChildNodes(modalEl)
+        modalEl.style.width = '400px';
+        modalEl.style.height = 'auto';
+        modalEl.style.margin = '100px auto';
+        modalEl.style.backgroundColor = '#fff';
+
+        // Create form
+        const form = document.createElement('form');
+        form.className = 'mui-form';
+        form.style.padding = '20px'; // Add padding to the form
+        form.style.margin = '20px'; // Add margin to the form
+
+        const legend = document.createElement('legend');
+        legend.textContent = titleText;
+        form.appendChild(legend);
+
+        const message = document.createElement('div');
+        message.className = "mui-textfield"
+        message.innerHTML = 'Are you sure you want to delete <b>' + escapeHtml(fileNameText) + '</b> ? This is irreversible.';
+        // message.textContent = "Are you sure your want to Delete " + fileNameText + " this is irreversible.";
+        form.appendChild(message);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'mui-btn mui-btn--danger';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', passedFunction);
+        form.appendChild(deleteBtn);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'mui-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', function () {
+            mui.overlay('off', modalEl);
+        });
+        form.appendChild(cancelBtn);
+
+        modalEl.appendChild(form);
+
+        // Show modal
+        mui.overlay('on', modalEl);
+    }
+
+    deleteVideoBtn.onclick = async () => {
+        if (!selected) return;
+        deleteItemDialog(selected, "Delete Video", deleteVideo);
+    };
+
+    async function deleteVideo() {
+
+        if (!selected) {
+            var modalEl = document.getElementById("modalEl")
+            mui.overlay('off', modalEl)
+            return;
+        }
+
+        // if (!confirm(`Delete video ${selected}?`)) return;
+
+        const res = await fetch('/delete-recording', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: selected })
+        });
+
+        const text = await res.text();
+
+        if (!res.ok) {
+            showAlert(text || 'Failed to delete video');
+            return;
+        }
+
+        selected = null;
+        videoPlayer.removeAttribute('src');
+        videoPlayer.load();
+
+        var modalEl = document.getElementById("modalEl")
+        mui.overlay('off', modalEl)
+
+        downloadBtn.disabled = true;
+        deleteVideoBtn.disabled = true;
+
+        await loadGallery();
+    }
 
     // initial load
     loadGallery();

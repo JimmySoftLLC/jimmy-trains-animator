@@ -1668,6 +1668,10 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.list_recordings_post(post_data_obj)
         elif self.path == "/list-snapshots":
             self.list_snapshots_post(post_data_obj)
+        elif self.path == "/delete-recording":
+            self.delete_recording_post(post_data_obj)
+        elif self.path == "/delete-snapshot":
+            self.delete_snapshot_post(post_data_obj)
 
     def set_camera_zoom(self, rq_d):
         zoom_factor = float(rq_d.get("zoom", 1.0))
@@ -1972,6 +1976,66 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(response).encode("utf-8"))
+
+    def delete_recording_post(self, rq_d):
+        try:
+            name = os.path.basename(rq_d["name"])
+
+            if not name.lower().startswith("recording_") or not name.lower().endswith(".mp4"):
+                self.send_response(400)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"invalid recording name")
+                return
+
+            video_path = os.path.join(recording_folder, name)
+            thumb_path = os.path.splitext(video_path)[0] + ".jpg"
+
+            if os.path.exists(video_path):
+                os.remove(video_path)
+
+            if os.path.exists(thumb_path):
+                os.remove(thumb_path)
+
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"deleted {name}".encode("utf-8"))
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"delete failed: {e}".encode("utf-8"))
+
+    def delete_snapshot_post(self, rq_d):
+        try:
+            name = os.path.basename(rq_d["name"])
+
+            if not name.lower().startswith("snapshot_") or not (
+                name.lower().endswith(".jpg") or name.lower().endswith(".jpeg")
+            ):
+                self.send_response(400)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"invalid snapshot name")
+                return
+
+            snapshot_path = os.path.join(recording_folder, name)
+
+            if os.path.exists(snapshot_path):
+                os.remove(snapshot_path)
+
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"deleted {name}".encode("utf-8"))
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"delete failed: {e}".encode("utf-8"))
 
     def get_light_string_post(self, rq_d):
         self.send_response(200)
