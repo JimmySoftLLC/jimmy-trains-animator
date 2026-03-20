@@ -1259,11 +1259,12 @@ def start_recording():
         recording_folder, f"recording_{timestamp}.h264"
     )
 
-    picam2.start_recording(
-        h264_encoder,
-        current_recording_file,
-        quality=Quality.HIGH
-    )
+    # Fresh encoder for this recording
+    h264_encoder = H264Encoder()
+    output = FileOutput(current_recording_file)
+
+    # Add recording encoder to the already-running camera
+    picam2.start_encoder(h264_encoder, output, name="main")
 
     recording = True
     print("Recording started:", current_recording_file)
@@ -1278,7 +1279,6 @@ def stop_recording():
 
     try:
         picam2.stop_encoder(h264_encoder)
-        h264_encoder = H264Encoder()
         recording = False
 
         final_video = current_recording_file
