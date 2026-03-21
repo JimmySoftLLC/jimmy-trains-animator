@@ -1294,25 +1294,6 @@ def discover_lights(max_attempts=4, delay_s=0.75, known_count=None):
     #         print(f"Error setting color for {device.get_label()}: {e}")
 
 
-def set_light_color_threaded(device, r, g, b):
-    """Function to set the light color, executed in a thread."""
-    try:
-        # Set color instantly
-        device.set_color(rgb_to_hsbk(r, g, b), 0, True)
-        print(f"Setting color for {device.get_label()} to RGB({r}, {g}, {b})")
-    except Exception as e:
-        print(f"Error setting color for {device.get_label()}: {e}")
-
-
-def set_all_lights_parallel(r, g, b):
-    """Set color for all lights in parallel using threads."""
-    with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(
-            set_light_color_threaded, device, r, g, b) for device in devices]
-        for future in futures:
-            future.result()  # Wait for all threads to complete
-
-
 def set_light_color(light_n, r, g, b, brightness01=1.0, duration_s=0.0):
     if cfg.get("lifx_enabled") in (False, "false", "False", 0, "0", None):
         return
@@ -1324,7 +1305,6 @@ def set_light_color(light_n, r, g, b, brightness01=1.0, duration_s=0.0):
         lifx.set_color_all_lights(hsbk, dur_ms, True)
     else:
         devices[light_n].set_color(hsbk, dur_ms, True)
-
 
 
 def set_light_power(light_n, off_on):
