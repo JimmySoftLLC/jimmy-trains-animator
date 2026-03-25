@@ -1606,17 +1606,25 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         focus_value = float(rq_d.get("focus", 1.0))
         if 0.0 <= focus_value <= 10.0:
             if picam2 and camera_running:
-                # AfMode 0 = Manual
-                picam2.set_controls({"AfMode": 0, "LensPosition": focus_value})
-                print(f"Focus set to {focus_value} (1/{focus_value}m)")
+                picam2.set_controls({
+                    "AfMode": 0,
+                    "LensPosition": focus_value
+                })
+                print(f"Focus set to {focus_value}")
                 self.send_response(200)
                 self.send_header("Content-type", "text/plain")
                 self.end_headers()
                 self.wfile.write(f"Focus set to {focus_value}".encode('utf-8'))
             else:
-                self.send_response(500, "Camera not running")
+                self.send_response(500)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"Camera not running")
         else:
-            self.send_response(400, "Focus value out of range (0-10)")
+            self.send_response(400)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Focus value out of range (0-10)")
 
     def handle_generic_post(self, path):
         content_length = int(self.headers['Content-Length'])
@@ -1705,6 +1713,79 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.delete_recording_post(post_data_obj)
         elif self.path == "/delete-snapshot":
             self.delete_snapshot_post(post_data_obj)
+        elif self.path == "/get-focus":
+            self.get_focus(post_data_obj)
+        elif self.path == "/focus-once":
+            self.focus_once(post_data_obj)
+        elif self.path == "/focus-continuous":
+            self.focus_continuous(post_data_obj)
+
+    def focus_once(self, rq_d):
+        if not (picam2 and camera_running):
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Camera not running")
+            return
+
+        try:
+            # Auto focus once, then stop changing
+            picam2.set_controls({"AfMode": 1, "AfTrigger": 0})
+
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Focus once triggered")
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"Focus once failed: {e}".encode("utf-8"))
+
+
+    def focus_continuous(self, rq_d):
+        if not (picam2 and camera_running):
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Camera not running")
+            return
+
+        try:
+            picam2.set_controls({"AfMode": 2})
+
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Continuous autofocus enabled")
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"Continuous focus failed: {e}".encode("utf-8"))
+
+    def get_focus(self, rq_d):
+        if not (picam2 and camera_running):
+            self.send_response(500)
+            self.end_headers()
+            return
+
+        try:
+            metadata = picam2.capture_metadata()
+            lens = metadata.get("LensPosition", 0.0)
+
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"focus": lens}).encode("utf-8"))
+
+        except Exception as e:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(str(e).encode("utf-8"))
+
 
     def set_camera_zoom(self, rq_d):
         zoom_factor = float(rq_d.get("zoom", 1.0))

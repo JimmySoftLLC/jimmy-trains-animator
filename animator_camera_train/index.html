@@ -247,9 +247,6 @@
             data-url="/mode">Four</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
-                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
-            </li>
-            <li>
                 <a data-mui-toggle="tab" data-mui-controls="camera">Camera</a>
             </li>
             <li>
@@ -259,70 +256,13 @@
                 <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
             </li>
             <li>
+                <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
+            </li>
+            <li>
                 <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
             </li>
         </ul>
-        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
-            <h2>Random play:</h2>
-            <div id="topicButtonContainer"></div>
-            <h2>Current Animation Queue</h2>
-            <div id="currentMedia"></div>
-            <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
-                type="button">
-                Random all animations
-            </button>
-            <h2>Animations:</h2>
-            <div id="animationsContainer"></div>
-            <h2>Animation settings:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
-                    type="button">
-                    Continuous Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
-                    type="button">
-                    Continuous Mode Off
-                </button>
-            </div>
-            <h2>Instructions on how to add your own media:</h2>
-            <p>
-                Media goes in folders you create in the media folder in your home directory. Name these folders with
-                logical names related to what is in them. For
-                example Christmas music could go in a folder named Holiday.
-            </p>
-            <h2>Animation timing:</h2>
-            <p>
-                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
-                left button to start your animation. Once the media starts press the right button for each point
-                that you want an animation timestamp. Time your button presses to key moments in the media. Continue
-                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
-                animation script will be ready to add animations to.
-            </p>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
-                    type="button">
-                    Timestamp Mode On
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
-                    data-url="/mode" type="button">
-                    Timestamp Mode Off
-                </button>
-            </div>
-
-            <div class="mui-textfield" hidden>
-                <h2>Upload a File</h1>
-                    <form id="uploadForm" enctype="multipart/form-data">
-                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
-                        <input type="file" id="fileInput" name="file" style="display: none;" required>
-                    </form>
-                    <div id="progressContainer">
-                        <div id="progressBar">0%</div>
-                    </div>
-                    <p id="status"></p>
-            </div>
-        </div>
-        <div class="mui-tabs__pane" id="camera" style="padding-top:0.5rem;">
+        <div class="mui-tabs__pane mui--is-active" id="camera" style="padding-top:0.5rem;">
             <h2>Video feed:</h2>
             <div class="stream-container">
                 <img id="stream" src="/stream.mjpg" alt="MJPEG Stream">
@@ -330,10 +270,16 @@
             </div>
             <ul class="mui-tabs__bar">
                 <li class="mui--is-active">
-                    <a data-mui-toggle="tab" data-mui-controls="camservos">Servos</a>
+                    <a data-mui-toggle="tab" data-mui-controls="camservos">Camera</a>
                 </li>
                 <li>
-                    <a data-mui-toggle="tab" data-mui-controls="camadj">Adjustments</a>
+                    <a data-mui-toggle="tab" data-mui-controls="camadj">Light Bar</a>
+                </li>
+                <li>
+                    <a data-mui-toggle="tab" data-mui-controls="camexp">Exposure</a>
+                </li>
+                <li>
+                    <a data-mui-toggle="tab" data-mui-controls="camdriver">Director</a>
                 </li>
             </ul>
             <div class="mui-tabs__pane mui--is-active" id="camservos" style="padding-top:0.5rem;">
@@ -358,28 +304,6 @@
                     </div>
                     <div class="knob-wrapper">
                         <div class="knob-container">
-                            <div class="knob" id="knob3">
-                                <div class="indicator"></div>
-                            </div>
-                            <div class="knob-text" id="knob3-text">0</div>
-                        </div>
-                        <div class="knob-label">Rotate light</div>
-                    </div>
-                    <div class="knob-wrapper">
-                        <div class="knob-container">
-                            <div class="knob" id="knob4">
-                                <div class="indicator"></div>
-                            </div>
-                            <div class="knob-text" id="knob4-text">0</div>
-                        </div>
-                        <div class="knob-label">Rotate driver</div>
-                    </div>
-                </div>
-            </div>
-            <div class="mui-tabs__pane" id="camadj" style="padding-top:0.5rem;">
-                <div class="knobs-parent-container">
-                    <div class="knob-wrapper">
-                        <div class="knob-container">
                             <div class="knob" id="knobZoom">
                                 <div class="indicator"></div>
                             </div>
@@ -395,6 +319,28 @@
                             <div class="knob-text" id="knobFocus-text">1.0</div>
                         </div>
                         <div class="knob-label">Focus (0–10)</div>
+                    </div>
+                </div>
+                <div>
+                    <button id="focusOnceBtn" class="mui-btn mui-btn--primary" type="button">
+                        Focus Once
+                    </button>
+                    <button id="focusContinuousBtn" class="mui-btn mui-btn--primary" type="button">
+                        Focus Continuously
+                    </button>
+                    <div id="focusModeLabel" style="margin-top:10px;">Focus Mode: Manual</div>
+                </div>
+            </div>
+            <div class="mui-tabs__pane" id="camadj" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knob3">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob3-text">0</div>
+                        </div>
+                        <div class="knob-label">Rotate light</div>
                     </div>
                     <div class="knob-wrapper">
                         <div class="knob-container">
@@ -433,6 +379,40 @@
                         <div class="knob-label">Blue (0–255)</div>
                     </div>
                 </div>
+            </div>
+            <div class="mui-tabs__pane" id="camexp" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+
+                </div>
+            </div>
+            <div class="mui-tabs__pane" id="camdriver" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knob4">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knob4-text">0</div>
+                        </div>
+                        <div class="knob-label">Rotate director</div>
+                    </div>
+                </div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPRRAND" data-url="/lights"
+                    type="button">
+                    Action sound
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPXRAND" data-url="/lights"
+                    type="button">
+                    Snapshot sound
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPCRAND" data-url="/lights"
+                    type="button">
+                    Cut sound
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPQRAND" data-url="/lights"
+                    type="button">
+                    Director quotes
+                </button>
             </div>
             <div id="controls">
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
@@ -682,6 +662,66 @@
                 Reset to defaults
             </button>
         </div>
+        <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
+            <h2>Random play:</h2>
+            <div id="topicButtonContainer"></div>
+            <h2>Current Animation Queue</h2>
+            <div id="currentMedia"></div>
+            <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
+                type="button">
+                Random all animations
+            </button>
+            <h2>Animations:</h2>
+            <div id="animationsContainer"></div>
+            <h2>Animation settings:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
+            <h2>Instructions on how to add your own media:</h2>
+            <p>
+                Media goes in folders you create in the media folder in your home directory. Name these folders with
+                logical names related to what is in them. For
+                example Christmas music could go in a folder named Holiday.
+            </p>
+            <h2>Animation timing:</h2>
+            <p>
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
+                left button to start your animation. Once the media starts press the right button for each point
+                that you want an animation timestamp. Time your button presses to key moments in the media. Continue
+                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
+                animation script will be ready to add animations to.
+            </p>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
+                    type="button">
+                    Timestamp Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/mode" type="button">
+                    Timestamp Mode Off
+                </button>
+            </div>
+
+            <div class="mui-textfield" hidden>
+                <h2>Upload a File</h1>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
+                        <input type="file" id="fileInput" name="file" style="display: none;" required>
+                    </form>
+                    <div id="progressContainer">
+                        <div id="progressBar">0%</div>
+                    </div>
+                    <p id="status"></p>
+            </div>
+        </div>
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
             <p>Follow these steps to setup animations:</p>
@@ -760,6 +800,7 @@
 
 <script>
     let isRequestInProgress = false;
+    let knobFocusController;
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
@@ -781,7 +822,7 @@
             formatValue: v => v.toFixed(1) + '×',
             throttleTime: 200
         });
-        new KnobController('knobFocus', 'knobFocus-text', 0, 10, {
+        knobFocusController = new KnobController('knobFocus', 'knobFocus-text', 0, 10, {
             sendFunction: throttle(setFocus, 200),
             step: 0.1,
             formatValue: v => v.toFixed(1),
@@ -1351,7 +1392,7 @@
             this.currentRotation = 0;
             this.lastSentTime = 0;
             this.throttleTimeout = null;
-            this.sendFunction = options.sendFunction;
+            this.sendFunction = options.sendFunction || function () { };
 
             this.formatValue = options.formatValue || (v => Math.round(v).toString());
             this.step = options.step || 1;
@@ -1443,6 +1484,39 @@
             }
         }
 
+        setValue(value, send = false) {
+            // Clamp to allowed range
+            const clampedValue = Math.max(
+                Math.min(this.minRange, this.maxRange),
+                Math.min(Math.max(this.minRange, this.maxRange), value)
+            );
+
+            // Apply step
+            const steppedValue = Math.round(clampedValue / this.step) * this.step;
+
+            const rangeSpan = this.upperBound - this.lowerBound;
+
+            let normalizedValue;
+            if (rangeSpan === 0) {
+                normalizedValue = 0;
+            } else if (this.isReversed) {
+                normalizedValue = (this.upperBound - steppedValue) / rangeSpan;
+            } else {
+                normalizedValue = (steppedValue - this.lowerBound) / rangeSpan;
+            }
+
+            normalizedValue = Math.max(0, Math.min(1, normalizedValue));
+
+            this.currentRotation = (normalizedValue * 360) - 180;
+
+            this.knob.style.transform = `rotate(${this.currentRotation}deg)`;
+            this.knobText.innerText = this.formatValue(steppedValue);
+
+            if (send) {
+                this.throttleSend(steppedValue);
+            }
+        }
+
         initializeEventListeners() {
             const opts = { passive: false };
 
@@ -1455,9 +1529,9 @@
             window.addEventListener('mouseup', () => this.onEnd());
             window.addEventListener('touchend', () => this.onEnd());
         }
-    }
+    }    
 
-
+    
     // Helper for servo-style commands (DRY)
     function createServoSend(prefix) {
         return function (value) {
@@ -2678,6 +2752,9 @@
     const snapshotPreview = document.getElementById('snapshotPreview');
     const deleteVideoBtn = document.getElementById('deleteVideoBtn');
     const deleteSnapshotBtn = document.getElementById('deleteSnapshotBtn');
+    const focusOnceBtn = document.getElementById('focusOnceBtn');
+    const focusContinuousBtn = document.getElementById('focusContinuousBtn');
+    const focusModeLabel = document.getElementById('focusModeLabel');
 
     let selected = null;
     let selectedSnapshot = null;
@@ -2996,12 +3073,92 @@
     }
 
     async function setFocus(focusValue) {
+        focusModeLabel.textContent = 'Focus Mode: Manual';
+
         try {
-            const response = await fetch('/set-focus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ focus: focusValue }) });
-            if (response.ok) console.log(`Focus set to ${focusValue}`);
-            else console.error('Failed to set focus:', response.status);
-        } catch (e) { console.error('Error setting focus:', e); }
+            const response = await fetch('/set-focus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ focus: focusValue })
+            });
+
+            if (response.ok) {
+                console.log(`Focus set to ${focusValue}`);
+            } else {
+                const text = await response.text();
+                console.error('Failed to set focus:', text);
+                showAlert(text || 'Failed to set focus');
+            }
+        } catch (e) {
+            console.error('Error setting focus:', e);
+            showAlert('Error setting focus');
+        }
     }
+
+    async function updateFocusKnobFromCamera() {
+        try {
+            const res = await fetch('/get-focus', { method: 'POST' });
+            const data = await res.json();
+
+            const focus = parseFloat(data.focus);
+
+            if (!isNaN(focus)) {
+                knobFocusController.setValue(focus);
+            }
+
+        } catch (e) {
+            console.error("Failed to sync focus:", e);
+        }
+    }
+
+    focusOnceBtn.addEventListener('click', async function () {
+        try {
+            const res = await fetch('/focus-once', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            const text = await res.text();
+
+            if (!res.ok) {
+                showAlert(text || 'Focus once failed');
+                return;
+            }
+
+            focusModeLabel.textContent = 'Mode: Focused Once';
+
+            await updateFocusKnobFromCamera();
+
+        } catch (e) {
+            console.error(e);
+            showAlert('Error triggering focus once');
+        }
+    });
+
+    focusContinuousBtn.addEventListener('click', async function () {
+        try {
+            const res = await fetch('/focus-continuous', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            const text = await res.text();
+
+            if (!res.ok) {
+                showAlert(text || 'Continuous focus failed');
+                return;
+            }
+
+            focusModeLabel.textContent = 'Focus Mode: Continuous';
+            console.log(text);
+
+        } catch (e) {
+            console.error(e);
+            showAlert('Error enabling continuous focus');
+        }
+    });
 
     async function setWhite(lightValue) {
         lightValue = parseInt(lightValue)
