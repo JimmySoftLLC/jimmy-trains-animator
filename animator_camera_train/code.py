@@ -1730,6 +1730,37 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.focus_continuous_post(post_data_obj)
         elif self.path == "/get-camera-settings":
             self.get_camera_settings_post(post_data_obj)
+        elif self.path == "/camera-control":
+            self.camera_control_post(post_data_obj)
+
+
+    def camera_control_post(self, rq_d):
+        data = rq_d
+        control = data.get('control')
+        value = data.get('value')
+
+        if control == 'ExposureTime':
+            picam2.set_controls({'ExposureTime': int(value)})
+
+        elif control == 'AnalogueGain':
+            picam2.set_controls({'AnalogueGain': float(value)})
+
+        elif control == 'ColourGains':
+            picam2.set_controls({'ColourGains': (float(value[0]), float(value[1]))})
+
+        elif control == 'Brightness':
+            picam2.set_controls({'Brightness': float(value)})
+
+        elif control == 'Contrast':
+            picam2.set_controls({'Contrast': float(value)})
+
+        elif control == 'Saturation':
+            picam2.set_controls({'Saturation': float(value)})
+
+        elif control == 'Sharpness':
+            picam2.set_controls({'Sharpness': float(value)})
+
+        return {'status': 'ok'}
 
     def focus_once_post(self, rq_d):
         if not (picam2 and camera_running):
