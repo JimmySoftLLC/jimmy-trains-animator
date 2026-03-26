@@ -226,6 +226,15 @@
             /* Matches MUI typography */
             color: #2196f3;
         }
+
+        .camera-auto-controls {
+            display: flex;
+            gap: 24px;
+            justify-content: left;
+            align-items: left;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
     </style>
 </head>
 
@@ -454,6 +463,17 @@
                         </div>
                         <div class="knob-label">Sharpness</div>
                     </div>
+                </div>
+                <div class="camera-auto-controls">
+                    <label class="mui-checkbox-label">
+                        <input type="checkbox" id="autoExposureCheckbox" checked>
+                        Auto Exposure
+                    </label>
+
+                    <label class="mui-checkbox-label">
+                        <input type="checkbox" id="autoWhiteBalanceCheckbox" checked>
+                        Auto White Balance
+                    </label>
                 </div>
             </div>
             <div class="mui-tabs__pane" id="camdriver" style="padding-top:0.5rem;">
@@ -949,7 +969,7 @@
         });
 
         knobGain = new KnobController('knobGain', 'knobGain-text', 1.0, 16.0, {
-            sendFunction: v => throttle(sendCameraControl('AnalogueGain', Number(v.toFixed(2))),200),
+            sendFunction: v => throttle(sendCameraControl('AnalogueGain', Number(v.toFixed(2))), 200),
             step: 0.1,
             formatValue: v => Number(v).toFixed(1) + '×',
             throttleTime: 200
@@ -1006,6 +1026,7 @@
         getLifxEnabled()
         getLocalIp()
         loadCameraSettings()
+        initializeCameraAutoCheckboxes();
     });
 
     async function loadCameraSettings() {
@@ -1044,6 +1065,14 @@
 
             if (data.Sharpness !== undefined) {
                 knobSharpness.setValue(data.Sharpness);
+            }
+
+            if (data.AeEnable !== undefined) {
+                document.getElementById('autoExposureCheckbox').checked = data.AeEnable;
+            }
+
+            if (data.AwbEnable !== undefined) {
+                document.getElementById('autoWhiteBalanceCheckbox').checked = data.AwbEnable;
             }
 
         } catch (err) {
@@ -1569,6 +1598,67 @@
             });
     }
 
+    async function setCameraAuto(exposureAuto = true, whiteBalanceAuto = true) {
+        try {
+            const response = await fetch('/set-camera-auto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    exposure_auto: exposureAuto,
+                    white_balance_auto: whiteBalanceAuto
+                })
+            });
+
+            if (response.ok) {
+                console.log('Camera auto settings updated');
+                updateCameraKnobStates();
+            } else {
+                const text = await response.text();
+                console.error('Failed to set camera auto:', text);
+                showAlert(text || 'Failed to set camera auto');
+            }
+        } catch (e) {
+            console.error('Error setting camera auto:', e);
+            showAlert('Error setting camera auto');
+        }
+    }
+
+    function updateCameraKnobStates() {
+        const exposureAuto = document.getElementById('autoExposureCheckbox').checked;
+        const whiteBalanceAuto = document.getElementById('autoWhiteBalanceCheckbox').checked;
+
+        document.getElementById('knobExposure').style.pointerEvents = exposureAuto ? 'none' : 'auto';
+        document.getElementById('knobGain').style.pointerEvents = exposureAuto ? 'none' : 'auto';
+        document.getElementById('knobWbRed').style.pointerEvents = whiteBalanceAuto ? 'none' : 'auto';
+        document.getElementById('knobWbBlue').style.pointerEvents = whiteBalanceAuto ? 'none' : 'auto';
+
+        document.getElementById('knobExposure').style.opacity = exposureAuto ? '0.5' : '1';
+        document.getElementById('knobGain').style.opacity = exposureAuto ? '0.5' : '1';
+        document.getElementById('knobWbRed').style.opacity = whiteBalanceAuto ? '0.5' : '1';
+        document.getElementById('knobWbBlue').style.opacity = whiteBalanceAuto ? '0.5' : '1';
+    }
+
+    function initializeCameraAutoCheckboxes() {
+        const autoExposureCheckbox = document.getElementById('autoExposureCheckbox');
+        const autoWhiteBalanceCheckbox = document.getElementById('autoWhiteBalanceCheckbox');
+
+        autoExposureCheckbox.addEventListener('change', () => {
+            setCameraAuto(
+                autoExposureCheckbox.checked,
+                autoWhiteBalanceCheckbox.checked
+            );
+        });
+
+        autoWhiteBalanceCheckbox.addEventListener('change', () => {
+            setCameraAuto(
+                autoExposureCheckbox.checked,
+                autoWhiteBalanceCheckbox.checked
+            );
+        });
+
+        updateCameraKnobStates();
+    }
+
     class KnobController {
         constructor(knobId, textId, minRange, maxRange, options = {}) {
             this.knob = document.getElementById(knobId);
@@ -1670,6 +1760,18 @@
                     this.lastSentTime = Date.now();
                 }, this.throttleTime);
             }
+        }
+
+        getValue() {
+            const normalized = ((this.currentRotation % 360) + 360) % 360 / 360;
+            let value = this.lowerBound + normalized * (this.upperBound - this.lowerBound);
+
+            if (this.isReversed) {
+                value = this.upperBound - normalized * (this.upperBound - this.lowerBound);
+            }
+
+            value = Math.round(value / this.step) * this.step;
+            return value;
         }
 
         setValue(value, send = false) {
@@ -3395,8 +3497,8 @@
     }
 
     async function sendColourGains() {
-        const red = knobControllers.knobWbRed.getValue();
-        const blue = knobControllers.knobWbBlue.getValue();
+        const red = knobWbRed.getValue();
+        const blue = knobWbBlue.getValue();
 
         postData('/camera-control', {
             control: 'ColourGains',
@@ -3418,6 +3520,27 @@
     };
 
 
+    async function postData(url, data) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                const text = await response.text();
+                console.log(text);
+            } else {
+                const text = await response.text();
+                console.error('Error setting camera exposure:', text);
+                showAlert(text || 'Error setting camera exposure');
+            }
+        } catch (e) {
+            console.error('Error setting camera exposure:', e);
+            showAlert('Error setting camera exposure');
+        }
+    }
 </script>
 
 </html>

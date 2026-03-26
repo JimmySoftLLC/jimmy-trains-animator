@@ -1732,6 +1732,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.get_camera_settings_post(post_data_obj)
         elif self.path == "/camera-control":
             self.camera_control_post(post_data_obj)
+        elif self.path == "/set-camera-auto":
+            self.set_camera_auto(post_data_obj)
 
 
     def camera_control_post(self, rq_d):
@@ -1760,7 +1762,33 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif control == 'Sharpness':
             picam2.set_controls({'Sharpness': float(value)})
 
-        return {'status': 'ok'}
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(f"{control} set to {value}".encode('utf-8'))
+
+    def set_camera_auto(self, rq_d):
+        data = rq_d
+
+        enable_exposure = bool(data.get('exposure_auto', True))
+        enable_white_balance = bool(data.get('white_balance_auto', True))
+
+        controls = {
+            "AeEnable": enable_exposure,
+            "AwbEnable": enable_white_balance
+        }
+
+        try:
+            picam2.set_controls(controls)
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"Exposure auto": controls}).encode("utf-8"))
+
+        except Exception as e:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(str(e).encode("utf-8"))
 
     def focus_once_post(self, rq_d):
         if not (picam2 and camera_running):
@@ -1862,7 +1890,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             'Brightness': 0.0,
             'Contrast': 1.0,
             'Saturation': 1.0,
-            'Sharpness': 1.0
+            'Sharpness': 1.0,
+            'AeEnable': True,
+            'AwbEnable': True
         }
 
         self.send_response(200)
