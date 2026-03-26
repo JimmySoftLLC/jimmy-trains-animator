@@ -968,7 +968,7 @@ def send_animator_post(url, endpoint, new_data):
     except Exception as e:
         print(f"Comms issue: {e}")
 
-def get_focus_now():
+def get_focus():
         if not (picam2 and camera_running):
             return 1.0
         try:
@@ -1611,7 +1611,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
 
-    def set_camera_focus(self, rq_d):
+    def set_camera_focus_post(self, rq_d):
         focus_value = float(rq_d.get("focus", 1.0))
         if 0.0 <= focus_value <= 10.0:
             if picam2 and camera_running:
@@ -1655,15 +1655,15 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path == "/speaker":
             self.speaker_post(post_data_obj)
         elif self.path == "/start-camera":
-            self.start_camera(post_data_obj)
+            self.start_camera_post(post_data_obj)
         elif self.path == "/stop-camera":
-            self.stop_camera(post_data_obj)
+            self.stop_camera_post(post_data_obj)
         elif self.path == "/start-recording":
-            self.start_recording(post_data_obj)
+            self.start_recording_post(post_data_obj)
         elif self.path == "/stop-recording":
-            self.stop_recording(post_data_obj)
+            self.stop_recording_post(post_data_obj)
         elif self.path == "/snapshot":
-            self.snapshot(post_data_obj)
+            self.snapshot_post(post_data_obj)
         elif self.path == "/get-light-string":
             self.get_light_string_post(post_data_obj)
         elif self.path == "/get-scene-changes":
@@ -1681,7 +1681,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path == "/lights-neo":
             self.lights_neo_post(post_data_obj)
         elif self.path == "/set-item-lights":
-            self.set_item_lights(post_data_obj)
+            self.set_item_lights_post(post_data_obj)
         elif self.path == "/update-host-name":
             self.update_host_name_post(post_data_obj)
         elif self.path == "/get-host-name":
@@ -1689,11 +1689,11 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path == "/update-volume":
             self.update_volume_post(post_data_obj)
         elif self.path == "/set-lifx-enabled":
-            self.set_lifx_enabled(post_data_obj)
+            self.set_lifx_enabled_post(post_data_obj)
         elif self.path == "/get-volume":
             self.get_volume_post(post_data_obj)
         elif self.path == "/get-lifx-enabled":
-            self.get_lifx_enabled(post_data_obj)
+            self.get_lifx_enabled_post(post_data_obj)
         elif self.path == "/create-animation":
             self.create_animation_post(post_data_obj)
         elif self.path == "/get-animation":
@@ -1709,11 +1709,11 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path == "/test-animation":
             self.test_animation_post(post_data_obj)
         elif self.path == "/get-local-ip":
-            self.get_local_ip(post_data_obj)
+            self.get_local_ip_post(post_data_obj)
         elif self.path == "/set-zoom":
-            self.set_camera_zoom(post_data_obj)
+            self.set_camera_zoom_post(post_data_obj)
         elif self.path == "/set-focus":
-            self.set_camera_focus(post_data_obj)
+            self.set_camera_focus_post(post_data_obj)
         elif self.path == "/list-recordings":
             self.list_recordings_post(post_data_obj)
         elif self.path == "/list-snapshots":
@@ -1723,13 +1723,13 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif self.path == "/delete-snapshot":
             self.delete_snapshot_post(post_data_obj)
         elif self.path == "/get-focus":
-            self.get_focus(post_data_obj)
+            self.get_focus_post(post_data_obj)
         elif self.path == "/focus-once":
-            self.focus_once(post_data_obj)
+            self.focus_once_post(post_data_obj)
         elif self.path == "/focus-continuous":
-            self.focus_continuous(post_data_obj)
+            self.focus_continuous_post(post_data_obj)
 
-    def focus_once(self, rq_d):
+    def focus_once_post(self, rq_d):
         if not (picam2 and camera_running):
             self.send_response(500)
             self.send_header("Content-type", "text/plain")
@@ -1741,9 +1741,9 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             # Auto focus once, then stop changing
             picam2.set_controls({"AfMode": 1, "AfTrigger": 0})
 
-            time.sleep(1)
+            time.sleep(2)
 
-            lens = get_focus_now()
+            lens = get_focus()
 
             self.send_response(200)
             self.send_header("Content-type", "application/json")
@@ -1756,7 +1756,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.wfile.write(str(e).encode("utf-8"))
 
 
-    def focus_continuous(self, rq_d):
+    def focus_continuous_post(self, rq_d):
         if not (picam2 and camera_running):
             self.send_response(500)
             self.send_header("Content-type", "text/plain")
@@ -1778,14 +1778,14 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f"Continuous focus failed: {e}".encode("utf-8"))
 
-    def get_focus(self, rq_d):
+    def get_focus_post(self, rq_d):
         if not (picam2 and camera_running):
             self.send_response(500)
             self.end_headers()
             return
 
         try:
-            lens = get_focus_now()
+            lens = get_focus()
 
             self.send_response(200)
             self.send_header("Content-type", "application/json")
@@ -1798,7 +1798,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.wfile.write(str(e).encode("utf-8"))
 
 
-    def set_camera_zoom(self, rq_d):
+    def set_camera_zoom_post(self, rq_d):
         zoom_factor = float(rq_d.get("zoom", 1.0))
         if set_zoom(zoom_factor):
             self.send_response(200)
@@ -1822,7 +1822,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def get_local_ip(self, rq_d):
+    def get_local_ip_post(self, rq_d):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -2029,7 +2029,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         response = rq_d["an"]
         self.wfile.write(response.encode('utf-8'))
 
-    def start_camera(self, rq_d):
+    def start_camera_post(self, rq_d):
         global cfg
         start_camera_server()
         self.send_response(200)
@@ -2038,7 +2038,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         response = "started camera"
         self.wfile.write(response.encode('utf-8'))
 
-    def stop_camera(self, rq_d):
+    def stop_camera_post(self, rq_d):
         global cfg
         stop_camera_server()
         self.send_response(200)
@@ -2047,7 +2047,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         response = "stopped camera"
         self.wfile.write(response.encode('utf-8'))
 
-    def snapshot(self, rq_d):
+    def snapshot_post(self, rq_d):
         try:
             filename = take_snapshot()
             self.send_response(200)
@@ -2060,7 +2060,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f"snapshot failed: {e}".encode('utf-8'))
 
-    def start_recording(self, rq_d):
+    def start_recording_post(self, rq_d):
         ok, filename = start_recording()
         if ok:
             self.send_response(200)
@@ -2074,7 +2074,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             response = "already recording or camera not running"
         self.wfile.write(response.encode('utf-8'))
 
-    def stop_recording(self, rq_d):
+    def stop_recording_post(self, rq_d):
         ok, filename = stop_recording()
         if ok:
             self.send_response(200)
@@ -2213,7 +2213,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
 
-    def set_lifx_enabled(self, rq_d):
+    def set_lifx_enabled_post(self, rq_d):
         global cfg
         cfg["lifx_enabled"] = rq_d["enabled"]
         if cfg["lifx_enabled"] == True:
@@ -2233,7 +2233,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         response = cfg["volume"]
         self.wfile.write(response.encode('utf-8'))
 
-    def get_lifx_enabled(self, rq_d):
+    def get_lifx_enabled_post(self, rq_d):
         response = cfg["lifx_enabled"]
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -2294,7 +2294,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(response).encode('utf-8'))
         print("Response sent:", response)
 
-    def set_item_lights(self, rq_d):
+    def set_item_lights_post(self, rq_d):
         global current_neo, current_scene, exit_set_hdw
         exit_set_hdw = False
         if rq_d["item"] == "lifx":
