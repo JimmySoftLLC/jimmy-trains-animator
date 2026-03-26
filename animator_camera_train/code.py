@@ -968,6 +968,15 @@ def send_animator_post(url, endpoint, new_data):
     except Exception as e:
         print(f"Comms issue: {e}")
 
+def get_focus_now():
+        if not (picam2 and camera_running):
+            return 1.0
+        try:
+            metadata = picam2.capture_metadata()
+            lens = metadata.get("LensPosition", 0.0)
+            return lens
+        except Exception as e:
+            return 1.0
 
 ################################################################################
 # Setup wifi and web server
@@ -1732,16 +1741,19 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             # Auto focus once, then stop changing
             picam2.set_controls({"AfMode": 1, "AfTrigger": 0})
 
+            time.sleep(1)
+
+            lens = get_focus_now()
+
             self.send_response(200)
-            self.send_header("Content-type", "text/plain")
+            self.send_header("Content-type", "application/json")
             self.end_headers()
-            self.wfile.write(b"Focus once triggered")
+            self.wfile.write(json.dumps({"focus": lens}).encode("utf-8"))
 
         except Exception as e:
             self.send_response(500)
-            self.send_header("Content-type", "text/plain")
             self.end_headers()
-            self.wfile.write(f"Focus once failed: {e}".encode("utf-8"))
+            self.wfile.write(str(e).encode("utf-8"))
 
 
     def focus_continuous(self, rq_d):
@@ -1773,8 +1785,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             return
 
         try:
-            metadata = picam2.capture_metadata()
-            lens = metadata.get("LensPosition", 0.0)
+            lens = get_focus_now()
 
             self.send_response(200)
             self.send_header("Content-type", "application/json")

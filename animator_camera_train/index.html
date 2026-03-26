@@ -286,19 +286,19 @@
                 <div class="knobs-parent-container">
                     <div class="knob-wrapper">
                         <div class="knob-container">
-                            <div class="knob" id="knob1">
+                            <div class="knob" id="knobRotateCam">
                                 <div class="indicator"></div>
                             </div>
-                            <div class="knob-text" id="knob1-text">0</div>
+                            <div class="knob-text" id="knobRotateCam-text">0</div>
                         </div>
                         <div class="knob-label">Rotate camera</div>
                     </div>
                     <div class="knob-wrapper">
                         <div class="knob-container">
-                            <div class="knob" id="knob2">
+                            <div class="knob" id="knobTiltCam">
                                 <div class="indicator"></div>
                             </div>
-                            <div class="knob-text" id="knob2-text">0</div>
+                            <div class="knob-text" id="knobTiltCam-text">0</div>
                         </div>
                         <div class="knob-label">Tilt camera</div>
                     </div>
@@ -335,10 +335,10 @@
                 <div class="knobs-parent-container">
                     <div class="knob-wrapper">
                         <div class="knob-container">
-                            <div class="knob" id="knob3">
+                            <div class="knob" id="knobRotateLight">
                                 <div class="indicator"></div>
                             </div>
-                            <div class="knob-text" id="knob3-text">0</div>
+                            <div class="knob-text" id="knobRotateLight-text">0</div>
                         </div>
                         <div class="knob-label">Rotate light</div>
                     </div>
@@ -389,10 +389,10 @@
                 <div class="knobs-parent-container">
                     <div class="knob-wrapper">
                         <div class="knob-container">
-                            <div class="knob" id="knob4">
+                            <div class="knob" id="knobRotateDirector">
                                 <div class="indicator"></div>
                             </div>
-                            <div class="knob-text" id="knob4-text">0</div>
+                            <div class="knob-text" id="knobRotateDirector-text">0</div>
                         </div>
                         <div class="knob-label">Rotate director</div>
                     </div>
@@ -800,53 +800,61 @@
 
 <script>
     let isRequestInProgress = false;
-    let knobFocusController;
+    let knobFocus;
+    let knobRotateCam;
+    let knobTiltCam;
+    let knobRotateLight;
+    let knobRotateDirector;
+    let knobZoom;
+    let knobWhite;
+    let knobRed;
+    let knobGreen;
 
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
-        new KnobController('knob1', 'knob1-text', 180, 0, {
+        knobRotateCam = new KnobController('knobRotateCam', 'knobRotateCam-text', 180, 0, {
             sendFunction: createServoSend('S1')
         });
-        new KnobController('knob2', 'knob2-text', 140, 90, {
+        knobTiltCam = new KnobController('knobTiltCam', 'knobTiltCam-text', 140, 90, {
             sendFunction: createServoSend('S2')
         });
-        new KnobController('knob3', 'knob3-text', 0, 180, {
+        knobRotateLight = new KnobController('knobRotateLight', 'knobRotateLight-text', 0, 180, {
             sendFunction: createServoSend('S3')
         });
-        new KnobController('knob4', 'knob4-text', 0, 180, {
+        knobRotateDirector = new KnobController('knobRotateDirector', 'knobRotateDirector-text', 0, 180, {
             sendFunction: createServoSend('S4')
         });
-        new KnobController('knobZoom', 'knobZoom-text', 1, 6, {
+        knobZoom = new KnobController('knobZoom', 'knobZoom-text', 1, 6, {
             sendFunction: throttle(setZoom, 200),
             step: 0.1,
             formatValue: v => v.toFixed(1) + '×',
             throttleTime: 200
         });
-        knobFocusController = new KnobController('knobFocus', 'knobFocus-text', 0, 10, {
+        knobFocus = new KnobController('knobFocus', 'knobFocus-text', 0, 10, {
             sendFunction: throttle(setFocus, 200),
             step: 0.1,
             formatValue: v => v.toFixed(1),
             throttleTime: 200
         });
-        new KnobController('knobWhite', 'knobWhite-text', 0, 255, {
+        knobWhite = new KnobController('knobWhite', 'knobWhite-text', 0, 255, {
             sendFunction: throttle(setWhite, 200),
             step: 1,
             formatValue: v => Math.round(v),
             throttleTime: 200
         });
-        new KnobController('knobRed', 'knobRed-text', 0, 255, {
+        knobRed = new KnobController('knobRed', 'knobRed-text', 0, 255, {
             sendFunction: throttle(setRed, 200),
             step: 1,
             formatValue: v => Math.round(v),
             throttleTime: 200
         });
-        new KnobController('knobGreen', 'knobGreen-text', 0, 255, {
+        knobGreen = new KnobController('knobGreen', 'knobGreen-text', 0, 255, {
             sendFunction: throttle(setGreen, 200),
             step: 1,
             formatValue: v => Math.round(v),
             throttleTime: 200
         });
-        new KnobController('knobBlue', 'knobBlue-text', 0, 255, {
+        knobBlue = new KnobController('knobBlue', 'knobBlue-text', 0, 255, {
             sendFunction: throttle(setBlue, 200),
             step: 1,
             formatValue: v => Math.round(v),
@@ -3095,7 +3103,7 @@
         }
     }
 
-    async function updateFocusKnobFromCamera() {
+    async function getFocus() {
         try {
             const res = await fetch('/get-focus', { method: 'POST' });
             const data = await res.json();
@@ -3103,7 +3111,7 @@
             const focus = parseFloat(data.focus);
 
             if (!isNaN(focus)) {
-                knobFocusController.setValue(focus);
+                knobFocus.setValue(focus);
             }
 
         } catch (e) {
@@ -3119,16 +3127,19 @@
                 body: JSON.stringify({})
             });
 
-            const text = await res.text();
+            const data = await res.json();
+            const focus = parseFloat(data.focus);
 
             if (!res.ok) {
                 showAlert(text || 'Focus once failed');
                 return;
             }
 
-            focusModeLabel.textContent = 'Mode: Focused Once';
+            if (!isNaN(focus)) {
+                knobFocus.setValue(focus);
+            }
 
-            await updateFocusKnobFromCamera();
+            focusModeLabel.textContent = 'Mode: Focused Once';
 
         } catch (e) {
             console.error(e);
