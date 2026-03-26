@@ -1728,6 +1728,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.focus_once_post(post_data_obj)
         elif self.path == "/focus-continuous":
             self.focus_continuous_post(post_data_obj)
+        elif self.path == "/get-camera-settings":
+            self.get_camera_settings_post(post_data_obj)
 
     def focus_once_post(self, rq_d):
         if not (picam2 and camera_running):
@@ -1811,6 +1813,32 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             response = "Failed to set zoom"
         self.wfile.write(response.encode('utf-8'))
+
+    def get_camera_settings_post(self, rq_d):
+        if not (picam2 and camera_running):
+            self.send_response(500)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Camera not running")
+            return
+
+        meta = picam2.capture_metadata()
+
+        response =  {
+            'ExposureTime': meta.get('ExposureTime', 10000),
+            'AnalogueGain': meta.get('AnalogueGain', 1.0),
+            'ColourGains': meta.get('ColourGains', (2.0, 2.0)),
+            'Brightness': 0.0,
+            'Contrast': 1.0,
+            'Saturation': 1.0,
+            'Sharpness': 1.0
+        }
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
