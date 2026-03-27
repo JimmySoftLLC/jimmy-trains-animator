@@ -1773,19 +1773,25 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         data = rq_d
 
         enable_exposure = bool(data.get('exposure_auto', True))
-        enable_white_balance = bool(data.get('white_balance_auto', True))
 
-        controls = {
+        controlsInitial = {
+            "AeEnable": True,
+            "AwbEnable": True
+        }
+
+        controlsFinal = {
             "AeEnable": enable_exposure,
-            "AwbEnable": enable_white_balance
+            "AwbEnable": enable_exposure
         }
 
         try:
-            picam2.set_controls(controls)
+            picam2.set_controls(controlsInitial)
+            time.sleep(2)
+            picam2.set_controls(controlsFinal)
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({"Exposure auto": controls}).encode("utf-8"))
+            self.wfile.write(json.dumps({"Exposure auto": controlsFinal}).encode("utf-8"))
 
         except Exception as e:
             self.send_response(500)

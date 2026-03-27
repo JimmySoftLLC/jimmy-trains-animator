@@ -393,42 +393,6 @@
                 <div class="knobs-parent-container">
                     <div class="knob-wrapper">
                         <div class="knob-container">
-                            <div class="knob" id="knobExposure">
-                                <div class="indicator"></div>
-                            </div>
-                            <div class="knob-text" id="knobExposure-text">0</div>
-                        </div>
-                        <div class="knob-label">Exposure</div>
-                    </div>
-                    <div class="knob-wrapper">
-                        <div class="knob-container">
-                            <div class="knob" id="knobGain">
-                                <div class="indicator"></div>
-                            </div>
-                            <div class="knob-text" id="knobGain-text">0</div>
-                        </div>
-                        <div class="knob-label">Gain</div>
-                    </div>
-                    <div class="knob-wrapper">
-                        <div class="knob-container">
-                            <div class="knob" id="knobWbRed">
-                                <div class="indicator"></div>
-                            </div>
-                            <div class="knob-text" id="knobWbRed-text">0</div>
-                        </div>
-                        <div class="knob-label">WB Red</div>
-                    </div>
-                    <div class="knob-wrapper">
-                        <div class="knob-container">
-                            <div class="knob" id="knobWbBlue">
-                                <div class="indicator"></div>
-                            </div>
-                            <div class="knob-text" id="knobWbBlue-text">0</div>
-                        </div>
-                        <div class="knob-label">WB Blue</div>
-                    </div>
-                    <div class="knob-wrapper">
-                        <div class="knob-container">
                             <div class="knob" id="knobBrightness">
                                 <div class="indicator"></div>
                             </div>
@@ -464,16 +428,19 @@
                         <div class="knob-label">Sharpness</div>
                     </div>
                 </div>
-                <div class="camera-auto-controls">
-                    <label class="mui-checkbox-label">
-                        <input type="checkbox" id="autoExposureCheckbox" checked>
-                        Auto Exposure
-                    </label>
-
-                    <label class="mui-checkbox-label">
-                        <input type="checkbox" id="autoWhiteBalanceCheckbox" checked>
-                        Auto White Balance
-                    </label>
+                <div>
+                    <button id="exposureOnceBtn" class="mui-btn mui-btn--primary" type="button"
+                        onclick="setCameraAuto(false)">
+                        Exposure Once
+                    </button>
+                    <button id="exposureContinuousBtn" class="mui-btn mui-btn--primary" type="button"
+                        onclick="setCameraAuto(true)">
+                        Exposure Continuously
+                    </button>
+                    <button id="resetBrightContSatSharpBtn" class="mui-btn mui-btn--primary" type="button">
+                        Reset Bright/Cont/Sat/Sharp Settings
+                    </button>
+                    <div id="exposureModeLabel" style="margin-top:10px;">Exposure Mode: Continuously</div>
                 </div>
             </div>
             <div class="mui-tabs__pane" id="camdriver" style="padding-top:0.5rem;">
@@ -901,10 +868,6 @@
     let knobRed;
     let knobGreen;
 
-    let knobExposure;
-    let knobGain;
-    let knobWbRed;
-    let knobBlue;
     let knobBrightness;
     let knobContrast;
     let knobSaturation;
@@ -961,34 +924,6 @@
             throttleTime: 200
         });
 
-        knobExposure = new KnobController('knobExposure', 'knobExposure-text', 100, 30000, {
-            sendFunction: v => throttle(sendCameraControl('ExposureTime', Math.round(v)), 200),
-            step: 100,
-            formatValue: v => Math.round(v) + ' µs',
-            throttleTime: 200
-        });
-
-        knobGain = new KnobController('knobGain', 'knobGain-text', 1.0, 16.0, {
-            sendFunction: v => throttle(sendCameraControl('AnalogueGain', Number(v.toFixed(2))), 200),
-            step: 0.1,
-            formatValue: v => Number(v).toFixed(1) + '×',
-            throttleTime: 200
-        });
-
-        knobWbRed = new KnobController('knobWbRed', 'knobWbRed-text', 0.0, 8.0, {
-            sendFunction: () => throttle(sendColourGains(), 200),
-            step: 0.05,
-            formatValue: v => Number(v).toFixed(2),
-            throttleTime: 200
-        });
-
-        knobWbBlue = new KnobController('knobWbBlue', 'knobWbBlue-text', 0.0, 8.0, {
-            sendFunction: () => throttle(sendColourGains(), 200),
-            step: 0.05,
-            formatValue: v => Number(v).toFixed(2),
-            throttleTime: 200
-        });
-
         knobBrightness = new KnobController('knobBrightness', 'knobBrightness-text', -1.0, 1.0, {
             sendFunction: v => throttle(sendCameraControl('Brightness', Number(v.toFixed(2))), 200),
             step: 0.05,
@@ -1019,14 +954,12 @@
 
         getWebSiteUrl()
         getVolume()
-        getLightString()
         getAnimations()
         getSceneChanges()
         getNeoChanges()
         getLifxEnabled()
         getLocalIp()
         loadCameraSettings()
-        initializeCameraAutoCheckboxes()
         loadServoSettings()
     });
 
@@ -1061,19 +994,6 @@
 
             const data = await response.json();
 
-            if (data.ExposureTime !== undefined) {
-                knobExposure.setValue(data.ExposureTime);
-            }
-
-            if (data.AnalogueGain !== undefined) {
-                knobGain.setValue(data.AnalogueGain);
-            }
-
-            if (data.ColourGains && data.ColourGains.length >= 2) {
-                knobWbRed.setValue(data.ColourGains[0]);
-                knobWbBlue.setValue(data.ColourGains[1]);
-            }
-
             if (data.Brightness !== undefined) {
                 knobBrightness.setValue(data.Brightness);
             }
@@ -1090,36 +1010,16 @@
                 knobSharpness.setValue(data.Sharpness);
             }
 
-            if (data.AeEnable !== undefined) {
-                document.getElementById('autoExposureCheckbox').checked = data.AeEnable;
-            }
-
-            if (data.AwbEnable !== undefined) {
-                document.getElementById('autoWhiteBalanceCheckbox').checked = data.AwbEnable;
+            if (data.AeEnable) {
+                exposureModeLabel.textContent = 'Exposure Mode: Continuously';
+            } else {
+                exposureModeLabel.textContent = 'Exposure Mode: Once';
             }
 
         } catch (err) {
             console.error('Failed to load camera settings:', err);
         }
     }
-
-    function getLightString() {
-        fetch('/get-light-string', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .then(function (data) {
-                lightString.value = data; // Set the value of the input field with the received data
-            })
-            .catch(function (error) {
-                console.log(error);
-            })
-    };
 
     function getAnimations() {
         fetch('/get-animations', {
@@ -1558,16 +1458,7 @@
                 return response.text();
             })
             .then(function (data) {
-                const stream = document.getElementById('stream');
-                streamStatus.textContent = "";
-
-                // Clear first
-                stream.src = '';
-
-                // Then force a brand new request
-                setTimeout(() => {
-                    stream.src = window.location.origin + '/stream.mjpg?ts=' + Date.now();
-                }, 500);
+                window.location.reload();
             })
             .catch(function (error) {
                 console.log(error);
@@ -1621,20 +1512,18 @@
             });
     }
 
-    async function setCameraAuto(exposureAuto = true, whiteBalanceAuto = true) {
+    async function setCameraAuto(exposureAuto = true) {
         try {
             const response = await fetch('/set-camera-auto', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    exposure_auto: exposureAuto,
-                    white_balance_auto: whiteBalanceAuto
+                    exposure_auto: exposureAuto
                 })
             });
 
             if (response.ok) {
                 console.log('Camera auto settings updated');
-                updateCameraKnobStates();
             } else {
                 const text = await response.text();
                 console.error('Failed to set camera auto:', text);
@@ -1647,9 +1536,6 @@
     }
 
     function updateCameraKnobStates() {
-        const exposureAuto = document.getElementById('autoExposureCheckbox').checked;
-        const whiteBalanceAuto = document.getElementById('autoWhiteBalanceCheckbox').checked;
-
         document.getElementById('knobExposure').style.pointerEvents = exposureAuto ? 'none' : 'auto';
         document.getElementById('knobGain').style.pointerEvents = exposureAuto ? 'none' : 'auto';
         document.getElementById('knobWbRed').style.pointerEvents = whiteBalanceAuto ? 'none' : 'auto';
@@ -1659,27 +1545,6 @@
         document.getElementById('knobGain').style.opacity = exposureAuto ? '0.5' : '1';
         document.getElementById('knobWbRed').style.opacity = whiteBalanceAuto ? '0.5' : '1';
         document.getElementById('knobWbBlue').style.opacity = whiteBalanceAuto ? '0.5' : '1';
-    }
-
-    function initializeCameraAutoCheckboxes() {
-        const autoExposureCheckbox = document.getElementById('autoExposureCheckbox');
-        const autoWhiteBalanceCheckbox = document.getElementById('autoWhiteBalanceCheckbox');
-
-        autoExposureCheckbox.addEventListener('change', () => {
-            setCameraAuto(
-                autoExposureCheckbox.checked,
-                autoWhiteBalanceCheckbox.checked
-            );
-        });
-
-        autoWhiteBalanceCheckbox.addEventListener('change', () => {
-            setCameraAuto(
-                autoExposureCheckbox.checked,
-                autoWhiteBalanceCheckbox.checked
-            );
-        });
-
-        updateCameraKnobStates();
     }
 
     class KnobController {
@@ -3068,6 +2933,8 @@
     const focusOnceBtn = document.getElementById('focusOnceBtn');
     const focusContinuousBtn = document.getElementById('focusContinuousBtn');
     const focusModeLabel = document.getElementById('focusModeLabel');
+    const exposureModeLabel = document.getElementById('exposureModeLabel');
+    const whiteBalanceModeLabel = document.getElementById('whiteBalanceModeLabel');
 
     let selected = null;
     let selectedSnapshot = null;
@@ -3444,7 +3311,7 @@
                 knobFocus.setValue(focus);
             }
 
-            focusModeLabel.textContent = 'Mode: Focused Once';
+            focusModeLabel.textContent = 'Focus Mode: Once';
 
         } catch (e) {
             console.error(e);
