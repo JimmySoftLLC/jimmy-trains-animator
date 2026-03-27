@@ -1734,6 +1734,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.camera_control_post(post_data_obj)
         elif self.path == "/set-camera-auto":
             self.set_camera_auto(post_data_obj)
+        elif self.path == "/get-servo-settings":
+            self.get_servo_settings_post(post_data_obj)
 
 
     def camera_control_post(self, rq_d):
@@ -1872,6 +1874,14 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             response = "Failed to set zoom"
         self.wfile.write(response.encode('utf-8'))
+
+    def get_servo_settings_post(self, rq_d):
+        response =  p_arr
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
 
     def get_camera_settings_post(self, rq_d):
         if not (picam2 and camera_running):

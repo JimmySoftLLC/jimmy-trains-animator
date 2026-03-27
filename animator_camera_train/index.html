@@ -1026,8 +1026,31 @@
         getLifxEnabled()
         getLocalIp()
         loadCameraSettings()
-        initializeCameraAutoCheckboxes();
+        initializeCameraAutoCheckboxes()
+        loadServoSettings()
     });
+
+    async function loadServoSettings() {
+        try {
+            const response = await fetch('/get-servo-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data !== undefined) {
+                knobRotateCam.setValue(data[0]);
+                knobTiltCam.setValue(data[1]);
+                knobRotateLight.setValue(data[2]);
+                knobRotateDirector.setValue(data[3]);
+            }
+
+        } catch (err) {
+            console.error('Failed to load camera settings:', err);
+        }
+    }
+
 
     async function loadCameraSettings() {
         try {
