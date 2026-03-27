@@ -190,6 +190,25 @@ FOLDER_MAP = {
 media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0,
                'S': 0, 'Z': 0, 'C': 0, 'R': 0, 'X': 0, 'Q': 0}
 
+camera_state = {
+    "ExposureColorBalanceAuto": True,
+    "Brightness": 0.0,
+    "Contrast": 1.0,
+    "Saturation": 1.0,
+    "Sharpness": 1.0
+}
+
+def set_camera_state_to_defaults():
+    global camera_state
+    camera_state = {
+    "ExposureColorBalanceAuto": True,
+    "Brightness": 0.0,
+    "Contrast": 1.0,
+    "Saturation": 1.0,
+    "Sharpness": 1.0
+    }
+    
+
 ################################################################################
 # Loading image as wallpaper on pi
 
@@ -1207,6 +1226,8 @@ def start_camera_server():
     if camera_running:
         print("Camera already running")
         return
+    
+    set_camera_state_to_defaults()
 
     picam2 = Picamera2()
 
@@ -1240,6 +1261,7 @@ def start_camera_server():
     time.sleep(1)
 
     camera_running = True
+
     print("Camera started")
 
 
@@ -1654,6 +1676,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.get_animations_post(post_data_obj)
         elif self.path == "/speaker":
             self.speaker_post(post_data_obj)
+        elif self.path == "/restart-camera":
+            self.restart_camera_post(post_data_obj)
         elif self.path == "/start-camera":
             self.start_camera_post(post_data_obj)
         elif self.path == "/stop-camera":
@@ -1739,20 +1763,13 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
 
     def camera_control_post(self, rq_d):
+        global camera_state
+
         data = rq_d
         control = data.get('control')
         value = data.get('value')
 
-        if control == 'ExposureTime':
-            picam2.set_controls({'ExposureTime': int(value)})
-
-        elif control == 'AnalogueGain':
-            picam2.set_controls({'AnalogueGain': float(value)})
-
-        elif control == 'ColourGains':
-            picam2.set_controls({'ColourGains': (float(value[0]), float(value[1]))})
-
-        elif control == 'Brightness':
+        if control == 'Brightness':
             picam2.set_controls({'Brightness': float(value)})
 
         elif control == 'Contrast':
@@ -1764,15 +1781,19 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         elif control == 'Sharpness':
             picam2.set_controls({'Sharpness': float(value)})
 
+        camera_state[control] = float(value)
+
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         self.wfile.write(f"{control} set to {value}".encode('utf-8'))
 
     def set_camera_auto(self, rq_d):
+        global camera_state
+
         data = rq_d
 
-        enable_exposure = bool(data.get('exposure_auto', True))
+        exposure_color_balance_auto = bool(data.get('exposure_color_balance_auto', True))
 
         controlsInitial = {
             "AeEnable": True,
@@ -1780,14 +1801,17 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         }
 
         controlsFinal = {
-            "AeEnable": enable_exposure,
-            "AwbEnable": enable_exposure
+            "AeEnable": exposure_color_balance_auto,
+            "AwbEnable": exposure_color_balance_auto
         }
 
         try:
             picam2.set_controls(controlsInitial)
             time.sleep(2)
             picam2.set_controls(controlsFinal)
+
+            camera_state["ExposureColorBalanceAuto"] = exposure_color_balance_auto
+
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
@@ -1899,16 +1923,15 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
         meta = picam2.capture_metadata()
 
-        response =  {
-            'ExposureTime': meta.get('ExposureTime', 10000),
-            'AnalogueGain': meta.get('AnalogueGain', 1.0),
-            'ColourGains': meta.get('ColourGains', (2.0, 2.0)),
-            'Brightness': 0.0,
-            'Contrast': 1.0,
-            'Saturation': 1.0,
-            'Sharpness': 1.0,
-            'AeEnable': True,
-            'AwbEnable': True
+        response = {
+            "ExposureTime": meta.get("ExposureTime", 10000),
+            "AnalogueGain": meta.get("AnalogueGain", 1.0),
+            "ColourGains": meta.get("ColourGains", (2.0, 2.0)),
+            "Brightness": camera_state["Brightness"],
+            "Contrast": camera_state["Contrast"],
+            "Saturation": camera_state["Saturation"],
+            "Sharpness": camera_state["Sharpness"],
+            "ExposureColorBalanceAuto": camera_state["ExposureColorBalanceAuto"],
         }
 
         self.send_response(200)
@@ -2132,6 +2155,16 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", "text/plain")
         self.end_headers()
         response = rq_d["an"]
+        self.wfile.write(response.encode('utf-8'))
+
+    def restart_camera_post(self, rq_d):
+        global cfg
+        stop_camera_server()
+        start_camera_server()
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = "started camera"
         self.wfile.write(response.encode('utf-8'))
 
     def start_camera_post(self, rq_d):

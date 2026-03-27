@@ -478,11 +478,8 @@
                 <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
             </div>
             <div id="controls">
-                <button class="mui-btn mui-btn--primary" onclick="startCamera()" type="button">
-                    Start stream
-                </button>
-                <button class="mui-btn mui-btn--primary" onclick="stopCamera()" type="button">
-                    Stop stream
+                <button class="mui-btn mui-btn--primary" onclick="restartCamera()" type="button">
+                    Restart Camera
                 </button>
             </div>
             <h3>Videos</h3>
@@ -1010,7 +1007,7 @@
                 knobSharpness.setValue(data.Sharpness);
             }
 
-            if (data.AeEnable) {
+            if (data.ExposureColorBalanceAuto) {
                 exposureModeLabel.textContent = 'Exposure Mode: Continuously';
             } else {
                 exposureModeLabel.textContent = 'Exposure Mode: Once';
@@ -1446,8 +1443,8 @@
         getAnimations()
     }
 
-    function startCamera() {
-        fetch('/start-camera', {
+    function restartCamera() {
+        fetch('/restart-camera', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1467,35 +1464,6 @@
     }
 
 
-    function stopCamera() {
-        const stream = document.getElementById('stream');
-
-        // Fully disconnect browser from MJPEG stream
-        stream.src = '';
-        stream.removeAttribute('src');
-
-        setTimeout(() => {
-            fetch('/stop-camera', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({})
-            })
-                .then(function (response) {
-                    return response.text();
-                })
-                .then(function (data) {
-                    console.log('Camera stopped:', data);
-                    streamStatus.textContent = 'Streaming stopped. Press start stream to continue streaming.';
-                })
-                .catch(function (error) {
-                    console.log(error);
-                    showAlert(error);
-                });
-        }, 150);
-    }
-
     function snapshot() {
         fetch('/snapshot', {
             method: 'POST',
@@ -1512,18 +1480,25 @@
             });
     }
 
-    async function setCameraAuto(exposureAuto = true) {
+    async function setCameraAuto(exposure_color_balance_auto = true) {
         try {
             const response = await fetch('/set-camera-auto', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    exposure_auto: exposureAuto
+                    exposure_color_balance_auto: exposure_color_balance_auto
                 })
             });
 
             if (response.ok) {
-                console.log('Camera auto settings updated');
+                if (exposure_color_balance_auto) {
+                    console.log('Exposure set to auto');
+                    exposureModeLabel.textContent = 'Exposure Mode: Continuous';
+                } else {
+                    console.log('Exposure set to manual');
+                    exposureModeLabel.textContent = 'Exposure Mode: Once';
+                }
+                
             } else {
                 const text = await response.text();
                 console.error('Failed to set camera auto:', text);
