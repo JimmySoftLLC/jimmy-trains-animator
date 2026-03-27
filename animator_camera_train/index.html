@@ -437,7 +437,8 @@
                         onclick="setCameraAuto(true)">
                         Exposure Continuously
                     </button>
-                    <button id="resetBrightContSatSharpBtn" class="mui-btn mui-btn--primary" type="button">
+                    <button id="resetBrightContSatSharpBtn" class="mui-btn mui-btn--primary" type="button"
+                        onclick="resetBrightContSatSharp()">
                         Reset Bright/Cont/Sat/Sharp Settings
                     </button>
                     <div id="exposureModeLabel" style="margin-top:10px;">Exposure Mode: Continuously</div>
@@ -958,6 +959,9 @@
         getLocalIp()
         loadCameraSettings()
         loadServoSettings()
+        loadLightBarSettings()
+        getFocus()
+        getZoom()
     });
 
     async function loadServoSettings() {
@@ -970,10 +974,10 @@
             const data = await response.json();
 
             if (data !== undefined) {
-                knobRotateCam.setValue(data[0]);
-                knobTiltCam.setValue(data[1]);
-                knobRotateLight.setValue(data[2]);
-                knobRotateDirector.setValue(data[3]);
+                knobRotateCam.setValue(data[0],true);
+                knobTiltCam.setValue(data[1],true);
+                knobRotateLight.setValue(data[2],true);
+                knobRotateDirector.setValue(data[3],true);
             }
 
         } catch (err) {
@@ -1015,6 +1019,28 @@
 
         } catch (err) {
             console.error('Failed to load camera settings:', err);
+        }
+    }
+
+
+    async function loadLightBarSettings() {
+        try {
+            const response = await fetch('/get-light-bar-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+
+            if (data !== undefined) {
+                knobRed.setValue(data["Red"]);
+                knobGreen.setValue(data["Green"]);
+                knobBlue.setValue(data["Blue"]);
+                knobWhite.setValue(data["White"]);
+            }
+
+        } catch (err) {
+            console.error('Failed to load light bar settings:', err);
         }
     }
 
@@ -1480,6 +1506,13 @@
             });
     }
 
+    async function resetBrightContSatSharp() {
+        knobBrightness.setValue(0.0, true);
+        knobContrast.setValue(1.0, true);
+        knobSaturation.setValue(1.0, true);
+        knobSharpness.setValue(1.0, true);
+    }
+
     async function setCameraAuto(exposure_color_balance_auto = true) {
         try {
             const response = await fetch('/set-camera-auto', {
@@ -1498,7 +1531,7 @@
                     console.log('Exposure set to manual');
                     exposureModeLabel.textContent = 'Exposure Mode: Once';
                 }
-                
+
             } else {
                 const text = await response.text();
                 console.error('Failed to set camera auto:', text);
@@ -3263,6 +3296,22 @@
 
         } catch (e) {
             console.error("Failed to sync focus:", e);
+        }
+    }
+
+    async function getZoom() {
+        try {
+            const res = await fetch('/get-zoom', { method: 'POST' });
+            const data = await res.json();
+
+            const zoom = parseFloat(data.zoom);
+
+            if (!isNaN(zoom)) {
+                knobZoom.setValue(zoom);
+            }
+
+        } catch (e) {
+            console.error("Failed to sync zoom:", e);
         }
     }
 

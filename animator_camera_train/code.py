@@ -198,6 +198,13 @@ camera_state = {
     "Sharpness": 1.0
 }
 
+light_bar_state = {
+    "Red": 0,
+    "Green": 0,
+    "Blue": 0,
+    "White": 0,
+}
+
 def set_camera_state_to_defaults():
     global camera_state
     camera_state = {
@@ -206,7 +213,7 @@ def set_camera_state_to_defaults():
     "Contrast": 1.0,
     "Saturation": 1.0,
     "Sharpness": 1.0
-    }
+}
     
 
 ################################################################################
@@ -1177,6 +1184,28 @@ def set_zoom(zoom_factor):
             return False
     return False
 
+def get_zoom():
+    global picam2, camera_running
+
+    if not (picam2 and camera_running):
+        return 1.0
+
+    try:
+        metadata = picam2.capture_metadata()
+        scaler_crop = metadata.get("ScalerCrop")
+
+        if not scaler_crop:
+            return 1.0
+
+        crop_width = scaler_crop[2]
+        full_width = picam2.sensor_resolution[0]
+
+        return round(full_width / crop_width, 2)
+
+    except Exception as e:
+        print(f"Failed to get zoom: {e}")
+        return 1.0
+
 # ================= CAMERA SECTION =================
 
 
@@ -1748,6 +1777,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.delete_snapshot_post(post_data_obj)
         elif self.path == "/get-focus":
             self.get_focus_post(post_data_obj)
+        elif self.path == "/get-zoom":
+            self.get_zoom_post(post_data_obj)
         elif self.path == "/focus-once":
             self.focus_once_post(post_data_obj)
         elif self.path == "/focus-continuous":
@@ -1760,7 +1791,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.set_camera_auto(post_data_obj)
         elif self.path == "/get-servo-settings":
             self.get_servo_settings_post(post_data_obj)
-
+        elif self.path == "/get-light-bar-settings":
+            self.get_light_bar_settings_post(post_data_obj)
 
     def camera_control_post(self, rq_d):
         global camera_state
@@ -1890,6 +1922,23 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(str(e).encode("utf-8"))
 
+    def get_zoom_post(self, rq_d):
+        if not (picam2 and camera_running):
+            self.send_response(500)
+            self.end_headers()
+            return
+
+        try:
+            zoom = get_zoom()
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"zoom": zoom}).encode("utf-8"))
+
+        except Exception as e:
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(str(e).encode("utf-8"))
 
     def set_camera_zoom_post(self, rq_d):
         zoom_factor = float(rq_d.get("zoom", 1.0))
@@ -1907,6 +1956,14 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     def get_servo_settings_post(self, rq_d):
         response =  p_arr
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        print("Response sent:", response)
+
+    def get_light_bar_settings_post(self, rq_d):
+        response = light_bar_state
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -3316,6 +3373,14 @@ def set_hdw(cmd, dur=3):
                 mod_n = int(segs_split[0][2:])
                 index = int(segs_split[1])
                 v = int(segs_split[2])
+                if index == 1:
+                    light_bar_state["Red"] = v
+                elif index == 3:
+                    light_bar_state["Green"] = v
+                elif index == 5:
+                    light_bar_state["Blue"] = v
+                else:
+                    light_bar_state["White"] = v
                 set_neo_module_to(mod_n, index, v)
             # BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100
             elif seg[0:2] == 'BN':
