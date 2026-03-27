@@ -974,10 +974,10 @@
             const data = await response.json();
 
             if (data !== undefined) {
-                knobRotateCam.setValue(data[0],true);
-                knobTiltCam.setValue(data[1],true);
-                knobRotateLight.setValue(data[2],true);
-                knobRotateDirector.setValue(data[3],true);
+                knobRotateCam.setValue(data[0], true);
+                knobTiltCam.setValue(data[1], true);
+                knobRotateLight.setValue(data[2], true);
+                knobRotateDirector.setValue(data[3], true);
             }
 
         } catch (err) {
@@ -1515,6 +1515,11 @@
 
     async function setCameraAuto(exposure_color_balance_auto = true) {
         try {
+            if (exposure_color_balance_auto) {
+                exposureContinuousBtn.setAttribute('disabled', 'true')
+            } else {
+                exposureOnceBtn.setAttribute('disabled', 'true')
+            }
             const response = await fetch('/set-camera-auto', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1522,7 +1527,6 @@
                     exposure_color_balance_auto: exposure_color_balance_auto
                 })
             });
-
             if (response.ok) {
                 if (exposure_color_balance_auto) {
                     console.log('Exposure set to auto');
@@ -1531,7 +1535,6 @@
                     console.log('Exposure set to manual');
                     exposureModeLabel.textContent = 'Exposure Mode: Once';
                 }
-
             } else {
                 const text = await response.text();
                 console.error('Failed to set camera auto:', text);
@@ -1541,7 +1544,14 @@
             console.error('Error setting camera auto:', e);
             showAlert('Error setting camera auto');
         }
+        if (exposure_color_balance_auto) {
+            exposureContinuousBtn.removeAttribute('disabled');
+        } else {
+            exposureOnceBtn.removeAttribute('disabled');
+        }
     }
+
+
 
     function updateCameraKnobStates() {
         document.getElementById('knobExposure').style.pointerEvents = exposureAuto ? 'none' : 'auto';
@@ -3316,6 +3326,7 @@
     }
 
     focusOnceBtn.addEventListener('click', async function () {
+        focusOnceBtn.setAttribute('disabled', 'true')
         try {
             const res = await fetch('/focus-once', {
                 method: 'POST',
@@ -3341,9 +3352,12 @@
             console.error(e);
             showAlert('Error triggering focus once');
         }
+        focusOnceBtn.removeAttribute('disabled');
     });
 
+
     focusContinuousBtn.addEventListener('click', async function () {
+        focusContinuousBtn.setAttribute('disabled', 'true')
         try {
             const res = await fetch('/focus-continuous', {
                 method: 'POST',
@@ -3365,6 +3379,7 @@
             console.error(e);
             showAlert('Error enabling continuous focus');
         }
+        focusContinuousBtn.removeAttribute('disabled');
     });
 
     async function setWhite(lightValue) {
