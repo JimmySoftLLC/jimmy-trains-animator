@@ -3911,7 +3911,7 @@ class WebOpt(Ste):
                 spk_str(local_ip, False, True)
                 sel_web()
             elif selected_menu_item == "update_ssid_password_from_usb":
-                play_mix(mvc_folder + "update_ssid_password_from_usb.wav")
+                play_mix(mvc_folder + "setting_ssid_and_password.wav")
                 update_ssid_password_from_usb()
                 restart_pi_timer()
             else:
