@@ -1037,6 +1037,10 @@ async def set_hdw_async(input_string):
                     await asyncio.sleep(.02)
             except Exception as e:
                 print(e)
+        # WXXX = Wait XXX decimal seconds
+        elif seg[0] == 'W':  # wait time
+            s = float(seg[1:])
+            await asyncio.sleep(s)
         # TXXX_AAA = Train XXX throttle -100 to 100
         elif seg[:1] == 'T':
             try:   
