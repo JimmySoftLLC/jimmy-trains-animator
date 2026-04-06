@@ -194,9 +194,14 @@ t_elsp = 0.0
 ################################################################################
 # Setup neo pixels
 
-n_px = 9
+n_px = 2
 
-led = neopixel.NeoPixel(board.GP22, n_px)
+led_1 = neopixel.NeoPixel(board.GP4, n_px)
+led_2 = neopixel.NeoPixel(board.GP5, n_px)
+led_3 = neopixel.NeoPixel(board.GP6, n_px)
+led_4 = neopixel.NeoPixel(board.GP7, n_px)
+
+led = [led_1,led_2,led_3,led_4]
 
 gc_col("Neopixels setup")
 
@@ -225,10 +230,10 @@ if (web):
     except:
         print("Using default ssid and password")
 
-    for i in range(3):
+    for i in range(4):
         web = True
-        led[0] = (0, 0, 255)
-        led.show()
+        led[0][0] = (0, 0, 255)
+        led[0].show()
         try:
             # connect to your SSID
             wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
@@ -502,8 +507,8 @@ if (web):
         except Exception as e:
             web = False
             files.log_item(e)
-            led[0] = (0, 0, 75)
-            led.show()
+            led[0][0] = (0, 0, 75)
+            led[0].show()
             time.sleep(2)
 
 gc_col("web server")
@@ -890,8 +895,9 @@ async def an_ts(f_nm):
             ovrde_sw_st["switch_value"] = ""
         if not mix.voice[0].playing:
             add_command_to_ts("")
-            led.fill((0, 0, 0))
-            led.show()
+            for i in range(4):
+                led[i].fill((0, 0, 0))
+                led[i].show()
             files.write_json_file(
                 "/snds/" + f_nm + ".json", t_s)
             break
@@ -996,17 +1002,20 @@ def set_hdw(input_string):
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
-            led.brightness = float(br/100)
+            for i in range(4):
+                led[i].brightness = float(br/100)
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
             while not br == v:
                 if br < v:
                     br += 1
-                    led.brightness = float(br/100)
+                    for i in range(4):
+                        led[i].brightness = float(br/100)
                 else:
                     br -= 1
-                    led.brightness = float(br/100)
+                    for i in range(4):
+                        led[i].brightness = float(br/100)
                 upd_vol(.01)
 
 
@@ -1100,17 +1109,20 @@ async def set_hdw_async(input_string):
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
-            led.brightness = float(br/100)
+            for i in range(4):
+                led[i].brightness = float(br/100)
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
             while not br == v:
                 if br < v:
                     br += 1
-                    led.brightness = float(br/100)
+                    for i in range(4):
+                        led[i].brightness = float(br/100)
                 else:
                     br -= 1
-                    led.brightness = float(br/100)
+                    for i in range(4):
+                        led[i].brightness = float(br/100)
                 upd_vol_async(.01)
         # AN_XXX = Animation XXX filename
         elif seg[:2] == 'AN':
@@ -1123,11 +1135,12 @@ async def set_hdw_async(input_string):
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
-        for i in range(n_px):  # in range(n_px)
-            led[i] = (r, g, b)
+        for i in range(4):
+            led[i][0] = (r, g, b)
+            led[i].show
     else:
-        led[light_n] = (r, g, b)
-    led.show()
+        led[light_n][0] = (r, g, b)
+        led[light_n].show()
 
 def get_random_media_file(folder_to_search):
     files = files.return_directory("", folder_to_search, ".mp3")
@@ -1490,7 +1503,8 @@ if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
-        led[1] = (0, 255, 0)
+        led[1][0] = (0, 255, 0)
+        led[1].show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
     except Exception as e:
@@ -1499,8 +1513,8 @@ if (web):
         files.log_item("restarting...")
         rst()
 else:
-    led[1] = (255, 0, 0)
-    led.show()
+    led[1][0] = (255, 0, 0)
+    led[1].show()
     time.sleep(3)
 
 # initialize items
