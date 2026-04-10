@@ -139,6 +139,20 @@ current_throttle = 0
 animations_folder = "/snds/"
 mvc_folder = "/mvc/"
 
+woman_folder = "elves/"
+man_folder = "bells/"
+male_officer_folder = "horns/"
+sirens_folder = "stops/"
+
+FOLDER_MAP = {
+    'W': woman_folder,
+    'M': man_folder,
+    'O': male_officer_folder,
+    'T': sirens_folder
+}
+
+media_index = {'W': 0, 'M': 0, 'Q': 0, 'T': 0}
+
 cfg = files.read_json_file("cfg.json")
 
 snd_opt = []
