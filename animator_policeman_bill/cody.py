@@ -139,19 +139,21 @@ current_throttle = 0
 animations_folder = "/snds/"
 mvc_folder = "/mvc/"
 
-woman_folder = "elves/"
-man_folder = "bells/"
-male_officer_folder = "horns/"
-sirens_folder = "stops/"
+female_folder = "female/"
+male_folder = "male/"
+male_officer_folder = "male_off/"
+female_officer_folder = "female_off/"
+sirens_folder = "sirens/"
 
 FOLDER_MAP = {
-    'W': woman_folder,
-    'M': man_folder,
+    'F': female_folder,
+    'M': male_folder,
     'O': male_officer_folder,
-    'T': sirens_folder
+    'P': female_officer_folder,
+    'S': sirens_folder
 }
 
-media_index = {'W': 0, 'M': 0, 'Q': 0, 'T': 0}
+media_index = {'F': 0, 'M': 0, 'O': 0, 'P': 0, 'S': 0}
 
 cfg = files.read_json_file("cfg.json")
 
