@@ -208,6 +208,8 @@ flsh_t = []
 t_s = []
 t_elsp = 0.0
 
+an_running = False
+
 ################################################################################
 # Setup neo pixels
 
@@ -548,10 +550,14 @@ def add_cmd(command, to_start=False):
 
 async def process_cmd():
     while command_queue:
-        command = command_queue.pop(0)  # Retrieve from the front of the queue
-        print("Processing command:", command)
+        cmd = command_queue.pop(0)  # Retrieve from the front of the queue
+        print("Processing command:", cmd)
         # Process each command as an async operation
-        await set_hdw_async(command)
+        if cmd[:2] == 'AN': # AN_XXX = Animation XXX filename
+            cmd_split = cmd.split("_")
+            await an_async(cmd_split[1])
+        else:
+            await set_hdw_async(cmd)
         await asyncio.sleep(0)  # Yield control to the event loop
 
 
@@ -769,7 +775,7 @@ lst_opt = ""
 
 
 async def an_async(f_nm):
-    global lst_opt, ts_mode
+    global lst_opt, ts_mode, an_running, cont_run
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
@@ -784,13 +790,21 @@ async def an_async(f_nm):
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
         if ts_mode:
+            an_running = True
             await an_ts(cur_opt)
+            gc_col("animation cleanup")
+            an_running = False
         else:
+            an_running = True
             await an_light_async(cur_opt)
+            gc_col("animation cleanup")
+            an_running = False
     except Exception as e:
         files.log_item(e)
         await no_trk()
         cfg["option_selected"] = "random all"
+        cont_run = False
+        an_running = False
         return
     gc_col("Animation complete.")
 
@@ -1142,14 +1156,6 @@ async def set_hdw_async(input_string):
                     for i in range(4):
                         led[i].brightness = float(br/100)
                 upd_vol_async(.01)
-        # AN_XXX = Animation XXX filename
-        elif seg[:2] == 'AN':
-            seg_split = seg.split("_")
-            # Process each command as an async operation
-            if seg_split[1] == "customers":
-                await an_async(seg_split[1]+"_"+seg_split[2]+"_"+seg_split[3]+"_"+seg_split[4])
-            else:
-                await an_async(seg_split[1])
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
@@ -1242,9 +1248,9 @@ class BseSt(Ste):
             else:
                 cont_run = True
                 ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-        elif (sw == "left" or cont_run) and not mix.voice[0].playing:
+        elif (sw == "left" or cont_run) and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
-        elif sw == "right" and not mix.voice[0].playing:
+        elif sw == "right" and not an_running:
             mch.go_to('main_menu')
 
 
