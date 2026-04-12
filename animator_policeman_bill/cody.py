@@ -1049,6 +1049,11 @@ def set_hdw(input_string):
                     for i in range(4):
                         led[i].brightness = float(br/100)
                 upd_vol(.01)
+        # QXXX = Brightness XXX 0 to 100
+        elif seg[0] == 'B':
+            br = int(seg[1:])
+            for i in range(4):
+                led[i].brightness = float(br/100)
 
 
 async def set_hdw_async(input_string):
@@ -1104,19 +1109,21 @@ async def set_hdw_async(input_string):
                 elif seg[1] == "W" or seg[1] == "P":
                     #stp_a_0()
                     if seg[2] == "S":
-                        w0 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
+                        w1 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
                     elif seg[2] == "M":
-                        w0 = audiomp3.MP3Decoder(open(mvc_folder + "" + seg[3:] + ".mp3", "rb"))
+                        w1 = audiomp3.MP3Decoder(open(mvc_folder + "" + seg[3:] + ".mp3", "rb"))
                     elif seg[2] == "T":
                         print("this segment is: ", seg[3:])
                         if seg[3:] == "RAND":
                             stops = get_random_media_file("/stops")
                             print("the result is: ", stops)
-                            w0 = audiomp3.MP3Decoder(open("/stops/" + stops + ".mp3", "rb"))
+                            w1 = audiomp3.MP3Decoder(open("/stops/" + stops + ".mp3", "rb"))
                         else:
-                            w0 = audiomp3.MP3Decoder(open("/stops/" + seg[3:] + ".mp3", "rb"))
+                            w1 = audiomp3.MP3Decoder(open("/stops/" + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "P":
+                        w1 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
                     if seg[1] == "W" or seg[1] == "P":
-                        mix.voice[1].play(w0, loop=False)
+                        mix.voice[1].play(w1, loop=False)
                     if seg[1] == "W":
                         wait_snd()
         # WA = Blow horn or whistle, A (H Horn, B Bell)
@@ -1156,6 +1163,10 @@ async def set_hdw_async(input_string):
                     for i in range(4):
                         led[i].brightness = float(br/100)
                 upd_vol_async(.01)
+        # QXXXX = Add command XXXX any command ie AN_filename to add new animation
+        elif seg[0] == 'Q':
+                file_nm = seg[1:]
+                add_cmd(file_nm)
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
