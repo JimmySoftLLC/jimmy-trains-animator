@@ -677,7 +677,7 @@ def ply_a_0(file_name):
 
 
 def wait_snd():
-    while mix.voice[0].playing:
+    while mix.voice[1].playing:
         exit_early()
         pass
 
@@ -881,7 +881,7 @@ async def an_light_async(f_nm):
                 cont_run = False
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
+        if not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             add_cmd("TA_0_2")
             return
