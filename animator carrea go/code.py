@@ -168,10 +168,11 @@ p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default i
 d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 
 # DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP15, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP14, frequency=p_frq)
+pwm_a = pwmio.PWMOut(board.GP15, frequency=p_frq) # M6
+pwm_b = pwmio.PWMOut(board.GP14, frequency=p_frq) # M5
 go_car_left = motor.DCMotor(pwm_a, pwm_b)
 go_car_left.decay_mode = d_mde
+go_car_left.throttle = .2
 car_pos = 0
 
 ################################################################################
@@ -180,10 +181,11 @@ p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default i
 d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 
 # DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
-go_car_right = motor.DCMotor(pwm_a, pwm_b)
+pwm_c = pwmio.PWMOut(board.GP17, frequency=p_frq) # M8
+pwm_d = pwmio.PWMOut(board.GP16, frequency=p_frq) # M7
+go_car_right = motor.DCMotor(pwm_c, pwm_d)
 go_car_right.decay_mode = d_mde
+go_car_right.throttle = .2
 car_pos = 0
 
 ################################################################################
@@ -1203,7 +1205,7 @@ async def set_hdw_async(input_string, dur = 3):
         # GNXXX = Go car N L left or R right, XXX throttle 0 to 100
         elif seg[0] == 'G':
             car_id = seg[1]
-            v = int(seg[1])/100
+            v = int(seg[2:])/100
             if car_id == "L":
                 go_car_left.throttle = v
             elif car_id == "R":
