@@ -102,15 +102,15 @@ CAR_THR_RIGHT_DEADBAND = 3  # percent
 use_live_car_throttle = True
 
 # A throttle "press" means throttle percentage rises above this threshold
-CAR_THR_PRESS_THRESHOLD = 20  # percent
-CAR_THR_RELEASE_THRESHOLD = 5  # percent
+CAR_THR_PRESS_THRESHOLD = 5  # percent
+CAR_THR_RELEASE_THRESHOLD = 2  # percent
 
 # Left throttle shutdown sequence:
 # number of completed left-button presses required
 LEFT_THR_SHUTOFF_COUNT = 10
 
 # maximum allowed time gap between consecutive completed presses
-LEFT_THR_SHUTOFF_MAX_GAP = 0.75  # seconds
+LEFT_THR_SHUTOFF_MAX_GAP = 2.0  # seconds
 
 # Right throttle held time to emulate right_held
 RIGHT_THR_HOLD_TIME = 3.0  # seconds
@@ -268,6 +268,8 @@ upd_media()
 
 web = cfg["serve_webpage"]
 
+print("serve webpage :", web)
+
 cfg_main = files.read_json_file("/sd/mvc/main_menu.json")
 main_m = cfg_main["main_menu"]
 
@@ -276,6 +278,9 @@ web_m = cfg_web["web_menu"]
 
 cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
+
+cfg_add_song = files.read_json_file("/sd/mvc/add_sounds_animate.json")
+add_snd = cfg_add_song["add_sounds_animate"]
 
 cont_run = False
 ts_mode = False
@@ -372,271 +377,281 @@ if web:
         files.log_item(e)
         print("Using default ssid and password")
 
-    try:
-        # connect to your SSID
-        wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
-        gc_col("wifi connect")
+    for i in range(3):
+        web = True
+        led[2] = (0, 0, 255)
+        led.show()
+        try:
+            # connect to your SSID
+            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+            gc_col("wifi connect")
 
-        # setup mdns server
-        mdns = mdns.Server(wifi.radio)
-        mdns.hostname = cfg["HOST_NAME"]
-        mdns.advertise_service(
-            service_type="_http", protocol="_tcp", port=80)
-
-        local_ip = str(wifi.radio.ipv4_address)
-
-        # files.log_items IP address to REPL
-        files.log_item("IP is" + local_ip)
-        files.log_item("Connected")
-
-        # set up server
-        pool = socketpool.SocketPool(wifi.radio)
-        server = Server(pool, "/static", debug=True)
-
-        gc_col("wifi server")
-
-        ################################################################################
-        # Setup routes
-
-        @server.route("/")
-        def base(request: HTTPRequest):
-            stp_a_0()
-            gc_col("Home page.")
-            return FileResponse(request, "index.html", "/")
-
-        @server.route("/mui.min.css")
-        def base(request: HTTPRequest):
-            stp_a_0()
-            return FileResponse(request, "/sd/mui.min.css", "/")
-
-        @server.route("/mui.min.js")
-        def base(request: HTTPRequest):
-            stp_a_0()
-            return FileResponse(request, "/sd/mui.min.js", "/")
-
-        @server.route("/animation", [POST])
-        def btn(request: Request):
-            global cfg, cont_run, ts_mode
-            rq_d = request.json()
-            cfg["option_selected"] = rq_d["an"]
-            add_cmd("AN_" + cfg["option_selected"])
-            if not mix.voice[0].playing:
-                files.write_json_file("/sd/cfg.json", cfg)
-            return Response(request, "Animation " + cfg["option_selected"] + " started.")
-
-        @server.route("/defaults", [POST])
-        def btn(request: Request):
-            global cfg
-            stp_a_0()
-            rq_d = request.json()
-            if rq_d["an"] == "reset_animation_timing_to_defaults":
-                for ts_fn in ts_jsons:
-                    ts = files.read_json_file(
-                        "/sd/t_s_def/" + ts_fn + ".json")
-                    files.write_json_file(
-                        "/sd/snds/"+ts_fn+".json", ts)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "reset_to_defaults":
-                rst_def()
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                st_mch.go_to('base_state')
-            return Response(request, "Utility: " + rq_d["an"])
-
-        @server.route("/mode", [POST])
-        def btn(request: Request):
-            global cfg, cont_run, ts_mode
-            rq_d = request.json()
-            if rq_d["an"] == "left":
-                ovrde_sw_st["switch_value"] = "left"
-            elif rq_d["an"] == "right":
-                ovrde_sw_st["switch_value"] = "right"
-            elif rq_d["an"] == "right_held":
-                ovrde_sw_st["switch_value"] = "right_held"
-            elif rq_d["an"] == "three":
-                ovrde_sw_st["switch_value"] = "three"
-            elif rq_d["an"] == "four":
-                ovrde_sw_st["switch_value"] = "four"
-            elif rq_d["an"] == "cont_mode_on":
-                cont_run = True
-                ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-            elif rq_d["an"] == "cont_mode_off":
-                cont_run = False
-                stp_all_cmds()
-                ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
-            elif rq_d["an"] == "timestamp_mode_on":
-                cont_run = False
-                stp_all_cmds()
-                ts_mode = True
-                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
-                ply_a_0("/sd/mvc/timestamp_instructions.wav")
-            elif rq_d["an"] == "timestamp_mode_off":
-                ts_mode = False
-                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-            return Response(request, "Utility: " + rq_d["an"])
-
-        @server.route("/speaker", [POST])
-        def btn(request: Request):
-            global cfg
-            stp_a_0()
-            rq_d = request.json()
-            if rq_d["an"] == "speaker_test":
-                ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
-            elif rq_d["an"] == "volume_pot_off":
-                cfg["volume_pot"] = False
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            elif rq_d["an"] == "volume_pot_on":
-                cfg["volume_pot"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-            return Response(request, "Utility: " + rq_d["an"])
-
-        @server.route("/lights", [POST])
-        def btn(request: Request):
-            stp_a_0()
-            rq_d = request.json()
-            add_cmd(rq_d["an"])
-            return Response(request, "Utility: " + "Utility: set lights")
-
-        @server.route("/update-host-name", [POST])
-        def btn(request: Request):
-            global cfg
-            stp_a_0()
-            rq_d = request.json()
-            cfg["HOST_NAME"] = rq_d["an"]
-            files.write_json_file("/sd/cfg.json", cfg)
+            # setup mdns server
+            mdns = mdns.Server(wifi.radio)
             mdns.hostname = cfg["HOST_NAME"]
-            spk_web()
-            return Response(request, cfg["HOST_NAME"])
+            mdns.advertise_service(
+                service_type="_http", protocol="_tcp", port=80)
 
-        @server.route("/get-host-name", [POST])
-        def btn(request: Request):
-            stp_a_0()
-            return Response(request, cfg["HOST_NAME"])
+            local_ip = str(wifi.radio.ipv4_address)
 
-        @server.route("/get-local-ip", [POST])
-        def buttonpress(req: Request):
-            stp_a_0()
-            return Response(req, local_ip)
+            # files.log_items IP address to REPL
+            files.log_item("IP is" + local_ip)
+            files.log_item("Connected")
 
-        @server.route("/update-volume", [POST])
-        def btn(request: Request):
-            global cfg
-            rq_d = request.json()
-            ch_vol(rq_d["action"])
-            return Response(request, cfg["volume"])
+            # set up server
+            pool = socketpool.SocketPool(wifi.radio)
+            server = Server(pool, "/static", debug=True)
 
-        @server.route("/get-volume", [POST])
-        def btn(request: Request):
-            return Response(request, cfg["volume"])
+            gc_col("wifi server")
 
-        @server.route("/get-animations", [POST])
-        def btn(request: Request):
-            stp_a_0()
-            sounds = []
-            sounds.extend(snd_opt)
-            my_string = files.json_stringify(sounds)
-            return Response(request, my_string)
+            ################################################################################
+            # Setup routes
 
-        @server.route("/create-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animations_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                print(rq_d)
-                f_n = animations_folder + rq_d["fn"] + ".json"
-                print(f_n)
-                an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
-                files.write_json_file(f_n, an_data)
-                upd_media()
-                return Response(request, "Created animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error creating animation.")
+            @server.route("/")
+            def base(request: HTTPRequest):
+                stp_a_0()
+                gc_col("Home page.")
+                return FileResponse(request, "index.html", "/")
 
-        @server.route("/rename-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animations_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                fo = animations_folder + rq_d["fo"] + ".json"
-                fn = animations_folder + rq_d["fn"] + ".json"
-                os.rename(fo, fn)
-                upd_media()
-                return Response(request, "Renamed animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.")
+            @server.route("/mui.min.css")
+            def base(request: HTTPRequest):
+                stp_a_0()
+                return FileResponse(request, "/sd/mui.min.css", "/")
 
-        @server.route("/delete-animation", [POST])
-        def btn(request: Request):
-            try:
-                global data, animations_folder
-                rq_d = request.json()  # Parse the incoming JSON
-                print(rq_d)
-                f_n = animations_folder + rq_d["fn"] + ".json"
-                print(f_n)
-                os.remove(f_n)
-                upd_media()
-                return Response(request, "Delete animation successfully.")
-            except Exception as e:
-                files.log_item(e)  # Log any errors
-                return Response(request, "Error setting lights.")
+            @server.route("/mui.min.js")
+            def base(request: HTTPRequest):
+                stp_a_0()
+                return FileResponse(request, "/sd/mui.min.js", "/")
 
-        @server.route("/test-animation", [POST])
-        def btn(request: Request):
-            try:
+            @server.route("/animation", [POST])
+            def btn(request: Request):
+                global cfg, cont_run, ts_mode
                 rq_d = request.json()
-                clr_cmd_queue()
+                cfg["option_selected"] = rq_d["an"]
+                add_cmd("AN_" + cfg["option_selected"])
+                if not mix.voice[0].playing:
+                    files.write_json_file("/sd/cfg.json", cfg)
+                return Response(request, "Animation " + cfg["option_selected"] + " started.")
+
+            @server.route("/defaults", [POST])
+            def btn(request: Request):
+                global cfg
+                stp_a_0()
+                rq_d = request.json()
+                if rq_d["an"] == "reset_animation_timing_to_defaults":
+                    for ts_fn in ts_jsons:
+                        ts = files.read_json_file(
+                            "/sd/t_s_def/" + ts_fn + ".json")
+                        files.write_json_file(
+                            "/sd/snds/"+ts_fn+".json", ts)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                elif rq_d["an"] == "reset_to_defaults":
+                    rst_def()
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                    st_mch.go_to('base_state')
+                return Response(request, "Utility: " + rq_d["an"])
+
+            @server.route("/mode", [POST])
+            def btn(request: Request):
+                global cfg, cont_run, ts_mode
+                rq_d = request.json()
+                if rq_d["an"] == "left":
+                    ovrde_sw_st["switch_value"] = "left"
+                elif rq_d["an"] == "right":
+                    ovrde_sw_st["switch_value"] = "right"
+                elif rq_d["an"] == "right_held":
+                    ovrde_sw_st["switch_value"] = "right_held"
+                elif rq_d["an"] == "three":
+                    ovrde_sw_st["switch_value"] = "three"
+                elif rq_d["an"] == "four":
+                    ovrde_sw_st["switch_value"] = "four"
+                elif rq_d["an"] == "cont_mode_on":
+                    cont_run = True
+                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
+                elif rq_d["an"] == "cont_mode_off":
+                    cont_run = False
+                    stp_all_cmds()
+                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+                elif rq_d["an"] == "timestamp_mode_on":
+                    cont_run = False
+                    stp_all_cmds()
+                    ts_mode = True
+                    ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+                    ply_a_0("/sd/mvc/timestamp_instructions.wav")
+                elif rq_d["an"] == "timestamp_mode_off":
+                    ts_mode = False
+                    ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+                return Response(request, "Utility: " + rq_d["an"])
+
+            @server.route("/speaker", [POST])
+            def btn(request: Request):
+                global cfg
+                stp_a_0()
+                rq_d = request.json()
+                if rq_d["an"] == "speaker_test":
+                    ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
+                elif rq_d["an"] == "volume_pot_off":
+                    cfg["volume_pot"] = False
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                elif rq_d["an"] == "volume_pot_on":
+                    cfg["volume_pot"] = True
+                    files.write_json_file("/sd/cfg.json", cfg)
+                    ply_a_0("/sd/mvc/all_changes_complete.wav")
+                return Response(request, "Utility: " + rq_d["an"])
+
+            @server.route("/lights", [POST])
+            def btn(request: Request):
+                stp_a_0()
+                rq_d = request.json()
                 add_cmd(rq_d["an"])
-                return Response(request, "success")
-            except Exception as e:
-                print(e)
-                return Response(request, "error")
+                return Response(request, "Utility: " + "Utility: set lights")
 
-        @server.route("/get-animation", [POST])
-        def btn(request: Request):
-            global cfg, cont_run, ts_mode
-            stp_a_0()
-            rq_d = request.json()
-            snd_f = rq_d["an"]
-            if (f_exists("/sd/snds/" + snd_f + ".json") == True):
-                f_n = "/sd/snds/" + snd_f + ".json"
-                return FileResponse(request, f_n, "/")
-            else:
-                f_n = "/sd/t_s_def/timestamp mode.json"
-                return FileResponse(request, f_n, "/")
+            @server.route("/update-host-name", [POST])
+            def btn(request: Request):
+                global cfg
+                stp_a_0()
+                rq_d = request.json()
+                cfg["HOST_NAME"] = rq_d["an"]
+                files.write_json_file("/sd/cfg.json", cfg)
+                mdns.hostname = cfg["HOST_NAME"]
+                spk_web()
+                return Response(request, cfg["HOST_NAME"])
 
-        data = []
+            @server.route("/get-host-name", [POST])
+            def btn(request: Request):
+                stp_a_0()
+                return Response(request, cfg["HOST_NAME"])
 
-        @server.route("/save-data", [POST])
-        def btn(request: Request):
-            global data
-            gc_col("prep save data")
-            stp_a_0()
-            rq_d = request.json()
-            try:
-                if rq_d[0] == 0:
-                    data = []
-                data.extend(rq_d[2])
-                if rq_d[0] == rq_d[1]:
-                    f_n = "/sd/snds/" + \
-                        rq_d[3] + ".json"
-                    files.write_json_file(f_n, data)
+            @server.route("/get-local-ip", [POST])
+            def buttonpress(req: Request):
+                stp_a_0()
+                return Response(req, local_ip)
+
+            @server.route("/update-volume", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                ch_vol(rq_d["action"])
+                return Response(request, cfg["volume"])
+
+            @server.route("/get-volume", [POST])
+            def btn(request: Request):
+                return Response(request, cfg["volume"])
+
+            @server.route("/get-animations", [POST])
+            def btn(request: Request):
+                stp_a_0()
+                sounds = []
+                sounds.extend(snd_opt)
+                my_string = files.json_stringify(sounds)
+                return Response(request, my_string)
+
+            @server.route("/create-animation", [POST])
+            def btn(request: Request):
+                try:
+                    global data, animations_folder
+                    rq_d = request.json()  # Parse the incoming JSON
+                    print(rq_d)
+                    f_n = animations_folder + rq_d["fn"] + ".json"
+                    print(f_n)
+                    an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
+                    files.write_json_file(f_n, an_data)
+                    upd_media()
+                    return Response(request, "Created animation successfully.")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error creating animation.")
+
+            @server.route("/rename-animation", [POST])
+            def btn(request: Request):
+                try:
+                    global data, animations_folder
+                    rq_d = request.json()  # Parse the incoming JSON
+                    fo = animations_folder + rq_d["fo"] + ".json"
+                    fn = animations_folder + rq_d["fn"] + ".json"
+                    os.rename(fo, fn)
+                    upd_media()
+                    return Response(request, "Renamed animation successfully.")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error setting lights.")
+
+            @server.route("/delete-animation", [POST])
+            def btn(request: Request):
+                try:
+                    global data, animations_folder
+                    rq_d = request.json()  # Parse the incoming JSON
+                    print(rq_d)
+                    f_n = animations_folder + rq_d["fn"] + ".json"
+                    print(f_n)
+                    os.remove(f_n)
+                    upd_media()
+                    return Response(request, "Delete animation successfully.")
+                except Exception as e:
+                    files.log_item(e)  # Log any errors
+                    return Response(request, "Error setting lights.")
+
+            @server.route("/test-animation", [POST])
+            def btn(request: Request):
+                try:
+                    rq_d = request.json()
+                    clr_cmd_queue()
+                    add_cmd(rq_d["an"])
+                    return Response(request, "success")
+                except Exception as e:
+                    print(e)
+                    return Response(request, "error")
+
+            @server.route("/get-animation", [POST])
+            def btn(request: Request):
+                global cfg, cont_run, ts_mode
+                stp_a_0()
+                rq_d = request.json()
+                snd_f = rq_d["an"]
+                if (f_exists("/sd/snds/" + snd_f + ".json") == True):
+                    f_n = "/sd/snds/" + snd_f + ".json"
+                    return FileResponse(request, f_n, "/")
+                else:
+                    f_n = "/sd/t_s_def/timestamp mode.json"
+                    return FileResponse(request, f_n, "/")
+
+            data = []
+
+            @server.route("/save-data", [POST])
+            def btn(request: Request):
+                global data
+                gc_col("prep save data")
+                stp_a_0()
+                rq_d = request.json()
+                try:
+                    if rq_d[0] == 0:
+                        data = []
+                    data.extend(rq_d[2])
+                    if rq_d[0] == rq_d[1]:
+                        f_n = "/sd/snds/" + \
+                            rq_d[3] + ".json"
+                        files.write_json_file(f_n, data)
+                        data = []
+                        gc_col("get data")
+                    upd_media()
+                except Exception as e:
+                    files.log_item(e)
                     data = []
                     gc_col("get data")
-                upd_media()
-            except Exception as e:
-                files.log_item(e)
-                data = []
-                gc_col("get data")
-                return Response(request, "out of memory")
-            return Response(request, "success")
+                    return Response(request, "out of memory")
+                return Response(request, "success")
 
-    except Exception as e:
-        web = False
-        files.log_item(e)
+            break
+
+        except Exception as e:
+            web = False
+            files.log_item(e)
+            led[2] = (0, 0, 75)
+            led.show()
+            time.sleep(2)
+
 
 gc_col("web server")
 
@@ -1231,7 +1246,7 @@ def register_left_shutoff_press():
 
         if (now - last_press_time) <= LEFT_THR_SHUTOFF_MAX_GAP:
             left_shutoff_press_times.append(now)
-            spk_str(str(len(left_shutoff_press_times)))
+            # spk_str(str(len(left_shutoff_press_times)))
         else:
             # Too slow, start over
             left_shutoff_press_times = [now]
@@ -1241,6 +1256,7 @@ def register_left_shutoff_press():
     if len(left_shutoff_press_times) >= LEFT_THR_SHUTOFF_COUNT:
         use_live_car_throttle = False
         left_shutoff_press_times = []
+        ply_a_0("/sd/mvc/all_changes_complete.wav")
         files.log_item("Live car throttle OFF")
         print("Live car throttle OFF")
         go_car_left.throttle = 0
@@ -1436,6 +1452,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global use_live_car_throttle
         global cont_run
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
@@ -1447,6 +1464,9 @@ class BseSt(Ste):
             else:
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
+        if sw == "right_held":
+                use_live_car_throttle = True
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
         elif (sw == "left" or cont_run) and not mix.voice[0].playing:
             add_cmd("AN_" + cfg["option_selected"])
         elif sw == "right" and not mix.voice[0].playing:
@@ -1473,6 +1493,7 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global use_live_car_throttle
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
@@ -1485,10 +1506,10 @@ class Main(Ste):
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
-            # elif sel_mnu == "add_sounds_animate":
-            #     mch.go_to('add_sounds_animate')
-            # elif sel_mnu == "web_options":
-            #     mch.go_to('web_options')
+            elif sel_mnu == "add_sounds_animate":    
+                mch.go_to('add_sounds_animate')
+            elif sel_mnu == "web_options":
+                mch.go_to('web_options')
             elif sel_mnu == "volume_settings":
                 mch.go_to('volume_settings')
             else:
@@ -1552,52 +1573,51 @@ class Snds(Ste):
                     pass
             mch.go_to('base_state')
 
+class AddSnds(Ste):
 
-# class AddSnds(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+    @property
+    def name(self):
+        return 'add_sounds_animate'
 
-#     @property
-#     def name(self):
-#         return 'add_sounds_animate'
+    def enter(self, mch):
+        files.log_item('Add sounds animate')
+        ply_a_0("/sd/mvc/add_sounds_animate.wav")
+        l_r_but()
+        Ste.enter(self, mch)
 
-#     def enter(self, mch):
-#         files.log_item('Add sounds animate')
-#         ply_a_0("/sd/mvc/add_sounds_animate.wav")
-#         l_r_but()
-#         Ste.enter(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
-
-#     def upd(self, mch):
-#         global ts_mode
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_0(
-#                 "/sd/mvc/" + add_snd[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(add_snd)-1:
-#                 self.i = 0
-#         if sw == "right":
-#             sel_mnu = add_snd[self.sel_i]
-#             if sel_mnu == "hear_instructions":
-#                 ply_a_0("/sd/mvc/create_sound_track_files.wav")
-#             elif sel_mnu == "timestamp_mode_on":
-#                 ts_mode = True
-#                 ply_a_0("/sd/mvc/timestamp_mode_on.wav")
-#                 ply_a_0("/sd/mvc/timestamp_instructions.wav")
-#                 mch.go_to('base_state')
-#             elif sel_mnu == "timestamp_mode_off":
-#                 ts_mode = False
-#                 ply_a_0("/sd/mvc/timestamp_mode_off.wav")
-#             else:
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
+    def upd(self, mch):
+        global ts_mode
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0(
+                "/sd/mvc/" + add_snd[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(add_snd)-1:
+                self.i = 0
+        if sw == "right":
+            sel_mnu = add_snd[self.sel_i]
+            if sel_mnu == "hear_instructions":
+                ply_a_0("/sd/mvc/create_sound_track_files.wav")
+            elif sel_mnu == "timestamp_mode_on":
+                ts_mode = True
+                ply_a_0("/sd/mvc/timestamp_mode_on.wav")
+                ply_a_0("/sd/mvc/timestamp_instructions.wav")
+                mch.go_to('base_state')
+            elif sel_mnu == "timestamp_mode_off":
+                ts_mode = False
+                ply_a_0("/sd/mvc/timestamp_mode_off.wav")
+            else:
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 
 class VolSet(Ste):
@@ -1657,53 +1677,52 @@ class VolSet(Ste):
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
 
+class WebOpt(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
 
-# class WebOpt(Ste):
-#     def __init__(self):
-#         self.i = 0
-#         self.sel_i = 0
+    @property
+    def name(self):
+        return 'web_options'
 
-#     @property
-#     def name(self):
-#         return 'web_options'
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        sel_web()
+        Ste.enter(self, mch)
 
-#     def enter(self, mch):
-#         files.log_item('Set Web Options')
-#         sel_web()
-#         Ste.enter(self, mch)
+    def exit(self, mch):
+        Ste.exit(self, mch)
 
-#     def exit(self, mch):
-#         Ste.exit(self, mch)
-
-#     def upd(self, mch):
-#         sw = utilities.switch_state(
-#             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-#         if sw == "left":
-#             ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
-#             self.sel_i = self.i
-#             self.i += 1
-#             if self.i > len(web_m)-1:
-#                 self.i = 0
-#         if sw == "right":
-#             selected_menu_item = web_m[self.sel_i]
-#             if selected_menu_item == "web_on":
-#                 cfg["serve_webpage"] = True
-#                 opt_sel()
-#                 sel_web()
-#             elif selected_menu_item == "web_off":
-#                 cfg["serve_webpage"] = False
-#                 opt_sel()
-#                 sel_web()
-#             elif selected_menu_item == "hear_url":
-#                 spk_str(cfg["HOST_NAME"], True)
-#                 sel_web()
-#             elif selected_menu_item == "hear_instr_web":
-#                 ply_a_0("/sd/mvc/web_instruct.wav")
-#                 sel_web()
-#             else:
-#                 files.write_json_file("/sd/cfg.json", cfg)
-#                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-#                 mch.go_to('base_state')
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(web_m)-1:
+                self.i = 0
+        if sw == "right":
+            selected_menu_item = web_m[self.sel_i]
+            if selected_menu_item == "web_on":
+                cfg["serve_webpage"] = True
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "web_off":
+                cfg["serve_webpage"] = False
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "hear_url":
+                spk_str(cfg["HOST_NAME"], True)
+                sel_web()
+            elif selected_menu_item == "hear_instr_web":
+                ply_a_0("/sd/mvc/web_instruct.wav")
+                sel_web()
+            else:
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                mch.go_to('base_state')
 
 ###############################################################################
 # Create the state machine
@@ -1713,9 +1732,9 @@ st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
 st_mch.add(Snds())
-# st_mch.add(AddSnds())
+st_mch.add(AddSnds())
 st_mch.add(VolSet())
-# st_mch.add(WebOpt())
+st_mch.add(WebOpt())
 
 aud_en.value = True
 
@@ -1776,7 +1795,26 @@ async def state_mach_upd_task(st_mch):
         st_mch.upd()
         await asyncio.sleep(0)
 
-async def car_throttle_task():
+
+async def car_throttle_motor_task():
+    while True:
+        try:
+            left_pct = read_left_car_throttle_percent()
+            right_pct = read_right_car_throttle_percent()
+
+            if use_live_car_throttle:
+                go_car_left.throttle = left_pct / 100.0
+                go_car_right.throttle = right_pct / 100.0
+            else:
+                go_car_left.throttle = 0
+                go_car_right.throttle = 0
+
+        except Exception as e:
+            files.log_item(e)
+
+        await asyncio.sleep(0.002)
+
+async def car_throttle_button_task():
     global left_throttle_pressed, right_throttle_pressed
     global left_throttle_press_time, right_throttle_press_time
     global left_throttle_hold_sent, right_throttle_hold_sent
@@ -1829,26 +1867,6 @@ async def car_throttle_task():
                         ovrde_sw_st["switch_value"] = "right_held"
                         right_throttle_hold_sent = True
 
-            # Actual motor control
-            if use_live_car_throttle:
-                go_car_left.throttle = left_pct / 100.0
-                go_car_right.throttle = right_pct / 100.0
-            else:
-                go_car_left.throttle = 0
-                go_car_right.throttle = 0
-
-            print(
-                "mode:", use_live_car_throttle,
-                "| L raw:", read_left_car_throttle_raw(),
-                "L %:", round(left_pct, 1),
-                "L pressed:", left_throttle_pressed,
-                "L shutoff count:", len(left_shutoff_press_times),
-                "| R raw:", read_right_car_throttle_raw(),
-                "R %:", round(right_pct, 1),
-                "R pressed:", right_throttle_pressed,
-                "R hold sent:", right_throttle_hold_sent
-            )
-
         except Exception as e:
             files.log_item(e)
 
@@ -1859,7 +1877,8 @@ async def main():
     tasks = [
         process_cmd_tsk(),
         state_mach_upd_task(st_mch),
-        car_throttle_task()
+        car_throttle_motor_task(),
+        car_throttle_button_task()
     ]
 
     if web:
