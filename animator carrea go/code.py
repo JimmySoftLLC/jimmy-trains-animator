@@ -76,6 +76,57 @@ gc_col("Imports gc, files")
 # Setup pin for vol
 a_in = AnalogIn(board.A0)
 
+# Setup pins for Carrera Go throttles
+# Wire each as:
+# 3.3V -> 2.7K resistor -> ADC pin -> throttle -> GND
+# A0 is already used for volume, so use A1 and A2 for the two lanes
+
+car_throttle_left_in = AnalogIn(board.A1)
+car_throttle_right_in = AnalogIn(board.A2)
+
+# Calibrate these from real readings on your hardware
+# released = higher ADC value
+# fully pressed = lower ADC value
+CAR_THR_LEFT_RELEASED = 51600
+CAR_THR_LEFT_PRESSED = 13500
+
+CAR_THR_RIGHT_RELEASED = 51600
+CAR_THR_RIGHT_PRESSED = 13500
+
+# Ignore tiny movement near released position
+CAR_THR_LEFT_DEADBAND = 3   # percent
+CAR_THR_RIGHT_DEADBAND = 3  # percent
+
+# True = throttles drive cars
+# False = throttles act like left/right menu buttons
+use_live_car_throttle = True
+
+# A throttle "press" means throttle percentage rises above this threshold
+CAR_THR_PRESS_THRESHOLD = 20  # percent
+CAR_THR_RELEASE_THRESHOLD = 5  # percent
+
+# Left throttle shutdown sequence:
+# number of completed left-button presses required
+LEFT_THR_SHUTOFF_COUNT = 10
+
+# maximum allowed time gap between consecutive completed presses
+LEFT_THR_SHUTOFF_MAX_GAP = 0.75  # seconds
+
+# Right throttle held time to emulate right_held
+RIGHT_THR_HOLD_TIME = 3.0  # seconds
+
+# Runtime state
+left_shutoff_press_times = []
+
+left_throttle_pressed = False
+right_throttle_pressed = False
+
+left_throttle_press_time = 0.0
+right_throttle_press_time = 0.0
+
+left_throttle_hold_sent = False
+right_throttle_hold_sent = False
+
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
 aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -87,7 +138,7 @@ l_sw.direction = digitalio.Direction.INPUT
 l_sw.pull = digitalio.Pull.UP
 l_sw = Debouncer(l_sw)
 
-r_sw = digitalio.DigitalInOut(board.GP7)
+r_sw = digitalio.DigitalInOut(board.GP8)
 r_sw.direction = digitalio.Direction.INPUT
 r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
@@ -747,7 +798,7 @@ def exit_early():
         mix.voice[0].stop()
 
 
-def spk_str(str_to_speak, addLocal):
+def spk_str(str_to_speak, addLocal = False):
     for character in str_to_speak:
         try:
             if character == " ":
@@ -1098,6 +1149,104 @@ def bnd(c, l, u):
         c = u
     return c
 
+
+def read_left_car_throttle_raw():
+    return car_throttle_left_in.value
+
+
+def read_right_car_throttle_raw():
+    return car_throttle_right_in.value
+
+
+def read_left_car_throttle_percent():
+    raw = car_throttle_left_in.value
+
+    if raw < CAR_THR_LEFT_PRESSED:
+        raw = CAR_THR_LEFT_PRESSED
+    if raw > CAR_THR_LEFT_RELEASED:
+        raw = CAR_THR_LEFT_RELEASED
+
+    span = CAR_THR_LEFT_RELEASED - CAR_THR_LEFT_PRESSED
+    if span <= 0:
+        return 0.0
+
+    pct = (CAR_THR_LEFT_RELEASED - raw) / span * 100.0
+
+    if pct < CAR_THR_LEFT_DEADBAND:
+        pct = 0.0
+    if pct > 100.0:
+        pct = 100.0
+
+    return pct
+
+
+def read_right_car_throttle_percent():
+    raw = car_throttle_right_in.value
+
+    if raw < CAR_THR_RIGHT_PRESSED:
+        raw = CAR_THR_RIGHT_PRESSED
+    if raw > CAR_THR_RIGHT_RELEASED:
+        raw = CAR_THR_RIGHT_RELEASED
+
+    span = CAR_THR_RIGHT_RELEASED - CAR_THR_RIGHT_PRESSED
+    if span <= 0:
+        return 0.0
+
+    pct = (CAR_THR_RIGHT_RELEASED - raw) / span * 100.0
+
+    if pct < CAR_THR_RIGHT_DEADBAND:
+        pct = 0.0
+    if pct > 100.0:
+        pct = 100.0
+
+    return pct
+
+
+def read_left_car_throttle():
+    return read_left_car_throttle_percent() / 100.0
+
+
+def read_right_car_throttle():
+    return read_right_car_throttle_percent() / 100.0
+
+def throttle_is_pressed(percent_value):
+    return percent_value >= CAR_THR_PRESS_THRESHOLD
+
+def throttle_is_released(percent_value):
+    return percent_value <= CAR_THR_RELEASE_THRESHOLD
+
+def register_left_shutoff_press():
+    global left_shutoff_press_times, use_live_car_throttle
+
+    if not use_live_car_throttle:
+        return
+
+    now = time.monotonic()
+
+    # Count only consecutive quick completed presses
+    if len(left_shutoff_press_times) == 0:
+        left_shutoff_press_times = [now]
+    else:
+        last_press_time = left_shutoff_press_times[-1]
+
+        if (now - last_press_time) <= LEFT_THR_SHUTOFF_MAX_GAP:
+            left_shutoff_press_times.append(now)
+            spk_str(str(len(left_shutoff_press_times)))
+        else:
+            # Too slow, start over
+            left_shutoff_press_times = [now]
+
+    print("left shutoff press count:", len(left_shutoff_press_times))
+
+    if len(left_shutoff_press_times) >= LEFT_THR_SHUTOFF_COUNT:
+        use_live_car_throttle = False
+        left_shutoff_press_times = []
+        files.log_item("Live car throttle OFF")
+        print("Live car throttle OFF")
+        go_car_left.throttle = 0
+        go_car_right.throttle = 0
+
+
 br = 0
 
 
@@ -1200,10 +1349,20 @@ async def set_hdw_async(input_string, dur = 3):
         elif seg[0] == 'Q':
                 cmd = seg[1:]
                 add_cmd(cmd)
-        # GNXXX = Go car N L left or R right, XXX throttle 0 to 100
+        # GLXXX or GRXXX = Go left/right car, XXX throttle 0 to 100
         elif seg[0] == 'G':
+            # Ignore scripted motor commands when live trigger mode is active
+            if use_live_car_throttle:
+                continue
+
             car_id = seg[1]
-            v = int(seg[2:])/100
+            v = int(seg[2:]) / 100
+
+            if v < 0:
+                v = 0
+            if v > 1:
+                v = 1
+
             if car_id == "L":
                 go_car_left.throttle = v
             elif car_id == "R":
@@ -1579,8 +1738,11 @@ if (web):
 
 # initialize items
 add_cmd("CLOSE")
-add_cmd("H_20_5_3")
 upd_vol(.5)
+
+# Make sure both cars are stopped at boot
+go_car_left.throttle = 0
+go_car_right.throttle = 0
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -1614,12 +1776,90 @@ async def state_mach_upd_task(st_mch):
         st_mch.upd()
         await asyncio.sleep(0)
 
+async def car_throttle_task():
+    global left_throttle_pressed, right_throttle_pressed
+    global left_throttle_press_time, right_throttle_press_time
+    global left_throttle_hold_sent, right_throttle_hold_sent
+
+    while True:
+        try:
+            left_pct = read_left_car_throttle_percent()
+            right_pct = read_right_car_throttle_percent()
+            now = time.monotonic()
+
+            # LEFT throttle button emulation
+            if not left_throttle_pressed:
+                if throttle_is_pressed(left_pct):
+                    left_throttle_pressed = True
+                    left_throttle_press_time = now
+                    left_throttle_hold_sent = False
+            else:
+                if throttle_is_released(left_pct):
+                    left_throttle_pressed = False
+
+                    # completed normal left-button press
+                    if use_live_car_throttle:
+                        register_left_shutoff_press()
+                    else:
+                        ovrde_sw_st["switch_value"] = "left"
+
+                    left_throttle_press_time = 0.0
+                    left_throttle_hold_sent = False
+
+            # RIGHT throttle button emulation
+            if not right_throttle_pressed:
+                if throttle_is_pressed(right_pct):
+                    right_throttle_pressed = True
+                    right_throttle_press_time = now
+                    right_throttle_hold_sent = False
+            else:
+                if throttle_is_released(right_pct):
+                    right_throttle_pressed = False
+
+                    # short right press only if hold was not already sent
+                    if not use_live_car_throttle and not right_throttle_hold_sent:
+                        ovrde_sw_st["switch_value"] = "right"
+
+                    right_throttle_press_time = 0.0
+                    right_throttle_hold_sent = False
+                else:
+                    if (not use_live_car_throttle and
+                        not right_throttle_hold_sent and
+                        (now - right_throttle_press_time) >= RIGHT_THR_HOLD_TIME):
+                        ovrde_sw_st["switch_value"] = "right_held"
+                        right_throttle_hold_sent = True
+
+            # Actual motor control
+            if use_live_car_throttle:
+                go_car_left.throttle = left_pct / 100.0
+                go_car_right.throttle = right_pct / 100.0
+            else:
+                go_car_left.throttle = 0
+                go_car_right.throttle = 0
+
+            print(
+                "mode:", use_live_car_throttle,
+                "| L raw:", read_left_car_throttle_raw(),
+                "L %:", round(left_pct, 1),
+                "L pressed:", left_throttle_pressed,
+                "L shutoff count:", len(left_shutoff_press_times),
+                "| R raw:", read_right_car_throttle_raw(),
+                "R %:", round(right_pct, 1),
+                "R pressed:", right_throttle_pressed,
+                "R hold sent:", right_throttle_hold_sent
+            )
+
+        except Exception as e:
+            files.log_item(e)
+
+        await asyncio.sleep(0.02)
 
 async def main():
     # Create asyncio tasks
     tasks = [
         process_cmd_tsk(),
-        state_mach_upd_task(st_mch)
+        state_mach_upd_task(st_mch),
+        car_throttle_task()
     ]
 
     if web:
@@ -1633,6 +1873,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
-
 
