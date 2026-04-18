@@ -99,11 +99,11 @@ CAR_THR_RIGHT_DEADBAND = 3  # percent
 
 # True = throttles drive cars
 # False = throttles act like left/right menu buttons
-use_live_car_throttle = True
+use_live_car_throttle = False
 
 # A throttle "press" means throttle percentage rises above this threshold
-CAR_THR_PRESS_THRESHOLD = 5  # percent
-CAR_THR_RELEASE_THRESHOLD = 2  # percent
+CAR_THR_PRESS_THRESHOLD = 20  # percent
+CAR_THR_RELEASE_THRESHOLD = 5  # percent
 
 # Left throttle shutdown sequence:
 # number of completed left-button presses required
@@ -1023,7 +1023,7 @@ async def an_light_async(f_nm):
             mix.voice[0].stop()
             led.fill((0, 0, 0))
             led.show()
-            add_cmd("T0")
+            add_cmd("GL0,GR0")
             return
         await upd_vol_async(.1)
 
@@ -1267,7 +1267,7 @@ br = 0
 
 
 async def set_hdw_async(input_string, dur = 3):
-    global br, car_pos
+    global br, car_pos, use_live_car_throttle
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -1374,10 +1374,12 @@ async def set_hdw_async(input_string, dur = 3):
             car_id = seg[1]
             v = int(seg[2:]) / 100
 
-            if v < 0:
+            if v < -1:
                 v = 0
             if v > 1:
                 v = 1
+
+            print ("Setting throttle to: ", v, seg, seg[2:])
 
             if car_id == "L":
                 go_car_left.throttle = v
@@ -1805,9 +1807,6 @@ async def car_throttle_motor_task():
             if use_live_car_throttle:
                 go_car_left.throttle = left_pct / 100.0
                 go_car_right.throttle = right_pct / 100.0
-            else:
-                go_car_left.throttle = 0
-                go_car_right.throttle = 0
 
         except Exception as e:
             files.log_item(e)
