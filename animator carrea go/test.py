@@ -162,30 +162,17 @@ s_arr = [s_1, s_2, s_3]
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
-################################################################################
-# Setup motor controller
-p_frq = 200
-d_mde = motor.FAST_DECAY
-
-# DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP15, frequency=p_frq) # M6
-pwm_b = pwmio.PWMOut(board.GP14, frequency=p_frq) # M5
-go_car_left = motor.DCMotor(pwm_a, pwm_b)
-go_car_left.decay_mode = d_mde
-go_car_left.throttle = -.25
-car_pos = 0
 
 ################################################################################
 # Setup motor controller
-p_frq = 200
-d_mde = motor.FAST_DECAY
+p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
+d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
 
 # DC motor setup; Set pins to custom PWM frequency
-pwm_c = pwmio.PWMOut(board.GP17, frequency=p_frq) # M8
-pwm_d = pwmio.PWMOut(board.GP16, frequency=p_frq) # M7
-go_car_right = motor.DCMotor(pwm_c, pwm_d)
-go_car_right.decay_mode = d_mde
-go_car_right.throttle = .25
+pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
+pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
+train = motor.DCMotor(pwm_a, pwm_b)
+train.decay_mode = d_mde
 car_pos = 0
 
 ################################################################################
@@ -244,7 +231,7 @@ gc_col("config setup")
 n_px = 7
 
 # 15 on demo 17 tiny 10 on large
-led = neopixel.NeoPixel(board.GP13, n_px)
+led = neopixel.NeoPixel(board.GP15, n_px)
 
 gc_col("Neopixels setup")
 
@@ -1202,14 +1189,10 @@ async def set_hdw_async(input_string, dur = 3):
         elif seg[0] == 'Q':
                 cmd = seg[1:]
                 add_cmd(cmd)
-        # GNXXX = Go car N L left or R right, XXX throttle 0 to 100
-        elif seg[0] == 'G':
-            car_id = seg[1]
-            v = int(seg[2:])/100
-            if car_id == "L":
-                go_car_left.throttle = v
-            elif car_id == "R":
-                go_car_right.throttle = v
+        # TXXX = Train XXX throttle -100 to 100
+        elif seg[0] == 'T':
+            v = int(seg[1:])/100
+            train.throttle = v
 
 
 ################################################################################
@@ -1580,8 +1563,6 @@ if (web):
         rst()
 
 # initialize items
-add_cmd("CLOSE")
-add_cmd("H_20_5_3")
 upd_vol(.5)
 
 st_mch.go_to('base_state')
@@ -1635,5 +1616,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
-
