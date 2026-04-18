@@ -164,28 +164,26 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
 # Setup motor controller
-p_frq = 200
-d_mde = motor.FAST_DECAY
+p_frq = 10000
+d_mde = motor.SLOW_DECAY
 
 # DC motor setup; Set pins to custom PWM frequency
 pwm_a = pwmio.PWMOut(board.GP15, frequency=p_frq) # M6
 pwm_b = pwmio.PWMOut(board.GP14, frequency=p_frq) # M5
 go_car_left = motor.DCMotor(pwm_a, pwm_b)
 go_car_left.decay_mode = d_mde
-go_car_left.throttle = -.25
 car_pos = 0
 
 ################################################################################
 # Setup motor controller
-p_frq = 200
-d_mde = motor.FAST_DECAY
+p_frq = 10000
+d_mde = motor.SLOW_DECAY
 
 # DC motor setup; Set pins to custom PWM frequency
 pwm_c = pwmio.PWMOut(board.GP17, frequency=p_frq) # M8
 pwm_d = pwmio.PWMOut(board.GP16, frequency=p_frq) # M7
 go_car_right = motor.DCMotor(pwm_c, pwm_d)
 go_car_right.decay_mode = d_mde
-go_car_right.throttle = .25
 car_pos = 0
 
 ################################################################################
@@ -1635,5 +1633,6 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 
 
