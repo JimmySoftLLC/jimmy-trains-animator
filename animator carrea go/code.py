@@ -112,8 +112,8 @@ LEFT_THR_SHUTOFF_COUNT = 10
 # maximum allowed time gap between consecutive completed presses
 LEFT_THR_SHUTOFF_MAX_GAP = 2.0  # seconds
 
-# Right throttle held time to emulate right_held
-RIGHT_THR_HOLD_TIME = 3.0  # seconds
+# Throttle held time to emulate throttle held down
+THR_HOLD_TIME = 3.0  # seconds
 
 # Runtime state
 left_shutoff_press_times = []
@@ -1008,7 +1008,7 @@ async def an_light_async(f_nm):
                     break
             flsh_i += 1
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left" and cfg["can_cancel"]:
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
@@ -1457,7 +1457,7 @@ class BseSt(Ste):
         global use_live_car_throttle
         global cont_run
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left_held":
             if cont_run:
                 cont_run = False
@@ -1497,7 +1497,7 @@ class Main(Ste):
     def upd(self, mch):
         global use_live_car_throttle
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
@@ -1540,7 +1540,7 @@ class Snds(Ste):
 
     def upd(self, mch):
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -1597,7 +1597,7 @@ class AddSnds(Ste):
     def upd(self, mch):
         global ts_mode
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left":
             ply_a_0(
                 "/sd/mvc/" + add_snd[self.i] + ".wav")
@@ -1645,7 +1645,7 @@ class VolSet(Ste):
 
     def upd(s, mch):
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
@@ -1698,7 +1698,7 @@ class WebOpt(Ste):
 
     def upd(self, mch):
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left":
             ply_a_0("/sd/mvc/" + web_m[self.i] + ".wav")
             self.sel_i = self.i
@@ -1842,6 +1842,12 @@ async def car_throttle_button_task():
 
                     left_throttle_press_time = 0.0
                     left_throttle_hold_sent = False
+                else:
+                    if (not use_live_car_throttle and
+                        not left_throttle_hold_sent and
+                        (now - left_throttle_press_time) >= THR_HOLD_TIME):
+                        ovrde_sw_st["switch_value"] = "left_held"
+                        left_throttle_hold_sent = True
 
             # RIGHT throttle button emulation
             if not right_throttle_pressed:
@@ -1862,7 +1868,7 @@ async def car_throttle_button_task():
                 else:
                     if (not use_live_car_throttle and
                         not right_throttle_hold_sent and
-                        (now - right_throttle_press_time) >= RIGHT_THR_HOLD_TIME):
+                        (now - right_throttle_press_time) >= THR_HOLD_TIME):
                         ovrde_sw_st["switch_value"] = "right_held"
                         right_throttle_hold_sent = True
 
