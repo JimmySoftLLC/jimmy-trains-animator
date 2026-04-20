@@ -864,8 +864,8 @@ def no_trk():
 def spk_web():
     ply_a_0("/sd/mvc/animator_available_on_network.wav")
     ply_a_0("/sd/mvc/to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-ride-on-train":
-        ply_a_0("/sd/mvc/animator_ride_on_train.wav")
+    if cfg["HOST_NAME"] == "animator-go":
+        ply_a_0("/sd/mvc/animator_go.wav")
         ply_a_0("/sd/mvc/dot.wav")
         ply_a_0("/sd/mvc/local.wav")
     else:
@@ -1256,7 +1256,7 @@ def register_left_shutoff_press():
     if len(left_shutoff_press_times) >= LEFT_THR_SHUTOFF_COUNT:
         use_live_car_throttle = False
         left_shutoff_press_times = []
-        ply_a_0("/sd/mvc/all_changes_complete.wav")
+        ply_a_0("/sd/mvc/throttles_off.wav")
         files.log_item("Live car throttle OFF")
         print("Live car throttle OFF")
         go_car_left.throttle = 0
@@ -1468,7 +1468,7 @@ class BseSt(Ste):
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         if sw == "right_held":
                 use_live_car_throttle = True
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
+                ply_a_0("/sd/mvc/throttles_on.wav")
         elif (sw == "left" or cont_run) and not mix.voice[0].playing:
             add_cmd("AN_" + cfg["option_selected"])
         elif sw == "right" and not mix.voice[0].playing:
