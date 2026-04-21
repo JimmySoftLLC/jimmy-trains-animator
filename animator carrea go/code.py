@@ -77,17 +77,19 @@ gc_col("Imports gc, files")
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
 
-m_folder = "/sd/msnds/"
-l_folder = "/sd/lsnds/"
+m_folder = "msnds/"
+l_folder = "lsnds/"
+h_folder = "starthorns/"
 
 FOLDER_MAP = {
-    'M': animations_folder,
-    'L': m_folder,
-    'A': l_folder,
-    'N': animations_folder
+    'A': animations_folder,
+    'M': m_folder,
+    'L': l_folder,
+    'N': mvc_folder,
+    'H': h_folder
 }
 
-media_index = {'M': 0, 'L': 0, 'A': 0, 'N': 0}
+media_index = {'A': 0, 'L': 0, 'M': 0, 'N': 0, 'H': 0}
 
 ################################################################################
 # Setup hardware
@@ -146,6 +148,26 @@ right_throttle_press_time = 0.0
 left_throttle_hold_sent = False
 right_throttle_hold_sent = False
 
+race_running = False
+
+# Slight dual-throttle press band to start driving
+CAR_THR_START = 8       # percent
+CAR_THR_START_MAX = 18  # percent
+
+# How long live driving stays enabled after run_start()
+CAR_DRIVE_TIME = 60.0   # seconds
+
+# Drive cycle state
+CAR_DRIVE_ARMED = "armed"
+CAR_DRIVE_STARTING = "starting"
+CAR_DRIVE_DRIVING = "driving"
+
+LOW_SOUND_TIME = 1.5
+HIGH_SOUND_TIME = 4.0
+
+CAR_MOVING_THRESHOLD = 5.0  # percent
+
+
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
 aud_en = digitalio.DigitalInOut(board.GP22)
 aud_en.direction = digitalio.Direction.OUTPUT
@@ -183,6 +205,7 @@ mix = audiomixer.Mixer(voice_count=2, sample_rate=22050, channel_count=2,
 aud.play(mix)
 
 mix.voice[0].level = .2
+mix.voice[1].level = .2
 
 try:
     sd = sdcardio.SDCard(spi, cs)
@@ -273,7 +296,7 @@ def upd_media():
 
     snd_opt = files.return_directory("", animations_folder, ".json")
 
-    rand_opt = [item for item in snd_opt if item not in ["depart", "board", "scratch"]]
+    rand_opt = [item for item in snd_opt if item not in ["horns", "start", "end", "test", "test1", "test2", "test3"]]
 
     menu_snd_opt = []
     menu_snd_opt.extend(snd_opt)
@@ -755,6 +778,7 @@ def upd_vol(s):
         if volume < 0 or volume > 1:
             volume = .5
         mix.voice[0].level = volume
+        mix.voice[1].level = volume
         time.sleep(s)
 
 
@@ -771,8 +795,8 @@ async def upd_vol_async(s):
             v = .5
         if v < 0 or v > 1:
             v = .5
-        mix.voice[0].level = v
-        await asyncio.sleep(s)
+    mix.voice[0].level = v
+    mix.voice[1].level = v
 
 
 def ch_vol(action):
@@ -836,11 +860,18 @@ def wait_snd():
         exit_early()
         pass
 
+def wait_snd_1():
+    while mix.voice[1].playing:
+        pass
 
 def stp_a_0():
     mix.voice[0].stop()
     wait_snd()
     gc_col("stp snd")
+
+def stp_a_1():
+    mix.voice[1].stop()
+    wait_snd_1()
 
 
 def exit_early():
@@ -1041,7 +1072,6 @@ async def an_light_async(f_nm):
         flsh_i += 1
     else:
         return
-    
 
     while True:
         t_past = time.monotonic()-srt_t
@@ -1070,8 +1100,7 @@ async def an_light_async(f_nm):
                     break
             flsh_i += 1
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left":
             flsh_i = len(flsh_t)-1
             mix.voice[0].stop()
@@ -1085,9 +1114,9 @@ async def an_light_async(f_nm):
             flsh_i = len(flsh_t) - 1
             if cfg["cont_mode"]:
                 stop_all_cmds()
-                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
                 cfg["cont_mode"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
@@ -1299,14 +1328,13 @@ def throttle_is_released(percent_value):
     return percent_value <= CAR_THR_RELEASE_THRESHOLD
 
 def register_left_shutoff_press():
-    global left_shutoff_press_times, use_live_car_throttle
+    global left_shutoff_press_times, use_live_car_throttle, race_running
 
     if not use_live_car_throttle:
         return
 
     now = time.monotonic()
 
-    # Count only consecutive quick completed presses
     if len(left_shutoff_press_times) == 0:
         left_shutoff_press_times = [now]
     else:
@@ -1314,15 +1342,15 @@ def register_left_shutoff_press():
 
         if (now - last_press_time) <= LEFT_THR_SHUTOFF_MAX_GAP:
             left_shutoff_press_times.append(now)
-            # spk_str(str(len(left_shutoff_press_times)))
         else:
-            # Too slow, start over
+            # too much time passed, start count over
             left_shutoff_press_times = [now]
 
     print("left shutoff press count:", len(left_shutoff_press_times))
 
     if len(left_shutoff_press_times) >= LEFT_THR_SHUTOFF_COUNT:
         use_live_car_throttle = False
+        race_running = False
         left_shutoff_press_times = []
         ply_a_0(mvc_folder + "throttles_off.wav")
         files.log_item("Live car throttle OFF")
@@ -1330,6 +1358,124 @@ def register_left_shutoff_press():
         go_car_left.throttle = 0
         go_car_right.throttle = 0
 
+
+
+def throttles_in_start_band(left_pct, right_pct):
+    return (
+        CAR_THR_START <= left_pct <= CAR_THR_START_MAX and
+        CAR_THR_START <= right_pct <= CAR_THR_START_MAX
+    )
+
+async def run_start():
+    print("run_start")
+    ply_a_0(mvc_folder + "1.wav")
+    await asyncio.sleep(0)
+
+async def run_stop():
+    print("run_stop")
+    ply_a_0(mvc_folder + "2.wav")
+    await asyncio.sleep(0)
+
+async def left_sound():
+    print("left_sound")
+    result = await set_hdw_async("MPLRAND", 0)
+    await asyncio.sleep(0)
+
+async def right_sound():
+    print("right_sound")
+    result = await set_hdw_async("MPMRAND", 0)
+    await asyncio.sleep(0)
+
+def car_is_moving(percent_value):
+    return percent_value > CAR_MOVING_THRESHOLD
+
+async def car_movement_sound_task():
+    while True:
+        try:
+            if use_live_car_throttle and race_running:
+                wait_time = random.uniform(LOW_SOUND_TIME, HIGH_SOUND_TIME)
+                await asyncio.sleep(wait_time)
+
+                # Re-check after waiting
+                if use_live_car_throttle and race_running:
+                    left_pct = read_left_car_throttle_percent()
+                    right_pct = read_right_car_throttle_percent()
+
+                    left_moving = car_is_moving(left_pct)
+                    right_moving = car_is_moving(right_pct)
+
+                    if left_moving and right_moving:
+                        # Randomize order a little
+                        if random.randint(0, 1) == 0:
+                            await left_sound()
+                        else:
+                            await right_sound()
+                    elif left_moving:
+                        await left_sound()
+                    elif right_moving:
+                        await right_sound()
+            else:
+                await asyncio.sleep(0.1)
+
+        except Exception as e:
+            files.log_item(e)
+            await asyncio.sleep(0.1)
+
+
+def handle_left_throttle_button(now, left_pct):
+    global left_throttle_pressed
+    global left_throttle_press_time
+    global left_throttle_hold_sent
+
+    if not left_throttle_pressed:
+        if throttle_is_pressed(left_pct):
+            left_throttle_pressed = True
+            left_throttle_press_time = now
+            left_throttle_hold_sent = False
+    else:
+        if throttle_is_released(left_pct):
+            left_throttle_pressed = False
+
+            if use_live_car_throttle:
+                register_left_shutoff_press()
+            else:
+                ovrde_sw_st["switch_value"] = "left"
+
+            left_throttle_press_time = 0.0
+            left_throttle_hold_sent = False
+        else:
+            if (not use_live_car_throttle and
+                not left_throttle_hold_sent and
+                (now - left_throttle_press_time) >= THR_HOLD_TIME):
+                ovrde_sw_st["switch_value"] = "left_held"
+                left_throttle_hold_sent = True
+
+
+def handle_right_throttle_button(now, right_pct):
+    global right_throttle_pressed
+    global right_throttle_press_time
+    global right_throttle_hold_sent
+
+    if not right_throttle_pressed:
+        if throttle_is_pressed(right_pct):
+            right_throttle_pressed = True
+            right_throttle_press_time = now
+            right_throttle_hold_sent = False
+    else:
+        if throttle_is_released(right_pct):
+            right_throttle_pressed = False
+
+            if not use_live_car_throttle and not right_throttle_hold_sent:
+                ovrde_sw_st["switch_value"] = "right"
+
+            right_throttle_press_time = 0.0
+            right_throttle_hold_sent = False
+        else:
+            if (not use_live_car_throttle and
+                not right_throttle_hold_sent and
+                (now - right_throttle_press_time) >= THR_HOLD_TIME):
+                ovrde_sw_st["switch_value"] = "right_held"
+                right_throttle_hold_sent = True
 
 br = 0
 
@@ -1372,23 +1518,31 @@ async def set_hdw_async(input_string, dur = 3):
             repeat = seg[2]
             file_nm = seg[3:]
             return repeat + "_" + file_nm
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound tracks, M mvc folder) XXX (file name)
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A snds, M mario, L luigi, M mvc, H horns) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
         elif seg[0] == 'M':  # play file
             if seg[1] == "S":
                 stp_a_0()
             elif seg[1] == "W" or seg[1] == "P":
-                stp_a_0()
-                if seg[2] == "S":
-                    w0 = audiocore.WaveFile(
-                        open("/sd/snds/" + seg[3:] + ".wav", "rb"))
-                elif seg[2] == "M":
-                    w0 = audiocore.WaveFile(
-                        open(mvc_folder + seg[3:] + ".wav", "rb"))
+                print (FOLDER_MAP)
+                if seg[2] in FOLDER_MAP:
+                    print("Got to if seg in foldermap location")
+                    folder = FOLDER_MAP[seg[2]]
+                    code = seg[3:]
+                    if code == "SEQN":
+                        filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
+                    elif code == "SEQF":
+                        filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
+                    elif code == "RAND":
+                        filename = get_random_media_file(folder)
+                    else:
+                        print("Got to file = code section")
+                        filename = code
+                    w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
                 if seg[1] == "W" or seg[1] == "P":
-                    mix.voice[0].play(w0, loop=False)
+                    stp_a_1()
+                    mix.voice[1].play(w1, loop=False)        
                 if seg[1] == "W":
-                    wait_snd()
-
+                    wait_snd_1()
         # HORN = Blow horn
         elif seg[:4] == 'HORN':  # play file
             wait_snd()
@@ -1461,6 +1615,31 @@ async def set_hdw_async(input_string, dur = 3):
                 go_car_right.throttle = v
 
 
+def get_random_media_file(folder_to_search):
+    myfiles = files.return_directory("", folder_to_search, ".mp3")
+    return random.choice(myfiles) if myfiles else None
+
+
+def get_indexed_media_file(folder_to_search, file_ext, index):
+    if not file_ext.startswith('.'):
+        file_ext = '.' + file_ext
+    file_ext = file_ext.lower()
+
+    myfiles = files.return_directory("", folder_to_search, file_ext)
+
+    if not myfiles:
+        return None, 0
+
+    index = index % len(myfiles)
+
+    selected_file = myfiles[index]
+    new_index = (index + 1) % len(myfiles)
+
+    print(f"playing: {selected_file}  ({index}/{len(myfiles)})")
+
+    return selected_file, new_index
+
+
 ################################################################################
 # State Machine
 
@@ -1530,22 +1709,28 @@ class BseSt(Ste):
     def upd(self, mch):
         global an_just_added
         global use_live_car_throttle
+
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st
+        )
+
         if sw == "left_held":
-            if cfg["cont_mode"] == False:
+            if cfg["cont_mode"] == True:
                 cfg["cont_mode"] = False
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
             else:
                 cfg["cont_mode"] = True
                 ply_a_0(mvc_folder + "continuous_mode_activated.wav")
-        if sw == "right_held":
-                use_live_car_throttle = True
-                ply_a_0(mvc_folder + "throttles_on.wav")
+
+        elif sw == "right_held" and not use_live_car_throttle:
+            use_live_car_throttle = True
+            ply_a_0(mvc_folder + "throttles_on.wav")
+
         elif (sw == "left" or cfg["cont_mode"]) and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
+
         elif sw == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
 
@@ -1879,14 +2064,19 @@ async def state_mach_upd_task(st_mch):
 
 
 async def car_throttle_motor_task():
+    global race_running
+
     while True:
         try:
             left_pct = read_left_car_throttle_percent()
             right_pct = read_right_car_throttle_percent()
 
-            if use_live_car_throttle:
+            if use_live_car_throttle and race_running:
                 go_car_left.throttle = left_pct / 100.0
                 go_car_right.throttle = right_pct / 100.0
+            else:
+                go_car_left.throttle = 0
+                go_car_right.throttle = 0
 
         except Exception as e:
             files.log_item(e)
@@ -1894,76 +2084,72 @@ async def car_throttle_motor_task():
         await asyncio.sleep(0.002)
 
 async def car_throttle_button_task():
-    global left_throttle_pressed, right_throttle_pressed
-    global left_throttle_press_time, right_throttle_press_time
-    global left_throttle_hold_sent, right_throttle_hold_sent
+    global use_live_car_throttle, race_running
+
+    race_state = CAR_DRIVE_ARMED
+    race_start_time = 0.0
+    start_latched = False
 
     while True:
         try:
+            now = time.monotonic()
             left_pct = read_left_car_throttle_percent()
             right_pct = read_right_car_throttle_percent()
-            now = time.monotonic()
 
-            # LEFT throttle button emulation
-            if not left_throttle_pressed:
-                if throttle_is_pressed(left_pct):
-                    left_throttle_pressed = True
-                    left_throttle_press_time = now
-                    left_throttle_hold_sent = False
+            both_at_start = throttles_in_start_band(left_pct, right_pct)
+
+            handle_left_throttle_button(now, left_pct)
+            handle_right_throttle_button(now, right_pct)
+
+            if not use_live_car_throttle:
+                race_running = False
+                race_state = CAR_DRIVE_ARMED
+                race_start_time = 0.0
+                start_latched = False
+                go_car_left.throttle = 0
+                go_car_right.throttle = 0
+
             else:
-                if throttle_is_released(left_pct):
-                    left_throttle_pressed = False
+                if race_state == CAR_DRIVE_ARMED:
+                    race_running = False
 
-                    # completed normal left-button press
-                    if use_live_car_throttle:
-                        register_left_shutoff_press()
-                    else:
-                        ovrde_sw_st["switch_value"] = "left"
+                    if both_at_start and not start_latched:
+                        start_latched = True
+                        race_state = CAR_DRIVE_STARTING
+                    elif not both_at_start:
+                        start_latched = False
 
-                    left_throttle_press_time = 0.0
-                    left_throttle_hold_sent = False
-                else:
-                    if (not use_live_car_throttle and
-                        not left_throttle_hold_sent and
-                        (now - left_throttle_press_time) >= THR_HOLD_TIME):
-                        ovrde_sw_st["switch_value"] = "left_held"
-                        left_throttle_hold_sent = True
+                elif race_state == CAR_DRIVE_STARTING:
+                    await run_start()
+                    race_running = True
+                    race_start_time = time.monotonic()
+                    race_state = CAR_DRIVE_DRIVING
 
-            # RIGHT throttle button emulation
-            if not right_throttle_pressed:
-                if throttle_is_pressed(right_pct):
-                    right_throttle_pressed = True
-                    right_throttle_press_time = now
-                    right_throttle_hold_sent = False
-            else:
-                if throttle_is_released(right_pct):
-                    right_throttle_pressed = False
-
-                    # short right press only if hold was not already sent
-                    if not use_live_car_throttle and not right_throttle_hold_sent:
-                        ovrde_sw_st["switch_value"] = "right"
-
-                    right_throttle_press_time = 0.0
-                    right_throttle_hold_sent = False
-                else:
-                    if (not use_live_car_throttle and
-                        not right_throttle_hold_sent and
-                        (now - right_throttle_press_time) >= THR_HOLD_TIME):
-                        ovrde_sw_st["switch_value"] = "right_held"
-                        right_throttle_hold_sent = True
+                elif race_state == CAR_DRIVE_DRIVING:
+                    elapsed = time.monotonic() - race_start_time
+                    if elapsed >= CAR_DRIVE_TIME:
+                        print("run_stop because elapsed =", elapsed)
+                        race_running = False
+                        go_car_left.throttle = 0
+                        go_car_right.throttle = 0
+                        await run_stop()
+                        race_state = CAR_DRIVE_ARMED
+                        race_start_time = 0.0
+                        start_latched = False
 
         except Exception as e:
             files.log_item(e)
 
         await asyncio.sleep(0.02)
-
+        
 async def main():
     # Create asyncio tasks
     tasks = [
         process_cmd_tsk(),
         state_mach_upd_task(st_mch),
         car_throttle_motor_task(),
-        car_throttle_button_task()
+        car_throttle_button_task(),
+        car_movement_sound_task()
     ]
 
     if web:

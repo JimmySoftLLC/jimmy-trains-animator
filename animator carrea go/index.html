@@ -331,8 +331,10 @@
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>GNXXX = Go car N L left or R right, XXX throttle 0 to 100</div>
-            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (S sound
-                tracks, M mvc folder) XXX (file name)</div>
+            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A snds, M
+                mario, L luigi, M mvc, H horns) XXX (file name, if RAND random selection of folder, SEQN play next in
+                sequence, SEQF play first in sequence)
+                elif seg[0] == 'M': # play file</div>
             <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
                 ignored</div>
             <div>HORN = Blow horn</div>
