@@ -325,6 +325,9 @@ cfg_add_song = files.read_json_file(mvc_folder + "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
 cfg["cont_mode"] = False
+
+cfg["max_speed"] = "60"
+
 ts_mode = False
 
 local_ip = ""
@@ -1041,7 +1044,6 @@ async def an_light_async(f_nm):
     if flsh_i < len(flsh_t)-1:
         ft1 = flsh_t[flsh_i].split("|")
         result = await set_hdw_async(ft1[1])
-        print("Result is: ", result)
         if result:
             result = result.split("_")
             print("Result split is: ", result)
@@ -1286,9 +1288,9 @@ def read_left_car_throttle_percent():
 
     if pct < CAR_THR_LEFT_DEADBAND:
         pct = 0.0
-    if pct > 100.0:
-        pct = 100.0
-
+    if pct > float(cfg["max_speed"]):
+        pct = float(cfg["max_speed"])
+   
     return pct
 
 
@@ -1308,8 +1310,8 @@ def read_right_car_throttle_percent():
 
     if pct < CAR_THR_RIGHT_DEADBAND:
         pct = 0.0
-    if pct > 100.0:
-        pct = 100.0
+    if pct > float(cfg["max_speed"]):
+        pct = float(cfg["max_speed"])
 
     return pct
 
@@ -1368,12 +1370,15 @@ def throttles_in_start_band(left_pct, right_pct):
 
 async def run_start():
     print("run_start")
-    ply_a_0(mvc_folder + "1.wav")
+    result = await set_hdw_async("MWHhorn1", 0)
+    result = await set_hdw_async("MWHhorn1", 0)
+    result = await set_hdw_async("MWHhorn1", 0)
+    result = await set_hdw_async("MWHhorn2", 0)
     await asyncio.sleep(0)
 
 async def run_stop():
     print("run_stop")
-    ply_a_0(mvc_folder + "2.wav")
+    result = await set_hdw_async("MWHhorn2", 0)
     await asyncio.sleep(0)
 
 async def left_sound():
@@ -1523,9 +1528,7 @@ async def set_hdw_async(input_string, dur = 3):
             if seg[1] == "S":
                 stp_a_0()
             elif seg[1] == "W" or seg[1] == "P":
-                print (FOLDER_MAP)
                 if seg[2] in FOLDER_MAP:
-                    print("Got to if seg in foldermap location")
                     folder = FOLDER_MAP[seg[2]]
                     code = seg[3:]
                     if code == "SEQN":
@@ -1535,7 +1538,6 @@ async def set_hdw_async(input_string, dur = 3):
                     elif code == "RAND":
                         filename = get_random_media_file(folder)
                     else:
-                        print("Got to file = code section")
                         filename = code
                     w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
                 if seg[1] == "W" or seg[1] == "P":
@@ -1606,8 +1608,6 @@ async def set_hdw_async(input_string, dur = 3):
                 v = 0
             if v > 1:
                 v = 1
-
-            print ("Setting throttle to: ", v, seg, seg[2:])
 
             if car_id == "L":
                 go_car_left.throttle = v
