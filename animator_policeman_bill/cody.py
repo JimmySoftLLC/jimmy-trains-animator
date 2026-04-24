@@ -209,6 +209,7 @@ t_s = []
 t_elsp = 0.0
 
 an_running = False
+an_just_added = False
 
 ################################################################################
 # Setup neo pixels
@@ -321,7 +322,7 @@ if (web):
 
             @server.route("/mode", [POST])
             def btn(request: Request):
-                global cont_run, ts_mode
+                global ts_mode
                 rq_d = request.json()
                 if rq_d["an"] == "left":
                     ovrde_sw_st["switch_value"] = "left"
@@ -334,14 +335,12 @@ if (web):
                 elif rq_d["an"] == "four":
                     ovrde_sw_st["switch_value"] = "four"
                 elif rq_d["an"] == "cont_mode_on":
-                    cont_run = True
+                    cfg["cont_mode"] = True
                     ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-                    cfg["cont_mode"] = cont_run
                     files.write_json_file("/cfg.json", cfg)
                 elif rq_d["an"] == "cont_mode_off":
                     stop_all_cmds()
                     ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-                    cfg["cont_mode"] = cont_run
                     files.write_json_file("/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
                     stop_all_cmds()
@@ -553,9 +552,13 @@ async def process_cmd():
         cmd = command_queue.pop(0)  # Retrieve from the front of the queue
         print("Processing command:", cmd)
         # Process each command as an async operation
-        if cmd[:2] == 'AN': # AN_XXX = Animation XXX filename
+        if cmd[:2] == 'AN':  # AN_XXX = Animation XXX filename
             cmd_split = cmd.split("_")
-            await an_async(cmd_split[1])
+            clr_cmd_queue()
+            if cmd_split[1] == "customers":
+                await an_async(cmd_split[1]+"_"+cmd_split[2]+"_"+cmd_split[3]+"_"+cmd_split[4])
+            else:
+                await an_async(cmd_split[1])
         else:
             await set_hdw_async(cmd)
         await asyncio.sleep(0)  # Yield control to the event loop
@@ -567,8 +570,11 @@ def clr_cmd_queue():
 
 
 def stop_all_cmds():
-    global exit_set_hdw_async,cont_run
-    cont_run = False
+    global exit_set_hdw_async, flsh_i, flsh_t
+    flsh_i = len(flsh_t)-1
+    cfg["cont_mode"] = False
+    mix.voice[0].stop()
+    mix.voice[1].stop()
     clr_cmd_queue()
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
@@ -775,7 +781,7 @@ lst_opt = ""
 
 
 async def an_async(f_nm):
-    global lst_opt, ts_mode, an_running, cont_run
+    global lst_opt, ts_mode, an_running
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
@@ -803,14 +809,16 @@ async def an_async(f_nm):
         files.log_item(e)
         await no_trk()
         cfg["option_selected"] = "random all"
-        cont_run = False
+        cfg["cont_mode"] = False
         an_running = False
         return
     gc_col("Animation complete.")
 
 
 async def an_light_async(f_nm):
-    global cont_run, flsh_i, flsh_t
+    global flsh_i, flsh_t, an_running, exit_set_hdw_async
+
+    an_running = True
 
     stp_a_0()
 
@@ -825,21 +833,33 @@ async def an_light_async(f_nm):
     if flsh_i < len(flsh_t)-1:
         ft1 = flsh_t[flsh_i].split("|")
         result = await set_hdw_async(ft1[1])
-        print("Result is: ", result)
         if result:
-            w0_exists = f_exists("/snds/" + result + ".mp3")
-            if w0_exists:
-                w0 = audiomp3.MP3Decoder(
-                    open("/snds/" + result + ".mp3", "rb"))
-                mix.voice[0].play(w0, loop=False) 
+            result = result.split("_")
+            print("Result split is: ", result)
+            if result and len(result) > 1:
+                w0_exists = f_exists(animations_folder + result[1])
+                if w0_exists:
+                    if result[0] == "1":
+                        repeat = True
+                    else:
+                        repeat = False
+                    ply_a_0(animations_folder + result[1], False, repeat)
+                else:
+                    return
+                srt_t = time.monotonic()
+
+                ft1 = []
+                ft2 = []
+
+                # add end command to time stamps so all table values can be used
+                ft_last = flsh_t[len(flsh_t)-1].split("|")
+                tm_last = float(ft_last[0]) + .1
+                flsh_t.append(str(tm_last) + "|")
             else:
                 return
-            srt_t = time.monotonic()
-
-            ft1 = []
-            ft2 = []
         else:
-            return
+            w0_exists = False
+            srt_t = time.monotonic()
         flsh_i += 1
     else:
         return
@@ -877,8 +897,8 @@ async def an_light_async(f_nm):
         if sw == "left_held":
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
-            if cont_run:
-                cont_run = False
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
         if not flsh_i < len(flsh_t)-1:
@@ -1248,20 +1268,24 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
+        global an_just_added
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left_held":
-            if cont_run:
-                cont_run = False
+            if cfg["cont_mode"]:
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                cfg["cont_mode"] = False
+                files.write_json_file("/sd/cfg.json", cfg)
             else:
-                cont_run = True
+                stop_all_cmds()
+                cfg["cont_mode"] = True
                 ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-        elif (sw == "left" or cont_run) and not an_running:
+                files.write_json_file("/sd/cfg.json", cfg)
+        elif (sw == "left" or cfg["cont_mode"]) and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
-        elif sw == "right" and not an_running:
+            an_just_added = True
+        elif sw == "right" and not mix.voice[0].playing:
             mch.go_to('main_menu')
 
 
@@ -1588,9 +1612,14 @@ async def server_poll_tsk(server):
 
 
 async def state_mach_upd_task(st_mch):
+    global an_just_added
     while True:
         st_mch.upd()
-        await asyncio.sleep(.05)
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
 
 
 async def main():
