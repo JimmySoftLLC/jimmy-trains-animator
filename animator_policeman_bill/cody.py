@@ -100,14 +100,26 @@ aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 aud_en.value = True
 
 # Setup the mixer to play mp3 files
+# mix = audiomixer.Mixer(
+#     voice_count=2,
+#     sample_rate=22050,
+#     channel_count=2,
+#     bits_per_sample=16,
+#     samples_signed=True,
+#     buffer_size=16384,
+# )
+
+# Setup the mixer to play mp3 files
 mix = audiomixer.Mixer(
     voice_count=2,
     sample_rate=22050,
     channel_count=2,
     bits_per_sample=16,
     samples_signed=True,
-    buffer_size=16384,
+    buffer_size=4096,
 )
+
+
 aud.play(mix)
 
 mix.voice[0].level = .2
@@ -671,13 +683,13 @@ def ch_vol(action):
 
 
 def ply_a_0(file_name):
-    if mix.voice[0].playing:
-        mix.voice[0].stop()
-        while mix.voice[0].playing:
-            upd_vol(0.1)
-    w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
-    print ("Playing: ", file_name)
-    mix.voice[0].play(w0, loop=False)
+    # if mix.voice[0].playing:
+    #     mix.voice[0].stop()
+    #     while mix.voice[0].playing:
+    #         upd_vol(0.1)
+    # w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    # print ("Playing: ", file_name)
+    # mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
 
