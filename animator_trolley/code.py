@@ -592,6 +592,8 @@ if (web):
 gc_col("web server")
 
 def measure_signal_strength(MY_SSID, cycles):
+    if not web:
+        return 0
     print("Monitoring signal for:", MY_SSID)
     print("Showing current RSSI + running average (simple sum + count)\n")
 
