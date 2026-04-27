@@ -1,0 +1,10 @@
+{
+  "can_cancel": true,
+  "option_selected": "test",
+  "volume_pot": false,
+  "neo_changes": [152, 42, 188],
+  "HOST_NAME": "pb",
+  "volume": "100",
+  "serve_webpage": true,
+  "cont_mode": false
+}
