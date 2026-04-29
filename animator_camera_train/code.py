@@ -522,8 +522,10 @@ servo_speed = 0.01
 
 p_arr = [90.0, 90.0, 90.0, 90.0]
 s_arr = [0, 1, 2, 3]      # PCA9685 channel numbers
+servo_target = [90.0, 90.0, 90.0, 90.0]
 
-inverted_servos = {2}
+# List of servos that are mounted "backwards"
+inverted_servos = {3}
 
 def angle_to_pulse_us(angle):
     angle = max(0.0, min(180.0, float(angle)))
@@ -541,9 +543,6 @@ def m_servo(n, p):
     p = max(0.0, min(180.0, float(p)))
     p_arr[n] = p
 
-        # List of servos that are mounted "backwards"
-    inverted_servos = {3}
-
 
     out_p = p
 
@@ -557,35 +556,36 @@ def m_servo(n, p):
 
 
 def m_servo_s(n, n_pos, spd=None):
-    global p_arr, servo_moving
+    global p_arr, servo_moving, servo_target
 
     n = int(n)
 
+    if spd is None:
+        spd = servo_speed
+
+    # Always save the newest requested target
+    servo_target[n] = max(0.0, min(180.0, float(n_pos)))
+
+    # If already moving, do not start another loop.
+    # The active loop will use the updated servo_target.
     if servo_moving[n]:
         return
 
     servo_moving[n] = True
 
     try:
-        if spd is None:
-            spd = servo_speed
+        while True:
+            target = servo_target[n]
+            pos = float(p_arr[n])
 
-        n_pos = max(0.0, min(180.0, float(n_pos)))
-        start = float(p_arr[n])
+            if abs(pos - target) <= SERVO_SMOOTH_STEP:
+                m_servo(n, target)
+                break
 
-        if start == n_pos:
-            m_servo(n, n_pos)
-            return
+            step = SERVO_SMOOTH_STEP if target > pos else -SERVO_SMOOTH_STEP
+            m_servo(n, pos + step)
 
-        step = SERVO_SMOOTH_STEP if n_pos > start else -SERVO_SMOOTH_STEP
-        pos = start
-
-        while (step > 0 and pos < n_pos) or (step < 0 and pos > n_pos):
-            m_servo(n, pos)
-            pos += step
             time.sleep(spd)
-
-        m_servo(n, n_pos)
 
     finally:
         servo_moving[n] = False
