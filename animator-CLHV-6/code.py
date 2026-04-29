@@ -106,7 +106,7 @@ neo_arr = []
 n_px = 0
 
 # 15 on demo 17 tiny 10 on large, GP11 on clhv-6
-neo_pixel_pin = board.GP15
+neo_pixel_pin = board.GP14
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
@@ -394,6 +394,7 @@ if (web):
             # set up server
             pool = socketpool.SocketPool(wifi.radio)
             server = Server(pool, "/static", debug=True)
+            server.port = 80  # Explicitly set port to 80
 
             gc_col("wifi server")
 
@@ -707,7 +708,7 @@ def stop_all_commands():
 
 def rst_def():
     global cfg
-    cfg["HOST_NAME"] = "animator-bandstand"
+    cfg["HOST_NAME"] = "animator-clmhv6"
     cfg["option_selected"] = "random all"
 
 
@@ -1046,7 +1047,7 @@ def set_neo_module_to(mod_n, ind, v):
 if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
     except OSError:
         time.sleep(5)
@@ -1103,3 +1104,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
