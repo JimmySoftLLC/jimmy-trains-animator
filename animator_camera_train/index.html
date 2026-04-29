@@ -288,6 +288,9 @@
                     <a data-mui-toggle="tab" data-mui-controls="camexp">Exposure</a>
                 </li>
                 <li>
+                    <a data-mui-toggle="tab" data-mui-controls="camspd">Speeds</a>
+                </li>
+                <li>
                     <a data-mui-toggle="tab" data-mui-controls="camdriver">Director</a>
                 </li>
             </ul>
@@ -442,6 +445,38 @@
                         Reset Bright/Cont/Sat/Sharp Settings
                     </button>
                     <div id="exposureModeLabel" style="margin-top:10px;">Exposure Mode: Continuously</div>
+                </div>
+            </div>
+            <div class="mui-tabs__pane" id="camspd" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobServoSpeed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobServoSpeed-text">0.01</div>
+                        </div>
+                        <div class="knob-label">Servo Speed</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobZoomSpeed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobZoomSpeed-text">0.020</div>
+                        </div>
+                        <div class="knob-label">Zoom Speed</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobFocusSpeed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobFocusSpeed-text">0.020</div>
+                        </div>
+                        <div class="knob-label">Focus Speed</div>
+                    </div>
+
                 </div>
             </div>
             <div class="mui-tabs__pane" id="camdriver" style="padding-top:0.5rem;">
@@ -871,6 +906,10 @@
     let knobSaturation;
     let knobSharpness;
 
+    let knobServoSpeed;
+    let knobFocusSpeed;
+    let knobZoomSpeed;
+
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
         knobRotateCam = new KnobController('knobRotateCam', 'knobRotateCam-text', 180, 0, {
@@ -946,6 +985,27 @@
         knobSharpness = new KnobController('knobSharpness', 'knobSharpness-text', 0.0, 16.0, {
             sendFunction: v => throttle(sendCameraControl('Sharpness', Number(v.toFixed(2))), 200),
             step: 0.1,
+            formatValue: v => Number(v).toFixed(2),
+            throttleTime: 200
+        });
+
+        knobServoSpeed = new KnobController('knobServoSpeed', 'knobServoSpeed-text', 0.01, 0.05, {
+            sendFunction: throttle(setServoSpeed, 200),
+            step: 0.001,
+            formatValue: v => Number(v).toFixed(2),
+            throttleTime: 200
+        });
+
+        knobFocusSpeed = new KnobController('knobFocusSpeed', 'knobFocusSpeed-text', 0.01, 0.05, {
+            sendFunction: throttle(setFocusSpeed, 200),
+            step: 0.001,
+            formatValue: v => Number(v).toFixed(2),
+            throttleTime: 200
+        });
+
+        knobZoomSpeed = new KnobController('knobZoomSpeed', 'knobZoomSpeed-text', 0.01, 0.05, {
+            sendFunction: throttle(setZoomSpeed, 200),
+            step: 0.001,
             formatValue: v => Number(v).toFixed(2),
             throttleTime: 200
         });
@@ -1438,6 +1498,18 @@
                 knobZoom.setValue(parseFloat(data.zoom), false);
             }
 
+            if (data.servo_speed !== undefined && !knobServoSpeed.isDragging) {
+                knobServoSpeed.setValue(parseFloat(data.servo_speed), false);
+            }
+
+            if (data.focus_speed !== undefined && !knobFocusSpeed.isDragging) {
+                knobFocusSpeed.setValue(parseFloat(data.focus_speed), false);
+            }
+
+            if (data.zoom_speed !== undefined && !knobZoomSpeed.isDragging) {
+                knobZoomSpeed.setValue(parseFloat(data.zoom_speed), false);
+            }
+
         } catch (e) {
             console.error('Failed to sync all camera settings:', e);
         }
@@ -1525,7 +1597,29 @@
         }
     }
 
+    async function setServoSpeed(speed) {
+        await fetch('/set-servo-speed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ speed: Number(speed) })
+        });
+    }
 
+    async function setFocusSpeed(speed) {
+        await fetch('/set-focus-speed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ speed: Number(speed) })
+        });
+    }
+
+    async function setZoomSpeed(speed) {
+        await fetch('/set-zoom-speed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ speed: Number(speed) })
+        });
+    }
 
     function updateCameraKnobStates() {
         document.getElementById('knobExposure').style.pointerEvents = exposureAuto ? 'none' : 'auto';

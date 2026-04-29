@@ -91,7 +91,7 @@
 # pip install pydub
 
 
-from adafruit_servokit import ServoKit
+from adafruit_pca9685 import PCA9685
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple
@@ -132,6 +132,7 @@ from picamera2 import Picamera2
 from picamera2.encoders import MJPEGEncoder, H264Encoder, Quality
 from picamera2.outputs import FileOutput
 from libcamera import Transform
+import busio
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -199,6 +200,14 @@ camera_state = {
 }
 
 focus_mode = "Manual"
+focus_speed = 0.01
+zoom_speed = 0.01
+current_focus = 1.0
+current_zoom = 1.0
+focus_moving = False
+zoom_moving = False
+servo_moving = [False, False, False, False]
+
 
 light_bar_state = {
     "Red": 0,
@@ -491,9 +500,6 @@ mix_voice_0 = pygame.mixer.Channel(0)
 mix_voice_1 = pygame.mixer.Channel(1)
 
 ################################################################################
-
-kit = ServoKit(channels=16)
-
 # Setup servo hardware, new hat has 8 motor output pads, only 4 are used for camera car
 # For a 180-degree servo, the typical pulse width range is 1ms to 2ms, with 1ms
 # often being one end (0 degrees) and 2ms the other (180 degrees), though some
@@ -501,50 +507,88 @@ kit = ServoKit(channels=16)
 # 180-degree sweep, with 1500µs at the center; always check the specific servo's
 # datasheet as ranges can vary. Prototype used a 300-2700 pulse width range,
 # but new boards use the standard range of 500 to 2500.
-kit.servo[0].set_pulse_width_range(500, 2500)
-kit.servo[1].set_pulse_width_range(500, 2500)
-kit.servo[2].set_pulse_width_range(500, 2500)
-kit.servo[3].set_pulse_width_range(500, 2500)
 
-s_1 = kit.servo[0]
-s_2 = kit.servo[1]
-s_3 = kit.servo[2]
-s_4 = kit.servo[3]
+i2c = busio.I2C(board.SCL, board.SDA)
 
-p_arr = [90, 90, 90, 90]
+pca = PCA9685(i2c)
+pca.frequency = 50
 
-s_arr = [s_1, s_2, s_3, s_4]
+SERVO_MIN_US = 500
+SERVO_MAX_US = 2500
+SERVO_PERIOD_US = 20000   # 50 Hz = 20 ms period
+SERVO_SMOOTH_STEP = 0.5
+servo_speed = 0.01
+
+
+p_arr = [90.0, 90.0, 90.0, 90.0]
+s_arr = [0, 1, 2, 3]      # PCA9685 channel numbers
+
+inverted_servos = {2}
+
+def angle_to_pulse_us(angle):
+    angle = max(0.0, min(180.0, float(angle)))
+    return SERVO_MIN_US + (angle / 180.0) * (SERVO_MAX_US - SERVO_MIN_US)
+
+
+def pulse_us_to_duty_cycle(pulse_us):
+    duty = int((pulse_us / SERVO_PERIOD_US) * 65535)
+    return max(0, min(65535, duty))
 
 
 def m_servo(n, p):
     global p_arr
 
-    # Clamp input to 0-180
-    if p < 0:
-        p = 0
-    if p > 180:
-        p = 180
-
+    p = max(0.0, min(180.0, float(p)))
     p_arr[n] = p
 
-    # List of servos that are mounted "backwards"
+        # List of servos that are mounted "backwards"
     inverted_servos = {3}
 
+
+    out_p = p
+
     if n in inverted_servos:
-        p = 180 - p
+        out_p = 180 - p
 
-    s_arr[n].angle = p
+    pulse_us = angle_to_pulse_us(out_p)
+    duty = pulse_us_to_duty_cycle(pulse_us)
+
+    pca.channels[s_arr[n]].duty_cycle = duty
 
 
-def m_servo_s(n, n_pos, spd=0.01):
-    global p_arr
-    sign = 1
-    if p_arr[n] > n_pos:
-        sign = - 1
-    for p in range(p_arr[n], n_pos, sign):
-        m_servo(n, p)
-        time.sleep(spd)
-    m_servo(n, p)
+def m_servo_s(n, n_pos, spd=None):
+    global p_arr, servo_moving
+
+    n = int(n)
+
+    if servo_moving[n]:
+        return
+
+    servo_moving[n] = True
+
+    try:
+        if spd is None:
+            spd = servo_speed
+
+        n_pos = max(0.0, min(180.0, float(n_pos)))
+        start = float(p_arr[n])
+
+        if start == n_pos:
+            m_servo(n, n_pos)
+            return
+
+        step = SERVO_SMOOTH_STEP if n_pos > start else -SERVO_SMOOTH_STEP
+        pos = start
+
+        while (step > 0 and pos < n_pos) or (step < 0 and pos > n_pos):
+            m_servo(n, pos)
+            pos += step
+            time.sleep(spd)
+
+        m_servo(n, n_pos)
+
+    finally:
+        servo_moving[n] = False
 
 
 ################################################################################
@@ -1163,28 +1207,59 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 
 
 def set_zoom(zoom_factor):
-    global picam2, camera_running
+    global picam2, camera_running, current_zoom
+
     if camera_running and picam2:
         try:
-            # (4608, 2592) for Camera Module 3
+            zoom_factor = max(1.0, min(6.0, float(zoom_factor)))
+
             full_res = picam2.sensor_resolution
-            if zoom_factor < 1.0:
-                zoom_factor = 1.0  # Minimum zoom
-            # Avoid integer truncation by keeping float precision until final step
             crop_width = full_res[0] / zoom_factor
             crop_height = full_res[1] / zoom_factor
             crop_x = (full_res[0] - crop_width) / 2
             crop_y = (full_res[1] - crop_height) / 2
-            # Convert to integers only at the end
-            scaler_crop = (int(crop_x), int(crop_y),
-                           int(crop_width), int(crop_height))
+
+            scaler_crop = (
+                int(crop_x),
+                int(crop_y),
+                int(crop_width),
+                int(crop_height)
+            )
+
             picam2.set_controls({"ScalerCrop": scaler_crop})
-            print(f"Zoom set to {zoom_factor}x (ScalerCrop: {scaler_crop})")
+            current_zoom = zoom_factor
+
+            print(f"Zoom set to {zoom_factor}x")
             return True
+
         except Exception as e:
             print(f"Failed to set zoom: {e}")
             return False
+
     return False
+
+def set_zoom_s(target_zoom, spd=None):
+    global current_zoom, zoom_speed
+
+    if spd is None:
+        spd = zoom_speed
+
+    target_zoom = max(1.0, min(6.0, float(target_zoom)))
+    start_zoom = float(current_zoom)
+
+    step = 0.05
+    if target_zoom < start_zoom:
+        step = -step
+
+    z = start_zoom
+
+    while (step > 0 and z < target_zoom) or (step < 0 and z > target_zoom):
+        set_zoom(z)
+        z += step
+        time.sleep(spd)
+
+    set_zoom(target_zoom)
+
 
 def get_zoom():
     global picam2, camera_running
@@ -1207,6 +1282,42 @@ def get_zoom():
     except Exception as e:
         print(f"Failed to get zoom: {e}")
         return 1.0
+    
+def set_focus_s(target_focus, spd=None):
+    global current_focus, focus_speed, focus_mode
+
+    if spd is None:
+        spd = focus_speed
+
+    if not (picam2 and camera_running):
+        return False
+
+    target_focus = max(0.0, min(10.0, float(target_focus)))
+    start_focus = float(current_focus)
+
+    step = 0.05
+    if target_focus < start_focus:
+        step = -step
+
+    f = start_focus
+
+    try:
+        picam2.set_controls({"AfMode": 0})
+        focus_mode = "Manual"
+
+        while (step > 0 and f < target_focus) or (step < 0 and f > target_focus):
+            picam2.set_controls({"LensPosition": f})
+            current_focus = f
+            f += step
+            time.sleep(spd)
+
+        picam2.set_controls({"LensPosition": target_focus})
+        current_focus = target_focus
+        return True
+
+    except Exception as e:
+        print(f"Failed to set focus smoothly: {e}")
+        return False
 
 # ================= CAMERA SECTION =================
 
@@ -1664,34 +1775,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
 
-    def set_camera_focus_post(self, rq_d):
-        global focus_mode
 
-        focus_value = float(rq_d.get("focus", 1.0))
 
-        if 0.0 <= focus_value <= 10.0:
-            if picam2 and camera_running:
-                picam2.set_controls({
-                    "AfMode": 0,
-                    "LensPosition": focus_value
-                })
-
-                focus_mode = "Manual"
-
-                self.send_response(200)
-                self.send_header("Content-type", "text/plain")
-                self.end_headers()
-                self.wfile.write(f"Focus set to {focus_value}".encode("utf-8"))
-            else:
-                self.send_response(500)
-                self.send_header("Content-type", "text/plain")
-                self.end_headers()
-                self.wfile.write(b"Camera not running")
-        else:
-            self.send_response(400)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"Focus value out of range (0-10)")
 
     def handle_generic_post(self, path):
         content_length = int(self.headers['Content-Length'])
@@ -1792,6 +1877,71 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.set_camera_auto(post_data_obj)
         elif self.path == "/get-all-camera-settings":
             self.get_all_camera_settings_post(post_data_obj)
+        elif self.path == "/set-servo-speed":
+            self.set_servo_speed_post(post_data_obj)
+        elif self.path == "/set-focus-speed":
+            self.set_focus_speed_post(post_data_obj)
+        elif self.path == "/set-zoom-speed":
+            self.set_zoom_speed_post(post_data_obj)
+
+    def set_focus_speed_post(self, rq_d):
+        global focus_speed
+
+        speed = float(rq_d.get("speed", 0.02))
+        focus_speed = max(0.001, min(0.2, speed))
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"focus_speed": focus_speed}).encode("utf-8"))
+
+    def set_zoom_speed_post(self, rq_d):
+        global zoom_speed
+
+        speed = float(rq_d.get("speed", 0.02))
+        zoom_speed = max(0.001, min(0.2, speed))
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"zoom_speed": zoom_speed}).encode("utf-8"))
+    
+    def set_camera_focus_post(self, rq_d):
+        focus_value = float(rq_d.get("focus", 1.0))
+
+        if 0.0 <= focus_value <= 10.0:
+            if set_focus_s(focus_value):
+                self.send_response(200)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(f"Focus set to {focus_value}".encode("utf-8"))
+            else:
+                self.send_response(500)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"Camera not running")
+        else:
+            self.send_response(400)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Focus value out of range (0-10)")
+
+    def set_servo_speed_post(self, rq_d):
+        global servo_speed
+
+        speed = float(rq_d.get("speed", 0.01))
+
+        if speed < 0.001:
+            speed = 0.001
+        if speed > 0.1:
+            speed = 0.1
+
+        servo_speed = speed
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"servo_speed": servo_speed}).encode("utf-8"))
 
     def get_all_camera_settings_post(self, rq_d):
         response = {
@@ -1799,11 +1949,14 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             "recording": recording,
             "current_recording_file": os.path.basename(current_recording_file) if current_recording_file else "",
             "servos": p_arr,
+            "servo_speed": servo_speed,
             "light_bar": light_bar_state,
             "camera": camera_state,
             "focus": get_focus(),
             "focus_mode": focus_mode,
-            "zoom": get_zoom()
+            "zoom": get_zoom(),
+            "focus_speed": focus_speed,
+            "zoom_speed": zoom_speed        
         }
 
         self.send_response(200)
@@ -1898,6 +2051,21 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(str(e).encode("utf-8"))
 
+    def set_camera_zoom_post(self, rq_d):
+        zoom_factor = float(rq_d.get("zoom", 1.0))
+
+        if 1.0 <= zoom_factor <= 6.0:
+            set_zoom_s(zoom_factor)
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"Zoom set to {zoom_factor}x".encode("utf-8"))
+        else:
+            self.send_response(400)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Zoom value out of range")
+
 
     def focus_continuous_post(self, rq_d):
         global focus_mode
@@ -1924,19 +2092,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f"Continuous focus failed: {e}".encode("utf-8"))
 
-    def set_camera_zoom_post(self, rq_d):
-        zoom_factor = float(rq_d.get("zoom", 1.0))
-        if set_zoom(zoom_factor):
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            response = f"Zoom set to {zoom_factor}x"
-        else:
-            self.send_response(500)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            response = "Failed to set zoom"
-        self.wfile.write(response.encode('utf-8'))
+
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
