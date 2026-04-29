@@ -1430,6 +1430,10 @@
                 knobFocus.setValue(parseFloat(data.focus), false);
             }
 
+            if (data.focus_mode !== undefined) {
+                focusModeLabel.textContent = `Focus Mode: ${data.focus_mode}`;
+            }
+
             if (data.zoom !== undefined && !knobZoom.isDragging) {
                 knobZoom.setValue(parseFloat(data.zoom), false);
             }

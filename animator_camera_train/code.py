@@ -198,6 +198,8 @@ camera_state = {
     "Sharpness": 1.0
 }
 
+focus_mode = "Manual"
+
 light_bar_state = {
     "Red": 0,
     "Green": 0,
@@ -1663,18 +1665,23 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
 
     def set_camera_focus_post(self, rq_d):
+        global focus_mode
+
         focus_value = float(rq_d.get("focus", 1.0))
+
         if 0.0 <= focus_value <= 10.0:
             if picam2 and camera_running:
                 picam2.set_controls({
                     "AfMode": 0,
                     "LensPosition": focus_value
                 })
-                print(f"Focus set to {focus_value}")
+
+                focus_mode = "Manual"
+
                 self.send_response(200)
                 self.send_header("Content-type", "text/plain")
                 self.end_headers()
-                self.wfile.write(f"Focus set to {focus_value}".encode('utf-8'))
+                self.wfile.write(f"Focus set to {focus_value}".encode("utf-8"))
             else:
                 self.send_response(500)
                 self.send_header("Content-type", "text/plain")
@@ -1795,6 +1802,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             "light_bar": light_bar_state,
             "camera": camera_state,
             "focus": get_focus(),
+            "focus_mode": focus_mode,
             "zoom": get_zoom()
         }
 
@@ -1864,6 +1872,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.wfile.write(str(e).encode("utf-8"))
 
     def focus_once_post(self, rq_d):
+        global focus_mode
+
         if not (picam2 and camera_running):
             self.send_response(500)
             self.send_header("Content-type", "text/plain")
@@ -1872,12 +1882,11 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             return
 
         try:
-            # Auto focus once, then stop changing
             picam2.set_controls({"AfMode": 1, "AfTrigger": 0})
-
             time.sleep(2)
 
             lens = get_focus()
+            focus_mode = "Once"
 
             self.send_response(200)
             self.send_header("Content-type", "application/json")
@@ -1891,6 +1900,8 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
 
     def focus_continuous_post(self, rq_d):
+        global focus_mode
+
         if not (picam2 and camera_running):
             self.send_response(500)
             self.send_header("Content-type", "text/plain")
@@ -1900,6 +1911,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
         try:
             picam2.set_controls({"AfMode": 2})
+            focus_mode = "Continuous"
 
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
