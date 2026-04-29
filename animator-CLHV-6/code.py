@@ -26,6 +26,7 @@ from rainbowio import colorwheel
 import neopixel
 import asyncio
 import microcontroller
+import digitalio
 import random
 import board
 import time
@@ -33,6 +34,8 @@ import gc
 import files
 import os
 import gc
+from adafruit_debouncer import Debouncer
+import utilities
 
 
 def gc_col(collection_point):
@@ -59,6 +62,23 @@ def rst():
 gc_col("Imports gc, files")
 
 ################################################################################
+# Setup hardware
+
+# Setup the switches
+top_sw = board.GP11
+bot_sw = board.GP20
+
+top_sw = digitalio.DigitalInOut(top_sw)
+top_sw.direction = digitalio.Direction.INPUT
+top_sw.pull = digitalio.Pull.UP
+top_sw = Debouncer(top_sw)
+
+bot_sw = digitalio.DigitalInOut(bot_sw)
+bot_sw.direction = digitalio.Direction.INPUT
+bot_sw.pull = digitalio.Pull.UP
+bot_sw = Debouncer(bot_sw)
+
+################################################################################
 # Sd card config variables
 
 animators_folder = "/animations/"
@@ -71,6 +91,10 @@ ts_jsons = files.return_directory(
 web = cfg["serve_webpage"]
 
 exit_set_hdw_async = False
+an_just_added = False
+an_running = False
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
 
@@ -1043,6 +1067,139 @@ def set_neo_module_to(mod_n, ind, v):
         led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
     led.show()
 
+################################################################################
+# State Machine
+
+
+class StMch(object):
+
+    def __init__(s):
+        s.ste = None
+        s.stes = {}
+        s.paused_state = None
+
+    def add(s, ste):
+        s.stes[ste.name] = ste
+
+    def go_to(s, ste):
+        if s.ste:
+            s.ste.exit(s)
+        s.ste = s.stes[ste]
+        s.ste.enter(s)
+
+    def upd(s):
+        if s.ste:
+            s.ste.upd(s)
+
+################################################################################
+# States
+
+# Abstract parent state class.
+
+
+class Ste(object):
+
+    def __init__(s):
+        pass
+
+    @property
+    def name(s):
+        return ""
+
+    def enter(s, mch):
+        pass
+
+    def exit(s, mch):
+        pass
+
+    def upd(s, mch):
+        pass
+
+
+class BseSt(Ste):
+
+    def __init__(self):
+        pass
+
+    @property
+    def name(self):
+        return 'base_state'
+
+    def enter(self, mch):
+        files.log_item("Entered base state")
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global an_just_added
+        sw = utilities.switch_state(
+            top_sw, bot_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left_held":
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
+                files.write_json_file("cfg.json", cfg)
+            else:
+                cfg["cont_mode"] = True
+                files.write_json_file("cfg.json", cfg)
+        elif (sw == "left" or cfg["cont_mode"]) and not an_running:
+            add_command("AN_" + cfg["option_selected"])
+            an_just_added = True
+        elif sw == "right":
+            mch.go_to('main_menu')
+
+
+class Main(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return "main_menu"
+
+    def enter(self, mch):
+        files.log_item("Main menu")
+        # show_mode(3, True)
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global rand_timer, srt_t
+        top_sw.update()
+        bot_sw.update()
+        if top_sw.fell:
+            self.sel_i = self.i
+            self.i += 1
+            # if self.i > len(main_m) - 1:
+            #     self.i = 0
+            # print(main_m[self.sel_i])
+            # show_timer_program_option(self.sel_i+1)
+        # if bot_sw.fell:
+        #     sel_i = main_m[self.sel_i]
+        #     if sel_i == "exit_this_menu":
+        #         print(sel_i)
+        #         cfg["timer"] = False
+        #         rand_timer = 0
+        #         files.write_json_file("cfg.json", cfg)
+        #         mch.go_to("base_state")
+        #     else:
+        #         print(sel_i)
+        #         cfg["timer"] = True
+        #         cfg["timer_val"] = sel_i
+        #         rand_timer = 0
+        #         files.write_json_file("cfg.json", cfg)
+        #         mch.go_to("base_state")
+
+###############################################################################
+# Create the state machine
+
+st_mch = StMch()
+st_mch.add(BseSt())
+st_mch.add(Main())
 
 if (web):
     files.log_item("starting server...")
@@ -1054,12 +1211,11 @@ if (web):
         files.log_item("restarting...")
         rst()
 
+st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
 # Main task handling
-
-
 async def process_commands_task():
     """Task to continuously process commands."""
     while True:
@@ -1085,12 +1241,23 @@ async def garbage_collection_task():
         gc.collect()  # Collect garbage
         await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
 
+async def state_mach_upd_task(st_mch):
+    global an_just_added
+    while True:
+        st_mch.upd()
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
+
 
 async def main():
     # Create asyncio tasks
     tasks = [
         process_commands_task(),
         garbage_collection_task(),
+        state_mach_upd_task(st_mch)
     ]
 
     if web:

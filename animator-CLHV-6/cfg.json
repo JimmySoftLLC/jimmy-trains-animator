@@ -1,6 +1,7 @@
 {
-  "option_selected": "random all",
+  "option_selected": "dud",
+  "HOST_NAME": "clhv-6",
   "serve_webpage": true,
-  "HOST_NAME": "clhv6-1",
-  "light_string": "bar-10"
+  "light_string": "neo-6,bolt-1",
+  "cont_mode": false
 }
