@@ -204,6 +204,8 @@ focus_speed = 0.01
 zoom_speed = 0.01
 current_focus = 1.0
 current_zoom = 1.0
+focus_target = 1.0
+zoom_target = 1.0
 focus_moving = False
 zoom_moving = False
 servo_moving = [False, False, False, False]
@@ -1205,6 +1207,8 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
+FOCUS_SMOOTH_STEP = 0.05
+ZOOM_SMOOTH_STEP = 0.05
 
 def set_zoom(zoom_factor):
     global picam2, camera_running, current_zoom
@@ -1240,25 +1244,42 @@ def set_zoom(zoom_factor):
 
 def set_zoom_s(target_zoom, spd=None):
     global current_zoom, zoom_speed
+    global zoom_target, zoom_moving
 
     if spd is None:
         spd = zoom_speed
 
-    target_zoom = max(1.0, min(6.0, float(target_zoom)))
-    start_zoom = float(current_zoom)
+    zoom_target = max(1.0, min(6.0, float(target_zoom)))
 
-    step = 0.05
-    if target_zoom < start_zoom:
-        step = -step
+    if zoom_moving:
+        return True
 
-    z = start_zoom
+    zoom_moving = True
 
-    while (step > 0 and z < target_zoom) or (step < 0 and z > target_zoom):
-        set_zoom(z)
-        z += step
-        time.sleep(spd)
+    try:
+        while True:
+            target = zoom_target
+            pos = float(current_zoom)
 
-    set_zoom(target_zoom)
+            if abs(pos - target) <= ZOOM_SMOOTH_STEP:
+                set_zoom(target)
+                break
+
+            step = ZOOM_SMOOTH_STEP if target > pos else -ZOOM_SMOOTH_STEP
+
+            pos += step
+            set_zoom(pos)
+
+            time.sleep(spd)
+
+        return True
+
+    except Exception as e:
+        print(f"Failed to set zoom smoothly: {e}")
+        return False
+
+    finally:
+        zoom_moving = False
 
 
 def get_zoom():
@@ -1285,39 +1306,50 @@ def get_zoom():
     
 def set_focus_s(target_focus, spd=None):
     global current_focus, focus_speed, focus_mode
+    global focus_target, focus_moving
 
     if spd is None:
         spd = focus_speed
 
+    focus_target = max(0.0, min(10.0, float(target_focus)))
+
+    if focus_moving:
+        return True
+
     if not (picam2 and camera_running):
         return False
 
-    target_focus = max(0.0, min(10.0, float(target_focus)))
-    start_focus = float(current_focus)
-
-    step = 0.05
-    if target_focus < start_focus:
-        step = -step
-
-    f = start_focus
+    focus_moving = True
 
     try:
         picam2.set_controls({"AfMode": 0})
         focus_mode = "Manual"
 
-        while (step > 0 and f < target_focus) or (step < 0 and f > target_focus):
-            picam2.set_controls({"LensPosition": f})
-            current_focus = f
-            f += step
+        while True:
+            target = focus_target
+            pos = float(current_focus)
+
+            if abs(pos - target) <= FOCUS_SMOOTH_STEP:
+                picam2.set_controls({"LensPosition": target})
+                current_focus = target
+                break
+
+            step = FOCUS_SMOOTH_STEP if target > pos else -FOCUS_SMOOTH_STEP
+
+            pos += step
+            picam2.set_controls({"LensPosition": pos})
+            current_focus = pos
+
             time.sleep(spd)
 
-        picam2.set_controls({"LensPosition": target_focus})
-        current_focus = target_focus
         return True
 
     except Exception as e:
         print(f"Failed to set focus smoothly: {e}")
         return False
+
+    finally:
+        focus_moving = False
 
 # ================= CAMERA SECTION =================
 
