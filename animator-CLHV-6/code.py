@@ -831,7 +831,7 @@ async def rbow(spd, dur):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
-            await asyncio.sleep(spd)
+            time.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
                 return
@@ -842,7 +842,7 @@ async def rbow(spd, dur):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
-            await asyncio.sleep(spd)
+            time.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
                 return
@@ -885,7 +885,7 @@ async def fire(dur):
             b1 = bnd(b-f, 0, 255)
             led[i] = (r1, g1, b1)
             led.show()
-        await asyncio.sleep(random.uniform(0.05, 0.1))
+        time.sleep(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
             return
@@ -985,7 +985,7 @@ async def set_hdw_async(input_string, dur):
                         br -= 1
                         led.brightness = float(br/100)
                     led.show()
-                    await asyncio.sleep(s)
+                    time.sleep(s)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 await random_effect(1, 3, dur)
@@ -1271,4 +1271,5 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
 
