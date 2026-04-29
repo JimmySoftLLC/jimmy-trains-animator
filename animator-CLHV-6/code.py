@@ -127,13 +127,18 @@ bar_arr = []
 bolt_arr = []
 neo_arr = []
 
-n_px = 0
+n_px = 10
 
 # 15 on demo 17 tiny 10 on large, GP11 on clhv-6
 neo_pixel_pin = board.GP14
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
+try:
+    files.write_json_file("cfg.json", cfg)
+except:
+    led.fill((0, 0, 255))
+    time.sleep(3)
 
 def bld_tree(p):
     i = []
