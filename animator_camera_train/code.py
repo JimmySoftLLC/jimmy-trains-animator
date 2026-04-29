@@ -1775,24 +1775,33 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.delete_recording_post(post_data_obj)
         elif self.path == "/delete-snapshot":
             self.delete_snapshot_post(post_data_obj)
-        elif self.path == "/get-focus":
-            self.get_focus_post(post_data_obj)
-        elif self.path == "/get-zoom":
-            self.get_zoom_post(post_data_obj)
         elif self.path == "/focus-once":
             self.focus_once_post(post_data_obj)
         elif self.path == "/focus-continuous":
             self.focus_continuous_post(post_data_obj)
-        elif self.path == "/get-camera-settings":
-            self.get_camera_settings_post(post_data_obj)
         elif self.path == "/camera-control":
             self.camera_control_post(post_data_obj)
         elif self.path == "/set-camera-auto":
             self.set_camera_auto(post_data_obj)
-        elif self.path == "/get-servo-settings":
-            self.get_servo_settings_post(post_data_obj)
-        elif self.path == "/get-light-bar-settings":
-            self.get_light_bar_settings_post(post_data_obj)
+        elif self.path == "/get-all-camera-settings":
+            self.get_all_camera_settings_post(post_data_obj)
+
+    def get_all_camera_settings_post(self, rq_d):
+        response = {
+            "camera_running": camera_running,
+            "recording": recording,
+            "current_recording_file": os.path.basename(current_recording_file) if current_recording_file else "",
+            "servos": p_arr,
+            "light_bar": light_bar_state,
+            "camera": camera_state,
+            "focus": get_focus(),
+            "zoom": get_zoom()
+        }
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response).encode("utf-8"))
 
     def camera_control_post(self, rq_d):
         global camera_state
@@ -1903,43 +1912,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f"Continuous focus failed: {e}".encode("utf-8"))
 
-    def get_focus_post(self, rq_d):
-        if not (picam2 and camera_running):
-            self.send_response(500)
-            self.end_headers()
-            return
-
-        try:
-            lens = get_focus()
-
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"focus": lens}).encode("utf-8"))
-
-        except Exception as e:
-            self.send_response(500)
-            self.end_headers()
-            self.wfile.write(str(e).encode("utf-8"))
-
-    def get_zoom_post(self, rq_d):
-        if not (picam2 and camera_running):
-            self.send_response(500)
-            self.end_headers()
-            return
-
-        try:
-            zoom = get_zoom()
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"zoom": zoom}).encode("utf-8"))
-
-        except Exception as e:
-            self.send_response(500)
-            self.end_headers()
-            self.wfile.write(str(e).encode("utf-8"))
-
     def set_camera_zoom_post(self, rq_d):
         zoom_factor = float(rq_d.get("zoom", 1.0))
         if set_zoom(zoom_factor):
@@ -1953,49 +1925,6 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.end_headers()
             response = "Failed to set zoom"
         self.wfile.write(response.encode('utf-8'))
-
-    def get_servo_settings_post(self, rq_d):
-        response =  p_arr
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def get_light_bar_settings_post(self, rq_d):
-        response = light_bar_state
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
-
-    def get_camera_settings_post(self, rq_d):
-        if not (picam2 and camera_running):
-            self.send_response(500)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"Camera not running")
-            return
-
-        meta = picam2.capture_metadata()
-
-        response = {
-            "ExposureTime": meta.get("ExposureTime", 10000),
-            "AnalogueGain": meta.get("AnalogueGain", 1.0),
-            "ColourGains": meta.get("ColourGains", (2.0, 2.0)),
-            "Brightness": camera_state["Brightness"],
-            "Contrast": camera_state["Contrast"],
-            "Saturation": camera_state["Saturation"],
-            "Sharpness": camera_state["Sharpness"],
-            "ExposureColorBalanceAuto": camera_state["ExposureColorBalanceAuto"],
-        }
-
-        self.send_response(200)
-        self.send_header("Content-type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
@@ -2524,7 +2453,7 @@ if web:
         print(f"Local IP address: {local_ip}")
 
         QUEUE_PORT = 8001
-        PORT = 8083
+        PORT = 80
 
         httpd = None
 
@@ -2811,7 +2740,7 @@ def spk_str(str_to_speak, addLocal, addIpAddressIs=False):
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        play_mix(mvc_folder + "dot_local_colon_8083.wav")
+        play_mix(mvc_folder + "dot_local.wav")
 
 
 def l_r_but():
@@ -2849,7 +2778,7 @@ def spk_web():
     play_mix(mvc_folder + "to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-camera-train":
         play_mix(mvc_folder + "animator_dash_camera_dash_train.wav")
-        play_mix(mvc_folder + "dot_local_colon_8083.wav")
+        play_mix(mvc_folder + "dot_local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
     play_mix(mvc_folder + "in_your_browser.wav")
