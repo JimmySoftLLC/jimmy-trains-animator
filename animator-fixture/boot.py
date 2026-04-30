@@ -2,9 +2,8 @@ import storage
 import board
 import digitalio
 
-# Setup the switches
-top_sw = board.GP11
-bot_sw = board.GP20
+top_sw = board.GP6
+bot_sw = board.GP7
 
 top_sw = digitalio.DigitalInOut(top_sw)
 top_sw.direction = digitalio.Direction.INPUT

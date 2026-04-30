@@ -843,9 +843,7 @@ async def an_light_async(f_nm):
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item(f"time elapsed: {t_past} Timestamp: {ft1[0]}")
             if len(ft1) == 1 or ft1[1] == "":
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
-                result = await set_hdw_async(f"L0{lgt},S0{pos}", dur)
+                result = await set_hdw_async("", dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -1008,9 +1006,11 @@ async def set_hdw_async(input_string, dur):
     """Async hardware control for NeoPixel lights."""
     global sp, br, exit_set_hdw_async
     segs = input_string.split(",")
-
     try:
+        print ("cmd: ", segs)
         for seg in segs:
+            if seg == "":
+                print("no command")
             if exit_set_hdw_async:
                 return "STOP"
             if seg[0] == 'E':  # end an

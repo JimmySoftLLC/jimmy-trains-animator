@@ -22,7 +22,10 @@
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
-                <a data-mui-toggle="tab" data-mui-controls="settings">Settings</a>
+                <a data-mui-toggle="tab" data-mui-controls="servos">Servos</a>
+            </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="lights">Lights</a>
             </li>
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
@@ -31,54 +34,118 @@
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
             <h2>Animations:</h2>
             <div id="animationsContainer"></div>
+            <h2>Animator web page name:</h2>
+            <div class="mui-textfield">
+                <label>Base url:</label>
+                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div class="mui-textfield">
+                <label>IP Address:</label>
+                <input class="input" id="settingsIpAddress" type="text" disabled
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                data-url="/update-host-name">
+                Change
+            </button>
+            <p>
+                Use alphanumerics and dashes only. All names are automatically
+                appended with .local. So your website url will be something like
+                "website-name.local and the ip address will be xx.xx.xx.xx."
+            </p>
         </div>
-        <div class="mui-tabs__pane" id="settings">
+        <div class="mui-tabs__pane" id="servos">
             <h2>Camera car</h2>
             <h3>Rotation servo 1</h3>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S10" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S1180" data-url="/lights"
                     type="button">
-                    0
+                    Left 180
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="S190" data-url="/lights"
                     type="button">
-                    90
+                    Middle 90
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S1180" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S10" data-url="/lights"
                     type="button">
-                    180
+                    Right 0
                 </button>
             </div>
             <h3>Tilt servo 2</h3>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S2140" data-url="/lights"
                     type="button">
-                    90
+                    Up 140
                 </button>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="S2115" data-url="/lights"
                     type="button">
-                    115
+                    Middle 115
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S2140" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S290" data-url="/lights"
                     type="button">
-                    140
+                    Down 90
                 </button>
             </div>
-            <h3>Light bar servo 3</h3>
+            <h2>Feller</h2>
+            <h3>Feller servo 1</h3>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S3180" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S10" data-url="/lights"
                     type="button">
-                    0
+                    Rest 0
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S390" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S1150" data-url="/lights"
                     type="button">
-                    90
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="S30" data-url="/lights"
-                    type="button">
-                    180
+                    Chop 150
                 </button>
             </div>
+            <h3>Tree servo 2</h3>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S2165" data-url="/lights"
+                    type="button">
+                    Up 165
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S2100" data-url="/lights"
+                    type="button">
+                    Down 100
+                </button>
+            </div>
+            <h2>Outhouse</h2>
+            <h3>Door servo 1</h3>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S124" data-url="/lights"
+                    type="button">
+                    Open 24
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S1122" data-url="/lights"
+                    type="button">
+                    Closed 122
+                </button>
+            </div>
+            <h3>Elevator servo 2</h3>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S20" data-url="/lights"
+                    type="button">
+                    Up 0
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S2180" data-url="/lights"
+                    type="button">
+                    Down 180
+                </button>
+            </div>
+            <h3>Roof servo 3</h3>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S3100" data-url="/lights"
+                    type="button">
+                    Open 100
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="S331" data-url="/lights"
+                    type="button">
+                    Closed 31
+                </button>
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="lights">
             <h2>Setup light string:</h2>
             <div class="mui-textfield">
                 <p>
@@ -191,36 +258,6 @@
                     100
                 </button>
             </div>
-
-            <h2>Animator web page name:</h2>
-            <div class="mui-textfield">
-                <label>Base url:</label>
-                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-            <div class="mui-textfield">
-                <label>IP Address:</label>
-                <input class="input" id="settingsIpAddress" type="text" disabled
-                    style="width: 300px; padding: 5px; margin: 5px;">
-            </div>
-
-            <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
-                data-url="/update-host-name">
-                Change
-            </button>
-
-            <p>
-                Use alphanumerics and dashes only. All names are automatically
-                appended with .local. So your website url will be something like
-                "website-name.local and the ip address will be xx.xx.xx.xx."
-            </p>
-
-            <h2>Utilities:</h2>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
-                type="button">
-                Reset to defaults
-            </button>
-
         </div>
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
