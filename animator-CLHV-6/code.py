@@ -218,7 +218,7 @@ def bld_neo():
 
 def show_l():
     led.show()
-    time.sleep(.05)
+    time.sleep(.1)
     led.fill((0, 0, 0))
     led.show()
 
@@ -455,7 +455,7 @@ if (web):
                 global cfg
                 rq_d = request.json()
                 cfg["option_selected"] = rq_d["an"]
-                add_command(cfg["option_selected"])
+                add_command("AN_" + cfg["option_selected"])
                 files.write_json_file("cfg.json", cfg)
                 return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
@@ -703,6 +703,8 @@ if (web):
 ################################################################################
 # Command queue
 command_queue = []
+last_an_call_end = None
+an_timer_start = time.monotonic()
 
 
 def add_command(command, to_start=False):
@@ -718,12 +720,29 @@ def add_command(command, to_start=False):
 
 
 async def process_commands():
-    """Asynchronous function to process commands in a FIFO order."""
+    global last_an_call_end
+
     while command_queue:
-        command = command_queue.pop(0)  # Retrieve from the front of the queue
-        print("Processing command:", command)
-        await an_async(command)  # Process each command as an async operation
-        await asyncio.sleep(0)  # Yield control to the event loop
+        command = command_queue.pop(0)
+
+        if command.startswith("AN_"):
+            filename = command[3:]
+
+            if filename:
+                now = time.monotonic() - an_timer_start
+
+                if last_an_call_end is not None:
+                    print("AN GAP:", now - last_an_call_end)
+
+                await an_async(filename)
+
+                last_an_call_end = time.monotonic() - an_timer_start
+
+                await asyncio.sleep(0)
+
+        else:
+            await set_hdw_async(command)
+            await asyncio.sleep(0)
 
 
 def clear_command_queue():
@@ -758,10 +777,8 @@ async def an_async(f_nm):
     print("Filename:", f_nm)
     try:
         await an_light_async(f_nm)
-        gc_col("animation cleanup")
     except Exception as e:
         files.log_item(e)
-    gc_col("Animation complete.")
 
 
 async def an_light_async(f_nm):
@@ -773,9 +790,9 @@ async def an_light_async(f_nm):
 
     # add end command to time stamps to stop video when timestamps run out
     ft_last = flsh_t[len(flsh_t)-1].split("|")
-    tm_last = float(ft_last[0]) + .1
+    tm_last = float(ft_last[0]) + .001
     flsh_t.append(str(tm_last) + "|E")
-    flsh_t.append(str(tm_last + .1) + "|E")
+    flsh_t.append(str(tm_last + .001) + "|E")
 
     flsh_i = 0
     srt_t = time.monotonic()
@@ -794,9 +811,6 @@ async def an_light_async(f_nm):
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item(f"time elapsed: {t_past} Timestamp: {ft1[0]}")
             if len(ft1) == 1 or ft1[1] == "":
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
-                result = await set_hdw_async(f"L0{lgt},S0{pos}", dur)
                 if result == "STOP":
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
@@ -955,7 +969,7 @@ sp = [0, 0, 0, 0, 0, 0]
 br = 0
 
 
-async def set_hdw_async(input_string, dur):
+async def set_hdw_async(input_string, dur=3):
     """Async hardware control for NeoPixel lights."""
     global sp, br, exit_set_hdw_async
     segs = input_string.split(",")
@@ -1148,7 +1162,7 @@ class BseSt(Ste):
     def upd(self, mch):
         global an_just_added
         sw = utilities.switch_state(
-            top_sw, bot_sw, time.sleep, 3.0, ovrde_sw_st)
+            top_sw, bot_sw, time.sleep, 3.0, ovrde_sw_st, False)
         if sw == "left_held":
             if cfg["cont_mode"]:
                 cfg["cont_mode"] = False
@@ -1220,13 +1234,13 @@ if (web):
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        indicator.fill((255, 0, 255))
+        indicator.fill((0, 255, 0))
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
         rst()
 else:
-    indicator.fill((0, 255, 255))
+    indicator.fill((255, 255, 0))
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -1257,8 +1271,8 @@ async def server_poll_task(server):
 
 async def garbage_collection_task():
     while True:
-        gc.collect()  # Collect garbage
-        await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
+        gc_col("garbage_collection_task")
+        await asyncio.sleep(30)  # Run every 10 seconds (adjust as needed)
 
 
 async def state_mach_upd_task(st_mch):
