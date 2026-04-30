@@ -604,9 +604,10 @@ if web:
 
 gc_col("web server")
 
-cycles = 10
-avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
-print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+if (web):
+    cycles = 10
+    avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
 
 ################################################################################
 # Command queue

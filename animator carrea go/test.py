@@ -571,16 +571,18 @@ if web:
                 gc_col("get data")
                 return Response(request, "out of memory")
             return Response(request, "success")
+        
 
     except Exception as e:
         web = False
         files.log_item(e)
 
-gc_col("web server")
+if (web):
+    cycles = 10
+    avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
 
-cycles = 10
-avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
-print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+gc_col("web server")
 
 ################################################################################
 # Command queue

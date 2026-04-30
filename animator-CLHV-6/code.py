@@ -127,18 +127,24 @@ bar_arr = []
 bolt_arr = []
 neo_arr = []
 
-n_px = 10
+n_px = 0
 
 # 15 on demo 17 tiny 10 on large, GP11 on clhv-6
-neo_pixel_pin = board.GP14
+neo_pixel_pin = board.GP12
+indicator_pin = board.GP13
+
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
+indicator = neopixel.NeoPixel(indicator_pin, 1)
+indicator.brightness = .2
 
 try:
     files.write_json_file("cfg.json", cfg)
+    indicator.fill((0, 255, 0))
 except:
-    led.fill((0, 0, 255))
+    indicator.fill((0, 0, 255))
     time.sleep(3)
+
 
 def bld_tree(p):
     i = []
@@ -404,6 +410,7 @@ if (web):
 
     for i in range(3):
         web = True
+        indicator.fill((0, 0, 255))
         try:
             # connect to your SSID
             wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
@@ -495,7 +502,7 @@ if (web):
                     f_n = animators_folder + rq_d["fn"] + ".json"
                     print(f_n)
                     an_data = ["0.0|BN100,LN0_255_0_0", "1.0|BN100,LN0_0_255_0",
-                            "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
+                               "2.0|BN100,LN0_0_0_255", "3.0|BN100,LN0_255_255_255"]
                     files.write_json_file(f_n, an_data)
                     upd_media()
                     return Response(request, "Created animation successfully.")
@@ -539,7 +546,7 @@ if (web):
                 if rq_d["action"] == "save" or rq_d["action"] == "clear" or rq_d["action"] == "defaults":
                     cfg["light_string"] = rq_d["text"]
                     print("action: " +
-                        rq_d["action"] + " data: " + cfg["light_string"])
+                          rq_d["action"] + " data: " + cfg["light_string"])
                     files.write_json_file("cfg.json", cfg)
                     upd_l_str()
                     return Response(req, cfg["light_string"])
@@ -549,7 +556,7 @@ if (web):
                     cfg["light_string"] = cfg["light_string"] + \
                         "," + rq_d["text"]
                 print("action: " + rq_d["action"] +
-                    " data: " + cfg["light_string"])
+                      " data: " + cfg["light_string"])
                 files.write_json_file("cfg.json", cfg)
                 upd_l_str()
                 return Response(req, cfg["light_string"])
@@ -636,6 +643,7 @@ if (web):
         except Exception as e:
             web = False
             files.log_item(e)
+            indicator.fill((0, 0, 75))
             time.sleep(2)
 
 gc_col("web server")
@@ -686,10 +694,10 @@ def measure_signal_strength(MY_SSID, cycles):
         if count > cycles:
             return avg_rssi
 
-
-cycles = 10
-avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
-print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+if (web):
+    cycles = 10
+    avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
 
 
 ################################################################################
@@ -1202,6 +1210,7 @@ class Main(Ste):
 ###############################################################################
 # Create the state machine
 
+
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
@@ -1211,16 +1220,21 @@ if (web):
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        indicator.fill((255, 0, 255))
     except OSError:
         time.sleep(5)
         files.log_item("restarting...")
         rst()
+else:
+    indicator.fill((0, 255, 255))
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
 # Main task handling
+
+
 async def process_commands_task():
     """Task to continuously process commands."""
     while True:
@@ -1245,6 +1259,7 @@ async def garbage_collection_task():
     while True:
         gc.collect()  # Collect garbage
         await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
+
 
 async def state_mach_upd_task(st_mch):
     global an_just_added
@@ -1276,5 +1291,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
 
