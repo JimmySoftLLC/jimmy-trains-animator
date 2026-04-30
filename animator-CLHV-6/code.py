@@ -98,12 +98,10 @@ ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
 
-
 def upd_media():
     global animations
-
     animations = files.return_directory("", "animations", ".json")
-
+    animations.append("random all")
 
 upd_media()
 
@@ -772,12 +770,15 @@ def rst_def():
 ################################################################################
 # animations
 
-
 async def an_async(f_nm):
     """Run animation lighting as an async task."""
     print("Filename:", f_nm)
+    cur = f_nm
     try:
-        await an_light_async(f_nm)
+        if f_nm == "random all":
+            hi = len(animations) - 1
+            cur = animations[random.randint(0, hi)]
+        await an_light_async(cur)
     except Exception as e:
         files.log_item(e)
 
@@ -1132,6 +1133,8 @@ def show_mode(cycles,r,g,b):
     for _ in range(cycles):
         indicator.fill((r, g, b))
         time.sleep(.5)
+        indicator.fill((0, 0, 0))
+        time.sleep(.5)
 
 ################################################################################
 # State Machine
@@ -1234,12 +1237,17 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global rand_timer, srt_t
         top_sw.update()
         bot_sw.update()
         if top_sw.fell:
-                if self.i > len(animations)-1:
-                    self.i = 0
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(animations) - 1:
+                self.i = 0
+            print("print: ", self.sel_i)
+            show_mode(self.sel_i+1, 0, 0, 255)
+            if self.i > len(animations) - 1:
+                show_mode(self.sel_i+1, 0, 255, 255)
         if bot_sw.fell:
             sel_i = animations[self.sel_i]
             if sel_i == "exit_this_menu":
