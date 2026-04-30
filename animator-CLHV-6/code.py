@@ -68,15 +68,15 @@ gc_col("Imports gc, files")
 top_sw = board.GP11
 bot_sw = board.GP20
 
-top_sw = digitalio.DigitalInOut(top_sw)
-top_sw.direction = digitalio.Direction.INPUT
-top_sw.pull = digitalio.Pull.UP
-top_sw = Debouncer(top_sw)
+top_sw_io = digitalio.DigitalInOut(top_sw)
+top_sw_io.direction = digitalio.Direction.INPUT
+top_sw_io.pull = digitalio.Pull.UP
+top_sw = Debouncer(top_sw_io)
 
-bot_sw = digitalio.DigitalInOut(bot_sw)
-bot_sw.direction = digitalio.Direction.INPUT
-bot_sw.pull = digitalio.Pull.UP
-bot_sw = Debouncer(bot_sw)
+bot_sw_io = digitalio.DigitalInOut(bot_sw)
+bot_sw_io.direction = digitalio.Direction.INPUT
+bot_sw_io.pull = digitalio.Pull.UP
+bot_sw = Debouncer(bot_sw_io)
 
 ################################################################################
 # Sd card config variables
@@ -694,6 +694,7 @@ def measure_signal_strength(MY_SSID, cycles):
         if count > cycles:
             return avg_rssi
 
+
 if (web):
     cycles = 10
     avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
@@ -782,6 +783,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
+    global exit_set_hdw_async
     """Asynchronous animation lighting."""
 
     flsh_t = []
@@ -820,9 +822,19 @@ async def an_light_async(f_nm):
                     await asyncio.sleep(0)  # Yield control to other tasks
                     break
             flsh_i += 1
-
-        # print (flsh_i)
-
+        if (top_sw_io.value == False):
+            print("left button pressed")
+            sw = utilities.switch_state(
+                top_sw, bot_sw, time.sleep, 3.0, ovrde_sw_st, False)
+            if sw == "left" and cfg["can_cancel"]:
+                exit_set_hdw_async = True
+                flsh_i = len(flsh_t) - 1
+            if sw == "left_held":
+                stop_all_commands()
+                exit_set_hdw_async = True
+                flsh_i = len(flsh_t) - 1
+                cont_mode_off()
+                
         await asyncio.sleep(0)  # Yield control to other tasks
 
         # Exit condition for stopping animation
@@ -1094,6 +1106,33 @@ def set_neo_module_to(mod_n, ind, v):
         led[neo_ids[mod_n-1]+1] = (cur[0], cur[1], cur[2])
     led.show()
 
+def cont_mode_on():
+    cfg["cont_mode"] = True
+    indicator.fill((0, 255, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 255, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+
+def cont_mode_off():
+    cfg["cont_mode"] = False
+    indicator.fill((255, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+    indicator.fill((255, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+
+def show_mode(cycles,r,g,b):
+    for _ in range(cycles):
+        indicator.fill((r, g, b))
+        time.sleep(.5)
+
 ################################################################################
 # State Machine
 
@@ -1165,10 +1204,10 @@ class BseSt(Ste):
             top_sw, bot_sw, time.sleep, 3.0, ovrde_sw_st, False)
         if sw == "left_held":
             if cfg["cont_mode"]:
-                cfg["cont_mode"] = False
+                cont_mode_off()
                 files.write_json_file("cfg.json", cfg)
             else:
-                cfg["cont_mode"] = True
+                cont_mode_on()
                 files.write_json_file("cfg.json", cfg)
         elif (sw == "left" or cfg["cont_mode"]) and not an_running:
             add_command("AN_" + cfg["option_selected"])
@@ -1188,7 +1227,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item("Main menu")
-        # show_mode(3, True)
+        show_mode(3, 0, 0, 255)
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -1199,27 +1238,18 @@ class Main(Ste):
         top_sw.update()
         bot_sw.update()
         if top_sw.fell:
-            self.sel_i = self.i
-            self.i += 1
-            # if self.i > len(main_m) - 1:
-            #     self.i = 0
-            # print(main_m[self.sel_i])
-            # show_timer_program_option(self.sel_i+1)
-        # if bot_sw.fell:
-        #     sel_i = main_m[self.sel_i]
-        #     if sel_i == "exit_this_menu":
-        #         print(sel_i)
-        #         cfg["timer"] = False
-        #         rand_timer = 0
-        #         files.write_json_file("cfg.json", cfg)
-        #         mch.go_to("base_state")
-        #     else:
-        #         print(sel_i)
-        #         cfg["timer"] = True
-        #         cfg["timer_val"] = sel_i
-        #         rand_timer = 0
-        #         files.write_json_file("cfg.json", cfg)
-        #         mch.go_to("base_state")
+                if self.i > len(animations)-1:
+                    self.i = 0
+        if bot_sw.fell:
+            sel_i = animations[self.sel_i]
+            if sel_i == "exit_this_menu":
+                print(sel_i)
+                files.write_json_file("cfg.json", cfg)
+                mch.go_to("base_state")
+            else:
+                print(sel_i)
+                files.write_json_file("cfg.json", cfg)
+                mch.go_to("base_state")
 
 ###############################################################################
 # Create the state machine
@@ -1305,4 +1335,3 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
-
