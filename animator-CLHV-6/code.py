@@ -112,8 +112,6 @@ def upd_media():
 
 upd_media()
 
-print(animations)
-
 ################################################################################
 # Setup neo pixels
 
@@ -852,7 +850,6 @@ async def an_light_async(f_nm):
                     break
             flsh_i += 1
         if (top_sw_io.value == False):
-            print("left button pressed")
             sw = utilities.switch_state(
                 top_sw, bot_sw, time.sleep, 3.0, ovrde_sw_st, False)
             if sw == "left" and cfg["can_cancel"]:
@@ -1106,7 +1103,6 @@ def get_neo_ids():
 def set_neo_module_to(mod_n, ind, v):
     cur = []
     neo_ids = get_neo_ids()
-    print(mod_n, ind, v, neo_ids)
     if mod_n == 0:
         for i in neo_ids:
             led[i] = (v, v, v)
@@ -1123,7 +1119,6 @@ def set_neo_module_to(mod_n, ind, v):
         cur = list(led[neo_ids[mod_n-1]])
         cur[ind] = v
         led[neo_ids[mod_n-1]] = (cur[0], cur[1], cur[2])
-        print(led[neo_ids[mod_n-1]])
     else:
         ind -= 1
         if ind == 3:
@@ -1247,7 +1242,6 @@ class BseSt(Ste):
         elif (sw == "left" or cfg["cont_mode"]) and not an_running:
             add_command("AN_" + cfg["option_selected"])
             an_just_added = True
-            time.sleep(.2)
         elif sw == "right":
             mch.go_to('main_menu')
 

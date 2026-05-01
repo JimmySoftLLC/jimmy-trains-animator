@@ -325,6 +325,33 @@
         getAnimations()
     });
 
+    function clearAnimationTable() {
+        animationScriptName.value = "";
+        dataTableBody.innerHTML = "";
+    }
+
+    function loadAnimation(animationName) {
+        fetch("/get-animation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ an: animationName }),
+        })
+            .then(function (response) {
+                return response.text();
+            })
+            .then(function (data) {
+                var myData = JSON.parse(data);
+                animationScriptName.value = animationName;
+                populateTable(myData);
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
 
     function getAnimations() {
         // get Animations
@@ -420,9 +447,11 @@
                     return response.text();
                 })
                 .then(function (data) {
-                    updateAnimations()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
+                    updateAnimations();
+                    loadAnimation(filenameInput);
+
+                    var modalEl = document.getElementById("modalEl");
+                    mui.overlay('off', modalEl);
                 })
                 .catch(function (error) {
                     console.log(error);
@@ -432,6 +461,7 @@
             errorMessage.textContent = 'Please enter a filename.';
         }
     }
+
 
     function duplicateAnimationDialog() {
         var modalEl = document.getElementById("modalEl")
@@ -493,6 +523,7 @@
 
             saveAnimationScriptData(function () {
                 updateAnimations();
+                loadAnimation(filenameInput);
 
                 var modalEl = document.getElementById("modalEl");
                 mui.overlay('off', modalEl);
@@ -501,6 +532,7 @@
             errorMessage.textContent = 'Please enter a filename.';
         }
     }
+
 
 
     function renameAnimationDialog() {
@@ -575,10 +607,11 @@
                     return response.text();
                 })
                 .then(function (data) {
-                    animationScriptName.value = filenameInput
-                    updateAnimations()
-                    var modalEl = document.getElementById("modalEl")
-                    mui.overlay('off', modalEl)
+                    updateAnimations();
+                    loadAnimation(filenameInput);
+
+                    var modalEl = document.getElementById("modalEl");
+                    mui.overlay('off', modalEl);
                 })
                 .catch(function (error) {
                     console.log(error);
@@ -650,11 +683,13 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
-                animationScriptName.value = ""
-                updateAnimations()
-                console.log("file deleted")
-                var modalEl = document.getElementById("modalEl")
-                mui.overlay('off', modalEl)
+                updateAnimations();
+                clearAnimationTable();
+
+                console.log("file deleted");
+
+                var modalEl = document.getElementById("modalEl");
+                mui.overlay('off', modalEl);
             })
             .catch(function (error) {
                 console.log(error);
