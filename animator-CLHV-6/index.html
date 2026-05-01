@@ -17,6 +17,12 @@
             Use this web app to control and setup your Animator - City Lights CLHV-6
             product. Have fun animating.
         </p>
+        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            data-url="/mode">Left</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            data-url="/mode">Right</button>
+        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left_held"
+            data-url="/mode">Left Held</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
@@ -35,6 +41,16 @@
             </button>
             <h2>Animations:</h2>
             <div id="animationsContainer"></div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
         </div>
         <div class="mui-tabs__pane" id="settings">
             <h2>Setup light string:</h2>
@@ -59,18 +75,6 @@
                 </button>
             </div>
             <div class="mui-textfield">
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="projector-1"
-                    data-url="/update-light-string">
-                    projector-1
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="concession-6"
-                    data-url="/update-light-string">
-                    concession-6
-                </button>
-                <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="sign-4"
-                    data-url="/update-light-string">
-                    sign-4
-                </button>
                 <button class="mui-btn mui-btn--primary animator-light-update" type="button" data-action="cane-4"
                     data-url="/update-light-string">
                     cane-4
@@ -321,6 +325,7 @@
         getAnimations()
     });
 
+
     function getAnimations() {
         // get Animations
         fetch('/get-animations', {
@@ -485,10 +490,13 @@
 
         if (filenameInput) {
             animationScriptName.value = filenameInput;
-            saveAnimationScriptData();
-            updateAnimations()
-            var modalEl = document.getElementById("modalEl")
-            mui.overlay('off', modalEl)
+
+            saveAnimationScriptData(function () {
+                updateAnimations();
+
+                var modalEl = document.getElementById("modalEl");
+                mui.overlay('off', modalEl);
+            });
         } else {
             errorMessage.textContent = 'Please enter a filename.';
         }
@@ -567,6 +575,7 @@
                     return response.text();
                 })
                 .then(function (data) {
+                    animationScriptName.value = filenameInput
                     updateAnimations()
                     var modalEl = document.getElementById("modalEl")
                     mui.overlay('off', modalEl)
@@ -641,6 +650,7 @@
                 return response.text(); // assuming the response is plain text
             })
             .then(function (data) {
+                animationScriptName.value = ""
                 updateAnimations()
                 console.log("file deleted")
                 var modalEl = document.getElementById("modalEl")
@@ -655,10 +665,12 @@
 
     function updateAnimations() {
         const myAnimationScriptsDiv = document.getElementById("animationScriptsContainer");
-        removeChildNodes(myAnimationScriptsDiv)
+        removeChildNodes(myAnimationScriptsDiv);
+
         const myAnimationsDiv = document.getElementById("animationsContainer");
-        removeChildNodes(myAnimationsDiv)
-        getAnimations()
+        removeChildNodes(myAnimationsDiv);
+
+        getAnimations();
     }
 
     function setRunAnimationButtons(my_data) {
@@ -1122,7 +1134,7 @@
         populateTable(combinedData)
     }
 
-    function saveAnimationScriptData() {
+    function saveAnimationScriptData(doneCallback = null) {
         saveAnimationScriptDataButton.setAttribute("disabled", "true");
         var rows = Array.from(dataTableBody.querySelectorAll("tr"));
 
@@ -1149,8 +1161,12 @@
         // Function to send each block sequentially
         function sendBlockSequentially(index) {
             if (index >= totalBlocks) {
-                // All blocks have been sent, enable the button
                 saveAnimationScriptDataButton.removeAttribute('disabled');
+
+                if (doneCallback) {
+                    doneCallback();
+                }
+
                 return;
             }
 

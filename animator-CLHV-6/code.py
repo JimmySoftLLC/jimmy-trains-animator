@@ -645,6 +645,29 @@ if (web):
                     gc_col("get data")
                     return Response(request, "out of memory")
                 return Response(request, "success")
+            
+            @server.route("/mode", [POST])
+            def btn(request: Request):
+                global ts_mode
+                rq_d = request.json()
+                if rq_d["an"] == "left":
+                    ovrde_sw_st["switch_value"] = "left"
+                elif rq_d["an"] == "right":
+                    ovrde_sw_st["switch_value"] = "right"
+                elif rq_d["an"] == "left_held":
+                    ovrde_sw_st["switch_value"] = "left_held"    
+                elif rq_d["an"] == "right_held":
+                    ovrde_sw_st["switch_value"] = "right_held"
+                elif rq_d["an"] == "three":
+                    ovrde_sw_st["switch_value"] = "three"
+                elif rq_d["an"] == "four":
+                    ovrde_sw_st["switch_value"] = "four"
+                elif rq_d["an"] == "cont_mode_on":
+                    cfg["cont_mode"] = True
+                elif rq_d["an"] == "cont_mode_off":
+                    cfg["cont_mode"] = False
+                    stop_all_commands()
+                return Response(request, "Utility: " + rq_d["an"])
 
             break
         except Exception as e:
@@ -1224,6 +1247,7 @@ class BseSt(Ste):
         elif (sw == "left" or cfg["cont_mode"]) and not an_running:
             add_command("AN_" + cfg["option_selected"])
             an_just_added = True
+            time.sleep(.2)
         elif sw == "right":
             mch.go_to('main_menu')
 
@@ -1246,9 +1270,9 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        top_sw.update()
-        bot_sw.update()
-        if top_sw.fell:
+        sw = utilities.switch_state(
+            top_sw, bot_sw, time.sleep, 3.0, ovrde_sw_st, False)
+        if sw == "left":
             self.sel_i = self.i
             if self.sel_i  == len(mnu_o) - 1:
                 show_mode(1, 255, 255, 255)
@@ -1257,7 +1281,7 @@ class Main(Ste):
             self.i += 1
             if self.i > len(mnu_o) - 1:
                 self.i = 0
-        if bot_sw.fell:
+        if sw == "right":
             cfg["option_selected"] = mnu_o[self.sel_i]
             indicator.fill((0, 255, 0))
             files.write_json_file("cfg.json", cfg)
