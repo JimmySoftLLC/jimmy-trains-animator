@@ -29,6 +29,10 @@
             </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
+                type="button">
+                Random all animations
+            </button>
             <h2>Animations:</h2>
             <div id="animationsContainer"></div>
         </div>
@@ -211,8 +215,7 @@
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop"
-                    type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop" type="button">
                     Stop
                 </button>
                 <table id="dataTable" class="mui-table">

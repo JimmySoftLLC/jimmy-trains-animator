@@ -98,12 +98,21 @@ ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
 
+animations = []
+mnu_o = []
+
 def upd_media():
-    global animations
+    global animations, mnu_o
+    animations = []
+    mnu_o = []
     animations = files.return_directory("", "animations", ".json")
-    animations.append("random all")
+    mnu_o.extend(animations)
+    rnd_o = ['random all']
+    mnu_o.extend(rnd_o)
 
 upd_media()
+
+print(animations)
 
 ################################################################################
 # Setup neo pixels
@@ -134,7 +143,7 @@ indicator_pin = board.GP13
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 indicator = neopixel.NeoPixel(indicator_pin, 1)
-indicator.brightness = .2
+indicator.brightness = .1
 
 try:
     files.write_json_file("cfg.json", cfg)
@@ -723,22 +732,15 @@ async def process_commands():
 
     while command_queue:
         command = command_queue.pop(0)
-
         if command.startswith("AN_"):
             filename = command[3:]
-
             if filename:
                 now = time.monotonic() - an_timer_start
-
                 if last_an_call_end is not None:
                     print("AN GAP:", now - last_an_call_end)
-
                 await an_async(filename)
-
                 last_an_call_end = time.monotonic() - an_timer_start
-
                 await asyncio.sleep(0)
-
         else:
             await set_hdw_async(command)
             await asyncio.sleep(0)
@@ -771,6 +773,7 @@ def rst_def():
 # animations
 
 async def an_async(f_nm):
+    global an_running
     """Run animation lighting as an async task."""
     print("Filename:", f_nm)
     cur = f_nm
@@ -778,9 +781,11 @@ async def an_async(f_nm):
         if f_nm == "random all":
             hi = len(animations) - 1
             cur = animations[random.randint(0, hi)]
+        an_running = True
         await an_light_async(cur)
     except Exception as e:
         files.log_item(e)
+    an_running = False
 
 
 async def an_light_async(f_nm):
@@ -1117,6 +1122,8 @@ def cont_mode_on():
     time.sleep(.5)
     indicator.fill((0, 0, 0))
     time.sleep(.5)
+    indicator.fill((0, 255, 0))
+    time.sleep(.5)
 
 def cont_mode_off():
     cfg["cont_mode"] = False
@@ -1127,6 +1134,8 @@ def cont_mode_off():
     indicator.fill((255, 0, 0))
     time.sleep(.5)
     indicator.fill((0, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 255, 0))
     time.sleep(.5)
 
 def show_mode(cycles,r,g,b):
@@ -1230,7 +1239,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item("Main menu")
-        show_mode(3, 0, 0, 255)
+        indicator.fill((0, 0, 120))
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -1241,23 +1250,18 @@ class Main(Ste):
         bot_sw.update()
         if top_sw.fell:
             self.sel_i = self.i
-            self.i += 1
-            if self.i > len(animations) - 1:
-                self.i = 0
-            print("print: ", self.sel_i)
-            show_mode(self.sel_i+1, 0, 0, 255)
-            if self.i > len(animations) - 1:
-                show_mode(self.sel_i+1, 0, 255, 255)
-        if bot_sw.fell:
-            sel_i = animations[self.sel_i]
-            if sel_i == "exit_this_menu":
-                print(sel_i)
-                files.write_json_file("cfg.json", cfg)
-                mch.go_to("base_state")
+            if self.sel_i  == len(mnu_o) - 1:
+                show_mode(1, 255, 255, 255)
             else:
-                print(sel_i)
-                files.write_json_file("cfg.json", cfg)
-                mch.go_to("base_state")
+                show_mode(self.sel_i  + 1, 255, 255, 0)
+            self.i += 1
+            if self.i > len(mnu_o) - 1:
+                self.i = 0
+        if bot_sw.fell:
+            cfg["option_selected"] = mnu_o[self.sel_i]
+            indicator.fill((0, 255, 0))
+            files.write_json_file("cfg.json", cfg)
+            mch.go_to("base_state")
 
 ###############################################################################
 # Create the state machine
@@ -1279,6 +1283,8 @@ if (web):
         rst()
 else:
     indicator.fill((255, 255, 0))
+    time.sleep(3)
+    indicator.fill((0, 255, 0))
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -1343,3 +1349,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
