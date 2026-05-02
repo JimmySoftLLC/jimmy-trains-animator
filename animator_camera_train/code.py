@@ -208,7 +208,9 @@ focus_target = 1.0
 zoom_target = 1.0
 focus_moving = False
 zoom_moving = False
-servo_moving = [False, False, False, False]
+
+servo_moving = [False] * 5
+servo_target = [None] * 5
 
 
 light_bar_state = {
@@ -567,47 +569,119 @@ def m_servo(n, p):
 
     pca.channels[s_arr[n]].duty_cycle = duty
 
+servo_moving = [False] * 5
+servo_target = [None] * 5
+
 def m_servo_s(n, n_pos, spd=None):
-    global p_arr, servo_moving
+    global p_arr, servo_moving, servo_target
 
     n = int(n)
 
+    if spd is None:
+        spd = servo_speed
+
+    n_pos = max(0.0, min(180.0, float(n_pos)))
+
+    # Always remember the newest requested position
+    servo_target[n] = n_pos
+
+    # If this servo is already moving, do not start another loop.
+    # The running loop will pick up servo_target[n].
     if servo_moving[n]:
         return
 
     servo_moving[n] = True
 
     try:
-        if spd is None:
-            spd = servo_speed
+        while True:
+            target = servo_target[n]
+            start = float(p_arr[n])
 
-        # S1 rotate travels 0–180 = 180 degrees.
-        # S2 tilt travels 90–140 = 50 degrees.
-        # Slowing the tilt step delay by 180/50 makes full tilt travel
-        # take the same total time as full rotate travel.
-        if n == 2:
-            spd = spd * TILT_SPEED_MULTIPLIER
+            if abs(start - target) <= SERVO_SMOOTH_STEP:
+                m_servo(n, target)
+                p_arr[n] = target
 
-        n_pos = max(0.0, min(180.0, float(n_pos)))
-        start = float(p_arr[n])
+                # If nobody changed the target while we were moving, done
+                if servo_target[n] == target:
+                    break
+                else:
+                    continue
 
-        if start == n_pos:
-            m_servo(n, n_pos)
-            return
+            step = SERVO_SMOOTH_STEP if target > start else -SERVO_SMOOTH_STEP
+            pos = start
 
-        step = SERVO_SMOOTH_STEP if n_pos > start else -SERVO_SMOOTH_STEP
-        pos = start
+            while (step > 0 and pos < target) or (step < 0 and pos > target):
+                # If a newer target came in, restart toward it
+                if servo_target[n] != target:
+                    break
 
-        while (step > 0 and pos < n_pos) or (step < 0 and pos > n_pos):
-            m_servo(n, pos)
-            pos += step
-            time.sleep(spd)
+                m_servo(n, pos)
+                p_arr[n] = pos
+                pos += step
+                time.sleep(spd)
 
-        m_servo(n, n_pos)
+            # If target changed, loop again toward new target
+            if servo_target[n] != target:
+                continue
+
+            m_servo(n, target)
+            p_arr[n] = target
+            break
 
     finally:
         servo_moving[n] = False
-        
+
+camera_servo_target = [90.0, 115.0]
+camera_servos_moving = False
+
+def m_camera_servos_s(rotate_pos, tilt_pos, spd=None):
+    global p_arr, camera_servo_target, camera_servos_moving
+
+    if spd is None:
+        spd = servo_speed
+
+    rotate_servo = 0
+    tilt_servo = 1
+
+    # Always update the target, even if already moving
+    camera_servo_target[0] = max(ROTATE_MIN, min(ROTATE_MAX, float(rotate_pos)))
+    camera_servo_target[1] = max(TILT_MIN, min(TILT_MAX, float(tilt_pos)))
+
+    if camera_servos_moving:
+        return True
+
+    camera_servos_moving = True
+
+    try:
+        while True:
+            rotate_start = float(p_arr[rotate_servo])
+            tilt_start = float(p_arr[tilt_servo])
+
+            rotate_target = float(camera_servo_target[0])
+            tilt_target = float(camera_servo_target[1])
+
+            rotate_change = rotate_target - rotate_start
+            tilt_change = tilt_target - tilt_start
+
+            max_change = max(abs(rotate_change), abs(tilt_change))
+
+            if max_change <= SERVO_SMOOTH_STEP:
+                m_servo(rotate_servo, rotate_target)
+                m_servo(tilt_servo, tilt_target)
+                return True
+
+            rotate_step = SERVO_SMOOTH_STEP * (rotate_change / max_change)
+            tilt_step = SERVO_SMOOTH_STEP * (tilt_change / max_change)
+
+            m_servo(rotate_servo, rotate_start + rotate_step)
+            m_servo(tilt_servo, tilt_start + tilt_step)
+
+            time.sleep(spd)
+
+    finally:
+        camera_servos_moving = False
+
+
 ################################################################################
 # Create an ordered dictionary to preserve the order of insertion
 neo_changes = OrderedDict(cfg["neo_changes"])
@@ -1934,6 +2008,22 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.set_focus_speed_post(post_data_obj)
         elif self.path == "/set-zoom-speed":
             self.set_zoom_speed_post(post_data_obj)
+        elif self.path == "/set-camera-servos":
+            self.set_camera_servos_post(post_data_obj)
+
+    def set_camera_servos_post(self, rq_d):
+        rotate = float(rq_d.get("rotate", 90))
+        tilt = float(rq_d.get("tilt", 115))
+
+        m_camera_servos_s(rotate, tilt)
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            "rotate": rotate,
+            "tilt": tilt
+        }).encode("utf-8"))
 
     def set_focus_speed_post(self, rq_d):
         global focus_speed

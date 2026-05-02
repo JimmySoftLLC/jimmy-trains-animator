@@ -240,33 +240,33 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 15px;
+            flex: 1;
+        }
+
+        :root {
+            --joystick-base-size: 150px;
+            --joystick-stick-size: 25px;
         }
 
         .joystick-base {
-            width: 180px;
-            height: 180px;
+            width: var(--joystick-base-size);
+            height: var(--joystick-base-size);
             border-radius: 12px;
-            background: #c6d6f7;
+            background: radial-gradient(circle, #c6d6f7 30%, #4a7aeb);
             position: relative;
             touch-action: none;
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
         }
 
         .joystick-stick {
-            width: 55px;
-            height: 55px;
+            width: var(--joystick-stick-size);
+            height: var(--joystick-stick-size);
             border-radius: 50%;
             background: rgb(12, 88, 228);
             position: absolute;
-            left: 62.5px;
-            top: 62.5px;
+            left: calc((var(--joystick-base-size) - var(--joystick-stick-size)) / 2);
+            top: calc((var(--joystick-base-size) - var(--joystick-stick-size)) / 2);
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-        }
-
-        .joystick-text {
-            margin-top: 8px;
-            font-size: 16px;
         }
     </style>
 </head>
@@ -318,9 +318,6 @@
                     <a data-mui-toggle="tab" data-mui-controls="camlight">Light Bar</a>
                 </li>
                 <li>
-                    <a data-mui-toggle="tab" data-mui-controls="camjoystick">Joystick</a>
-                </li>
-                <li>
                     <a data-mui-toggle="tab" data-mui-controls="camexp">Exposure</a>
                 </li>
                 <li>
@@ -330,602 +327,607 @@
                     <a data-mui-toggle="tab" data-mui-controls="camdriver">Director</a>
                 </li>
             </ul>
-        </div>
-        <div class="mui-tabs__pane mui--is-active" id="camservos" style="padding-top:0.5rem;">
-            <div class="knobs-parent-container">
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobRotateCam">
-                            <div class="indicator"></div>
+            <div class="mui-tabs__pane mui--is-active" id="camservos" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="joystick-wrapper">
+                        <div class="joystick-base" id="cameraJoystick">
+                            <div class="joystick-stick" id="cameraJoystickStick"></div>
                         </div>
-                        <div class="knob-text" id="knobRotateCam-text">0</div>
+                        <div class="knob-label">Camera joystick</div>
                     </div>
-                    <div class="knob-label">Rotate camera</div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobRotateCam">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobRotateCam-text">0</div>
+                        </div>
+                        <div class="knob-label">Rotate camera</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobTiltCam">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobTiltCam-text">0</div>
+                        </div>
+                        <div class="knob-label">Tilt camera</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobZoom">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobZoom-text">1.0×</div>
+                        </div>
+                        <div class="knob-label">Zoom (1–6×)</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobFocus">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobFocus-text">1.0</div>
+                        </div>
+                        <div class="knob-label">Focus (0–10)</div>
+                    </div>
                 </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobTiltCam">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobTiltCam-text">0</div>
-                    </div>
-                    <div class="knob-label">Tilt camera</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobZoom">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobZoom-text">1.0×</div>
-                    </div>
-                    <div class="knob-label">Zoom (1–6×)</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobFocus">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobFocus-text">1.0</div>
-                    </div>
-                    <div class="knob-label">Focus (0–10)</div>
+                <div>
+                    <button id="focusOnceBtn" class="mui-btn mui-btn--primary" type="button">
+                        Focus Once
+                    </button>
+                    <button id="focusContinuousBtn" class="mui-btn mui-btn--primary" type="button">
+                        Focus Continuously
+                    </button>
+                    <div id="focusModeLabel" style="margin-top:10px;">Focus Mode: Manual</div>
                 </div>
             </div>
-            <div>
-                <button id="focusOnceBtn" class="mui-btn mui-btn--primary" type="button">
-                    Focus Once
-                </button>
-                <button id="focusContinuousBtn" class="mui-btn mui-btn--primary" type="button">
-                    Focus Continuously
-                </button>
-                <div id="focusModeLabel" style="margin-top:10px;">Focus Mode: Manual</div>
-            </div>
-        </div>
-        <div class="mui-tabs__pane" id="camlight" style="padding-top:0.5rem;">
-            <div class="knobs-parent-container">
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobRotateLight">
-                            <div class="indicator"></div>
+            <div class="mui-tabs__pane" id="camlight" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobRotateLight">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobRotateLight-text">0</div>
                         </div>
-                        <div class="knob-text" id="knobRotateLight-text">0</div>
+                        <div class="knob-label">Rotate light</div>
                     </div>
-                    <div class="knob-label">Rotate light</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobWhite">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobWhite">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobWhite-text">0</div>
                         </div>
-                        <div class="knob-text" id="knobWhite-text">0</div>
+                        <div class="knob-label">White (0–255)</div>
                     </div>
-                    <div class="knob-label">White (0–255)</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobRed">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobRed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobRed-text">0</div>
                         </div>
-                        <div class="knob-text" id="knobRed-text">0</div>
+                        <div class="knob-label">Red (0–255)</div>
                     </div>
-                    <div class="knob-label">Red (0–255)</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobGreen">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobGreen">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobGreen-text">0</div>
                         </div>
-                        <div class="knob-text" id="knobGreen-text">0</div>
+                        <div class="knob-label">Green (0–255)</div>
                     </div>
-                    <div class="knob-label">Green (0–255)</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobBlue">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobBlue">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobBlue-text">0</div>
                         </div>
-                        <div class="knob-text" id="knobBlue-text">0</div>
+                        <div class="knob-label">Blue (0–255)</div>
                     </div>
-                    <div class="knob-label">Blue (0–255)</div>
                 </div>
             </div>
-        </div>
-        <div class="mui-tabs__pane" id="camjoystick" style="padding-top:0.5rem;">
-            <div class="knobs-parent-container">
-                <div class="joystick-wrapper">
-                    <div class="joystick-base" id="cameraJoystick">
-                        <div class="joystick-stick" id="cameraJoystickStick"></div>
+            <div class="mui-tabs__pane" id="camexp" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobBrightness">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobBrightness-text">0</div>
+                        </div>
+                        <div class="knob-label">Brightness</div>
                     </div>
-                    <div class="joystick-text" id="cameraJoystickText">Rotate: 90 Tilt: 115</div>
-                    <div class="knob-label">Camera joystick</div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobContrast">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobContrast-text">0</div>
+                        </div>
+                        <div class="knob-label">Contrast</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobSaturation">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobSaturation-text">0</div>
+                        </div>
+                        <div class="knob-label">Saturation</div>
+                    </div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobSharpness">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobSharpness-text">0</div>
+                        </div>
+                        <div class="knob-label">Sharpness</div>
+                    </div>
+                </div>
+                <div>
+                    <button id="exposureOnceBtn" class="mui-btn mui-btn--primary" type="button"
+                        onclick="setCameraAuto(false)">
+                        Exposure Once
+                    </button>
+                    <button id="exposureContinuousBtn" class="mui-btn mui-btn--primary" type="button"
+                        onclick="setCameraAuto(true)">
+                        Exposure Continuously
+                    </button>
+                    <button id="resetBrightContSatSharpBtn" class="mui-btn mui-btn--primary" type="button"
+                        onclick="resetBrightContSatSharp()">
+                        Reset Bright/Cont/Sat/Sharp Settings
+                    </button>
+                    <div id="exposureModeLabel" style="margin-top:10px;">Exposure Mode: Continuously</div>
                 </div>
             </div>
-        </div>
-        <div class="mui-tabs__pane" id="camexp" style="padding-top:0.5rem;">
-            <div class="knobs-parent-container">
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobBrightness">
-                            <div class="indicator"></div>
+            <div class="mui-tabs__pane" id="camspd" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobServoSpeed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobServoSpeed-text">0.01</div>
                         </div>
-                        <div class="knob-text" id="knobBrightness-text">0</div>
+                        <div class="knob-label">Servo Speed</div>
                     </div>
-                    <div class="knob-label">Brightness</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobContrast">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobZoomSpeed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobZoomSpeed-text">0.020</div>
                         </div>
-                        <div class="knob-text" id="knobContrast-text">0</div>
+                        <div class="knob-label">Zoom Speed</div>
                     </div>
-                    <div class="knob-label">Contrast</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobSaturation">
-                            <div class="indicator"></div>
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobFocusSpeed">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobFocusSpeed-text">0.020</div>
                         </div>
-                        <div class="knob-text" id="knobSaturation-text">0</div>
+                        <div class="knob-label">Focus Speed</div>
                     </div>
-                    <div class="knob-label">Saturation</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobSharpness">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobSharpness-text">0</div>
-                    </div>
-                    <div class="knob-label">Sharpness</div>
-                </div>
-            </div>
-            <div>
-                <button id="exposureOnceBtn" class="mui-btn mui-btn--primary" type="button"
-                    onclick="setCameraAuto(false)">
-                    Exposure Once
-                </button>
-                <button id="exposureContinuousBtn" class="mui-btn mui-btn--primary" type="button"
-                    onclick="setCameraAuto(true)">
-                    Exposure Continuously
-                </button>
-                <button id="resetBrightContSatSharpBtn" class="mui-btn mui-btn--primary" type="button"
-                    onclick="resetBrightContSatSharp()">
-                    Reset Bright/Cont/Sat/Sharp Settings
-                </button>
-                <div id="exposureModeLabel" style="margin-top:10px;">Exposure Mode: Continuously</div>
-            </div>
-        </div>
-        <div class="mui-tabs__pane" id="camspd" style="padding-top:0.5rem;">
-            <div class="knobs-parent-container">
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobServoSpeed">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobServoSpeed-text">0.01</div>
-                    </div>
-                    <div class="knob-label">Servo Speed</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobZoomSpeed">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobZoomSpeed-text">0.020</div>
-                    </div>
-                    <div class="knob-label">Zoom Speed</div>
-                </div>
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobFocusSpeed">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobFocusSpeed-text">0.020</div>
-                    </div>
-                    <div class="knob-label">Focus Speed</div>
-                </div>
 
-            </div>
-        </div>
-        <div class="mui-tabs__pane" id="camdriver" style="padding-top:0.5rem;">
-            <div class="knobs-parent-container">
-                <div class="knob-wrapper">
-                    <div class="knob-container">
-                        <div class="knob" id="knobRotateDirector">
-                            <div class="indicator"></div>
-                        </div>
-                        <div class="knob-text" id="knobRotateDirector-text">0</div>
-                    </div>
-                    <div class="knob-label">Rotate director</div>
                 </div>
             </div>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPRRAND" data-url="/lights"
-                type="button">
-                Action sound
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPXRAND" data-url="/lights"
-                type="button">
-                Snapshot sound
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPCRAND" data-url="/lights"
-                type="button">
-                Cut sound
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPQRAND" data-url="/lights"
-                type="button">
-                Director quotes
-            </button>
-        </div>
-        <div id="controls">
-            <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
-            <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
-            <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
-        </div>
-        <div id="controls">
-            <button class="mui-btn mui-btn--primary" onclick="restartCamera()" type="button">
-                Restart Camera
-            </button>
-        </div>
-        <h3>Videos</h3>
-        <div id="playerContainer">
-            <video id="videoPlayer" controls style="width:100%; max-width:800px;"></video>
-            <br>
-            <button id="downloadBtn" class="mui-btn mui-btn--primary" disabled>Download</button>
-            <button id="deleteVideoBtn" class="mui-btn mui-btn--danger" disabled>Delete</button>
-        </div>
-        <div id="thumbnailGallery"></div>
-        <h3 style="width:100%;">Snapshots</h3>
-        <div id="snapshotViewer" style="margin:20px;">
-            <img id="snapshotPreview" src="" alt="Selected still shot"
-                style="max-width:100%; max-height:500px; display:none; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
-            <button id="downloadSnapshotBtn" class="mui-btn mui-btn--primary" type="button" disabled>Download
-            </button>
-            <button id="deleteSnapshotBtn" class="mui-btn mui-btn--danger" type="button" disabled>Delete</button>
-        </div>
-        <div id="snapshotGallery" style="margin:20px; display:flex; flex-wrap:wrap; gap:10px;"></div>
-    </div>
-    <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
-        <h2>Test neopixel lights:</h2>
-        <div>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_1_255" data-url="/lights"
-                type="button">
-                Red
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_3_255" data-url="/lights"
-                type="button">
-                Green
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_5_255" data-url="/lights"
-                type="button">
-                Blue
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_2_255,NM1_4_255,NM1_6_255"
-                data-url="/lights" type="button">
-                White
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="NM0_0_0" data-url="/lights"
-                type="button">
-                All off
-            </button>
-        </div>
-        <div>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="BN0" data-url="/lights" type="button">
-                Off
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="BN20" data-url="/lights" type="button">
-                20
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="BN40" data-url="/lights" type="button">
-                40
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="BN60" data-url="/lights" type="button">
-                60
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="BN80" data-url="/lights" type="button">
-                80
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="BN100" data-url="/lights"
-                type="button">
-                100
-            </button>
-        </div>
-        <h2>Neo pixel colors:</h2>
-        <div id="neoButtonContainer"></div>
-        <div>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_neo_to_defaults"
-                data-url="/defaults" type="button">
-                Reset neo pixel colors to defaults
-            </button>
-        </div>
-        <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
-        <div class="mui-checkbox">
-            <label>
-                <input type="checkbox" id="lifxCheckbox" data-url="/set-lifx-enabled">
-                Enable Lifx lights
-            </label>
-        </div>
-        <div id="lifxDiv">
-            <h2>Test lifx lights:</h2>
+            <div class="mui-tabs__pane" id="camdriver" style="padding-top:0.5rem;">
+                <div class="knobs-parent-container">
+                    <div class="knob-wrapper">
+                        <div class="knob-container">
+                            <div class="knob" id="knobRotateDirector">
+                                <div class="indicator"></div>
+                            </div>
+                            <div class="knob-text" id="knobRotateDirector-text">0</div>
+                        </div>
+                        <div class="knob-label">Rotate director</div>
+                    </div>
+                </div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPRRAND" data-url="/lights"
+                    type="button">
+                    Action sound
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPXRAND" data-url="/lights"
+                    type="button">
+                    Snapshot sound
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPCRAND" data-url="/lights"
+                    type="button">
+                    Cut sound
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="MPQRAND" data-url="/lights"
+                    type="button">
+                    Director quotes
+                </button>
+            </div>
+
+            <div id="controls">
+                <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
+                <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
+                <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
+            </div>
+            <div id="controls">
+                <button class="mui-btn mui-btn--primary" onclick="restartCamera()" type="button">
+                    Restart Camera
+                </button>
+            </div>
+            <h3>Videos</h3>
+            <div id="playerContainer">
+                <video id="videoPlayer" controls style="width:100%; max-width:800px;"></video>
+                <br>
+                <button id="downloadBtn" class="mui-btn mui-btn--primary" disabled>Download</button>
+                <button id="deleteVideoBtn" class="mui-btn mui-btn--danger" disabled>Delete</button>
+            </div>
+            <div id="thumbnailGallery"></div>
+            <h3 style="width:100%;">Snapshots</h3>
+            <div id="snapshotViewer" style="margin:20px;">
+                <img id="snapshotPreview" src="" alt="Selected still shot"
+                    style="max-width:100%; max-height:500px; display:none; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+                <button id="downloadSnapshotBtn" class="mui-btn mui-btn--primary" type="button" disabled>Download
+                </button>
+                <button id="deleteSnapshotBtn" class="mui-btn mui-btn--danger" type="button" disabled>Delete</button>
+            </div>
+            <div id="snapshotGallery" style="margin:20px; display:flex; flex-wrap:wrap; gap:10px;"></div>
+        </div> <!-- closes camera tab -->
+        <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
+            <h2>Test neopixel lights:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_1_255" data-url="/lights"
                     type="button">
                     Red
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_3_255" data-url="/lights"
                     type="button">
                     Green
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_5_255" data-url="/lights"
                     type="button">
                     Blue
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255" data-url="/lights"
-                    type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM1_2_255,NM1_4_255,NM1_6_255"
+                    data-url="/lights" type="button">
                     White
                 </button>
-            </div>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_OFF" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NM0_0_0" data-url="/lights"
                     type="button">
-                    All Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_ON" data-url="/lights"
-                    type="button">
-                    All On
+                    All off
                 </button>
             </div>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LP1_ON" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN0" data-url="/lights"
                     type="button">
-                    1 On
+                    Off
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LP2_ON" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN20" data-url="/lights"
                     type="button">
-                    2 On
+                    20
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LP3_ON" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN40" data-url="/lights"
                     type="button">
-                    3 On
+                    40
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="LP4_ON" data-url="/lights"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN60" data-url="/lights"
                     type="button">
-                    4 On
+                    60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN80" data-url="/lights"
+                    type="button">
+                    80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="BN100" data-url="/lights"
+                    type="button">
+                    100
                 </button>
             </div>
-            <h2>Scene colors:</h2>
-            <div id="sceneButtonContainer"></div>
+            <h2>Neo pixel colors:</h2>
+            <div id="neoButtonContainer"></div>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_scene_to_defaults"
+                <button class="mui-btn mui-btn--primary animator-action" data-value="reset_neo_to_defaults"
                     data-url="/defaults" type="button">
-                    Reset scene colors to defaults
+                    Reset neo pixel colors to defaults
                 </button>
             </div>
-            <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
-        </div>
-        <div class="bottom-gap"></div>
-    </div>
-    <div class="mui-tabs__pane" id="settings">
-        <div class="mui-textfield">
-            <input class="input" id="volume" type="number" disabled>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume10">
-                Volume 10
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume20">
-                Volume 20
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume30">
-                Volume 30
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume40">
-                Volume 40
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume50">
-                Volume 50
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume60">
-                Volume 60
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume70">
-                Volume 70
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume80">
-                Volume 80
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume90">
-                Volume 90
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="volume100">
-                Volume 100
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="lower1">
-                Lower Volume by 1
-            </button>
-            <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
-                data-action="raise1">
-                Raise Volume by 1
-            </button>
-        </div>
-
-        <p>
-            Valid volume levels are from 1 to 100
-        </p>
-
-        <h2>Animator web page name and ip address:</h2>
-
-        <div class="mui-textfield">
-            <label>Base url:</label>
-            <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
-                style="width: 300px; padding: 5px; margin: 5px;">
-        </div>
-        <div class="mui-textfield">
-            <label>IP Address:</label>
-            <input class="input" id="settingsIpAddress" type="text" disabled
-                style="width: 300px; padding: 5px; margin: 5px;">
-        </div>
-        <div>
-            <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
-                data-url="/update-host-name">
-                Change
-            </button>
-        </div>
-
-        <p>
-            Use alphanumerics and dashes only. All names are automatically
-            appended with .local:8083. So your website url will be something like
-            "website-name.local:8083 and the ip address will be xx.xx.xx.xx:8083."
-        </p>
-
-        <h2>Utilities:</h2>
-        <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
-            type="button">
-            Speaker Test
-        </button>
-        <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
-            type="button">
-            Reset to defaults
-        </button>
-    </div>
-    <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
-        <h2>Random play:</h2>
-        <div id="topicButtonContainer"></div>
-        <h2>Current Animation Queue</h2>
-        <div id="currentMedia"></div>
-        <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-        <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
-            type="button">
-            Random all animations
-        </button>
-        <h2>Animations:</h2>
-        <div id="animationsContainer"></div>
-        <h2>Animation settings:</h2>
-        <div>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
-                type="button">
-                Continuous Mode On
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
-                type="button">
-                Continuous Mode Off
-            </button>
-        </div>
-        <h2>Instructions on how to add your own media:</h2>
-        <p>
-            Media goes in folders you create in the media folder in your home directory. Name these folders with
-            logical names related to what is in them. For
-            example Christmas music could go in a folder named Holiday.
-        </p>
-        <h2>Animation timing:</h2>
-        <p>
-            Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
-            left button to start your animation. Once the media starts press the right button for each point
-            that you want an animation timestamp. Time your button presses to key moments in the media. Continue
-            to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
-            animation script will be ready to add animations to.
-        </p>
-        <div>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
-                type="button">
-                Timestamp Mode On
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off" data-url="/mode"
-                type="button">
-                Timestamp Mode Off
-            </button>
-        </div>
-
-        <div class="mui-textfield" hidden>
-            <h2>Upload a File</h1>
-                <form id="uploadForm" enctype="multipart/form-data">
-                    <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
-                    <input type="file" id="fileInput" name="file" style="display: none;" required>
-                </form>
-                <div id="progressContainer">
-                    <div id="progressBar">0%</div>
-                </div>
-                <p id="status"></p>
-        </div>
-    </div>
-    <div class="mui-tabs__pane" id="tables">
-        <h2>Animation scripts:</h2>
-        <p>Follow these steps to setup animations:</p>
-        <ol>
-            <li><strong>Create:</strong> Click the create button to add a new animator.</li>
-            <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
-                corresponding buttons to duplicate, rename, or delete it.</li>
-        </ol>
-        <button class="mui-btn mui-btn--primary" onclick="createAnimationDialog()">Create
-            Animation</button>
-        <button class="mui-btn mui-btn--primary" onclick="duplicateAnimationDialog()">Duplicate
-            Animation</button>
-        <button class="mui-btn mui-btn--primary" onclick="renameAnimationDialog()">Rename
-            Animation</button>
-        <button class="mui-btn mui-btn--primary" onclick="deleteAnimationDialog()">Delete
-            Animation</button>
-        <h2>Animations:</h2>
-        <div id="animationScriptsContainer"></div>
-        <h2>Animation script table:</h2>
-        <div class="mui-textfield">
-            <input class="input" id="animationScriptName" type="text" disabled>
-        </div>
-        <div>
-            <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
-            <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
-            <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
-            <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
-            <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
-            <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
-            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
+            <input class="color-picker" type="color" id="colorPickerNeo" name="colorPickerNeo">
+            <div class="mui-checkbox">
+                <label>
+                    <input type="checkbox" id="lifxCheckbox" data-url="/set-lifx-enabled">
+                    Enable Lifx lights
+                </label>
             </div>
-            <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
-            <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
-                between
-                transitions in decimal seconds
-            </div>
-            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves,
-                B bells, H horns, T stops, S santa, Z christmas story, C cut, R recording, X shutter, Q quotes) XXX
-                (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in
-                sequence)</div>
-            <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
-                ignored</div>
-            <div>ZRAND = Random rainbow, fire, or color change</div>
-            <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
-            <div>ZFIRE = Fire</div>
-            <div>ZCOLCH = Color change</div>
-            <div>ZL_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments</div>
-            <div>ZN_S_E_T_I = Scene change S start E end using (red,green,....), time, increments</div>
-            <div></div>
-            <div></div>
-            <div>ZJ = Joke</div>
-            <div id="neoInstructionsContainer"></div>
-            <div id="sceneInstructionsContainer"></div>
-            <div>SNXXX = Servo N (0 All, 1-4) XXX 0 to 180</div>
-            <div>QXXX = Add command to queue (for example QAN_YYY is an Animation with YYY filename)</div>
-            <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
-                data_object}</div>
-            <div>E = End script<div>
-                    <table id="dataTable" class="mui-table">
-                        <thead>
-                            <tr>
-                                <th>TimeStamp</th>
-                                <th>Animation</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+            <div id="lifxDiv">
+                <h2>Test lifx lights:</h2>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_0_0" data-url="/lights"
+                        type="button">
+                        Red
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_255_0" data-url="/lights"
+                        type="button">
+                        Green
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_0_0_255" data-url="/lights"
+                        type="button">
+                        Blue
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LX0_255_255_255"
+                        data-url="/lights" type="button">
+                        White
+                    </button>
                 </div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_OFF" data-url="/lights"
+                        type="button">
+                        All Off
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP0_ON" data-url="/lights"
+                        type="button">
+                        All On
+                    </button>
+                </div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP1_ON" data-url="/lights"
+                        type="button">
+                        1 On
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP2_ON" data-url="/lights"
+                        type="button">
+                        2 On
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP3_ON" data-url="/lights"
+                        type="button">
+                        3 On
+                    </button>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="LP4_ON" data-url="/lights"
+                        type="button">
+                        4 On
+                    </button>
+                </div>
+                <h2>Scene colors:</h2>
+                <div id="sceneButtonContainer"></div>
+                <div>
+                    <button class="mui-btn mui-btn--primary animator-action" data-value="reset_scene_to_defaults"
+                        data-url="/defaults" type="button">
+                        Reset scene colors to defaults
+                    </button>
+                </div>
+                <input class="color-picker" type="color" id="colorPickerLifx" name="colorPickerLifx">
+            </div>
+            <div class="bottom-gap"></div>
+        </div>
+        <div class="mui-tabs__pane" id="settings">
+            <div class="mui-textfield">
+                <input class="input" id="volume" type="number" disabled>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume10">
+                    Volume 10
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume20">
+                    Volume 20
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume30">
+                    Volume 30
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume40">
+                    Volume 40
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume50">
+                    Volume 50
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume60">
+                    Volume 60
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume70">
+                    Volume 70
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume80">
+                    Volume 80
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume90">
+                    Volume 90
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="volume100">
+                    Volume 100
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="lower1">
+                    Lower Volume by 1
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="raise1">
+                    Raise Volume by 1
+                </button>
+            </div>
+
+            <p>
+                Valid volume levels are from 1 to 100
+            </p>
+
+            <h2>Animator web page name and ip address:</h2>
+
+            <div class="mui-textfield">
+                <label>Base url:</label>
+                <input type="text" id="settingsWebsiteUrl" placeholder="Enter website name"
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div class="mui-textfield">
+                <label>IP Address:</label>
+                <input class="input" id="settingsIpAddress" type="text" disabled
+                    style="width: 300px; padding: 5px; margin: 5px;">
+            </div>
+            <div>
+                <button id="websiteSubmitButton" class="mui-btn mui-btn--primary" type="button"
+                    data-url="/update-host-name">
+                    Change
+                </button>
+            </div>
+
+            <p>
+                Use alphanumerics and dashes only. All names are automatically
+                appended with .local:8083. So your website url will be something like
+                "website-name.local:8083 and the ip address will be xx.xx.xx.xx:8083."
+            </p>
+
+            <h2>Utilities:</h2>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
+                type="button">
+                Speaker Test
+            </button>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="reset_to_defaults" data-url="/defaults"
+                type="button">
+                Reset to defaults
+            </button>
+        </div>
+        <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
+            <h2>Random play:</h2>
+            <div id="topicButtonContainer"></div>
+            <h2>Current Animation Queue</h2>
+            <div id="currentMedia"></div>
+            <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
+                type="button">
+                Random all animations
+            </button>
+            <h2>Animations:</h2>
+            <div id="animationsContainer"></div>
+            <h2>Animation settings:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
+            <h2>Instructions on how to add your own media:</h2>
+            <p>
+                Media goes in folders you create in the media folder in your home directory. Name these folders with
+                logical names related to what is in them. For
+                example Christmas music could go in a folder named Holiday.
+            </p>
+            <h2>Animation timing:</h2>
+            <p>
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press
+                the
+                left button to start your animation. Once the media starts press the right button for each point
+                that you want an animation timestamp. Time your button presses to key moments in the media. Continue
+                to do this until the animation finishes. Then timestamp mode will be automatically turned off and
+                your
+                animation script will be ready to add animations to.
+            </p>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_on" data-url="/mode"
+                    type="button">
+                    Timestamp Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="timestamp_mode_off"
+                    data-url="/mode" type="button">
+                    Timestamp Mode Off
+                </button>
+            </div>
+
+            <div class="mui-textfield" hidden>
+                <h2>Upload a File</h1>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
+                        <input type="file" id="fileInput" name="file" style="display: none;" required>
+                    </form>
+                    <div id="progressContainer">
+                        <div id="progressBar">0%</div>
+                    </div>
+                    <p id="status"></p>
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="tables">
+            <h2>Animation scripts:</h2>
+            <p>Follow these steps to setup animations:</p>
+            <ol>
+                <li><strong>Create:</strong> Click the create button to add a new animator.</li>
+                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use
+                    the
+                    corresponding buttons to duplicate, rename, or delete it.</li>
+            </ol>
+            <button class="mui-btn mui-btn--primary" onclick="createAnimationDialog()">Create
+                Animation</button>
+            <button class="mui-btn mui-btn--primary" onclick="duplicateAnimationDialog()">Duplicate
+                Animation</button>
+            <button class="mui-btn mui-btn--primary" onclick="renameAnimationDialog()">Rename
+                Animation</button>
+            <button class="mui-btn mui-btn--primary" onclick="deleteAnimationDialog()">Delete
+                Animation</button>
+            <h2>Animations:</h2>
+            <div id="animationScriptsContainer"></div>
+            <h2>Animation script table:</h2>
+            <div class="mui-textfield">
+                <input class="input" id="animationScriptName" type="text" disabled>
+            </div>
+            <div>
+                <button id="saveDataButton" class="mui-btn mui-btn--primary" type="button">Save Animations</button>
+                <button id="stopButton" class="mui-btn mui-btn--primary" type="button">Stop</button>
+                <button class="mui-btn mui-btn--primary" onclick="editPasteTableDialog()">Edit Paste Table</button>
+                <button class="mui-btn mui-btn--primary" onclick="pasteRowsAndResetTable()">Paste Table</button>
+                <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
+                <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
+                <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
+                </div>
+                <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
+                <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
+                    between
+                    transitions in decimal seconds
+                </div>
+                <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E
+                    elves,
+                    B bells, H horns, T stops, S santa, Z christmas story, C cut, R recording, X shutter, Q quotes)
+                    XXX
+                    (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in
+                    sequence)</div>
+                <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all
+                    others
+                    ignored</div>
+                <div>ZRAND = Random rainbow, fire, or color change</div>
+                <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
+                <div>ZFIRE = Fire</div>
+                <div>ZCOLCH = Color change</div>
+                <div>ZL_S_E_T_I = Scene change S start E end using (daylight,afternoon,....), time, increments</div>
+                <div>ZN_S_E_T_I = Scene change S start E end using (red,green,....), time, increments</div>
+                <div></div>
+                <div></div>
+                <div>ZJ = Joke</div>
+                <div id="neoInstructionsContainer"></div>
+                <div id="sceneInstructionsContainer"></div>
+                <div>SNXXX = Servo N (0 All, 1-4) XXX 0 to 180</div>
+                <div>QXXX = Add command to queue (for example QAN_YYY is an Animation with YYY filename)</div>
+                <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
+                    data_object}</div>
+                <div>E = End script</div>
+                <table id="dataTable" class="mui-table">
+                    <thead>
+                        <tr>
+                            <th>TimeStamp</th>
+                            <th>Animation</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -957,11 +959,25 @@
     // Load initial data after webpage loads
     document.addEventListener('DOMContentLoaded', function () {
         knobRotateCam = new KnobController('knobRotateCam', 'knobRotateCam-text', 180, 0, {
-            sendFunction: createServoSend('S1')
+            sendFunction: function (rotateValue) {
+                createServoSend('S1')(rotateValue);
+
+                if (cameraJoystick && !cameraJoystick.isDragging) {
+                    cameraJoystick.setRotateValue(rotateValue);
+                }
+            }
         });
+
         knobTiltCam = new KnobController('knobTiltCam', 'knobTiltCam-text', 140, 90, {
-            sendFunction: createServoSend('S2')
+            sendFunction: function (tiltValue) {
+                createServoSend('S2')(tiltValue);
+
+                if (cameraJoystick && !cameraJoystick.isDragging) {
+                    cameraJoystick.setTiltValue(tiltValue);
+                }
+            }
         });
+
         knobRotateLight = new KnobController('knobRotateLight', 'knobRotateLight-text', 0, 180, {
             sendFunction: createServoSend('S3')
         });
@@ -1054,12 +1070,13 @@
             throttleTime: 200
         });
 
-        cameraJoystick = new JoystickController('cameraJoystick', 'cameraJoystickStick', 'cameraJoystickText', {
-            throttleTime: 80,
+        cameraJoystick = new JoystickController('cameraJoystick', 'cameraJoystickStick', {
             onChange: function (rotateValue, tiltValue) {
-                knobRotateCam.setValue(rotateValue, true);
-                knobTiltCam.setValue(tiltValue, true);
-            }
+                knobRotateCam.setValue(rotateValue, false);
+                knobTiltCam.setValue(tiltValue, false);
+                setCameraServos(rotateValue, tiltValue);
+            },
+            throttleTime: 200
         });
 
         getWebSiteUrl()
@@ -1658,6 +1675,17 @@
         });
     }
 
+    async function setCameraServos(rotateValue, tiltValue) {
+        await fetch('/set-camera-servos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                rotate: Math.round(rotateValue),
+                tilt: Math.round(tiltValue)
+            })
+        });
+    }
+
     async function setFocusSpeed(speed) {
         await fetch('/set-focus-speed', {
             method: 'POST',
@@ -1686,17 +1714,19 @@
         document.getElementById('knobWbBlue').style.opacity = whiteBalanceAuto ? '0.5' : '1';
     }
 
+    const JOYSTICK_BASE_SIZE = 150;
+    const JOYSTICK_STICK_SIZE = 25;
+
     class JoystickController {
-        constructor(baseId, stickId, textId, options = {}) {
+        constructor(baseId, stickId, options = {}) {
             this.base = document.getElementById(baseId);
             this.stick = document.getElementById(stickId);
-            this.text = document.getElementById(textId);
 
             this.isDragging = false;
-            this.radius = 90;
-            this.stickRadius = 27.5;
+            this.radius = JOYSTICK_BASE_SIZE / 2;
+            this.stickRadius = JOYSTICK_STICK_SIZE / 2;
             this.lastSendTime = 0;
-            this.throttleTime = options.throttleTime || 80;
+            this.throttleTime = options.throttleTime || 500;
 
             this.onChange = options.onChange || function () { };
 
@@ -1754,8 +1784,6 @@
             const rotateValue = 90 - (x * 90);   // S1 range 180 to 0
             const tiltValue = 115 - (y * 25);    // S2 range 140 to 90
 
-            this.text.innerText = `Rotate: ${Math.round(rotateValue)} Tilt: ${Math.round(tiltValue)}`;
-
             const now = Date.now();
             if (now - this.lastSendTime >= this.throttleTime) {
                 this.onChange(rotateValue, tiltValue);
@@ -1785,7 +1813,32 @@
             const y = (115 - tiltValue) / 25;
 
             this.setStickPosition(x * maxX, y * maxY);
-            this.text.innerText = `Rotate: ${Math.round(rotateValue)} Tilt: ${Math.round(tiltValue)}`;
+        }
+
+        setRotateValue(rotateValue) {
+            const rect = this.base.getBoundingClientRect();
+            const maxX = rect.width / 2 - this.stickRadius;
+
+            const x = (90 - rotateValue) / 90;
+
+            const currentTop = parseFloat(this.stick.style.top) ||
+                ((rect.height - JOYSTICK_STICK_SIZE) / 2);
+
+            this.stick.style.left = `${(rect.width - JOYSTICK_STICK_SIZE) / 2 + (x * maxX)}px`;
+            this.stick.style.top = `${currentTop}px`;
+        }
+
+        setTiltValue(tiltValue) {
+            const rect = this.base.getBoundingClientRect();
+            const maxY = rect.height / 2 - this.stickRadius;
+
+            const y = (115 - tiltValue) / 25;
+
+            const currentLeft = parseFloat(this.stick.style.left) ||
+                ((rect.width - JOYSTICK_STICK_SIZE) / 2);
+
+            this.stick.style.left = `${currentLeft}px`;
+            this.stick.style.top = `${(rect.height - JOYSTICK_STICK_SIZE) / 2 + (y * maxY)}px`;
         }
     }
 
