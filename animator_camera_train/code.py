@@ -521,6 +521,17 @@ SERVO_PERIOD_US = 20000   # 50 Hz = 20 ms period
 SERVO_SMOOTH_STEP = 0.5
 servo_speed = 0.01
 
+ROTATE_MIN = 0
+ROTATE_MAX = 180
+
+TILT_MIN = 90
+TILT_MAX = 140
+
+ROTATE_TRAVEL = ROTATE_MAX - ROTATE_MIN
+TILT_TRAVEL = TILT_MAX - TILT_MIN
+
+TILT_SPEED_MULTIPLIER = ROTATE_TRAVEL / TILT_TRAVEL
+
 
 p_arr = [90.0, 90.0, 90.0, 90.0]
 s_arr = [0, 1, 2, 3]      # PCA9685 channel numbers
@@ -556,43 +567,47 @@ def m_servo(n, p):
 
     pca.channels[s_arr[n]].duty_cycle = duty
 
-
 def m_servo_s(n, n_pos, spd=None):
-    global p_arr, servo_moving, servo_target
+    global p_arr, servo_moving
 
     n = int(n)
 
-    if spd is None:
-        spd = servo_speed
-
-    # Always save the newest requested target
-    servo_target[n] = max(0.0, min(180.0, float(n_pos)))
-
-    # If already moving, do not start another loop.
-    # The active loop will use the updated servo_target.
     if servo_moving[n]:
         return
 
     servo_moving[n] = True
 
     try:
-        while True:
-            target = servo_target[n]
-            pos = float(p_arr[n])
+        if spd is None:
+            spd = servo_speed
 
-            if abs(pos - target) <= SERVO_SMOOTH_STEP:
-                m_servo(n, target)
-                break
+        # S1 rotate travels 0–180 = 180 degrees.
+        # S2 tilt travels 90–140 = 50 degrees.
+        # Slowing the tilt step delay by 180/50 makes full tilt travel
+        # take the same total time as full rotate travel.
+        if n == 2:
+            spd = spd * TILT_SPEED_MULTIPLIER
 
-            step = SERVO_SMOOTH_STEP if target > pos else -SERVO_SMOOTH_STEP
-            m_servo(n, pos + step)
+        n_pos = max(0.0, min(180.0, float(n_pos)))
+        start = float(p_arr[n])
 
+        if start == n_pos:
+            m_servo(n, n_pos)
+            return
+
+        step = SERVO_SMOOTH_STEP if n_pos > start else -SERVO_SMOOTH_STEP
+        pos = start
+
+        while (step > 0 and pos < n_pos) or (step < 0 and pos > n_pos):
+            m_servo(n, pos)
+            pos += step
             time.sleep(spd)
+
+        m_servo(n, n_pos)
 
     finally:
         servo_moving[n] = False
-
-
+        
 ################################################################################
 # Create an ordered dictionary to preserve the order of insertion
 neo_changes = OrderedDict(cfg["neo_changes"])
@@ -1645,6 +1660,10 @@ def list_recordings():
 ################################################################################
 # Setup routes
 
+class ReusableThreadingTCPServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
 class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
@@ -2659,8 +2678,16 @@ if web:
 
         def start_http_server():
             global httpd
+
             handler = MyHttpRequestHandler
-            httpd = socketserver.ThreadingTCPServer((local_ip, PORT), handler)
+
+            if httpd:
+                try:
+                    httpd.server_close()
+                except Exception:
+                    pass
+
+            httpd = ReusableThreadingTCPServer((local_ip, PORT), handler)
             httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             print(f"Serving on {local_ip}:{PORT}")
             httpd.serve_forever()
