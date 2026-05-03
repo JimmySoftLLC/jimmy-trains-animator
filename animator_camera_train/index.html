@@ -1606,21 +1606,6 @@
     }
 
 
-    function snapshot() {
-        fetch('/snapshot', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.text(); // assuming the response is plain text
-            })
-            .catch(function (error) {
-                console.log(error);
-                showAlert(error);
-            });
-    }
 
     async function resetBrightContSatSharp() {
         knobBrightness.setValue(0.0, true);
@@ -3266,9 +3251,9 @@
     snapshotBtn.onclick = async () => {
         snapshotBtn.disabled = true;
         const res = await fetch('/snapshot', { method: 'POST' });
-        const text = await res.text();
+            const text = await res.text();
 
-        if (!res.ok) {
+            if (!res.ok) {
             showAlert(text || 'Snapshot failed');
             snapshotBtn.disabled = false;
             return;
@@ -3284,7 +3269,9 @@
         snapshotPreview.src = url;
         snapshotPreview.style.display = 'block';
         downloadSnapshotBtn.disabled = false;
-        snapshotBtn.disabled = false;
+            snapshotBtn.disabled = false;
+            streamStatus.textContent = '';
+        }
     };
 
     // ---------- LOAD GALLERY ----------
