@@ -1605,7 +1605,7 @@
             });
     }
 
-
+    
 
     async function resetBrightContSatSharp() {
         knobBrightness.setValue(0.0, true);
@@ -3251,9 +3251,9 @@
     snapshotBtn.onclick = async () => {
         snapshotBtn.disabled = true;
         const res = await fetch('/snapshot', { method: 'POST' });
-            const text = await res.text();
+        const text = await res.text();
 
-            if (!res.ok) {
+        if (!res.ok) {
             showAlert(text || 'Snapshot failed');
             snapshotBtn.disabled = false;
             return;
@@ -3269,9 +3269,7 @@
         snapshotPreview.src = url;
         snapshotPreview.style.display = 'block';
         downloadSnapshotBtn.disabled = false;
-            snapshotBtn.disabled = false;
-            streamStatus.textContent = '';
-        }
+        snapshotBtn.disabled = false;
     };
 
     // ---------- LOAD GALLERY ----------
