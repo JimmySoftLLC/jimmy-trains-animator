@@ -209,8 +209,8 @@ zoom_target = 1.0
 focus_moving = False
 zoom_moving = False
 
-servo_moving = [False] * 5
-servo_target = [None] * 5
+servo_moving = [False] * 4
+servo_target = [90.0] * 4
 
 
 light_bar_state = {
@@ -537,7 +537,6 @@ TILT_SPEED_MULTIPLIER = ROTATE_TRAVEL / TILT_TRAVEL
 
 p_arr = [90.0, 90.0, 90.0, 90.0]
 s_arr = [0, 1, 2, 3]      # PCA9685 channel numbers
-servo_target = [90.0, 90.0, 90.0, 90.0]
 
 # List of servos that are mounted "backwards"
 inverted_servos = {3}
@@ -568,9 +567,6 @@ def m_servo(n, p):
     duty = pulse_us_to_duty_cycle(pulse_us)
 
     pca.channels[s_arr[n]].duty_cycle = duty
-
-servo_moving = [False] * 5
-servo_target = [None] * 5
 
 def m_servo_s(n, n_pos, spd=None):
     global p_arr, servo_moving, servo_target
