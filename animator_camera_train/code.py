@@ -230,6 +230,8 @@ def set_camera_state_to_defaults():
     "Sharpness": 1.0
 }
     
+camera_resolution = "720"
+    
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -1457,16 +1459,16 @@ snapshot_lock = threading.Lock()
 
 
 class StreamingOutput(io.BufferedIOBase):
-    def __init__(self, preview_divisor=2):
+    def __init__(self, stream_frame_skip=2):
         self.frame = None
         self.condition = threading.Condition()
         self.frame_count = 0
-        self.preview_divisor = preview_divisor
+        self.stream_frame_skip = stream_frame_skip
 
     def write(self, buf):
         self.frame_count += 1
 
-        if (self.frame_count % self.preview_divisor) != 0:
+        if (self.frame_count % self.stream_frame_skip) != 0:
             return len(buf)
 
         with self.condition:
@@ -1490,7 +1492,13 @@ def start_camera_server():
 
     picam2 = Picamera2()
 
-    main_res = (1280, 720)
+    if camera_resolution == "1080":
+        main_res = (1920, 1080)
+        stream_frame_skip = 3
+    else:
+        main_res = (1280, 720)
+        stream_frame_skip = 2
+
     lores_res = (640, 360)
 
     video_config = picam2.create_video_configuration(
@@ -1507,7 +1515,7 @@ def start_camera_server():
 
     picam2.configure(video_config)
 
-    stream_output = StreamingOutput(preview_divisor=2)
+    stream_output = StreamingOutput(stream_frame_skip=stream_frame_skip)
 
     mjpeg_encoder = MJPEGEncoder()
     mjpeg_encoder.output = [FileOutput(stream_output)]
@@ -2006,6 +2014,36 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             self.set_zoom_speed_post(post_data_obj)
         elif self.path == "/set-camera-servos":
             self.set_camera_servos_post(post_data_obj)
+        elif self.path == "/set-camera-resolution":
+            self.set_camera_resolution_post(post_data_obj)
+
+    def set_camera_resolution_post(self, rq_d):
+        global camera_resolution
+
+        resolution = str(rq_d.get("resolution", "720"))
+
+        if resolution not in ("720", "1080"):
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b"Resolution must be 720 or 1080")
+            return
+
+        camera_resolution = resolution
+
+        was_running = camera_running
+
+        if was_running:
+            stop_camera_server()
+            time.sleep(0.5)
+            start_camera_server()
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            "camera_resolution": camera_resolution,
+            "camera_restarted": was_running
+        }).encode("utf-8"))
 
     def set_camera_servos_post(self, rq_d):
         rotate = float(rq_d.get("rotate", 90))
@@ -2093,6 +2131,7 @@ class MyHttpRequestHandler(server.SimpleHTTPRequestHandler):
             "focus_mode": focus_mode,
             "zoom": get_zoom(),
             "focus_speed": focus_speed,
+            "camera_resolution": camera_resolution,
             "zoom_speed": zoom_speed        
         }
 

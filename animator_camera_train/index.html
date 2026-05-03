@@ -551,6 +551,18 @@
             <div id="controls">
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
                 <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
+                <div class="setting-row" style="margin-top: 15px;">
+                    <span>Camera Resolution:</span>
+                    <label>
+                        <input type="radio" name="cameraResolution" value="720" id="cameraResolution720">
+                        720p
+                    </label>
+
+                    <label>
+                        <input type="radio" name="cameraResolution" value="1080" id="cameraResolution1080">
+                        1080p
+                    </label>
+                </div>
                 <div hidden>
                     <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
                 </div>
@@ -1580,6 +1592,12 @@
 
             if (data.zoom_speed !== undefined && !knobZoomSpeed.isDragging) {
                 knobZoomSpeed.setValue(parseFloat(data.zoom_speed), false);
+            }
+
+            if (data.camera_resolution === "1080") {
+                cameraResolution1080.checked = true;
+            } else {
+                cameraResolution720.checked = true;
             }
 
         } catch (e) {
@@ -3458,6 +3476,39 @@
         // Show modal
         mui.overlay('on', modalEl);
     }
+
+    const cameraResolution720 = document.getElementById('cameraResolution720');
+    const cameraResolution1080 = document.getElementById('cameraResolution1080');
+
+    async function setCameraResolution(resolution) {
+        const res = await fetch('/set-camera-resolution', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resolution })
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            showAlert(text || 'Failed to set camera resolution');
+            return false;
+        }
+
+        window.location.reload();
+
+        return true;
+    }
+
+    document.querySelectorAll('input[name="cameraResolution"]').forEach(radio => {
+        radio.addEventListener('change', async () => {
+            if (!radio.checked) return;
+
+            const ok = await setCameraResolution(radio.value);
+
+            if (!ok) {
+                await loadAllCameraSettings();
+            }
+        });
+    });
 
     deleteVideoBtn.onclick = async () => {
         if (!selected) return;
