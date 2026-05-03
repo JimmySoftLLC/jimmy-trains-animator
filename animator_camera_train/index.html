@@ -551,7 +551,9 @@
             <div id="controls">
                 <button id="startBtn" class="mui-btn mui-btn--primary">Start Recording</button>
                 <button id="stopBtn" class="mui-btn mui-btn--primary" disabled>Stop Recording</button>
-                <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
+                <div hidden>
+                    <button id="snapshotBtn" class="mui-btn mui-btn--primary">Snapshot</button>
+                </div>
             </div>
             <div id="controls">
                 <button class="mui-btn mui-btn--primary" onclick="restartCamera()" type="button">
@@ -566,15 +568,15 @@
                 <button id="deleteVideoBtn" class="mui-btn mui-btn--danger" disabled>Delete</button>
             </div>
             <div id="thumbnailGallery"></div>
-            <h3 style="width:100%;">Snapshots</h3>
-            <div id="snapshotViewer" style="margin:20px;">
+            <h3 style="width:100%;" hidden>Snapshots</h3>
+            <div id="snapshotViewer" style="margin:20px;" hidden>
                 <img id="snapshotPreview" src="" alt="Selected still shot"
                     style="max-width:100%; max-height:500px; display:none; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
                 <button id="downloadSnapshotBtn" class="mui-btn mui-btn--primary" type="button" disabled>Download
                 </button>
                 <button id="deleteSnapshotBtn" class="mui-btn mui-btn--danger" type="button" disabled>Delete</button>
             </div>
-            <div id="snapshotGallery" style="margin:20px; display:flex; flex-wrap:wrap; gap:10px;"></div>
+            <div id="snapshotGallery" style="margin:20px; display:flex; flex-wrap:wrap; gap:10px;" hidden></div>
         </div> <!-- closes camera tab -->
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
             <h2>Test neopixel lights:</h2>
@@ -1605,7 +1607,7 @@
             });
     }
 
-    
+
 
     async function resetBrightContSatSharp() {
         knobBrightness.setValue(0.0, true);
