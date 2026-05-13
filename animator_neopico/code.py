@@ -1,3 +1,4 @@
+
 # MIT License
 #
 # Copyright (c) 2024 JimmySoftLLC
@@ -75,11 +76,11 @@ gc_col("Imports gc, files")
 # pin setups prototype
 
 # prototype unit
-# top_sw = board.GP20
-# bot_sw = board.GP11
+# l_sw_pin = board.GP20
+# r_sw_pin = board.GP11
 
 # neo_branch_pin = board.GP6
-# led_indicator_pin = board.GP14
+# indicator_pin = board.GP14
 
 # s_1_pin = board.GP8
 # s_3_pin = board.GP12
@@ -122,11 +123,11 @@ si = board.GP3 # MOSI sdCard
 so = board.GP4 # MISO sdCard
 cs = board.GP5 # chip select sdCard
 
-l_sw = board.GP11
-r_sw = board.GP15
+l_sw_pin = board.GP11
+r_sw_pin = board.GP15
 
 neo_branch_pin = board.GP16
-led_indicator_pin = board.GP17
+indicator_pin = board.GP17
 
 s_1_pin = board.GP10
 s_3_pin = board.GP12
@@ -165,15 +166,15 @@ aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
 # Setup the switches
-l_sw = digitalio.DigitalInOut(l_sw)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
+l_sw_io = digitalio.DigitalInOut(l_sw_pin)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw_io)
 
-r_sw = digitalio.DigitalInOut(r_sw)
-r_sw.direction = digitalio.Direction.INPUT
-r_sw.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw)
+r_sw_io = digitalio.DigitalInOut(r_sw_pin)
+r_sw_io.direction = digitalio.Direction.INPUT
+r_sw_io.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw_io)
 
 aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
@@ -277,6 +278,39 @@ ovrde_sw_st["switch_value"] = ""
 ################################################################################
 # Setup neo pixels (main light string)
 
+def cont_mode_on():
+    cfg["cont_mode"] = True
+    indicator.fill((0, 255, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 255, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 255, 0))
+    time.sleep(.5)
+
+def cont_mode_off():
+    cfg["cont_mode"] = False
+    indicator.fill((255, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+    indicator.fill((255, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 0, 0))
+    time.sleep(.5)
+    indicator.fill((0, 255, 0))
+    time.sleep(.5)
+
+def show_mode(cycles,r,g,b):
+    for _ in range(cycles):
+        indicator.fill((r, g, b))
+        time.sleep(.5)
+        indicator.fill((0, 0, 0))
+        time.sleep(.5)
+
 trees = []
 canes = []
 ornmnts = []
@@ -303,10 +337,9 @@ neo_branch.auto_write = False
 neo_branch.fill((0, 0, 0))
 neo_branch.show()
 
-led_indicator = neopixel.NeoPixel(led_indicator_pin, 1)
-led_indicator.auto_write = False
-led_indicator.fill((0, 0, 0))
-led_indicator.show()
+indicator = neopixel.NeoPixel(indicator_pin, 1)
+
+indicator.brightness = .1
 
 pixel_scale = [(1.0, 1.0, 1.0)] * n_px
 logical_led = {}
@@ -571,17 +604,17 @@ def l_tst():
             time.sleep(MP_CMD_WAIT)
 
     time.sleep(.3)
-    led_indicator[0] = (255, 0, 0)
-    led_indicator.show()
+    indicator[0] = (255, 0, 0)
+    indicator.show()
     time.sleep(.3)
-    led_indicator[0] = (0, 255, 0)
-    led_indicator.show()
+    indicator[0] = (0, 255, 0)
+    indicator.show()
     time.sleep(.3)
-    led_indicator[0] = (0, 0, 255)
-    led_indicator.show()
+    indicator[0] = (0, 0, 255)
+    indicator.show()
     time.sleep(.3)
-    led_indicator[0] = (10, 10, 10)
-    led_indicator.show()
+    indicator[0] = (255, 255, 255)
+    indicator.show()
     time.sleep(.3)
 
 def clamp01(x: float) -> float:
@@ -1234,8 +1267,7 @@ if web:
 
     for i in range(3):
         web = True
-        led_indicator[0] = (0, 0, 255)
-        led_indicator.show()
+        indicator[0] = (0, 0, 255)
         try:
             wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
             gc_col("wifi connect")
@@ -1457,8 +1489,7 @@ if web:
         except Exception as e:
             web = False
             files.log_item(e)
-            led_indicator[0] = (0, 0, 75)
-            led_indicator.show()
+            indicator[0] = (0, 0, 100)
             time.sleep(2)
 
 gc_col("web server")
@@ -1498,14 +1529,14 @@ async def process_commands():
         await asyncio.sleep(0)
 
 
-def clr_cmd_queue():
+def clear_command_queue():
     command_queue.clear()
     print("Command queue cleared.")
 
 
 def stop_all_commands():
     global exit_set_hdw
-    clr_cmd_queue()
+    clear_command_queue()
     exit_set_hdw = True
     print("Processing stopped and command queue cleared.")
 
@@ -1613,7 +1644,7 @@ def exit_early():
     if sw == "left_held":
         mix.voice[0].stop()
         c_run = False
-        stp_all_cmds()
+        stop_all_commands()
         ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
 
 
@@ -1694,16 +1725,25 @@ def spk_web():
 # animations
 
 async def an_async(f_nm):
+    global an_running
+    """Run animation lighting as an async task."""
     print("Filename:", f_nm)
+    cur = f_nm
     try:
-        await an_light_async(f_nm)
-        gc_col("animation cleanup")
+        if f_nm == "random all":
+            hi = len(animations) - 1
+            cur = animations[random.randint(0, hi)]
+        an_running = True
+        await an_light_async(cur)
     except Exception as e:
         files.log_item(e)
-    gc_col("Animation complete.")
+    an_running = False
 
 
 async def an_light_async(f_nm):
+    global exit_set_hdw_async
+    """Asynchronous animation lighting."""
+
     flsh_t = []
     if f_exists("animations/" + f_nm + ".json"):
         flsh_t = files.read_json_file("animations/" + f_nm + ".json")
@@ -1714,10 +1754,11 @@ async def an_light_async(f_nm):
         await asyncio.sleep(0)
         return result
 
+    # add end command to time stamps so all time stamps are processed
     ft_last = flsh_t[len(flsh_t) - 1].split("|")
-    tm_last = float(ft_last[0]) + .1
+    tm_last = float(ft_last[0]) + .001
     flsh_t.append(str(tm_last) + "|E")
-    flsh_t.append(str(tm_last + .1) + "|E")
+    flsh_t.append(str(tm_last + .001) + "|E")
 
     flsh_i = 0
     srt_t = time.monotonic()
@@ -1736,11 +1777,8 @@ async def an_light_async(f_nm):
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t) - 1:
             files.log_item(f"time elapsed: {t_past} Timestamp: {ft1[0]}")
             if len(ft1) == 1 or ft1[1] == "":
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
-                result = await set_hdw_async(f"L0{lgt},S0{pos}", dur)
                 if result == "STOP":
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(0)  # Yield control to other tasks
                     break
             else:
                 result = await set_hdw_async(ft1[1], dur)
@@ -1748,10 +1786,24 @@ async def an_light_async(f_nm):
                     await asyncio.sleep(0)
                     break
             flsh_i += 1
+        if (l_sw_io.value == False):
+            sw = utilities.switch_state(
+                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, False)
+            if sw == "left" and cfg["can_cancel"]:
+                exit_set_hdw_async = True
+                flsh_i = len(flsh_t) - 1
+            if sw == "left_held":
+                stop_all_commands()
+                exit_set_hdw_async = True
+                flsh_i = len(flsh_t) - 1
+                cont_mode_off()
+                
+        await asyncio.sleep(0)  # Yield control to other tasks
 
-        await asyncio.sleep(0)
-
-        if flsh_i >= len(flsh_t) - 1:
+        # Exit condition for stopping animation
+        if flsh_i >= len(flsh_t)-1:
+            # led.fill((0, 0, 0))
+            # led.show()
             break
 
 ##############################
@@ -1923,8 +1975,7 @@ async def set_hdw_async(cmd, dur=0):
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
-                led_indicator.fill((r, g, b))
-                led_indicator.show()
+                indicator.fill((r, g, b))
             # lights LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255
             elif seg[:2] == 'LN':
                 segs_split = seg.split("_")
@@ -2057,7 +2108,7 @@ async def set_hdw_async(cmd, dur=0):
                 await asyncio.sleep(s)
     except Exception as e:
         files.log_item(e)
-    
+
 
 ################################################################################
 # Decoder consumer
@@ -2097,8 +2148,7 @@ if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
-        led_indicator[0] = (0, 20, 0)
-        led_indicator.show()
+        indicator[0] = (0, 255, 0)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         dbm_string = str(-int(avg_rssi))+"dbm"
         spk_str(dbm_string,False)
@@ -2109,8 +2159,7 @@ if (web):
         files.log_item("restarting...")
         rst()
 else:
-    led_indicator[0] = (20, 0, 0)
-    led_indicator.show()
+    indicator[0] = (255, 0, 0)
     time.sleep(3)
 
 files.log_item("animator has started...")
