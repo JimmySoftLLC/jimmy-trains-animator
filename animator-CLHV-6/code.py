@@ -817,7 +817,7 @@ async def an_light_async(f_nm):
     if f_exists("animations/" + f_nm + ".json"):
         flsh_t = files.read_json_file("animations/" + f_nm + ".json")
 
-    # add end command to time stamps to stop video when timestamps run out
+    # add end command to time stamps so all time stamps are processed
     ft_last = flsh_t[len(flsh_t)-1].split("|")
     tm_last = float(ft_last[0]) + .001
     flsh_t.append(str(tm_last) + "|E")
