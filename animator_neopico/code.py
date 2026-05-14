@@ -617,7 +617,7 @@ def l_tst():
     indicator[0] = (0, 0, 255)
     indicator.show()
     time.sleep(.3)
-    indicator[0] = (255, 255, 255)
+    indicator[0] = (0, 255, 0)
     indicator.show()
     time.sleep(.3)
 
@@ -1487,6 +1487,28 @@ if web:
                     gc_col("get data")
                     return Response(request, "out of memory")
                 return Response(request, "success")
+            
+            @server.route("/mode", [POST])
+            def btn(request: Request):
+                rq_d = request.json()
+                if rq_d["an"] == "left":
+                    ovrde_sw_st["switch_value"] = "left"
+                elif rq_d["an"] == "right":
+                    ovrde_sw_st["switch_value"] = "right"
+                elif rq_d["an"] == "left_held":
+                    ovrde_sw_st["switch_value"] = "left_held"    
+                elif rq_d["an"] == "right_held":
+                    ovrde_sw_st["switch_value"] = "right_held"
+                elif rq_d["an"] == "three":
+                    ovrde_sw_st["switch_value"] = "three"
+                elif rq_d["an"] == "four":
+                    ovrde_sw_st["switch_value"] = "four"
+                elif rq_d["an"] == "cont_mode_on":
+                    cfg["cont_mode"] = True
+                elif rq_d["an"] == "cont_mode_off":
+                    cfg["cont_mode"] = False
+                    stop_all_commands()
+                return Response(request, "Utility: " + rq_d["an"])
 
             break
 
