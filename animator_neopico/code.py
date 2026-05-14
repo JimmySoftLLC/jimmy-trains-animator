@@ -252,23 +252,27 @@ ts_jsons = files.return_directory("", "t_s_def", ".json")
 
 web = cfg["serve_webpage"]
 
-exit_set_hdw = False
+exit_set_hdw_async = False
+an_just_added = False
+an_running = False
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
 
+animations = []
+mnu_o = []
+
 def upd_media():
-    global animations
+    global animations, mnu_o
+    animations = []
+    mnu_o = []
     animations = files.return_directory("", "animations", ".json")
+    mnu_o.extend(animations)
+    rnd_o = ['random all']
+    mnu_o.extend(rnd_o)
 
 upd_media()
-
-c_run = False
-ts_mode = False
-
-local_ip = ""
-
-ovrde_sw_st = {}
-ovrde_sw_st["switch_value"] = ""
 
 gc_col("config setup")
 
@@ -1330,8 +1334,8 @@ if web:
 
             @server.route("/lights", [POST])
             def lights_btn(request: Request):
-                global exit_set_hdw
-                exit_set_hdw = False
+                global exit_set_hdw_async
+                exit_set_hdw_async = False
                 try:
                     rq_d = request.json()
                     asyncio.create_task(set_hdw_async(rq_d["an"], 0))
@@ -1440,8 +1444,8 @@ if web:
 
             @server.route("/test-animation", [POST])
             def test_animation(request: Request):
-                global exit_set_hdw
-                exit_set_hdw = False
+                global exit_set_hdw_async
+                exit_set_hdw_async = False
                 try:
                     rq_d = request.json()
                     asyncio.create_task(set_hdw_async(rq_d["an"], 3))
@@ -1504,11 +1508,13 @@ if (web):
 ################################################################################
 # Command queue
 command_queue = []
+last_an_call_end = None
+an_timer_start = time.monotonic()
 
 
 def add_command(command, to_start=False):
-    global exit_set_hdw
-    exit_set_hdw = False
+    global exit_set_hdw_async
+    exit_set_hdw_async = False
     if to_start:
         command_queue.insert(0, command)
         print("Command added to the start:", command)
@@ -1518,15 +1524,22 @@ def add_command(command, to_start=False):
 
 
 async def process_commands():
+    global last_an_call_end
+
     while command_queue:
-        cmd = command_queue.pop(0)
-        print("Processing command:", cmd)
-        if cmd[:2] == 'AN':  # AN_XXX = Animation XXX filename
-            cmd_split = cmd.split("_")
-            await an_async(cmd_split[1])
+        command = command_queue.pop(0)
+        if command.startswith("AN_"):
+            filename = command[3:]
+            if filename:
+                now = time.monotonic() - an_timer_start
+                if last_an_call_end is not None:
+                    print("AN GAP:", now - last_an_call_end)
+                await an_async(filename)
+                last_an_call_end = time.monotonic() - an_timer_start
+                await asyncio.sleep(0)
         else:
-            await set_hdw_async(cmd)
-        await asyncio.sleep(0)
+            await set_hdw_async(command)
+            await asyncio.sleep(0)
 
 
 def clear_command_queue():
@@ -1535,9 +1548,9 @@ def clear_command_queue():
 
 
 def stop_all_commands():
-    global exit_set_hdw
+    global exit_set_hdw_async
     clear_command_queue()
-    exit_set_hdw = True
+    exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
 
 
@@ -1546,7 +1559,7 @@ def stop_all_commands():
 
 def rst_def():
     global cfg
-    cfg["HOST_NAME"] = "animator-bandstand"
+    cfg["HOST_NAME"] = "neopico"
     cfg["option_selected"] = "random all"
 
 
@@ -1636,14 +1649,12 @@ def stp_a_0():
 
 
 def exit_early():
-    global c_run
     sw = utilities.switch_state(
         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
     if sw == "left" and cfg["can_cancel"]:
         mix.voice[0].stop()
     if sw == "left_held":
         mix.voice[0].stop()
-        c_run = False
         stop_all_commands()
         ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
 
@@ -1747,15 +1758,9 @@ async def an_light_async(f_nm):
     flsh_t = []
     if f_exists("animations/" + f_nm + ".json"):
         flsh_t = files.read_json_file("animations/" + f_nm + ".json")
-    else:
-        # If it's not an animation file, treat it as a direct hardware command string
-        # so queued decoder commands like "LN1_..." work immediately.
-        result = await set_hdw_async(f_nm, 0)
-        await asyncio.sleep(0)
-        return result
 
     # add end command to time stamps so all time stamps are processed
-    ft_last = flsh_t[len(flsh_t) - 1].split("|")
+    ft_last = flsh_t[len(flsh_t)-1].split("|")
     tm_last = float(ft_last[0]) + .001
     flsh_t.append(str(tm_last) + "|E")
     flsh_t.append(str(tm_last + .001) + "|E")
@@ -1822,7 +1827,7 @@ async def random_effect(il, ih, d):
 
 
 async def rbow(spd, dur):
-    global exit_set_hdw
+    global exit_set_hdw_async
     st = time.monotonic()
 
     pxs = only_lights
@@ -1832,7 +1837,7 @@ async def rbow(spd, dur):
 
     while (time.monotonic() - st) < dur:
         for j in range(0, 255):
-            if exit_set_hdw:
+            if exit_set_hdw_async:
                 return
 
             for k, i in enumerate(pxs):
@@ -1846,7 +1851,7 @@ async def rbow(spd, dur):
                 return
 
         for j in range(254, -1, -1):
-            if exit_set_hdw:
+            if exit_set_hdw_async:
                 return
 
             for k, i in enumerate(pxs):
@@ -1861,7 +1866,7 @@ async def rbow(spd, dur):
 
 
 async def fire(dur):
-    global exit_set_hdw
+    global exit_set_hdw_async
     st = time.monotonic()
 
     firei = []
@@ -1885,7 +1890,7 @@ async def fire(dur):
     # Flicker
     while True:
         for i in firei:
-            if exit_set_hdw:
+            if exit_set_hdw_async:
                 return
             if i not in only_lights_set:
                 continue
@@ -1944,7 +1949,7 @@ def bnd(c, l, u):
 
 
 async def set_hdw_async(cmd, dur=0):
-    global br, exit_set_hdw, neo_brightness
+    global br, exit_set_hdw_async, neo_brightness
 
     if cmd[:2]=="NP" in cmd:
         segs = [cmd]
@@ -1952,7 +1957,7 @@ async def set_hdw_async(cmd, dur=0):
         segs = cmd.split(",")
     try:
         for seg in segs:
-            if exit_set_hdw:
+            if exit_set_hdw_async:
                 return "STOP"
             elif seg[0] == 'E':
                 return "STOP"
@@ -2038,7 +2043,7 @@ async def set_hdw_async(cmd, dur=0):
                 step_s = float(segs_split[1])
                 target = max(0, min(100, target))
                 while br != target:
-                    if exit_set_hdw:
+                    if exit_set_hdw_async:
                         return "STOP"
                     br += 1 if br < target else -1
                     neo_brightness = clamp01(br / 100.0)
@@ -2138,6 +2143,132 @@ async def consumer_task():
 
         await asyncio.sleep(0)
 
+################################################################################
+# State Machine
+
+
+class StMch(object):
+
+    def __init__(s):
+        s.ste = None
+        s.stes = {}
+        s.paused_state = None
+
+    def add(s, ste):
+        s.stes[ste.name] = ste
+
+    def go_to(s, ste):
+        if s.ste:
+            s.ste.exit(s)
+        s.ste = s.stes[ste]
+        s.ste.enter(s)
+
+    def upd(s):
+        if s.ste:
+            s.ste.upd(s)
+
+################################################################################
+# States
+
+# Abstract parent state class.
+
+
+class Ste(object):
+
+    def __init__(s):
+        pass
+
+    @property
+    def name(s):
+        return ""
+
+    def enter(s, mch):
+        pass
+
+    def exit(s, mch):
+        pass
+
+    def upd(s, mch):
+        pass
+
+
+class BseSt(Ste):
+
+    def __init__(self):
+        pass
+
+    @property
+    def name(self):
+        return 'base_state'
+
+    def enter(self, mch):
+        files.log_item("Entered base state")
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global an_just_added
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, False)
+        if sw == "left_held":
+            if cfg["cont_mode"]:
+                cont_mode_off()
+                files.write_json_file("cfg.json", cfg)
+            else:
+                cont_mode_on()
+                files.write_json_file("cfg.json", cfg)
+        elif (sw == "left" or cfg["cont_mode"]) and not an_running:
+            add_command("AN_" + cfg["option_selected"])
+            an_just_added = True
+        elif sw == "right":
+            mch.go_to('main_menu')
+
+
+class Main(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return "main_menu"
+
+    def enter(self, mch):
+        files.log_item("Main menu")
+        indicator.fill((0, 0, 120))
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, False)
+        if sw == "left":
+            self.sel_i = self.i
+            if self.sel_i  == len(mnu_o) - 1:
+                show_mode(1, 255, 255, 255)
+            else:
+                show_mode(self.sel_i  + 1, 255, 255, 0)
+            self.i += 1
+            if self.i > len(mnu_o) - 1:
+                self.i = 0
+        if sw == "right":
+            cfg["option_selected"] = mnu_o[self.sel_i]
+            indicator.fill((0, 255, 0))
+            files.write_json_file("cfg.json", cfg)
+            mch.go_to("base_state")
+
+###############################################################################
+# Create the state machine
+
+
+st_mch = StMch()
+st_mch.add(BseSt())
+st_mch.add(Main())
+
 
 ################################################################################
 # Start server
@@ -2151,8 +2282,8 @@ if (web):
         indicator[0] = (0, 255, 0)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         dbm_string = str(-int(avg_rssi))+"dbm"
-        spk_str(dbm_string,False)
-        spk_web()
+        # spk_str(dbm_string,False)
+        # spk_web()
     except Exception as e:
         files.log_item(e)
         time.sleep(5)
@@ -2162,6 +2293,7 @@ else:
     indicator[0] = (255, 0, 0)
     time.sleep(3)
 
+st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
@@ -2190,7 +2322,17 @@ async def server_poll_task(server):
 async def garbage_collection_task():
     while True:
         gc.collect()
-        await asyncio.sleep(10)
+        await asyncio.sleep(30)
+
+async def state_mach_upd_task(st_mch):
+    global an_just_added
+    while True:
+        st_mch.upd()
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
 
 
 async def main():
@@ -2199,6 +2341,7 @@ async def main():
         garbage_collection_task(),
         decoder_task(),
         consumer_task(),
+        state_mach_upd_task(st_mch)
     ]
 
     if web:

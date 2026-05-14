@@ -646,7 +646,6 @@ if (web):
             
             @server.route("/mode", [POST])
             def btn(request: Request):
-                global ts_mode
                 rq_d = request.json()
                 if rq_d["an"] == "left":
                     ovrde_sw_st["switch_value"] = "left"
@@ -786,7 +785,7 @@ def stop_all_commands():
 
 def rst_def():
     global cfg
-    cfg["HOST_NAME"] = "animator-clmhv6"
+    cfg["HOST_NAME"] = "clmhv6"
     cfg["option_selected"] = "random all"
 
 
