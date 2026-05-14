@@ -155,6 +155,44 @@ CHAR_TO_HDW = {
 }
 
 ################################################################################
+# config variables
+
+animators_folder = "/animations/"
+
+cfg = files.read_json_file("cfg.json")
+
+ts_jsons = files.return_directory("", "t_s_def", ".json")
+
+web = cfg["serve_webpage"]
+
+exit_set_hdw_async = False
+an_just_added = False
+an_running = False
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
+
+gc_col("config setup")
+
+animations = []
+mnu_o = []
+
+def upd_media():
+    global animations, mnu_o
+    animations = []
+    mnu_o = []
+    animations = files.return_directory("", "animations", ".json")
+    mnu_o.extend(animations)
+    rnd_o = ['random all']
+    mnu_o.extend(rnd_o)
+
+upd_media()
+
+gc_col("config setup")
+
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
+
+################################################################################
 # Setup hardware
 
 # Setup for vol
@@ -222,62 +260,48 @@ except Exception as e:
 
 aud_en.value = False
 
-# Setup the servos, s_2 is used by left switch
-s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
-s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
-s_4 = pwmio.PWMOut(s_4_pin, duty_cycle=2 ** 15, frequency=50)
-s_5 = pwmio.PWMOut(s_5_pin, duty_cycle=2 ** 15, frequency=50)
-s_6 = pwmio.PWMOut(s_6_pin, duty_cycle=2 ** 15, frequency=50)
+# Setup hardware pins, s_2 is used by left switch
+hdw_pins = [s_1_pin, s_3_pin, s_4_pin, s_5_pin, s_6_pin]
 
-s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
-s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
-s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
-s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
-s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
+s_arr = []
+trigger_arr = []
+trigger_busy = []
 
-s_arr = [s_1, s_3, s_4, s_5, s_6]
+
+def upd_hdw_str():
+    global s_arr, trigger_arr, trigger_busy
+
+    s_arr = []
+    trigger_arr = []
+    trigger_busy = []
+
+    els = cfg["hardware_string"].split(",")
+
+    for i, el in enumerate(els):
+        if i >= len(hdw_pins):
+            break
+
+        typ = el.strip().lower()
+        pin = hdw_pins[i]
+
+        if typ == "servo":
+            pwm = pwmio.PWMOut(pin, duty_cycle=2 ** 15, frequency=50)
+            s_arr.append(servo.Servo(pwm, min_pulse=500, max_pulse=2500))
+
+        elif typ == "trigger":
+            trig = digitalio.DigitalInOut(pin)
+            trig.direction = digitalio.Direction.INPUT
+            trigger_arr.append(trig)
+            trigger_busy.append(False)
+
+
+upd_hdw_str()
 
 # Setup time
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
-################################################################################
-# Sd card config variables
 
-animators_folder = "/animations/"
-
-cfg = files.read_json_file("cfg.json")
-
-ts_jsons = files.return_directory("", "t_s_def", ".json")
-
-web = cfg["serve_webpage"]
-
-exit_set_hdw_async = False
-an_just_added = False
-an_running = False
-ovrde_sw_st = {}
-ovrde_sw_st["switch_value"] = ""
-
-gc_col("config setup")
-
-animations = []
-mnu_o = []
-
-def upd_media():
-    global animations, mnu_o
-    animations = []
-    mnu_o = []
-    animations = files.return_directory("", "animations", ".json")
-    mnu_o.extend(animations)
-    rnd_o = ['random all']
-    mnu_o.extend(rnd_o)
-
-upd_media()
-
-gc_col("config setup")
-
-ovrde_sw_st = {}
-ovrde_sw_st["switch_value"] = ""
 
 ################################################################################
 # Setup neo pixels (main light string)
@@ -995,9 +1019,6 @@ def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
         DIGIT_PWM[b_d],
     )
 
-
-
-
 def _enable_pullup(pin):
     d = digitalio.DigitalInOut(pin)
     d.direction = digitalio.Direction.INPUT
@@ -1492,21 +1513,21 @@ if web:
             def btn(request: Request):
                 rq_d = request.json()
                 if rq_d["an"] == "left":
-                    ovrde_sw_st["switch_value"] = "left"
+                    override_switch_state["switch_value"] = "left"
                 elif rq_d["an"] == "right":
-                    ovrde_sw_st["switch_value"] = "right"
+                    override_switch_state["switch_value"] = "right"
                 elif rq_d["an"] == "left_held":
-                    ovrde_sw_st["switch_value"] = "left_held"    
+                    override_switch_state["switch_value"] = "left_held"    
                 elif rq_d["an"] == "right_held":
-                    ovrde_sw_st["switch_value"] = "right_held"
+                    override_switch_state["switch_value"] = "right_held"
                 elif rq_d["an"] == "three":
-                    ovrde_sw_st["switch_value"] = "three"
+                    override_switch_state["switch_value"] = "three"
                 elif rq_d["an"] == "four":
-                    ovrde_sw_st["switch_value"] = "four"
+                    override_switch_state["switch_value"] = "four"
                 elif rq_d["an"] == "cont_mode_on":
-                    cfg["cont_mode"] = True
+                    cont_mode_on()
                 elif rq_d["an"] == "cont_mode_off":
-                    cfg["cont_mode"] = False
+                    cont_mode_off()
                     stop_all_commands()
                 return Response(request, "Utility: " + rq_d["an"])
 
@@ -1672,7 +1693,7 @@ def stp_a_0():
 
 def exit_early():
     sw = utilities.switch_state(
-        l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        l_sw, r_sw, time.sleep, 3.0, override_switch_state)
     if sw == "left" and cfg["can_cancel"]:
         mix.voice[0].stop()
     if sw == "left_held":
@@ -1815,7 +1836,7 @@ async def an_light_async(f_nm):
             flsh_i += 1
         if (l_sw_io.value == False):
             sw = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, False)
+                l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
             if sw == "left" and cfg["can_cancel"]:
                 exit_set_hdw_async = True
                 flsh_i = len(flsh_t) - 1
@@ -1969,9 +1990,30 @@ def bnd(c, l, u):
         c = u
     return c
 
+async def pulse_trigger(trigger_n, duration):
+    if trigger_n < 0 or trigger_n >= len(trigger_arr):
+        return
+
+    if trigger_busy[trigger_n]:
+        return
+
+    trigger_busy[trigger_n] = True
+    trig = trigger_arr[trigger_n]
+
+    try:
+        trig.direction = digitalio.Direction.OUTPUT
+        trig.value = False
+        indicator.fill((255, 0, 0))
+        await asyncio.sleep(duration)
+        indicator.fill((0, 255, 0))
+
+    finally:
+        trig.direction = digitalio.Direction.INPUT
+        trigger_busy[trigger_n] = False
+
 
 async def set_hdw_async(cmd, dur=0):
-    global br, exit_set_hdw_async, neo_brightness
+    global br, exit_set_hdw_async, neo_brightness, override_switch_state
 
     if cmd[:2]=="NP" in cmd:
         segs = [cmd]
@@ -1983,16 +2025,23 @@ async def set_hdw_async(cmd, dur=0):
                 return "STOP"
             elif seg[0] == 'E':
                 return "STOP"
-            # switch SW_XXXX = Switch XXXX (left,right,three,four,left_held, ...)
+            # switch SW_XXXX = Switch XXXX (l,left,r,right,3,three,4,four,lh,left_held, ...)
             elif seg[:2] == 'SW':
-                segs_split = seg.split("_")
-                if len(segs_split) == 2:
-                    ovrde_sw_st["switch_value"] = segs_split[1]
-                elif len(segs_split) == 3:
-                    ovrde_sw_st["switch_value"] = segs_split[1] + \
-                        "_" + segs_split[2]
-                else:
-                    ovrde_sw_st["switch_value"] = "none"
+                sw_state = seg[3:]
+                if sw_state == "l":
+                    sw_state = "left"
+                elif sw_state == "r":
+                    sw_state = "right"
+                elif sw_state == "3":
+                    sw_state = "three"
+                elif sw_state == "4":
+                    sw_state = "four"
+                elif sw_state == "lh":
+                    sw_state = "left_held"
+                elif sw_state == "rh":
+                    sw_state = "right_held"
+                override_switch_state["switch_value"] = sw_state
+                print("Switch state: ", override_switch_state)
             # UPDLS = update light string    
             elif seg[:5] == 'UPDLS':
                 upd_l_str()
@@ -2120,15 +2169,26 @@ async def set_hdw_async(cmd, dur=0):
             elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
-            # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
-            elif seg[0] == 'S':
-                num = int(seg[1])
-                v = int(seg[2:])
+            # SNXXX = Servo N XXX, N 0 all or 1-based servo number, XXX 0 to 180
+            elif seg[:2] == "SN":
+                parts = seg.split("_")
+                num = int(parts[0][2:])
+                v = int(parts[1])
                 if num == 0:
-                    for i in range(len(s_arr)):
-                        s_arr[i].angle = v
+                    for s in s_arr:
+                        s.angle = v
                 else:
-                    s_arr[num-1].angle = int(v)
+                    s_arr[num - 1].angle = v
+            # TRN_TTT = Trigger N for TTT seconds, N 0 all or 1-based output number
+            elif seg[:2] == "TR":
+                parts = seg.split("_")
+                num = int(parts[0][2:])
+                duration = float(parts[1])
+                if num == 0:
+                    for i in range(len(trigger_arr)):
+                        asyncio.create_task(pulse_trigger(i, duration))
+                else:
+                    asyncio.create_task(pulse_trigger(num - 1, duration))
             # WXXX = Wait XXX decimal seconds
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
@@ -2233,7 +2293,7 @@ class BseSt(Ste):
     def upd(self, mch):
         global an_just_added
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, False)
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
         if sw == "left_held":
             if cfg["cont_mode"]:
                 cont_mode_off()
@@ -2267,7 +2327,7 @@ class Main(Ste):
 
     def upd(self, mch):
         sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, False)
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
         if sw == "left":
             self.sel_i = self.i
             if self.sel_i  == len(mnu_o) - 1:

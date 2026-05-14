@@ -35,8 +35,22 @@
             </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+            <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
+                type="button">
+                Random all animations
+            </button>
             <h2>Animations:</h2>
             <div id="animationsContainer"></div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
+                    type="button">
+                    Continuous Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_off" data-url="/mode"
+                    type="button">
+                    Continuous Mode Off
+                </button>
+            </div>
         </div>
         <div class="mui-tabs__pane" id="settings">
             <h2>Setup light string:</h2>
@@ -252,10 +266,12 @@
             <div class="mui-textfield">
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
+            <div>SW_XXXX = Switch XXXX (l,left,r,right,3,three,4,four,lh,left_held, ...)</div>
             <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             <div>NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>
-            <div>NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command using these characters ?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ &lt;&gt;[]</div>
+            <div>NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command using these characters
+                ?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ &lt;&gt;[]</div>
             <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
             <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
                 between
@@ -266,7 +282,9 @@
             <div>ZFIRE = Fire</div>
             <div>ZCOLCH = Color change</div>
             <div>SNXXX = Servo N (0 All, 1-2) XXX 0 to 180</div>
-            <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
+            <div>TRN_TTT = Trigger N for TTT seconds, N 0 all or 1-based output number</div>
+            <div>QXXXX = Add command XXXX any command ie AN_filename to add new animation</div>
+            <div>WXXX = Wait XXX decimal seconds</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
