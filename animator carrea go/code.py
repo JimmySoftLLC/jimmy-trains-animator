@@ -118,10 +118,6 @@ CAR_THR_RIGHT_PRESSED = 13500
 CAR_THR_LEFT_DEADBAND = 3   # percent
 CAR_THR_RIGHT_DEADBAND = 3  # percent
 
-# True = throttles drive cars
-# False = throttles act like left/right menu buttons
-use_live_car_throttle = False
-
 # A throttle "press" means throttle percentage rises above this threshold
 CAR_THR_PRESS_THRESHOLD = 20  # percent
 CAR_THR_RELEASE_THRESHOLD = 5  # percent
@@ -155,7 +151,7 @@ CAR_THR_START = 8       # percent
 CAR_THR_START_MAX = 18  # percent
 
 # How long live driving stays enabled after run_start()
-CAR_DRIVE_TIME = 60.0   # seconds
+CAR_DRIVE_TIME = 30.0   # seconds
 
 # Drive cycle state
 CAR_DRIVE_ARMED = "armed"
@@ -286,6 +282,8 @@ animations_folder = "/sd/snds/"
 
 cfg = files.read_json_file("/sd/cfg.json")
 
+cfg["use_live_car_throttle"] = True
+
 snd_opt = []
 menu_snd_opt = []
 ts_jsons = []
@@ -339,6 +337,8 @@ an_running = False
 an_just_added = False
 
 gc_col("config setup")
+
+files.write_json_file("/sd/cfg.json", cfg)
 
 ################################################################################
 # Setup neo pixels
@@ -1331,9 +1331,9 @@ def throttle_is_released(percent_value):
     return percent_value <= CAR_THR_RELEASE_THRESHOLD
 
 def register_left_shutoff_press():
-    global left_shutoff_press_times, use_live_car_throttle, race_running
+    global left_shutoff_press_times, race_running
 
-    if not use_live_car_throttle:
+    if not cfg["use_live_car_throttle"]:
         return
 
     now = time.monotonic()
@@ -1352,7 +1352,7 @@ def register_left_shutoff_press():
     print("left shutoff press count:", len(left_shutoff_press_times))
 
     if len(left_shutoff_press_times) >= LEFT_THR_SHUTOFF_COUNT:
-        use_live_car_throttle = False
+        cfg["use_live_car_throttle"] = False
         race_running = False
         left_shutoff_press_times = []
         ply_a_0(mvc_folder + "throttles_off.wav")
@@ -1398,12 +1398,12 @@ def car_is_moving(percent_value):
 async def car_movement_sound_task():
     while True:
         try:
-            if use_live_car_throttle and race_running:
+            if cfg["use_live_car_throttle"] and race_running:
                 wait_time = random.uniform(LOW_SOUND_TIME, HIGH_SOUND_TIME)
                 await asyncio.sleep(wait_time)
 
                 # Re-check after waiting
-                if use_live_car_throttle and race_running:
+                if cfg["use_live_car_throttle"] and race_running:
                     left_pct = read_left_car_throttle_percent()
                     right_pct = read_right_car_throttle_percent()
 
@@ -1442,7 +1442,7 @@ def handle_left_throttle_button(now, left_pct):
         if throttle_is_released(left_pct):
             left_throttle_pressed = False
 
-            if use_live_car_throttle:
+            if cfg["use_live_car_throttle"]:
                 register_left_shutoff_press()
             else:
                 ovrde_sw_st["switch_value"] = "left"
@@ -1450,7 +1450,7 @@ def handle_left_throttle_button(now, left_pct):
             left_throttle_press_time = 0.0
             left_throttle_hold_sent = False
         else:
-            if (not use_live_car_throttle and
+            if (not cfg["use_live_car_throttle"] and
                 not left_throttle_hold_sent and
                 (now - left_throttle_press_time) >= THR_HOLD_TIME):
                 ovrde_sw_st["switch_value"] = "left_held"
@@ -1471,13 +1471,13 @@ def handle_right_throttle_button(now, right_pct):
         if throttle_is_released(right_pct):
             right_throttle_pressed = False
 
-            if not use_live_car_throttle and not right_throttle_hold_sent:
+            if not cfg["use_live_car_throttle"] and not right_throttle_hold_sent:
                 ovrde_sw_st["switch_value"] = "right"
 
             right_throttle_press_time = 0.0
             right_throttle_hold_sent = False
         else:
-            if (not use_live_car_throttle and
+            if (not cfg["use_live_car_throttle"] and
                 not right_throttle_hold_sent and
                 (now - right_throttle_press_time) >= THR_HOLD_TIME):
                 ovrde_sw_st["switch_value"] = "right_held"
@@ -1487,7 +1487,7 @@ br = 0
 
 
 async def set_hdw_async(input_string, dur = 3):
-    global br, car_pos, use_live_car_throttle
+    global br, car_pos
     # Split the input string into segments
     segs = input_string.split(",")
 
@@ -1599,7 +1599,7 @@ async def set_hdw_async(input_string, dur = 3):
         # GLXXX or GRXXX = Go left/right car, XXX throttle 0 to 100
         elif seg[0] == 'G':
             # Ignore scripted motor commands when live trigger mode is active
-            if use_live_car_throttle:
+            if cfg["use_live_car_throttle"]:
                 continue
 
             car_id = seg[1]
@@ -1709,7 +1709,6 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global an_just_added
-        global use_live_car_throttle
 
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st
@@ -1724,8 +1723,8 @@ class BseSt(Ste):
                 cfg["cont_mode"] = True
                 ply_a_0(mvc_folder + "continuous_mode_activated.wav")
 
-        elif sw == "right_held" and not use_live_car_throttle:
-            use_live_car_throttle = True
+        elif sw == "right_held" and not cfg["use_live_car_throttle"]:
+            cfg["use_live_car_throttle"] = True
             ply_a_0(mvc_folder + "throttles_on.wav")
 
         elif (sw == "left" or cfg["cont_mode"]) and not mix.voice[0].playing and not an_running:
@@ -1756,7 +1755,6 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global use_live_car_throttle
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, THR_HOLD_TIME, ovrde_sw_st)
         if sw == "left":
@@ -2007,7 +2005,9 @@ upd_vol(.1)
 if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
+        led[1] = (0, 255, 0)
+        led.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         dbm_string = str(-int(avg_rssi))+"dbm"
         spk_str(dbm_string,False)
@@ -2017,9 +2017,12 @@ if (web):
         time.sleep(5)
         files.log_item("restarting...")
         rst()
+else:
+    led[1] = (255, 0, 0)
+    led.show()
+    time.sleep(3)
 
 # initialize items
-add_cmd("CLOSE")
 upd_vol(.5)
 
 # Make sure both cars are stopped at boot
@@ -2047,10 +2050,15 @@ async def server_poll_tsk(server):
     """Poll the web server."""
     while True:
         try:
-            server.poll()  # Web server polling
+            server.poll()
+        except OSError as e:
+            if e.errno == 116:
+                files.log_item("Client timeout (Errno 116)")
+            else:
+                files.log_item(f"OSError: {e}")
         except Exception as e:
-            files.log_item(e)
-        await asyncio.sleep(0)  # Yield control to other tasks
+            files.log_item(f"Poll Exception: {e}")
+        await asyncio.sleep(0)
 
 
 async def state_mach_upd_task(st_mch):
@@ -2072,7 +2080,7 @@ async def car_throttle_motor_task():
             left_pct = read_left_car_throttle_percent()
             right_pct = read_right_car_throttle_percent()
 
-            if use_live_car_throttle and race_running:
+            if cfg["use_live_car_throttle"] and race_running:
                 go_car_left.throttle = left_pct / 100.0
                 go_car_right.throttle = right_pct / 100.0
             else:
@@ -2085,7 +2093,7 @@ async def car_throttle_motor_task():
         await asyncio.sleep(0.002)
 
 async def car_throttle_button_task():
-    global use_live_car_throttle, race_running
+    global race_running
 
     race_state = CAR_DRIVE_ARMED
     race_start_time = 0.0
@@ -2102,7 +2110,7 @@ async def car_throttle_button_task():
             handle_left_throttle_button(now, left_pct)
             handle_right_throttle_button(now, right_pct)
 
-            if not use_live_car_throttle:
+            if not cfg["use_live_car_throttle"]:
                 race_running = False
                 race_state = CAR_DRIVE_ARMED
                 race_start_time = 0.0

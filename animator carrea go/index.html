@@ -1649,11 +1649,11 @@
         currentRotation += angleDiff;
         currentRotation = Math.max(-180, Math.min(180, currentRotation));
 
-        const displayValue = Math.round((currentRotation / 180) * 100);
+        const displayValue = Math.round(((currentRotation + 180) / 360) * 100);
         knob.style.transform = `rotate(${currentRotation}deg)`;
         knobText.innerText = displayValue;
 
-        let newCommand = "T" + displayValue;
+        let newCommand = "GR" + displayValue;
 
         // Throttle command sending
         throttleSendCommand(newCommand);
