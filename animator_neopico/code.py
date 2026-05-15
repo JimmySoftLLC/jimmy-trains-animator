@@ -308,6 +308,7 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 def cont_mode_on():
     cfg["cont_mode"] = True
+    files.write_json_file("cfg.json", cfg)
     indicator.fill((0, 255, 0))
     time.sleep(.5)
     indicator.fill((0, 0, 0))
@@ -321,6 +322,7 @@ def cont_mode_on():
 
 def cont_mode_off():
     cfg["cont_mode"] = False
+    files.write_json_file("cfg.json", cfg)
     indicator.fill((255, 0, 0))
     time.sleep(.5)
     indicator.fill((0, 0, 0))
