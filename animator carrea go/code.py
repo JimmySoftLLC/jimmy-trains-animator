@@ -148,7 +148,7 @@ race_running = False
 
 # Slight dual-throttle press band to start driving
 CAR_THR_START = 8       # percent
-CAR_THR_START_MAX = 18  # percent
+CAR_THR_START_MAX = 100  # percent
 
 # How long live driving stays enabled after run_start()
 CAR_DRIVE_TIME = 30.0   # seconds
@@ -1371,10 +1371,11 @@ def throttles_in_start_band(left_pct, right_pct):
 
 async def run_start():
     print("run_start")
-    result = await set_hdw_async("MWHhorn1", 0)
-    result = await set_hdw_async("MWHhorn1", 0)
-    result = await set_hdw_async("MWHhorn1", 0)
-    result = await set_hdw_async("MWHhorn2", 0)
+    # result = await set_hdw_async("MWHhorn1", 0)
+    # result = await set_hdw_async("MWHhorn1", 0)
+    # result = await set_hdw_async("MWHhorn1", 0)
+    # result = await set_hdw_async("MWHhorn2", 0)
+    result = await set_hdw_async("MWHhorn3", 0)
     await asyncio.sleep(0)
 
 async def run_stop():
