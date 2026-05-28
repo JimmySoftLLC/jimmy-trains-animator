@@ -1084,21 +1084,24 @@ def _duty_to_digit(d):
       2 = closest to 40/255
       3 = closest to 60/255
       4 = closest to 80/255
+
+      None = between bins / unsettled
     """
 
-    min_dist = float('inf')
-    best = 0  # default to invalid
+    min_dist = float("inf")
+    best = None
 
     for i, center in enumerate(CENTERS):
         dist = abs(d - center)
+
         if dist < min_dist:
             min_dist = dist
             best = i
 
     if min_dist <= TOLERANCE:
         return best
-    else:
-        return 0
+
+    return None
 
 
 def _rgb_digits_to_char(r, g, b):
@@ -1169,11 +1172,35 @@ async def decoder_task():
 
             digits[ch] = _duty_to_digit(filt[ch])
 
-        # print("R: ",filt["R"], "G: ", filt["G"], "B: ", filt["B"])
+        # Ignore values while transitioning between bins
+        if (
+            digits["R"] is None or
+            digits["G"] is None or
+            digits["B"] is None
+        ):
+            hist = []
+            candidate = None
+            candidate_n = 0
+            candidate_start_t = None
 
-        t = (digits["R"], digits["G"], digits["B"])
+            # print(
+            #     "UNSETTLED |",
+            #     filt["R"],
+            #     filt["G"],
+            #     filt["B"]
+            # )
+
+            await asyncio.sleep(0)
+            continue
+
+        t = (
+            digits["R"],
+            digits["G"],
+            digits["B"]
+        )
 
         hist.append(t)
+
         if len(hist) > WIN:
             hist.pop(0)
 
