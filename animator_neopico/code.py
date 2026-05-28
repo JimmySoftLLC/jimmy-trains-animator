@@ -1209,21 +1209,25 @@ async def decoder_task():
             elif ch_out == "[":
                 built_string = ""
                 is_building_string = True
+                last_char = ch_out
+                candidate_start_t = None
+                await asyncio.sleep(0)
+                continue
             elif ch_out == "]":
-                now = time.monotonic()
-                lat_ms = int((now - candidate_start_t) *
-                             1000) if candidate_start_t is not None else 0
-                comm_latest["char"] = built_string
-                comm_latest["digits"] = best_t
-                comm_latest["votes"] = best_n
-                comm_latest["lat_ms"] = lat_ms
-                comm_latest["binned"] = (
-                    filt["R"], best_t[0],
-                    filt["G"], best_t[1],
-                    filt["B"], best_t[2]
-                )
-                comm_new_char_event.set()
-                is_building_string = False
+                if is_building_string:
+                    now = time.monotonic()
+                    lat_ms = int((now - candidate_start_t) * 1000) if candidate_start_t is not None else 0
+                    comm_latest["char"] = built_string
+                    comm_latest["digits"] = best_t
+                    comm_latest["votes"] = best_n
+                    comm_latest["lat_ms"] = lat_ms
+                    comm_latest["binned"] = (
+                        int(filt["R"]*255),
+                        int(filt["G"]*255),
+                        int(filt["B"]*255))
+                    comm_new_char_event.set()
+                    is_building_string = False
+                    built_string = ""
             elif is_building_string:
                 built_string = built_string + ch_out
             else:
@@ -1235,10 +1239,9 @@ async def decoder_task():
                 comm_latest["votes"] = best_n
                 comm_latest["lat_ms"] = lat_ms
                 comm_latest["binned"] = (
-                    filt["R"], best_t[0],
-                    filt["G"], best_t[1],
-                    filt["B"], best_t[2]
-                )
+                    int(filt["R"]*255),
+                    int(filt["G"]*255),
+                    int(filt["B"]*255))
                 comm_new_char_event.set()
             last_char = ch_out
             candidate_start_t = None
