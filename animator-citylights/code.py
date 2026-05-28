@@ -161,7 +161,7 @@ is_midori_running = False
 tmp_wav_file_name = code_folder + "tmp.wav"
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
-MP_CMD_WAIT=.1
+MP_CMD_WAIT=.2
 
 ################################################################################
 # Loading image as wallpaper on pi
