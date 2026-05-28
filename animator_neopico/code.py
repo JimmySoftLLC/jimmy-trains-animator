@@ -2262,6 +2262,9 @@ async def set_hdw_async(cmd, dur=0):
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
                 await asyncio.sleep(s)
+            # abc... = AN_abc... using these lower case characters abcdefghijklmnopqrstuvwxyz
+            elif seg[0] in "abcdefghijklmnopqrstuvwxyz":
+                add_command("AN_" + seg[0:])
     except Exception as e:
         files.log_item(e)
 
@@ -2475,8 +2478,9 @@ async def server_poll_task(server):
 
 async def garbage_collection_task():
     while True:
-        gc.collect()
         await asyncio.sleep(60)
+        if not an_running and not comm_new_char_event.is_set():
+            gc.collect()
 
 
 async def state_mach_upd_task(st_mch):
