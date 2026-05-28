@@ -1182,14 +1182,14 @@ def set_neo_relay_to(mod_n, ind, off_on):
 
 
 def set_neo_pico_to(mod_n, char):
-    neo_relay_ids = get_neo_pico_ids()
+    neo_pico_ids = get_neo_pico_ids()
     r, g, b = char_to_pwm_rgb(char)
     print("r: ", r, "g: ", g, "b: ", b)
     if mod_n == 0:
-        for i in neo_relay_ids:
+        for i in neo_pico_ids:
             led[i] = (r, g, b)
     else:
-        led[neo_relay_ids[mod_n-1]] = (r, g, b)
+        led[neo_pico_ids[mod_n-1]] = (r, g, b)
     led.show()
 
 
@@ -3127,10 +3127,13 @@ def set_hdw(cmd, dur, url=""):
                         prev = v
 
                     set_neo_pico_to(mod_n, "]")
-                    time.sleep(MP_CMD_WAIT)
 
-                    end_time = time.monotonic()
-                    print("Neo pico command time: ", end_time-start_time)
+                time.sleep(MP_CMD_WAIT)
+                set_neo_pico_to(mod_n, "?")
+
+                end_time = time.monotonic()
+                print("Neo pico command time: ", end_time-start_time)
+
             # brightness BXXX = Brightness XXX 000 to 100
             elif seg[0:2] == 'BN':
                 br = int(seg[2:])

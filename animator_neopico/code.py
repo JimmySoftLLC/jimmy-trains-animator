@@ -49,7 +49,6 @@ import os
 import pulseio
 
 
-
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
@@ -118,10 +117,10 @@ bclk = board.GP18  # BCLK on MAX98357A i2s audio
 lrc = board.GP19  # LRC on MAX98357A i2s audio
 din = board.GP20  # DIN on MAX98357A i2s audio
 
-sck = board.GP2 # serial clock sdCard
-si = board.GP3 # MOSI sdCard
-so = board.GP4 # MISO sdCard
-cs = board.GP5 # chip select sdCard
+sck = board.GP2  # serial clock sdCard
+si = board.GP3  # MOSI sdCard
+so = board.GP4  # MISO sdCard
+cs = board.GP5  # chip select sdCard
 
 l_sw_pin = board.GP11
 r_sw_pin = board.GP15
@@ -143,7 +142,7 @@ DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
 MP_CMD_WAIT = .1
 IDLE_STATE = False
 MAXLEN = 1200
-CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255]
+CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255] #0, 0.078, 0.156, 0.235, 0.313
 TOLERANCE = 8/255
 CAPTURE_S = 0.002
 WIN = 5
@@ -151,7 +150,9 @@ MIN_MAJ = 5
 CONFIRM_COUNT = 3
 ALPHA = 0.20
 CHAR_TO_HDW = {
-    "^": "UPDLS"
+    "^": "UPDLS",
+    "<": "TR2_.5",
+    ">": "TR1_.5"
 }
 
 ################################################################################
@@ -176,6 +177,7 @@ gc_col("config setup")
 animations = []
 mnu_o = []
 
+
 def upd_media():
     global animations, mnu_o
     animations = []
@@ -184,6 +186,7 @@ def upd_media():
     mnu_o.extend(animations)
     rnd_o = ['random all']
     mnu_o.extend(rnd_o)
+
 
 upd_media()
 
@@ -302,7 +305,6 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 
-
 ################################################################################
 # Setup neo pixels (main light string)
 
@@ -320,6 +322,7 @@ def cont_mode_on():
     indicator.fill((0, 255, 0))
     time.sleep(.5)
 
+
 def cont_mode_off():
     cfg["cont_mode"] = False
     files.write_json_file("cfg.json", cfg)
@@ -334,12 +337,14 @@ def cont_mode_off():
     indicator.fill((0, 255, 0))
     time.sleep(.5)
 
-def show_mode(cycles,r,g,b):
+
+def show_mode(cycles, r, g, b):
     for _ in range(cycles):
         indicator.fill((r, g, b))
         time.sleep(.5)
         indicator.fill((0, 0, 0))
         time.sleep(.5)
+
 
 trees = []
 canes = []
@@ -371,8 +376,16 @@ indicator = neopixel.NeoPixel(indicator_pin, 1)
 
 indicator.brightness = .1
 
+try:
+    files.write_json_file("cfg.json", cfg)
+    indicator.fill((0, 255, 0))
+except:
+    indicator.fill((0, 0, 255))
+    time.sleep(3)
+
 pixel_scale = [(1.0, 1.0, 1.0)] * n_px
 logical_led = {}
+
 
 def clear_pixel_scale_all():
     """Clear ALL calibration (persistent) + reset runtime scalers to 1.0 on allowed light pixels."""
@@ -475,6 +488,7 @@ def bld_neo():
             i.append(l + si)
     return i
 
+
 def bld_neorelay():
     i = []
     for n in neorelays:
@@ -495,6 +509,7 @@ def bld_neopico():
         for l in range(0, 6):
             i.append(l+si)
     return i
+
 
 def show_l():
     neo_branch.show()
@@ -623,13 +638,13 @@ def l_tst():
     # neopico test
     for n in neopicos:
         for i in n:
-            neo_branch[i] = (0,0,0)
+            neo_branch[i] = (0, 0, 0)
             neo_branch.show()
             time.sleep(MP_CMD_WAIT)
-            neo_branch[i] = (60,0,0)
+            neo_branch[i] = (60, 0, 0)
             neo_branch.show()
             time.sleep(MP_CMD_WAIT)
-            neo_branch[i] = (0,0,0)
+            neo_branch[i] = (0, 0, 0)
             neo_branch.show()
             time.sleep(MP_CMD_WAIT)
 
@@ -647,8 +662,10 @@ def l_tst():
     indicator.show()
     time.sleep(.3)
 
+
 def clamp01(x: float) -> float:
     return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+
 
 def load_pixel_scale_from_cfg():
     """Load sparse per-pixel RGB scalers from cfg['pixel_scale'] into pixel_scale list."""
@@ -664,6 +681,7 @@ def load_pixel_scale_from_cfg():
             pixel_scale[i] = (clamp01(rs), clamp01(gs), clamp01(bs))
         except Exception:
             continue
+
 
 def upd_l_str():
     global trees, canes, bars, bolts, noods, neos, neorelays, neopicos, only_lights, only_lights_set, n_px, neo_branch, pixel_scale, logical_led
@@ -756,6 +774,7 @@ def upd_l_str():
     load_pixel_scale_from_cfg()
 
     l_tst()
+
 
 upd_l_str()
 
@@ -1021,6 +1040,7 @@ def char_to_pwm_rgb(ch: str) -> tuple[int, int, int]:
         DIGIT_PWM[b_d],
     )
 
+
 def _enable_pullup(pin):
     d = digitalio.DigitalInOut(pin)
     d.direction = digitalio.Direction.INPUT
@@ -1197,6 +1217,11 @@ async def decoder_task():
                 comm_latest["digits"] = best_t
                 comm_latest["votes"] = best_n
                 comm_latest["lat_ms"] = lat_ms
+                comm_latest["binned"] = (
+                    filt["R"], best_t[0],
+                    filt["G"], best_t[1],
+                    filt["B"], best_t[2]
+                )
                 comm_new_char_event.set()
                 is_building_string = False
             elif is_building_string:
@@ -1209,6 +1234,11 @@ async def decoder_task():
                 comm_latest["digits"] = best_t
                 comm_latest["votes"] = best_n
                 comm_latest["lat_ms"] = lat_ms
+                comm_latest["binned"] = (
+                    filt["R"], best_t[0],
+                    filt["G"], best_t[1],
+                    filt["B"], best_t[2]
+                )
                 comm_new_char_event.set()
             last_char = ch_out
             candidate_start_t = None
@@ -1301,7 +1331,8 @@ if web:
 
             mdns = mdns.Server(wifi.radio)
             mdns.hostname = cfg["HOST_NAME"]
-            mdns.advertise_service(service_type="_http", protocol="_tcp", port=80)
+            mdns.advertise_service(service_type="_http",
+                                   protocol="_tcp", port=80)
 
             local_ip = str(wifi.radio.ipv4_address)
             files.log_item("IP is" + local_ip)
@@ -1344,7 +1375,8 @@ if web:
                 if rq_d["an"] == "reset_animation_timing_to_defaults":
                     for ts_fn in ts_jsons:
                         ts = files.read_json_file("t_s_def/" + ts_fn + ".json")
-                        files.write_json_file("animations/" + ts_fn + ".json", ts)
+                        files.write_json_file(
+                            "animations/" + ts_fn + ".json", ts)
                 elif rq_d["an"] == "reset_to_defaults":
                     rst_def()
                     files.write_json_file("cfg.json", cfg)
@@ -1426,7 +1458,8 @@ if web:
                 if cfg["light_string"] == "":
                     cfg["light_string"] = rq_d["text"]
                 else:
-                    cfg["light_string"] = cfg["light_string"] + "," + rq_d["text"]
+                    cfg["light_string"] = cfg["light_string"] + \
+                        "," + rq_d["text"]
 
                 files.write_json_file("cfg.json", cfg)
                 upd_l_str()
@@ -1510,7 +1543,7 @@ if web:
                     gc_col("get data")
                     return Response(request, "out of memory")
                 return Response(request, "success")
-            
+
             @server.route("/mode", [POST])
             def btn(request: Request):
                 rq_d = request.json()
@@ -1519,7 +1552,7 @@ if web:
                 elif rq_d["an"] == "right":
                     override_switch_state["switch_value"] = "right"
                 elif rq_d["an"] == "left_held":
-                    override_switch_state["switch_value"] = "left_held"    
+                    override_switch_state["switch_value"] = "left_held"
                 elif rq_d["an"] == "right_held":
                     override_switch_state["switch_value"] = "right_held"
                 elif rq_d["an"] == "three":
@@ -1780,6 +1813,7 @@ def spk_web():
 ################################################################################
 # animations
 
+
 async def an_async(f_nm):
     global an_running
     """Run animation lighting as an async task."""
@@ -1847,7 +1881,7 @@ async def an_light_async(f_nm):
                 exit_set_hdw_async = True
                 flsh_i = len(flsh_t) - 1
                 cont_mode_off()
-                
+
         await asyncio.sleep(0)  # Yield control to other tasks
 
         # Exit condition for stopping animation
@@ -1887,7 +1921,8 @@ async def rbow(spd, dur):
 
             for k, i in enumerate(pxs):
                 pixel_index = (k * 256 // n) + j
-                safe_set_led(i, colorwheel(pixel_index & 255), store_logical=False)
+                safe_set_led(i, colorwheel(pixel_index & 255),
+                             store_logical=False)
 
             neo_branch.show()
             await asyncio.sleep(spd)
@@ -1901,7 +1936,8 @@ async def rbow(spd, dur):
 
             for k, i in enumerate(pxs):
                 pixel_index = (k * 256 // n) + j
-                safe_set_led(i, colorwheel(pixel_index & 255), store_logical=False)
+                safe_set_led(i, colorwheel(pixel_index & 255),
+                             store_logical=False)
 
             neo_branch.show()
             await asyncio.sleep(spd)
@@ -1946,7 +1982,7 @@ async def fire(dur):
             safe_set_led(i, (r1, g1, b1), store_logical=False)
             neo_branch.show()
         await asyncio.sleep(random.uniform(0.05, 0.1))
-        
+
         if (time.monotonic() - st) > dur:
             return
 
@@ -1992,6 +2028,7 @@ def bnd(c, l, u):
         c = u
     return c
 
+
 async def pulse_trigger(trigger_n, duration):
     if trigger_n < 0 or trigger_n >= len(trigger_arr):
         return
@@ -2017,7 +2054,7 @@ async def pulse_trigger(trigger_n, duration):
 async def set_hdw_async(cmd, dur=0):
     global br, exit_set_hdw_async, neo_brightness, override_switch_state
 
-    if cmd[:2]=="NP" in cmd:
+    if cmd[:2] == "NP" in cmd:
         segs = [cmd]
     else:
         segs = cmd.split(",")
@@ -2044,7 +2081,7 @@ async def set_hdw_async(cmd, dur=0):
                     sw_state = "right_held"
                 override_switch_state["switch_value"] = sw_state
                 print("Switch state: ", override_switch_state)
-            # UPDLS = update light string    
+            # UPDLS = update light string
             elif seg[:5] == 'UPDLS':
                 upd_l_str()
             # lights LI_R_G_B = Nep pico indicator RGB 0 to 255
@@ -2075,7 +2112,7 @@ async def set_hdw_async(cmd, dur=0):
                 segs_split = seg.split("_", 1)
                 mod_n = int(segs_split[0].replace("NP", ""))
 
-                if len(segs_split[1])==1:
+                if len(segs_split[1]) == 1:
                     set_neo_pico_to(mod_n, segs_split[1])
                 else:
                     set_neo_pico_to(mod_n, "?")
@@ -2123,7 +2160,7 @@ async def set_hdw_async(cmd, dur=0):
                     refresh_allowed_leds()
                     await asyncio.sleep(step_s)
             # SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index
-            elif seg[:3] =='SCN':
+            elif seg[:3] == 'SCN':
                 parts = seg.split('_')
                 px_n = int(parts[0][3:])   # after 'SCN'
                 rs = clamp01(float(parts[1]))
@@ -2217,7 +2254,8 @@ async def consumer_task():
         print("CHAR:", ch,
               "| digits:", comm_latest["digits"],
               "| votes:", comm_latest["votes"],
-              "| latency_ms:", comm_latest["lat_ms"])
+              "| latency_ms:", comm_latest["lat_ms"],
+              "| binns:", comm_latest["binned"])
 
         if ch in CHAR_TO_HDW:
             add_command(CHAR_TO_HDW[ch])
@@ -2332,10 +2370,10 @@ class Main(Ste):
             l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
         if sw == "left":
             self.sel_i = self.i
-            if self.sel_i  == len(mnu_o) - 1:
+            if self.sel_i == len(mnu_o) - 1:
                 show_mode(1, 255, 255, 255)
             else:
-                show_mode(self.sel_i  + 1, 255, 255, 0)
+                show_mode(self.sel_i + 1, 255, 255, 0)
             self.i += 1
             if self.i > len(mnu_o) - 1:
                 self.i = 0
@@ -2366,6 +2404,7 @@ if (web):
         indicator[0] = (0, 255, 0)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         dbm_string = str(-int(avg_rssi))+"dbm"
+        indicator.fill((0, 255, 0))
         # spk_str(dbm_string,False)
         # spk_web()
     except Exception as e:
@@ -2374,8 +2413,9 @@ if (web):
         files.log_item("restarting...")
         rst()
 else:
-    indicator[0] = (255, 0, 0)
+    indicator.fill((255, 255, 0))
     time.sleep(3)
+    indicator.fill((0, 255, 0))
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -2391,7 +2431,7 @@ async def process_commands_task():
             await process_commands()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
 
 
 async def server_poll_task(server):
@@ -2400,13 +2440,14 @@ async def server_poll_task(server):
             server.poll()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.02)
 
 
 async def garbage_collection_task():
     while True:
         gc.collect()
-        await asyncio.sleep(30)
+        await asyncio.sleep(60)
+
 
 async def state_mach_upd_task(st_mch):
     global an_just_added
@@ -2416,7 +2457,7 @@ async def state_mach_upd_task(st_mch):
             await asyncio.sleep(3)
             an_just_added = False
         else:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.02)
 
 
 async def main():
