@@ -1,8 +1,8 @@
 {
-  "option_selected": "a",
+  "option_selected": "test",
   "HOST_NAME": "neo-pico",
   "serve_webpage": true,
   "light_string": "neo-6",
   "cont_mode": false,
-  "hardware_string": "trigger,trigger"
+  "hardware_string": "trigger,trigger,trigger,trigger,servo"
 }

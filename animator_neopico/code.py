@@ -263,43 +263,6 @@ except Exception as e:
 
 aud_en.value = False
 
-# Setup hardware pins, s_2 is used by left switch
-hdw_pins = [s_1_pin, s_3_pin, s_4_pin, s_5_pin, s_6_pin]
-
-s_arr = []
-trigger_arr = []
-trigger_busy = []
-
-
-def upd_hdw_str():
-    global s_arr, trigger_arr, trigger_busy
-
-    s_arr = []
-    trigger_arr = []
-    trigger_busy = []
-
-    els = cfg["hardware_string"].split(",")
-
-    for i, el in enumerate(els):
-        if i >= len(hdw_pins):
-            break
-
-        typ = el.strip().lower()
-        pin = hdw_pins[i]
-
-        if typ == "servo":
-            pwm = pwmio.PWMOut(pin, duty_cycle=2 ** 15, frequency=50)
-            s_arr.append(servo.Servo(pwm, min_pulse=500, max_pulse=2500))
-
-        elif typ == "trigger":
-            trig = digitalio.DigitalInOut(pin)
-            trig.direction = digitalio.Direction.INPUT
-            trigger_arr.append(trig)
-            trigger_busy.append(False)
-
-
-upd_hdw_str()
-
 # Setup time
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
@@ -307,6 +270,21 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
 # Setup neo pixels (main light string)
+def self_test_done_indicator():
+    time.sleep(.3)
+    indicator[0] = (255, 0, 0)
+    indicator.show()
+    time.sleep(.3)
+    indicator[0] = (0, 255, 0)
+    indicator.show()
+    time.sleep(.3)
+    indicator[0] = (0, 0, 255)
+    indicator.show()
+    time.sleep(.3)
+    indicator[0] = (0, 255, 0)
+    indicator.show()
+    time.sleep(.3)
+
 
 def cont_mode_on():
     cfg["cont_mode"] = True
@@ -385,7 +363,6 @@ except:
 
 pixel_scale = [(1.0, 1.0, 1.0)] * n_px
 logical_led = {}
-
 
 def clear_pixel_scale_all():
     """Clear ALL calibration (persistent) + reset runtime scalers to 1.0 on allowed light pixels."""
@@ -648,20 +625,6 @@ def l_tst():
             neo_branch.show()
             time.sleep(MP_CMD_WAIT)
 
-    time.sleep(.3)
-    indicator[0] = (255, 0, 0)
-    indicator.show()
-    time.sleep(.3)
-    indicator[0] = (0, 255, 0)
-    indicator.show()
-    time.sleep(.3)
-    indicator[0] = (0, 0, 255)
-    indicator.show()
-    time.sleep(.3)
-    indicator[0] = (0, 255, 0)
-    indicator.show()
-    time.sleep(.3)
-
 
 def clamp01(x: float) -> float:
     return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
@@ -777,6 +740,46 @@ def upd_l_str():
 
 
 upd_l_str()
+
+########################################################################################################################
+# Setup programmable hardware
+# Hardware pins note s_2 is used by left switch so is not in the list
+
+hdw_pins = [s_1_pin, s_3_pin, s_4_pin, s_5_pin, s_6_pin]
+
+s_arr = []
+trigger_arr = []
+trigger_busy = []
+
+def upd_hdw_str():
+    global s_arr, trigger_arr, trigger_busy
+
+    s_arr = []
+    trigger_arr = []
+    trigger_busy = []
+
+    els = cfg["hardware_string"].split(",")
+
+    for i, el in enumerate(els):
+        if i >= len(hdw_pins):
+            break
+
+        typ = el.strip().lower()
+        pin = hdw_pins[i]
+
+        if typ == "servo":
+            pwm = pwmio.PWMOut(pin, duty_cycle=2 ** 15, frequency=50)
+            s_arr.append(servo.Servo(pwm, min_pulse=500, max_pulse=2500))
+
+        elif typ == "trigger":
+            trig = digitalio.DigitalInOut(pin)
+            trig.direction = digitalio.Direction.INPUT
+            trigger_arr.append(trig)
+            trigger_busy.append(False)
+
+    self_test_done_indicator()
+
+upd_hdw_str()
 
 ########################################################################################################################
 # Neo pixel / neo 6 module methods
@@ -1498,6 +1501,30 @@ if web:
             @server.route("/get-light-string", [POST])
             def get_light_string(req: Request):
                 return Response(req, cfg["light_string"])
+            
+            @server.route("/update-hardware-string", [POST])
+            def update_light_string(req: Request):
+                global cfg
+                rq_d = req.json()
+                if rq_d["action"] in ("save", "clear", "defaults"):
+                    cfg["hardware_string"] = rq_d["text"]
+                    files.write_json_file("cfg.json", cfg)
+                    upd_hdw_str()
+                    return Response(req, cfg["hardware_string"])
+
+                if cfg["hardware_string"] == "":
+                    cfg["hardware_string"] = rq_d["text"]
+                else:
+                    cfg["hardware_string"] = cfg["hardware_string"] + \
+                        "," + rq_d["text"]
+
+                files.write_json_file("cfg.json", cfg)
+                upd_hdw_str()
+                return Response(req, cfg["hardware_string"])
+
+            @server.route("/get-hardware-string", [POST])
+            def get_light_string(req: Request):
+                return Response(req, cfg["hardware_string"])
 
             @server.route("/update-host-name", [POST])
             def update_host_name(request: Request):
@@ -2438,8 +2465,8 @@ if (web):
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         dbm_string = str(-int(avg_rssi))+"dbm"
         indicator.fill((0, 255, 0))
-        # spk_str(dbm_string,False)
-        # spk_web()
+        spk_str(dbm_string,False)
+        spk_web()
     except Exception as e:
         files.log_item(e)
         time.sleep(5)
