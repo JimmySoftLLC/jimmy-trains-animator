@@ -6,5 +6,6 @@
   "cont_mode": false,
   "volume": "50",
   "volume_pot": false,
+  "use_sd_card": false,
   "hardware_string": "trigger,trigger,trigger,trigger,servo"
 }

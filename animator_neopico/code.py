@@ -47,6 +47,7 @@ import gc
 import files
 import os
 import pulseio
+import audiomp3
 
 
 def gc_col(collection_point):
@@ -159,6 +160,7 @@ CHAR_TO_HDW = {
 # config variables
 
 animators_folder = "/animations/"
+mvc_folder = "/sd/mvc/"
 
 cfg = files.read_json_file("cfg.json")
 
@@ -230,36 +232,37 @@ aud.play(mix)
 
 mix.voice[0].level = .8
 
-try:
-    sd = sdcardio.SDCard(spi, cs)
-    vfs = storage.VfsFat(sd)
-    storage.mount(vfs, "/sd")
-except Exception as e:
-    files.log_item(e)
-    w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
-    mix.voice[0].play(w0, loop=False)
-    while mix.voice[0].playing:
-        pass
-    card_in = False
-    while not card_in:
-        l_sw.update()
-        if l_sw.fell:
-            try:
-                sd = sdcardio.SDCard(spi, cs)
-                vfs = storage.VfsFat(sd)
-                storage.mount(vfs, "/sd")
-                card_in = True
-                w0 = audiocore.WaveFile(
-                    open("/sd/mvc/micro_sd_card_success.wav", "rb"))
-                mix.voice[0].play(w0, loop=False)
-                while mix.voice[0].playing:
-                    pass
-            except Exception as e:
-                files.log_item(e)
-                w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
-                mix.voice[0].play(w0, loop=False)
-                while mix.voice[0].playing:
-                    pass
+if cfg["use_sd_card"]:
+    try:
+        sd = sdcardio.SDCard(spi, cs)
+        vfs = storage.VfsFat(sd)
+        storage.mount(vfs, "/sd")
+    except Exception as e:
+        files.log_item(e)
+        w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+        mix.voice[0].play(w0, loop=False)
+        while mix.voice[0].playing:
+            pass
+        card_in = False
+        while not card_in:
+            l_sw.update()
+            if l_sw.fell:
+                try:
+                    sd = sdcardio.SDCard(spi, cs)
+                    vfs = storage.VfsFat(sd)
+                    storage.mount(vfs, "/sd")
+                    card_in = True
+                    w0 = audiocore.WaveFile(
+                        open(mvc_folder + "micro_sd_card_success.wav", "rb"))
+                    mix.voice[0].play(w0, loop=False)
+                    while mix.voice[0].playing:
+                        pass
+                except Exception as e:
+                    files.log_item(e)
+                    w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+                    mix.voice[0].play(w0, loop=False)
+                    while mix.voice[0].playing:
+                        pass
 
 aud_en.value = False
 
@@ -1772,21 +1775,37 @@ def ch_vol(action):
     cfg["volume"] = str(v)
     cfg["volume_pot"] = False
     if not mix.voice[0].playing:
-        files.write_json_file("/sd/cfg.json", cfg)
-        ply_a_0("/sd/mvc/volume.wav")
+        files.write_json_file("cfg.json", cfg)
+        ply_a_0(mvc_folder + "volume.wav")
         spk_str(cfg["volume"], False)
 
 
-def ply_a_0(file_name):
+def ply_a_0(file_name, wait=True, repeat=False):
+    if not cfg["use_sd_card"] and "/sd/" in file_name:
+        return
+
+    # Stop if voice is currently playing
     if mix.voice[0].playing:
         mix.voice[0].stop()
         while mix.voice[0].playing:
-            upd_vol(0.02)
-    w0 = audiocore.WaveFile(open(file_name, "rb"))
-    mix.voice[0].play(w0, loop=False)
-    while mix.voice[0].playing:
-        upd_vol(0.02)
-        exit_early()
+            upd_vol(0.1)
+
+    # Choose decoder based on file extension
+    if file_name.lower().endswith(".mp3"):
+        w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w0 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    # Play the selected file
+    mix.voice[0].play(w0, loop=repeat)
+
+    # Wait until playback completes
+    if wait:
+        while mix.voice[0].playing:
+            exit_early()
+            pass
 
 
 def stp_a_0():
@@ -1803,7 +1822,7 @@ def exit_early():
     if sw == "left_held":
         mix.voice[0].stop()
         stop_all_commands()
-        ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
+        ply_a_0(mvc_folder + "continuous_mode_deactivated.wav")
 
 
 def spk_str(str_to_speak, addLocal):
@@ -1815,29 +1834,29 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_0("/sd/mvc/" + character + ".wav")
+            ply_a_0(mvc_folder + character + ".wav")
         except:
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_0("/sd/mvc/dot.wav")
-        ply_a_0("/sd/mvc/local.wav")
+        ply_a_0(mvc_folder + "dot.wav")
+        ply_a_0(mvc_folder + "local.wav")
 
 
 def l_r_but():
-    ply_a_0("/sd/mvc/press_left_button_right_button.wav")
+    ply_a_0(mvc_folder + "press_left_button_right_button.wav")
 
 
 def sel_web():
-    ply_a_0("/sd/mvc/web_menu.wav")
+    ply_a_0(mvc_folder + "web_menu.wav")
     l_r_but()
 
 
 def opt_sel():
-    ply_a_0("/sd/mvc/option_selected.wav")
+    ply_a_0(mvc_folder + "option_selected.wav")
 
 
 def spk_sng_num(song_number):
-    ply_a_0("/sd/mvc/song.wav")
+    ply_a_0(mvc_folder + "song.wav")
     spk_str(song_number, False)
 
 
@@ -1845,39 +1864,39 @@ def spk_lght(play_intro):
     try:
         elements = cfg["light_string"].split(',')
         if play_intro:
-            ply_a_0("/sd/mvc/current_light_settings_are.wav")
+            ply_a_0(mvc_folder + "current_light_settings_are.wav")
         for index, element in enumerate(elements):
-            ply_a_0("/sd/mvc/position.wav")
-            ply_a_0("/sd/mvc/" + str(index+1) + ".wav")
-            ply_a_0("/sd/mvc/is.wav")
-            ply_a_0("/sd/mvc/" + element + ".wav")
+            ply_a_0(mvc_folder + "position.wav")
+            ply_a_0(mvc_folder + str(index+1) + ".wav")
+            ply_a_0(mvc_folder + "is.wav")
+            ply_a_0(mvc_folder + element + ".wav")
     except:
-        ply_a_0("/sd/mvc/no_lights_in_light_string.wav")
+        ply_a_0(mvc_folder + "no_lights_in_light_string.wav")
         return
 
 
 def no_trk():
-    ply_a_0("/sd/mvc/no_user_soundtrack_found.wav")
+    ply_a_0(mvc_folder + "no_user_soundtrack_found.wav")
     while True:
         l_sw.update()
         r_sw.update()
         if l_sw.fell:
             break
         if r_sw.fell:
-            ply_a_0("/sd/mvc/create_sound_track_files.wav")
+            ply_a_0(mvc_folder + "create_sound_track_files.wav")
             break
 
 
 def spk_web():
-    ply_a_0("/sd/mvc/animator_available_on_network.wav")
-    ply_a_0("/sd/mvc/to_access_type.wav")
+    ply_a_0(mvc_folder + "animator_available_on_network.wav")
+    ply_a_0(mvc_folder + "to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-lightning":
-        ply_a_0("/sd/mvc/animator_dash_lightning.wav")
-        ply_a_0("/sd/mvc/dot.wav")
-        ply_a_0("/sd/mvc/local.wav")
+        ply_a_0(mvc_folder + "animator_dash_lightning.wav")
+        ply_a_0(mvc_folder + "dot.wav")
+        ply_a_0(mvc_folder + "local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    ply_a_0("/sd/mvc/in_your_browser.wav")
+    ply_a_0(mvc_folder + "in_your_browser.wav")
 
 ################################################################################
 # animations
