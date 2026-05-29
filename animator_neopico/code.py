@@ -110,7 +110,7 @@ gc_col("Imports gc, files")
 # }
 
 # animator pico board
-a_in_pin = board.A0
+a_in_pin = board.A2
 aud_en_pin = board.GP21
 
 bclk = board.GP18  # BCLK on MAX98357A i2s audio
@@ -625,6 +625,8 @@ def l_tst():
             neo_branch.show()
             time.sleep(MP_CMD_WAIT)
 
+    self_test_done_indicator()
+
 
 def clamp01(x: float) -> float:
     return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
@@ -754,6 +756,13 @@ trigger_busy = []
 def upd_hdw_str():
     global s_arr, trigger_arr, trigger_busy
 
+    # Release existing hardware
+    for s in s_arr:
+        s._pwm_out.deinit()   # Servo wraps a PWMOut
+
+    for t in trigger_arr:
+        t.deinit()
+
     s_arr = []
     trigger_arr = []
     trigger_busy = []
@@ -768,8 +777,10 @@ def upd_hdw_str():
         pin = hdw_pins[i]
 
         if typ == "servo":
-            pwm = pwmio.PWMOut(pin, duty_cycle=2 ** 15, frequency=50)
-            s_arr.append(servo.Servo(pwm, min_pulse=500, max_pulse=2500))
+            pwm = pwmio.PWMOut(pin, duty_cycle=2**15, frequency=50)
+            s_arr.append(
+                servo.Servo(pwm, min_pulse=500, max_pulse=2500)
+            )
 
         elif typ == "trigger":
             trig = digitalio.DigitalInOut(pin)
@@ -1503,7 +1514,7 @@ if web:
                 return Response(req, cfg["light_string"])
             
             @server.route("/update-hardware-string", [POST])
-            def update_light_string(req: Request):
+            def update_hardware_string(req: Request):
                 global cfg
                 rq_d = req.json()
                 if rq_d["action"] in ("save", "clear", "defaults"):
@@ -1523,7 +1534,7 @@ if web:
                 return Response(req, cfg["hardware_string"])
 
             @server.route("/get-hardware-string", [POST])
-            def get_light_string(req: Request):
+            def get_hardware_string(req: Request):
                 return Response(req, cfg["hardware_string"])
 
             @server.route("/update-host-name", [POST])
@@ -1774,6 +1785,7 @@ def ply_a_0(file_name):
     w0 = audiocore.WaveFile(open(file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
+        upd_vol(0.02)
         exit_early()
 
 
@@ -2456,6 +2468,7 @@ st_mch.add(Main())
 # Start server
 
 aud_en.value = True
+upd_vol(.02)
 
 if (web):
     files.log_item("starting server...")

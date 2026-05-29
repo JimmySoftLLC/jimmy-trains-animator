@@ -4,5 +4,7 @@
   "serve_webpage": true,
   "light_string": "neo-6",
   "cont_mode": false,
+  "volume": "50",
+  "volume_pot": false,
   "hardware_string": "trigger,trigger,trigger,trigger,servo"
 }
