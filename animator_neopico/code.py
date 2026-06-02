@@ -239,30 +239,12 @@ if cfg["use_sd_card"]:
         storage.mount(vfs, "/sd")
     except Exception as e:
         files.log_item(e)
+        cfg["use_sd_card"] = False
         w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
         mix.voice[0].play(w0, loop=False)
         while mix.voice[0].playing:
             pass
-        card_in = False
-        while not card_in:
-            l_sw.update()
-            if l_sw.fell:
-                try:
-                    sd = sdcardio.SDCard(spi, cs)
-                    vfs = storage.VfsFat(sd)
-                    storage.mount(vfs, "/sd")
-                    card_in = True
-                    w0 = audiocore.WaveFile(
-                        open(mvc_folder + "micro_sd_card_success.wav", "rb"))
-                    mix.voice[0].play(w0, loop=False)
-                    while mix.voice[0].playing:
-                        pass
-                except Exception as e:
-                    files.log_item(e)
-                    w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
-                    mix.voice[0].play(w0, loop=False)
-                    while mix.voice[0].playing:
-                        pass
+
 
 aud_en.value = False
 
