@@ -254,6 +254,125 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 
 ################################################################################
+# OLED display
+
+import displayio
+import i2cdisplaybus
+import terminalio
+import adafruit_displayio_ssd1306
+from adafruit_display_text import label
+from adafruit_bitmap_font import bitmap_font
+
+def center_text(font, txt, y):
+    t = label.Label(
+        font,
+        text=txt,
+        color=0xFFFFFF
+    )
+
+    t.x = (128 - t.bounding_box[2]) // 2
+    t.y = y
+    return t
+
+font = bitmap_font.load_font("fonts/Arial-BoldMT-20.bdf")
+font2 = bitmap_font.load_font("fonts/Arial-BoldMT-30.bdf")
+
+displayio.release_displays()
+
+i2c = busio.I2C(scl=board.GP1, sda=board.GP0)
+
+display_bus = i2cdisplaybus.I2CDisplayBus(
+    i2c,
+    device_address=0x3C
+)
+
+display = adafruit_displayio_ssd1306.SSD1306(
+    display_bus,
+    width=128,
+    height=64
+)
+
+main_group = displayio.Group()
+display.root_group = main_group
+
+text_area = label.Label(
+    terminalio.FONT,
+    text="Jimmy Trains",
+    color=0xFFFFFF,
+    x=10,
+    y=15
+)
+main_group.append(text_area)
+
+text_area2 = label.Label(
+    terminalio.FONT,
+    text="Pico 2 W OLED",
+    color=0xFFFFFF,
+    x=10,
+    y=35
+)
+main_group.append(text_area2)
+
+# Show BMP image
+bitmap = displayio.OnDiskBitmap("fonts/jimmytrains.bmp")
+
+tile_grid = displayio.TileGrid(
+    bitmap,
+    pixel_shader=bitmap.pixel_shader,
+    x=0,
+    y=0
+)
+
+main_group = displayio.Group()
+main_group.append(tile_grid)
+
+display.root_group = main_group
+
+text = center_text(font, "Feller", 12)
+text2 = center_text(font2, "$250", 40)
+
+group = displayio.Group()
+group.append(text)
+group.append(text2)
+display.root_group = group
+
+# time.sleep(3)
+
+# text = label.Label(
+#     font,
+#     text="$ 250",
+#     color=0xFFFFFF
+# )
+
+# time.sleep(3)
+
+# text.y = 32
+
+# group = displayio.Group()
+# group.append(text)
+# display.root_group = group
+
+# text_width = text.bounding_box[2]
+
+# while True:
+#     for x in range(128, -text_width, -1):
+#         text.x = x
+#         time.sleep(0.01)
+#     break
+
+while True:
+    for x in range(10):
+        display_bus.send(0xA7, "")
+        time.sleep(1)
+        display_bus.send(0xA6, "")
+        time.sleep(1)
+    break
+
+display_bus.send(0xA7, "")
+
+# display_bus.send(0xA6, "")
+
+################################################################################
 # Setup neo pixels (main light string)
 def self_test_done_indicator():
     time.sleep(.3)
