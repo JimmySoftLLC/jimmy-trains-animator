@@ -7,5 +7,6 @@
   "volume": "50",
   "volume_pot": false,
   "use_sd_card": false,
-  "hardware_string": "trigger,trigger,trigger,trigger,servo"
+  "hardware_string": "trigger,trigger,trigger,trigger,servo",
+  "i2c": ["3C", "3D"]
 }
