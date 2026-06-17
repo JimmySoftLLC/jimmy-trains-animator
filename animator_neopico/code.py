@@ -48,6 +48,12 @@ import files
 import os
 import pulseio
 import audiomp3
+import displayio
+import i2cdisplaybus
+import terminalio
+import adafruit_displayio_ssd1306
+from adafruit_display_text import label
+from adafruit_bitmap_font import bitmap_font
 
 
 def gc_col(collection_point):
@@ -255,14 +261,6 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
 # OLED display
-
-import displayio
-import i2cdisplaybus
-import terminalio
-import adafruit_displayio_ssd1306
-from adafruit_display_text import label
-from adafruit_bitmap_font import bitmap_font
-
 def center_text(font, txt, y):
     t = label.Label(
         font,
@@ -274,8 +272,8 @@ def center_text(font, txt, y):
     t.y = y
     return t
 
-font = bitmap_font.load_font("fonts/Arial-BoldMT-20.bdf")
-font2 = bitmap_font.load_font("fonts/Arial-BoldMT-30.bdf")
+def load_font(font_size):
+    return bitmap_font.load_font("fonts/Arial-BoldMT-" + str(font_size) + ".bdf")
 
 displayio.release_displays()
 
@@ -292,29 +290,31 @@ display = adafruit_displayio_ssd1306.SSD1306(
     height=64
 )
 
-main_group = displayio.Group()
-display.root_group = main_group
+display_group = displayio.Group()
+display.root_group = display_group
 
-text_area = label.Label(
-    terminalio.FONT,
-    text="Jimmy Trains",
-    color=0xFFFFFF,
-    x=10,
-    y=15
-)
-main_group.append(text_area)
+# text_area = label.Label(
+#     terminalio.FONT,
+#     text="Jimmy Trains",
+#     color=0xFFFFFF,
+#     x=10,
+#     y=15
+# )
+# display_group.append(text_area)
 
-text_area2 = label.Label(
-    terminalio.FONT,
-    text="Pico 2 W OLED",
-    color=0xFFFFFF,
-    x=10,
-    y=35
-)
-main_group.append(text_area2)
+# text_area2 = label.Label(
+#     terminalio.FONT,
+#     text="Pico 2 W OLED",
+#     color=0xFFFFFF,
+#     x=10,
+#     y=35
+# )
+# display_group.append(text_area2)
+
+# time.sleep(1)
 
 # Show BMP image
-bitmap = displayio.OnDiskBitmap("fonts/jimmytrains.bmp")
+bitmap = displayio.OnDiskBitmap("fonts/logo.bmp")
 
 tile_grid = displayio.TileGrid(
     bitmap,
@@ -323,34 +323,22 @@ tile_grid = displayio.TileGrid(
     y=0
 )
 
-main_group = displayio.Group()
-main_group.append(tile_grid)
+display_group.append(tile_grid)
 
-display.root_group = main_group
+display.root_group = display_group
 
-text = center_text(font, "Feller", 12)
-text2 = center_text(font2, "$250", 40)
-
-group = displayio.Group()
-group.append(text)
-group.append(text2)
-display.root_group = group
-
-# time.sleep(3)
+time.sleep(1)
 
 # text = label.Label(
-#     font,
-#     text="$ 250",
+#     load_font(10),
+#     text="Welcome to Jimmy Trains!",
 #     color=0xFFFFFF
 # )
 
-# time.sleep(3)
-
 # text.y = 32
 
-# group = displayio.Group()
-# group.append(text)
-# display.root_group = group
+# display_group.append(text)
+# display.root_group = display_group
 
 # text_width = text.bounding_box[2]
 
@@ -359,18 +347,6 @@ display.root_group = group
 #         text.x = x
 #         time.sleep(0.01)
 #     break
-
-while True:
-    for x in range(10):
-        display_bus.send(0xA7, "")
-        time.sleep(1)
-        display_bus.send(0xA6, "")
-        time.sleep(1)
-    break
-
-display_bus.send(0xA7, "")
-
-# display_bus.send(0xA6, "")
 
 ################################################################################
 # Setup neo pixels (main light string)
@@ -2217,6 +2193,76 @@ def bnd(c, l, u):
         c = u
     return c
 
+async def display_text_async(line1, line2, blink_times, background_on = False):
+    line1_text = center_text(load_font(20), line1, 12)
+    line2_text = center_text(load_font(30), line2, 40)
+
+    display_group = displayio.Group()
+    display_group.append(line1_text)
+    display_group.append(line2_text)
+    display.root_group = display_group
+
+    while True:
+        for x in range(blink_times):
+            display_bus.send(0xA7, "")
+            await asyncio.sleep(1)
+            display_bus.send(0xA6, "")
+            await asyncio.sleep(1)
+        break
+
+    if background_on:
+        display_bus.send(0xA7, "")
+    else:
+        display_bus.send(0xA6, "")
+
+async def roll_text_async(line1, font_size, background_on = False):
+    if background_on:
+        display_bus.send(0xA7, "")
+    else:
+        display_bus.send(0xA6, "")
+
+    line1_text = label.Label(
+        load_font(font_size),
+        text=line1,
+        color=0xFFFFFF
+    )
+
+    line1_text.y = 32
+
+    display_group = displayio.Group()
+    display_group.append(line1_text)
+    display.root_group = display_group
+
+    text_width = line1_text.bounding_box[2]
+
+    while True:
+        for x in range(128, -text_width, -1):
+            line1_text.x = x
+            await asyncio.sleep(0.01)
+        break
+
+def display_text(line1, line2, blink_times, background_on = False):
+    line1_text = center_text(load_font(20), line1, 12)
+    line2_text = center_text(load_font(30), line2, 40)
+
+    display_group = displayio.Group()
+    display_group.append(line1_text)
+    display_group.append(line2_text)
+    display.root_group = display_group
+
+    while True:
+        for x in range(blink_times):
+            display_bus.send(0xA7, "")
+            time.sleep(1)
+            display_bus.send(0xA6, "")
+            time.sleep(1)
+        break
+
+    if background_on:
+        display_bus.send(0xA7, "")
+    else:
+        display_bus.send(0xA6, "")
+
 
 async def pulse_trigger(trigger_n, duration):
     if trigger_n < 0 or trigger_n >= len(trigger_arr):
@@ -2417,6 +2463,21 @@ async def set_hdw_async(cmd, dur=0):
                         asyncio.create_task(pulse_trigger(i, duration))
                 else:
                     asyncio.create_task(pulse_trigger(num - 1, duration))
+            # DT_LLL_MMM_CC_BB Display text, LLL line1, MMM line2, CC blink cycles, BB background 1 on 0 off
+            elif seg[:2] == "DT": 
+                segs_split = seg.split("_")
+                line1 = segs_split[1]
+                line2 = segs_split[2]
+                cycles = int(segs_split[3])
+                background = bool(int(segs_split[4]))
+                await display_text_async(line1, line2, cycles, background)
+            # RT_LLL_FF_BB Rolling text, LLL line1, FF font size, BB background 1 on 0 off
+            elif seg[:2] == "RT": 
+                segs_split = seg.split("_")
+                line1 = segs_split[1]
+                font_size = int(segs_split[2])
+                background = bool(int(segs_split[3]))
+                await roll_text_async(line1, font_size, background)
             # WXXX = Wait XXX decimal seconds
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
@@ -2599,6 +2660,7 @@ if (web):
         dbm_string = str(-int(avg_rssi))+"dbm"
         indicator.fill((0, 255, 0))
         spk_str(dbm_string,False)
+        display_text("Wifi rssi", dbm_string, 5)
         spk_web()
     except Exception as e:
         files.log_item(e)
