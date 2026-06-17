@@ -279,13 +279,18 @@ displayio.release_displays()
 
 i2c = busio.I2C(scl=board.GP1, sda=board.GP0)
 
-display_bus = i2cdisplaybus.I2CDisplayBus(
+display_bus_3C = i2cdisplaybus.I2CDisplayBus(
     i2c,
     device_address=0x3C
 )
 
+display_bus_3D = i2cdisplaybus.I2CDisplayBus(
+    i2c,
+    device_address=0x3D
+)
+
 display = adafruit_displayio_ssd1306.SSD1306(
-    display_bus,
+    display_bus_3C,
     width=128,
     height=64
 )
@@ -2204,22 +2209,22 @@ async def display_text_async(line1, line2, blink_times, background_on = False):
 
     while True:
         for x in range(blink_times):
-            display_bus.send(0xA7, "")
+            display_bus_3C.send(0xA7, "")
             await asyncio.sleep(1)
-            display_bus.send(0xA6, "")
+            display_bus_3C.send(0xA6, "")
             await asyncio.sleep(1)
         break
 
     if background_on:
-        display_bus.send(0xA7, "")
+        display_bus_3C.send(0xA7, "")
     else:
-        display_bus.send(0xA6, "")
+        display_bus_3C.send(0xA6, "")
 
 async def roll_text_async(line1, font_size, background_on = False):
     if background_on:
-        display_bus.send(0xA7, "")
+        display_bus_3C.send(0xA7, "")
     else:
-        display_bus.send(0xA6, "")
+        display_bus_3C.send(0xA6, "")
 
     line1_text = label.Label(
         load_font(font_size),
@@ -2252,16 +2257,16 @@ def display_text(line1, line2, blink_times, background_on = False):
 
     while True:
         for x in range(blink_times):
-            display_bus.send(0xA7, "")
+            display_bus_3C.send(0xA7, "")
             time.sleep(1)
-            display_bus.send(0xA6, "")
+            display_bus_3C.send(0xA6, "")
             time.sleep(1)
         break
 
     if background_on:
-        display_bus.send(0xA7, "")
+        display_bus_3C.send(0xA7, "")
     else:
-        display_bus.send(0xA6, "")
+        display_bus_3C.send(0xA6, "")
 
 
 async def pulse_trigger(trigger_n, duration):
@@ -2734,3 +2739,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
