@@ -8,5 +8,10 @@
   "volume_pot": false,
   "use_sd_card": false,
   "hardware_string": "trigger,trigger,trigger,trigger,servo",
-  "i2c": ["3C", "3D"]
+  "i2c": [
+  {"sda": "GP0", "scl": "GP1", "address": "3C"},
+  {"sda": "GP26", "scl": "GP27", "address": "3C"},
+  {"sda": "GP0", "scl": "GP1", "address": "3D"},
+  {"sda": "GP26", "scl": "GP27", "address": "3D"}
+]
 }

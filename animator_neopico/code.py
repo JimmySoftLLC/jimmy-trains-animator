@@ -261,43 +261,121 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
 # OLED display
+
+MAX_ACTIVE_DISPLAYS = 2
+
+PIN_MAP = {
+    "GP0": board.GP0,
+    "GP1": board.GP1,
+    "GP26": board.GP26,
+    "GP27": board.GP27,
+}
+
+i2c_busses = {}
+display_buses = {}
+displays = {}
+display_groups = {}
+active_display_nums = []
+
+displayio.release_displays()
+
+
+def get_pin(pin_name):
+    return PIN_MAP[pin_name.upper()]
+
+
+def i2c_addr(addr_text):
+    return int(addr_text, 16)
+
+
+def i2c_key(dev):
+    return dev["sda"].upper() + "_" + dev["scl"].upper()
+
+
+def get_i2c_bus(dev):
+    key = i2c_key(dev)
+
+    if key not in i2c_busses:
+        i2c_busses[key] = busio.I2C(
+            scl=get_pin(dev["scl"]),
+            sda=get_pin(dev["sda"])
+        )
+
+    return i2c_busses[key]
+
+
 def center_text(font, txt, y):
     t = label.Label(
         font,
         text=txt,
         color=0xFFFFFF
     )
-
     t.x = (128 - t.bounding_box[2]) // 2
     t.y = y
     return t
 
+
 def load_font(font_size):
-    return bitmap_font.load_font("fonts/Arial-BoldMT-" + str(font_size) + ".bdf")
+    return bitmap_font.load_font(
+        "fonts/Arial-BoldMT-" + str(font_size) + ".bdf"
+    )
 
-displayio.release_displays()
-
-i2c = busio.I2C(scl=board.GP1, sda=board.GP0)
-
-display_buses = []
-displays = []
-display_groups = []
-
-def i2c_addr(addr_text):
-    return int(addr_text, 16)
 
 if "i2c" not in cfg:
-    cfg["i2c"] = ["3C"]
+    cfg["i2c"] = [
+        {"sda": "GP0", "scl": "GP1", "address": "3C"}
+    ]
     files.write_json_file("cfg.json", cfg)
 
-for addr in cfg["i2c"]:
-    bus = i2cdisplaybus.I2CDisplayBus(
-        i2c,
-        device_address=i2c_addr(addr)
+
+def valid_display(display_n):
+    return display_n >= 0 and display_n < len(cfg["i2c"])
+
+
+def clear_active_displays():
+    global active_display_nums
+
+    displayio.release_displays()
+
+    display_buses.clear()
+    displays.clear()
+    display_groups.clear()
+    active_display_nums = []
+
+def select_display(display_n):
+    global active_display_nums
+
+    if not valid_display(display_n):
+        return None
+
+    if display_n in displays:
+        return displays[display_n]
+
+    dev = cfg["i2c"][display_n]
+    new_bus_key = i2c_key(dev)
+
+    # If this new display is on a bus already in use by another active display,
+    # release first because displayio cannot keep two SSD1306 display buses
+    # active on the same physical I2C bus.
+    for active_n in active_display_nums:
+        active_dev = cfg["i2c"][active_n]
+        if i2c_key(active_dev) == new_bus_key:
+            clear_active_displays()
+            break
+
+    # Also release if we already have the max number of active displays.
+    if len(displays) >= MAX_ACTIVE_DISPLAYS:
+        clear_active_displays()
+
+    i2c_bus = get_i2c_bus(dev)
+
+    display_bus = i2cdisplaybus.I2CDisplayBus(
+        i2c_bus,
+        device_address=i2c_addr(dev["address"])
     )
 
     disp = adafruit_displayio_ssd1306.SSD1306(
-        bus,
+        display_bus,
         width=128,
         height=64
     )
@@ -305,28 +383,31 @@ for addr in cfg["i2c"]:
     grp = displayio.Group()
     disp.root_group = grp
 
-    display_buses.append(bus)
-    displays.append(disp)
-    display_groups.append(grp)
+    display_buses[display_n] = display_bus
+    displays[display_n] = disp
+    display_groups[display_n] = grp
+    active_display_nums.append(display_n)
 
-def valid_display(display_n):
-    return display_n >= 0 and display_n < len(displays)
-
+    return disp
 
 def set_display_group(display_n, group):
-    if not valid_display(display_n):
+    disp = select_display(display_n)
+    if disp is None:
         return
-    displays[display_n].root_group = group
+
+    disp.root_group = group
+    display_groups[display_n] = group
 
 
 def invert_display(display_n, invert_on):
-    if not valid_display(display_n):
+    if select_display(display_n) is None:
         return
 
     if invert_on:
         display_buses[display_n].send(0xA7, "")
     else:
         display_buses[display_n].send(0xA6, "")
+
 
 def show_bmp(display_n, filename):
     if not valid_display(display_n):
@@ -345,9 +426,13 @@ def show_bmp(display_n, filename):
     group = displayio.Group()
     group.append(tile_grid)
 
-    displays[display_n].root_group = group
+    set_display_group(display_n, group)
+
 
 def draw_text(display_n, line1, line2):
+    if not valid_display(display_n):
+        return
+
     line1_text = center_text(load_font(20), line1, 12)
     line2_text = center_text(load_font(30), line2, 40)
 
@@ -356,6 +441,7 @@ def draw_text(display_n, line1, line2):
     group.append(line2_text)
 
     set_display_group(display_n, group)
+
 
 def display_text(display_n, line1, line2, blink_times, background_on=False):
     if not valid_display(display_n):
@@ -370,6 +456,7 @@ def display_text(display_n, line1, line2, blink_times, background_on=False):
         time.sleep(1)
 
     invert_display(display_n, background_on)
+
 
 async def display_text_async(display_n, line1, line2, blink_times, background_on=False):
     if not valid_display(display_n):
@@ -411,6 +498,15 @@ async def roll_text_async(display_n, line1, font_size, background_on=False):
         line1_text.x = x
         await asyncio.sleep(0.01)
 
+
+# Startup test
+show_bmp(0, "fonts/logo.bmp")
+
+if len(cfg["i2c"]) > 1:
+    show_bmp(1, "fonts/logo.bmp")
+
+time.sleep(1)
+
 # text_area = label.Label(
 #     terminalio.FONT,
 #     text="Jimmy Trains",
@@ -428,14 +524,6 @@ async def roll_text_async(display_n, line1, font_size, background_on=False):
 #     y=35
 # )
 # display_group.append(text_area2)
-
-# time.sleep(1)
-
-# Show BMP image
-show_bmp(0, "fonts/logo.bmp")
-show_bmp(1, "fonts/logo.bmp")
-
-time.sleep(1)
 
 ################################################################################
 # Setup neo pixels (main light string)
@@ -2483,21 +2571,23 @@ async def set_hdw_async(cmd, dur=0):
                         asyncio.create_task(pulse_trigger(i, duration))
                 else:
                     asyncio.create_task(pulse_trigger(num - 1, duration))
-            # DT_LLL_MMM_CC_BB Display text, LLL line1, MMM line2, CC blink cycles, BB background 1 on 0 off
+            # DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB background 1 on 0 off
             elif seg[:2] == "DT": 
                 segs_split = seg.split("_")
-                line1 = segs_split[1]
-                line2 = segs_split[2]
-                cycles = int(segs_split[3])
-                background = bool(int(segs_split[4]))
-                await display_text_async(0, line1, line2, cycles, background)
-            # RT_LLL_FF_BB Rolling text, LLL line1, FF font size, BB background 1 on 0 off
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                line2 = segs_split[3]
+                cycles = int(segs_split[4])
+                background = bool(int(segs_split[5]))
+                await display_text_async(screen_number, line1, line2, cycles, background)
+            # RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off
             elif seg[:2] == "RT": 
                 segs_split = seg.split("_")
-                line1 = segs_split[1]
-                font_size = int(segs_split[2])
-                background = bool(int(segs_split[3]))
-                await roll_text_async(0, line1, font_size, background)
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                font_size = int(segs_split[3])
+                background = bool(int(segs_split[4]))
+                await roll_text_async(screen_number, line1, font_size, background)
             # WXXX = Wait XXX decimal seconds
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
