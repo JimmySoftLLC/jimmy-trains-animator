@@ -614,7 +614,8 @@ indicator.brightness = .1
 try:
     files.write_json_file("cfg.json", cfg)
     indicator.fill((0, 255, 0))
-except:
+except Exception as e:
+    files.log_item(e)
     indicator.fill((0, 0, 255))
     time.sleep(3)
 
@@ -901,7 +902,8 @@ def load_pixel_scale_from_cfg():
                 continue  # IMPORTANT: relays/picos/etc are NOT lights
             rs, gs, bs = float(v[0]), float(v[1]), float(v[2])
             pixel_scale[i] = (clamp01(rs), clamp01(gs), clamp01(bs))
-        except Exception:
+        except Exception as e:
+            files.log_item(e)
             continue
 
 
@@ -968,7 +970,8 @@ def upd_l_str():
     print("Number of pixels total: ", n_px)
     try:
         neo_branch.deinit()
-    except Exception:
+    except Exception as e:
+        files.log_item(e)
         pass
     neo_branch = neopixel.NeoPixel(neo_branch_pin, n_px)
     neo_branch.auto_write = False
@@ -1088,7 +1091,8 @@ def apply_brightness(i: int, rgb, br: float):
 
     try:
         rs, gs, bs = pixel_scale[i]
-    except Exception:
+    except Exception as e:
+        files.log_item(e)
         rs, gs, bs = (1.0, 1.0, 1.0)
 
     r = int(r * br * rs)
@@ -1978,7 +1982,8 @@ def upd_vol(s):
     else:
         try:
             v = int(cfg["volume"]) / 100
-        except:
+        except Exception as e:
+            files.log_item(e)
             v = .5
         if v < 0 or v > 1:
             v = .5
@@ -2089,7 +2094,8 @@ def spk_str(str_to_speak, addLocal):
             if character == ".":
                 character = "dot"
             ply_a_0(mvc_folder + character + ".wav")
-        except:
+        except Exception as e:
+            files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
         ply_a_0(mvc_folder + "dot.wav")
@@ -2124,7 +2130,8 @@ def spk_lght(play_intro):
             ply_a_0(mvc_folder + str(index+1) + ".wav")
             ply_a_0(mvc_folder + "is.wav")
             ply_a_0(mvc_folder + element + ".wav")
-    except:
+    except Exception as e:
+        files.log_item(e)
         ply_a_0(mvc_folder + "no_lights_in_light_string.wav")
         return
 
@@ -2144,13 +2151,18 @@ def no_trk():
 def spk_web():
     ply_a_0(mvc_folder + "animator_available_on_network.wav")
     ply_a_0(mvc_folder + "to_access_type.wav")
-    if cfg["HOST_NAME"] == "animator-lightning":
-        ply_a_0(mvc_folder + "animator_dash_lightning.wav")
-        ply_a_0(mvc_folder + "dot.wav")
-        ply_a_0(mvc_folder + "local.wav")
-    else:
-        spk_str(cfg["HOST_NAME"], True)
-    ply_a_0(mvc_folder + "in_your_browser.wav")
+    try:
+        if cfg["HOST_NAME"] == "neo-pico":
+            ply_a_0(mvc_folder + "neo_dash_pico.wav")
+            ply_a_0(mvc_folder + "dot.wav")
+            ply_a_0(mvc_folder + "local.wav")
+        else:
+            spk_str(cfg["HOST_NAME"], True)
+        ply_a_0(mvc_folder + "in_your_browser.wav")
+    except Exception as e:
+        files.log_item(e)
+
+
 
 ################################################################################
 # animations
@@ -2770,7 +2782,7 @@ if (web):
         dbm_string = str(-int(avg_rssi))+"dbm"
         indicator.fill((0, 255, 0))
         spk_str(dbm_string,False)
-        display_text(0, "Wifi rssi", dbm_string, 5)
+        display_text(0, cfg["HOST_NAME"] + ".local", dbm_string, 0, 0)
         spk_web()
     except Exception as e:
         files.log_item(e)
@@ -2789,9 +2801,15 @@ gc_col("animations started.")
 ################################################################################
 # Main task handling
 
+startup_command_sent = False
 
 async def process_commands_task():
+    global startup_command_sent
     while True:
+        if not startup_command_sent:
+            await asyncio.sleep(2)
+            startup_command_sent = True
+            add_command(cfg["startup_string"])
         try:
             await process_commands()
         except Exception as e:

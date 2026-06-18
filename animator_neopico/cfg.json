@@ -8,10 +8,11 @@
   "volume_pot": false,
   "use_sd_card": false,
   "hardware_string": "trigger,trigger,trigger,trigger,servo",
+  "startup_string": "DT_0_Boy with kite_$170_0_0,DT_1_Raising flag_$170_0_0",
   "i2c": [
-  {"sda": "GP0", "scl": "GP1", "address": "3C"},
-  {"sda": "GP26", "scl": "GP27", "address": "3C"},
-  {"sda": "GP0", "scl": "GP1", "address": "3D"},
-  {"sda": "GP26", "scl": "GP27", "address": "3D"}
-]
+    { "sda": "GP0", "scl": "GP1", "address": "3C" },
+    { "sda": "GP26", "scl": "GP27", "address": "3C" },
+    { "sda": "GP0", "scl": "GP1", "address": "3D" },
+    { "sda": "GP26", "scl": "GP27", "address": "3D" }
+  ]
 }
