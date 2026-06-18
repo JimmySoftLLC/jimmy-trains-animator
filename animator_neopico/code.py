@@ -507,24 +507,6 @@ if len(cfg["i2c"]) > 1:
 
 time.sleep(1)
 
-# text_area = label.Label(
-#     terminalio.FONT,
-#     text="Jimmy Trains",
-#     color=0xFFFFFF,
-#     x=10,
-#     y=15
-# )
-# display_group.append(text_area)
-
-# text_area2 = label.Label(
-#     terminalio.FONT,
-#     text="Pico 2 W OLED",
-#     color=0xFFFFFF,
-#     x=10,
-#     y=35
-# )
-# display_group.append(text_area2)
-
 ################################################################################
 # Setup neo pixels (main light string)
 def self_test_done_indicator():
@@ -1793,10 +1775,24 @@ if web:
                 files.write_json_file("cfg.json", cfg)
                 upd_hdw_str()
                 return Response(req, cfg["hardware_string"])
+            
+            @server.route("/update-startup-string", [POST])
+            def update_startup_string(req: Request):
+                global cfg
+                rq_d = req.json()
+                if rq_d["action"] in ("save"):
+                    cfg["startup_string"] = rq_d["text"]
+                    files.write_json_file("cfg.json", cfg)
+                    add_command(cfg["startup_string"])
+                    return Response(req, cfg["startup_string"])
 
             @server.route("/get-hardware-string", [POST])
             def get_hardware_string(req: Request):
                 return Response(req, cfg["hardware_string"])
+            
+            @server.route("/get-startup-string", [POST])
+            def get_startup_string(req: Request):
+                return Response(req, cfg["startup_string"])
 
             @server.route("/update-host-name", [POST])
             def update_host_name(request: Request):
