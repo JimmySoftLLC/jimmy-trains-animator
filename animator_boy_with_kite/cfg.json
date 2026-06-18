@@ -1,10 +1,11 @@
 {
   "can_cancel": true,
-  "wind": false,
+  "wind": true,
   "servo": 90,
   "volume_pot": false,
   "timer": false,
   "volume": "70",
   "timer_val": "1",
-  "random": true
+  "random": true,
+  "kite_deploy_max": 1700
 }

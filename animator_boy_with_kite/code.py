@@ -25,16 +25,7 @@ def gc_col(collection_point):
 
 gc_col("Imports gc, files")
 
-################################################################################
-# globals
-kite_deploy_max = 1700
-lst_kite_rot_pos = 90
-lst_kite_deploy_pos = kite_deploy_max
-kite_min = 0
-kite_max = 180
-kill_process = False
-async_running = False
-rand_timer = 0
+
 
 ################################################################################
 # config variables
@@ -52,6 +43,15 @@ mnu_o = cfg_opt["options"]
 
 print(cfg)
 
+################################################################################
+# globals
+lst_kite_rot_pos = 90
+lst_kite_deploy_pos = cfg["kite_deploy_max"]
+kite_min = 0
+kite_max = 180
+kill_process = False
+async_running = False
+rand_timer = 0
 
 ################################################################################
 # setup hardware
@@ -411,7 +411,8 @@ def an():
         if rnd_prob(0.2) and not mix.voice[0].playing and cfg["wind"] == True:
             mix.voice[0].play(w0, loop=False)
         if cfg["random"] == True:
-            rand_deploy_pos = random.randint(0, kite_deploy_max)
+            rand_deploy_pos = random.randint(0, cfg["kite_deploy_max"])
+            files.log_item("Random deploy pos: " + str(rand_deploy_pos))
             direction = "up"
             if lst_kite_deploy_pos > rand_deploy_pos:
                 direction = "down"
@@ -420,7 +421,7 @@ def an():
         else:
             total_steps = abs(0 - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, "down"))
-            total_steps = abs(kite_deploy_max - lst_kite_deploy_pos)
+            total_steps = abs(cfg["kite_deploy_max"] - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, "up"))
     w0.deinit()
     gc_col("An done clean up sound")
