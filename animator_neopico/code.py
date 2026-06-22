@@ -54,6 +54,7 @@ import terminalio
 import adafruit_displayio_ssd1306
 from adafruit_display_text import label
 from adafruit_bitmap_font import bitmap_font
+import json
 
 
 def gc_col(collection_point):
@@ -109,12 +110,6 @@ gc_col("Imports gc, files")
 # MIN_MAJ = 5
 # CONFIRM_COUNT = 3
 # ALPHA = 0.20
-# CHAR_TO_HDW = {
-#     "^": "UPDLS",
-#     "a": "AN_a",
-#     "b": "AN_b",
-#     "c": "AN_c"
-# }
 
 # animator pico board
 a_in_pin = board.A2
@@ -156,11 +151,6 @@ WIN = 5
 MIN_MAJ = 5
 CONFIRM_COUNT = 3
 ALPHA = 0.20
-CHAR_TO_HDW = {
-    "^": "UPDLS",
-    "<": "TR2_.5",
-    ">": "TR1_.5"
-}
 
 ################################################################################
 # config variables
@@ -263,6 +253,7 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 # OLED display
 
 MAX_ACTIVE_DISPLAYS = 2
+display_enabled = True
 
 PIN_MAP = {
     "GP0": board.GP0,
@@ -343,7 +334,10 @@ def clear_active_displays():
     active_display_nums = []
 
 def select_display(display_n):
-    global active_display_nums
+    global active_display_nums, display_enabled
+
+    if not display_enabled:
+        return None
 
     if not valid_display(display_n):
         return None
@@ -354,42 +348,56 @@ def select_display(display_n):
     dev = cfg["i2c"][display_n]
     new_bus_key = i2c_key(dev)
 
-    # If this new display is on a bus already in use by another active display,
-    # release first because displayio cannot keep two SSD1306 display buses
-    # active on the same physical I2C bus.
     for active_n in active_display_nums:
         active_dev = cfg["i2c"][active_n]
         if i2c_key(active_dev) == new_bus_key:
             clear_active_displays()
             break
 
-    # Also release if we already have the max number of active displays.
     if len(displays) >= MAX_ACTIVE_DISPLAYS:
         clear_active_displays()
 
-    i2c_bus = get_i2c_bus(dev)
+    try:
+        i2c_bus = get_i2c_bus(dev)
 
-    display_bus = i2cdisplaybus.I2CDisplayBus(
-        i2c_bus,
-        device_address=i2c_addr(dev["address"])
-    )
+        # Optional but helpful: verify the display address exists
+        while not i2c_bus.try_lock():
+            pass
+        try:
+            found = i2c_bus.scan()
+        finally:
+            i2c_bus.unlock()
 
-    disp = adafruit_displayio_ssd1306.SSD1306(
-        display_bus,
-        width=128,
-        height=64
-    )
+        addr = i2c_addr(dev["address"])
+        if addr not in found:
+            files.log_item("No OLED found at address " + dev["address"])
+            return None
 
-    grp = displayio.Group()
-    disp.root_group = grp
+        display_bus = i2cdisplaybus.I2CDisplayBus(
+            i2c_bus,
+            device_address=addr
+        )
 
-    display_buses[display_n] = display_bus
-    displays[display_n] = disp
-    display_groups[display_n] = grp
-    active_display_nums.append(display_n)
+        disp = adafruit_displayio_ssd1306.SSD1306(
+            display_bus,
+            width=128,
+            height=64
+        )
 
-    return disp
+        grp = displayio.Group()
+        disp.root_group = grp
 
+        display_buses[display_n] = display_bus
+        displays[display_n] = disp
+        display_groups[display_n] = grp
+        active_display_nums.append(display_n)
+
+        return disp
+
+    except Exception as e:
+        files.log_item(e)
+        return None
+    
 def set_display_group(display_n, group):
     disp = select_display(display_n)
     if disp is None:
@@ -402,11 +410,13 @@ def set_display_group(display_n, group):
 def invert_display(display_n, invert_on):
     if select_display(display_n) is None:
         return
-
-    if invert_on:
-        display_buses[display_n].send(0xA7, "")
-    else:
-        display_buses[display_n].send(0xA6, "")
+    try:
+        if invert_on:
+            display_buses[display_n].send(0xA7, "")
+        else:
+            display_buses[display_n].send(0xA6, "")
+    except Exception as e:
+        files.log_item(e)
 
 
 def show_bmp(display_n, filename):
@@ -1890,6 +1900,36 @@ if web:
                     cont_mode_off()
                     stop_all_commands()
                 return Response(request, "Utility: " + rq_d["an"])
+            
+            @server.route("/get-char-to-hdw", [POST])
+            def get_char_to_hdw(req: Request):
+                try:
+                    return Response(req, files.json_stringify(cfg["CHAR_TO_HDW"]))
+                except Exception as e:
+                    files.log_item(e)
+                    return Response(req, "{}")
+
+
+            @server.route("/update-char-to-hdw", [POST])
+            def update_char_to_hdw(req: Request):
+                global cfg
+
+                try:
+                    rq_d = req.json()
+
+                    new_map = json.loads(rq_d["text"])
+
+                    if not isinstance(new_map, dict):
+                        return Response(req, "ERROR: CHAR_TO_HDW must be a JSON object.")
+
+                    cfg["CHAR_TO_HDW"] = new_map
+                    files.write_json_file("cfg.json", cfg)
+
+                    return Response(req, files.json_stringify(cfg["CHAR_TO_HDW"]))
+
+                except Exception as e:
+                    files.log_item(e)
+                    return Response(req, "ERROR: Invalid JSON.")
 
             break
 
@@ -2628,9 +2668,9 @@ async def consumer_task():
               "| latency_ms:", comm_latest["lat_ms"],
               "| binns:", comm_latest["binned"])
 
-        if ch in CHAR_TO_HDW:
-            add_command(CHAR_TO_HDW[ch])
-            print("Enqueued mapped HW:", CHAR_TO_HDW[ch])
+        if ch in cfg["CHAR_TO_HDW"]:
+            add_command(cfg["CHAR_TO_HDW"][ch])
+            print("Enqueued mapped HW:", cfg["CHAR_TO_HDW"][ch])
         else:
             add_command(ch)
 

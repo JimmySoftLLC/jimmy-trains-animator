@@ -213,6 +213,16 @@
                     Save
                 </button>
             </div>
+            <h2>Neo pico CHAR_TO_HDW:</h2>
+            <div>
+                <p>
+                    Enter the CHAR_TO_HDW object. Example: {&quot;^&quot;:&quot;UPDLS&quot;}. 
+                </p>
+                <textarea id="charToHdwText" rows="4"></textarea>
+            </div>
+            <button class="mui-btn mui-btn--primary" onclick="saveCharToHdw()">
+                Save CHAR_TO_HDW
+            </button>
             <h2>Animator web page name:</h2>
             <div class="mui-textfield">
                 <label>Base url:</label>
@@ -325,7 +335,8 @@
             <div>QXXXX = Add command XXXX any command ie AN_filename to add new animation</div>
             <div>WXXX = Wait XXX decimal seconds</div>
             <div>abc... = AN_abc... using these lower case characters abcdefghijklmnopqrstuvwxyz</div>
-            <div>DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB background 1 on 0 off</div>
+            <div>DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB
+                background 1 on 0 off</div>
             <div>RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
@@ -464,10 +475,12 @@
             })
             .catch(function (error) {
                 console.log(error);
-            });    
+            });
 
+        loadCharToHdw()
 
         getAnimations()
+
     });
 
     function getAnimations() {
@@ -489,6 +502,55 @@
             .catch(function (error) {
                 console.log(error);
             });
+    }
+
+    async function loadCharToHdw() {
+        const res = await fetch('/get-char-to-hdw', {
+            method: 'POST'
+        });
+
+        const text = await res.text();
+
+        try {
+            const obj = JSON.parse(text);
+            document.getElementById('charToHdwText').value =
+                JSON.stringify(obj, null, 2);
+        } catch (e) {
+            document.getElementById('charToHdwText').value = text;
+        }
+    }
+
+
+    async function saveCharToHdw() {
+        const textArea = document.getElementById('charToHdwText');
+        const text = textArea.value;
+
+        try {
+            JSON.parse(text);
+        } catch (e) {
+            alert('Invalid JSON. Not saved.');
+            return;
+        }
+
+        const res = await fetch('/update-char-to-hdw', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text
+            })
+        });
+
+        const returnedText = await res.text();
+
+        if (returnedText.startsWith('ERROR:')) {
+            alert(returnedText);
+            return;
+        }
+
+        const obj = JSON.parse(returnedText);
+        textArea.value = JSON.stringify(obj, null, 2);
     }
 
 
