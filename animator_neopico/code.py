@@ -2669,7 +2669,7 @@ async def consumer_task():
               "| binns:", comm_latest["binned"])
         
         indicator.fill((255, 255, 0))
-        time.sleep(.1)
+        time.sleep(.2)
         indicator.fill((0, 255, 0))
 
         if ch in cfg["CHAR_TO_HDW"]:
