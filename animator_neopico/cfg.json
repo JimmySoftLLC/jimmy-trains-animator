@@ -1,23 +1,19 @@
 {
-  "option_selected": "test",
+  "option_selected": "s",
   "hardware_string": "trigger,trigger,trigger,trigger,servo",
   "HOST_NAME": "neo-pico",
   "startup_string": "DT_0_Item1_$100_0_0,DT_1_Item2_$100_0_0",
-  "CHAR_TO_HDW": {
-    "^": "UPDLS",
-    "<": "TR2_.5",
-    ">": "TR1_.5"
-  },
   "serve_webpage": true,
   "use_sd_card": false,
-  "light_string": "neo-6",
+  "CHAR_TO_HDW": { "^": "UPDLS", "<": "TR1_0.5", ">": "TR2_0.5" },
   "cont_mode": false,
   "volume": "50",
+  "light_string": "neo-6",
   "volume_pot": false,
   "i2c": [
-    { "sda": "GP0", "scl": "GP1", "address": "3C" },
-    { "sda": "GP26", "scl": "GP27", "address": "3C" },
-    { "sda": "GP0", "scl": "GP1", "address": "3D" },
-    { "sda": "GP26", "scl": "GP27", "address": "3D" }
+    { "address": "3C", "scl": "GP1", "sda": "GP0" },
+    { "address": "3C", "scl": "GP27", "sda": "GP26" },
+    { "address": "3D", "scl": "GP1", "sda": "GP0" },
+    { "address": "3D", "scl": "GP27", "sda": "GP26" }
   ]
 }

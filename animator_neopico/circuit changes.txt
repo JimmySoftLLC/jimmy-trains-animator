@@ -1,0 +1,41 @@
+====================================================================
+6N137 OPTOCOUPLER IMPLEMENTATION GUIDE (3.3V SYSTEM)
+====================================================================
+
+1. THE PROBLEM WITH A 1kΩ INPUT RESISTOR
+--------------------------------------------------------------------
+* A 1kΩ resistor at 3.3V limits the LED current to only ~1.9 mA.
+* The 6N137 requires a absolute minimum of 5.0 mA to switch.
+* Result: The internal LED never turns on, and the signal fails.
+
+2. CORRECT INPUT RESISTOR VALUES (PIN 2 / PIN 3)
+--------------------------------------------------------------------
+To achieve the required 5.0 mA to 8.0 mA from a 3.3V source:
+* Ideal Single Resistor: 270 Ω or 330 Ω
+* DIY Solution (Using 1kΩ resistors in parallel):
+  - 3 x 1kΩ in parallel = 333 Ω (~5.7 mA) -> Works great
+  - 4 x 1kΩ in parallel = 250 Ω (~7.6 mA) -> Most reliable
+
+3. 6N137 PINOUT & WIRING CHECKLIST
+--------------------------------------------------------------------
+[INPUT SIDE]
+* Pin 2 (Anode): Connects to your 3.3V Signal VIA the corrected resistor.
+* Pin 3 (Cathode): Connects to Input Ground (GND).
+
+[OUTPUT SIDE]
+* Pin 5 (GND): Connects to Output Ground.
+* Pin 6 (VO): Output signal line. Requires a pull-up resistor.
+* Pin 7 (VE): Enable pin. Connect to VCC (Pin 8) to keep active.
+* Pin 8 (VCC): Connects to Output Power Supply (3.3V or 5V).
+
+4. CRITICAL COMPONENTS FOR STABILITY
+--------------------------------------------------------------------
+* Output Pull-Up (Pin 6 to Pin 8): 
+  - Your 1kΩ resistor is PERFECT for this position if signal speed 
+    is under 1 Mbps.
+  - Use 330 Ω if you need maximum speed (up to 10 Mbps).
+* Bypass Capacitor: 
+  - Place a 0.1 μF ceramic capacitor as close as possible between 
+    Pin 8 (VCC) and Pin 5 (GND). Without this, high-speed 
+    switching noise will cause erratic behavior.
+====================================================================

@@ -2667,6 +2667,10 @@ async def consumer_task():
               "| votes:", comm_latest["votes"],
               "| latency_ms:", comm_latest["lat_ms"],
               "| binns:", comm_latest["binned"])
+        
+        indicator.fill((255, 255, 0))
+        time.sleep(.1)
+        indicator.fill((0, 255, 0))
 
         if ch in cfg["CHAR_TO_HDW"]:
             add_command(cfg["CHAR_TO_HDW"][ch])
@@ -2674,7 +2678,7 @@ async def consumer_task():
         else:
             add_command(ch)
 
-        await asyncio.sleep(0)
+
 
 ################################################################################
 # State Machine
