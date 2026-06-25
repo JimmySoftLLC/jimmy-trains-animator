@@ -1811,6 +1811,7 @@ if web:
                 cfg["HOST_NAME"] = rq_d["an"]
                 files.write_json_file("cfg.json", cfg)
                 mdns.hostname = cfg["HOST_NAME"]
+                spk_web()
                 return Response(request, cfg["HOST_NAME"])
 
             @server.route("/get-host-name", [POST])
@@ -2100,6 +2101,7 @@ def ply_a_0(file_name, wait=True, repeat=False):
     if wait:
         while mix.voice[0].playing:
             exit_early()
+            upd_vol(0.1)
             pass
 
 
