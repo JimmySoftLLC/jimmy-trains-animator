@@ -316,6 +316,8 @@
                 <input class="input" id="animationScriptName" type="text" disabled>
             </div>
             <div>SW_XXXX = Switch XXXX (l,left,r,right,3,three,4,four,lh,left_held, ...)</div>
+            <div>UPDLS = update light string</div>
+            <div>LI_R_G_B = Nep pico indicator RGB 0 to 255</div>
             <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
             <div>NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>
@@ -323,9 +325,10 @@
                 ?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^ &lt;&gt;[]</div>
             <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
             <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
-                between
-                transitions in decimal seconds
+                between transitions in decimal seconds
             </div>
+            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index</div>
+            <div>SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
             <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
             <div>ZFIRE = Fire</div>
@@ -338,6 +341,7 @@
             <div>DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB
                 background 1 on 0 off</div>
             <div>RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off</div>
+            <div>abc... = AN_abc... using these lower case characters abcdefghijklmnopqrstuvwxyz</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>

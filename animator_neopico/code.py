@@ -2596,7 +2596,6 @@ async def set_hdw_async(cmd, dur=0):
                 await fire(dur)
             elif seg[0:] == 'ZCOLCH':
                 multi_color()
-                await asyncio.sleep(dur)
             # QXXXX = Add command XXXX any command ie AN_filename to add new animation
             elif seg[0] == 'Q':
                 file_nm = seg[1:]
