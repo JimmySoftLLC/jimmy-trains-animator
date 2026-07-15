@@ -36,6 +36,12 @@ import files
 import os
 import adafruit_vl53l4cd
 import json
+import displayio
+import i2cdisplaybus
+import terminalio
+import adafruit_displayio_ssd1306
+from adafruit_display_text import label
+from adafruit_bitmap_font import bitmap_font
 
 
 def gc_col(collection_point):
@@ -93,8 +99,8 @@ mdns_to_ip = {}
 
 n_px = 1
 
-# 15 on demo 17, GP18 on smart bumper
-neo_pixel_pin = board.GP18
+# GP18 on smart bumper
+neo_pixel_pin = board.GP22
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
@@ -132,11 +138,279 @@ set_off()
 gc_col("Neopixels setup")
 
 ################################################################################
+# OLED display
+
+MAX_ACTIVE_DISPLAYS = 2
+display_enabled = True
+
+PIN_MAP = {
+    "GP0": board.GP0,
+    "GP1": board.GP1,
+    "GP26": board.GP26,
+    "GP27": board.GP27,
+}
+
+i2c_busses = {}
+display_buses = {}
+displays = {}
+display_groups = {}
+active_display_nums = []
+
+displayio.release_displays()
+
+
+def get_pin(pin_name):
+    return PIN_MAP[pin_name.upper()]
+
+
+def i2c_addr(addr_text):
+    return int(addr_text, 16)
+
+
+def i2c_key(dev):
+    return dev["sda"].upper() + "_" + dev["scl"].upper()
+
+
+def get_i2c_bus(dev):
+    key = i2c_key(dev)
+
+    if key not in i2c_busses:
+        i2c_busses[key] = busio.I2C(
+            scl=get_pin(dev["scl"]),
+            sda=get_pin(dev["sda"])
+        )
+
+    return i2c_busses[key]
+
+
+def center_text(font, txt, y):
+    t = label.Label(
+        font,
+        text=txt,
+        color=0xFFFFFF
+    )
+    t.x = (128 - t.bounding_box[2]) // 2
+    t.y = y
+    return t
+
+
+def load_font(font_size):
+    return bitmap_font.load_font(
+        "fonts/Arial-BoldMT-" + str(font_size) + ".bdf"
+    )
+
+
+if "i2c" not in cfg:
+    cfg["i2c"] = [
+        {"sda": "GP0", "scl": "GP1", "address": "3C"}
+    ]
+    files.write_json_file("cfg.json", cfg)
+
+
+def valid_display(display_n):
+    return display_n >= 0 and display_n < len(cfg["i2c"])
+
+
+def clear_active_displays():
+    global active_display_nums
+
+    displayio.release_displays()
+
+    display_buses.clear()
+    displays.clear()
+    display_groups.clear()
+    active_display_nums = []
+
+def select_display(display_n):
+    global active_display_nums, display_enabled
+
+    if not display_enabled:
+        return None
+
+    if not valid_display(display_n):
+        return None
+
+    if display_n in displays:
+        return displays[display_n]
+
+    dev = cfg["i2c"][display_n]
+    new_bus_key = i2c_key(dev)
+
+    for active_n in active_display_nums:
+        active_dev = cfg["i2c"][active_n]
+        if i2c_key(active_dev) == new_bus_key:
+            clear_active_displays()
+            break
+
+    if len(displays) >= MAX_ACTIVE_DISPLAYS:
+        clear_active_displays()
+
+    try:
+        i2c_bus = get_i2c_bus(dev)
+
+        # Optional but helpful: verify the display address exists
+        while not i2c_bus.try_lock():
+            pass
+        try:
+            found = i2c_bus.scan()
+        finally:
+            i2c_bus.unlock()
+
+        addr = i2c_addr(dev["address"])
+        if addr not in found:
+            files.log_item("No OLED found at address " + dev["address"])
+            return None
+
+        display_bus = i2cdisplaybus.I2CDisplayBus(
+            i2c_bus,
+            device_address=addr
+        )
+
+        disp = adafruit_displayio_ssd1306.SSD1306(
+            display_bus,
+            width=128,
+            height=64
+        )
+
+        grp = displayio.Group()
+        disp.root_group = grp
+
+        display_buses[display_n] = display_bus
+        displays[display_n] = disp
+        display_groups[display_n] = grp
+        active_display_nums.append(display_n)
+
+        return disp
+
+    except Exception as e:
+        files.log_item(e)
+        return None
+    
+def set_display_group(display_n, group):
+    disp = select_display(display_n)
+    if disp is None:
+        return
+
+    disp.root_group = group
+    display_groups[display_n] = group
+
+
+def invert_display(display_n, invert_on):
+    if select_display(display_n) is None:
+        return
+    try:
+        if invert_on:
+            display_buses[display_n].send(0xA7, "")
+        else:
+            display_buses[display_n].send(0xA6, "")
+    except Exception as e:
+        files.log_item(e)
+
+
+def show_bmp(display_n, filename):
+    if not valid_display(display_n):
+        return
+
+    bitmap = displayio.OnDiskBitmap(filename)
+
+    tile_grid = displayio.TileGrid(
+        bitmap,
+        pixel_shader=bitmap.pixel_shader
+    )
+
+    tile_grid.x = (128 - bitmap.width) // 2
+    tile_grid.y = (64 - bitmap.height) // 2
+
+    group = displayio.Group()
+    group.append(tile_grid)
+
+    set_display_group(display_n, group)
+
+
+def draw_text(display_n, line1, line2):
+    if not valid_display(display_n):
+        return
+
+    line1_text = center_text(load_font(20), line1, 12)
+    line2_text = center_text(load_font(30), line2, 40)
+
+    group = displayio.Group()
+    group.append(line1_text)
+    group.append(line2_text)
+
+    set_display_group(display_n, group)
+
+
+def display_text(display_n, line1, line2, blink_times, background_on=False):
+    if not valid_display(display_n):
+        return
+
+    draw_text(display_n, line1, line2)
+
+    for x in range(blink_times):
+        invert_display(display_n, True)
+        time.sleep(1)
+        invert_display(display_n, False)
+        time.sleep(1)
+
+    invert_display(display_n, background_on)
+
+
+async def display_text_async(display_n, line1, line2, blink_times, background_on=False):
+    if not valid_display(display_n):
+        return
+
+    draw_text(display_n, line1, line2)
+
+    for x in range(blink_times):
+        invert_display(display_n, True)
+        await asyncio.sleep(1)
+        invert_display(display_n, False)
+        await asyncio.sleep(1)
+
+    invert_display(display_n, background_on)
+
+
+async def roll_text_async(display_n, line1, font_size, background_on=False):
+    if not valid_display(display_n):
+        return
+
+    invert_display(display_n, background_on)
+
+    line1_text = label.Label(
+        load_font(font_size),
+        text=line1,
+        color=0xFFFFFF
+    )
+
+    line1_text.y = 32
+
+    group = displayio.Group()
+    group.append(line1_text)
+
+    set_display_group(display_n, group)
+
+    text_width = line1_text.bounding_box[2]
+
+    for x in range(128, -text_width, -1):
+        line1_text.x = x
+        await asyncio.sleep(0.01)
+
+
+# Startup test
+show_bmp(0, "fonts/logo.bmp")
+
+if len(cfg["i2c"]) > 1:
+    show_bmp(1, "fonts/logo.bmp")
+
+time.sleep(1)
+
+################################################################################
 # setup distance sensor
 
-i2c = busio.I2C(scl=board.GP1, sda=board.GP0, frequency=400000)
+i2c1 = busio.I2C(scl=board.GP3, sda=board.GP2, frequency=400000)
 
-vl53 = adafruit_vl53l4cd.VL53L4CD(i2c)
+vl53 = adafruit_vl53l4cd.VL53L4CD(i2c1)
 
 # OPTIONAL: can set non-default values
 vl53.inter_measurement = 0
@@ -160,6 +434,13 @@ while not vl53.data_ready:
     print("data not ready")
     time.sleep(.2)
 
+for _ in range(3):
+    vl53.clear_interrupt()
+    time.sleep(0.1)
+vl53.clear_interrupt()
+train_pos = vl53.distance  # Distance in cm
+print("Train pos: ", train_pos)
+
 time.sleep(1)
 
 led.fill((0, 0, 0))
@@ -167,13 +448,59 @@ led.show()
 ################################################################################
 # Setup wifi and web server
 
+
+def measure_signal_strength(MY_SSID, cycles):
+    print("Monitoring signal for:", MY_SSID)
+    print("Showing current RSSI + running average (simple sum + count)\n")
+
+    total_sum = 0.0      # running sum of all valid RSSI values
+    count = 0            # number of valid readings so far
+
+    while True:
+        current_rssi = None
+        found = False
+
+        try:
+            for network in wifi.radio.start_scanning_networks():
+                if network.ssid == MY_SSID:
+                    current_rssi = network.rssi
+                    print(
+                        f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
+                    found = True
+                    break
+
+            wifi.radio.stop_scanning_networks()
+
+            if found and current_rssi is not None:
+                # Update running total
+                total_sum += current_rssi
+                count += 1
+
+                # Calculate and show average
+                if count > 0:
+                    avg_rssi = total_sum / count
+                    print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
+                else:
+                    print("   |   Avg: waiting...")
+            else:
+                print(
+                    "   |   Could not see your SSID (hidden, out of range, or scan miss)")
+
+        except Exception as e:
+            print(f"Scan error: {e}")
+            wifi.radio.stop_scanning_networks()  # cleanup on error
+
+        time.sleep(0.1)  # your fast polling; increase to 1–5 if needed
+        if count > cycles:
+            return avg_rssi
+
+
 if (web):
     import socketpool
     import mdns
     import wifi
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST
     import adafruit_requests
-
     gc_col("config wifi imports")
 
     files.log_item("Connecting to WiFi")
@@ -375,6 +702,20 @@ if (web):
                     set_red()
                     files.log_item(e)  # Log any errors
                     return Response(request, "Error test animation.")
+                
+            @server.route("/update-startup-string", [POST])
+            def update_startup_string(req: Request):
+                global cfg
+                rq_d = req.json()
+                if rq_d["action"] in ("save"):
+                    cfg["startup_string"] = rq_d["text"]
+                    files.write_json_file("cfg.json", cfg)
+                    add_command(cfg["startup_string"])
+                    return Response(req, cfg["startup_string"])
+                
+            @server.route("/get-startup-string", [POST])
+            def get_startup_string(req: Request):
+                return Response(req, cfg["startup_string"])
 
             @server.route("/get-animation", [POST])
             def btn(request: Request):
@@ -458,6 +799,11 @@ def send_animator_post(url, endpoint, new_data=None):
     except Exception as e:
         files.log_item("Comms issue: " + str(e))
         return None
+    
+if (web):
+    cycles = 10
+    avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
 
 
 gc_col("web server")
@@ -707,6 +1053,23 @@ async def set_hdw_async(input_string, dur):
             elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
+            # DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB background 1 on 0 off
+            elif seg[:2] == "DT": 
+                segs_split = seg.split("_")
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                line2 = segs_split[3]
+                cycles = int(segs_split[4])
+                background = bool(int(segs_split[5]))
+                await display_text_async(screen_number, line1, line2, cycles, background)
+            # RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off
+            elif seg[:2] == "RT": 
+                segs_split = seg.split("_")
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                font_size = int(segs_split[3])
+                background = bool(int(segs_split[4]))
+                await roll_text_async(screen_number, line1, font_size, background)
             # WXXX = Wait XXX decimal seconds
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
@@ -883,9 +1246,12 @@ def get_ip_from_mdns(mdns_name, overwrite=False):
 if (web):
     files.log_item("starting server...")
     try:
-        server.start(str(wifi.radio.ipv4_address))
+        server.start(str(wifi.radio.ipv4_address), port=80)
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-    except OSError:
+        dbm_string = str(-int(avg_rssi))+"dbm"
+        display_text(0, cfg["HOST_NAME"] + ".local", dbm_string, 0, 0)
+    except Exception as e:
+        files.log_item(e)
         time.sleep(5)
         files.log_item("restarting...")
         rst()

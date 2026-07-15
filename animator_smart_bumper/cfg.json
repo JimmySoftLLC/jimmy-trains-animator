@@ -1,6 +1,16 @@
 {
-  "option_selected": "random all",
+  "option_selected": "s",
+  "hardware_string": "trigger,trigger,trigger,trigger,servo",
+  "HOST_NAME": "bump",
+  "startup_string": "DT_0_Item1_$100_0_0",
   "serve_webpage": true,
-  "HOST_NAME": "clhv6-1",
-  "light_string": "bar-10"
+  "CHAR_TO_HDW": { ">": "TR2_0.5", "<": "TR1_0.5", "^": "UPDLS" },
+  "use_sd_card": false,
+  "cont_mode": false,
+  "light_string": "neo-6",
+  "volume": "50",
+  "volume_pot": false,
+  "i2c": [
+    { "sda": "GP0", "scl": "GP1", "address": "3C" }
+  ]
 }
