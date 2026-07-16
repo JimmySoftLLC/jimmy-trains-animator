@@ -32,40 +32,63 @@ def print_directory(path, tabs=0):
         if isdir:
             print_directory(path + "/" + file, tabs + 1)
 
-def return_directory(prefix='', path='.', fileType='', remove_ext=True, replace_ext_with=''):
+def return_directory(
+    prefix='',
+    path='.',
+    fileType='',
+    remove_ext=True,
+    replace_ext_with=''
+):
     file_list = []
-    
+
     for file in os.listdir(path):
         if "._" in file:
             continue
+
         if fileType and fileType not in file:
             continue
 
-
-        if remove_ext and file.endswith(fileType):
+        if remove_ext and fileType and file.endswith(fileType):
             name = file[:-len(fileType)]
-        elif replace_ext_with and file.endswith(fileType):
+
+        elif replace_ext_with and fileType and file.endswith(fileType):
             name = file[:-len(fileType)] + replace_ext_with
+
         else:
             name = file
+
         file_list.append(prefix + name)
 
-    def natural_key(s):
+    def natural_key(value):
         key = []
-        num = ''
-        for c in s:
-            if c.isdigit():
-                num += c
+        text = ''
+        number = ''
+
+        for character in value:
+            if character.isdigit():
+                if text:
+                    key.append((0, text.lower()))
+                    text = ''
+
+                number += character
+
             else:
-                if num:
-                    key.append(int(num))
-                    num = ''
-                key.append(c.lower())
-        if num:
-            key.append(int(num))
+                if number:
+                    key.append((1, int(number)))
+                    number = ''
+
+                text += character
+
+        if text:
+            key.append((0, text.lower()))
+
+        if number:
+            key.append((1, int(number)))
+
         return key
 
     file_list.sort(key=natural_key)
+
     return file_list
  
 def write_file_lines(file_name, lines):

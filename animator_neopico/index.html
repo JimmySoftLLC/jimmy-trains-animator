@@ -216,7 +216,7 @@
             <h2>Neo pico CHAR_TO_HDW:</h2>
             <div>
                 <p>
-                    Enter the CHAR_TO_HDW object. Example: {&quot;^&quot;:&quot;UPDLS&quot;}. 
+                    Enter the CHAR_TO_HDW object. Example: {&quot;^&quot;:&quot;UPDLS&quot;}.
                 </p>
                 <textarea id="charToHdwText" rows="4"></textarea>
             </div>
@@ -327,7 +327,8 @@
             <div>FXXX_TTT = Fade brightness (Neopixel lights/Neo 6 modules) in or out XXX 0 to 100, TTT time
                 between transitions in decimal seconds
             </div>
-            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based pixel index</div>
+            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based
+                pixel index</div>
             <div>SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
             <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
@@ -341,6 +342,11 @@
             <div>DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB
                 background 1 on 0 off</div>
             <div>RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off</div>
+            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A animations,
+                M mvc, N narration) XXX (file name, if RAND random selection of folder, SEQN play next in
+                sequence, SEQF play first in sequence)</div>
+            <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
+                ignored</div>
             <div>abc... = AN_abc... using these lower case characters abcdefghijklmnopqrstuvwxyz</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save

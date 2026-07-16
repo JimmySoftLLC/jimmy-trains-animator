@@ -155,8 +155,17 @@ ALPHA = 0.20
 ################################################################################
 # config variables
 
-animators_folder = "/animations/"
+animations_folder = "/animations/"
 mvc_folder = "/sd/mvc/"
+n_folder = "narration/"
+
+FOLDER_MAP = {
+    'A': animations_folder,
+    'M': mvc_folder,
+    'N': n_folder
+}
+
+media_index = {'A': 0, 'M': 0, 'N': 0}
 
 cfg = files.read_json_file("cfg.json")
 
@@ -222,11 +231,12 @@ aud_en.value = True
 spi = busio.SPI(sck, si, so)
 
 # Setup the mixer to play wav files
-mix = audiomixer.Mixer(voice_count=1, sample_rate=22050, channel_count=2,
+mix = audiomixer.Mixer(voice_count=2, sample_rate=22050, channel_count=2,
                        bits_per_sample=16, samples_signed=True, buffer_size=8192)
 aud.play(mix)
 
-mix.voice[0].level = .8
+mix.voice[0].level = .2
+mix.voice[1].level = .2
 
 if cfg["use_sd_card"]:
     try:
@@ -1699,9 +1709,9 @@ if web:
             @server.route("/create-animation", [POST])
             def create_animation(request: Request):
                 try:
-                    global animators_folder
+                    global animations_folder
                     rq_d = request.json()
-                    f_n = animators_folder + rq_d["fn"] + ".json"
+                    f_n = animations_folder + rq_d["fn"] + ".json"
                     an_data = [
                         "0.0|BN100,LN0_255_0_0",
                         "1.0|BN100,LN0_0_255_0",
@@ -1718,10 +1728,10 @@ if web:
             @server.route("/rename-animation", [POST])
             def rename_animation(request: Request):
                 try:
-                    global animators_folder
+                    global animations_folder
                     rq_d = request.json()
-                    fo = animators_folder + rq_d["fo"] + ".json"
-                    fn = animators_folder + rq_d["fn"] + ".json"
+                    fo = animations_folder + rq_d["fo"] + ".json"
+                    fn = animations_folder + rq_d["fn"] + ".json"
                     os.rename(fo, fn)
                     upd_media()
                     return Response(request, "Renamed animation successfully.")
@@ -1732,9 +1742,9 @@ if web:
             @server.route("/delete-animation", [POST])
             def delete_animation(request: Request):
                 try:
-                    global animators_folder
+                    global animations_folder
                     rq_d = request.json()
-                    f_n = animators_folder + rq_d["fn"] + ".json"
+                    f_n = animations_folder + rq_d["fn"] + ".json"
                     os.remove(f_n)
                     upd_media()
                     return Response(request, "Delete animation successfully.")
@@ -2013,18 +2023,20 @@ def rst_def():
 
 def upd_vol(s):
     if cfg["volume_pot"]:
-        v = a_in.value / 65536
-        mix.voice[0].level = v
+        volume = a_in.value / 65536
+        mix.voice[0].level = volume
+        mix.voice[1].level = volume
         time.sleep(s)
     else:
         try:
-            v = int(cfg["volume"]) / 100
+            volume = int(cfg["volume"]) / 100
         except Exception as e:
             files.log_item(e)
-            v = .5
-        if v < 0 or v > 1:
-            v = .5
-        mix.voice[0].level = v
+            volume = .5
+        if volume < 0 or volume > 1:
+            volume = .5
+        mix.voice[0].level = volume
+        mix.voice[1].level = volume
         time.sleep(s)
 
 
@@ -2032,6 +2044,7 @@ async def upd_vol_async(s):
     if cfg["volume_pot"]:
         v = a_in.value / 65536
         mix.voice[0].level = v
+        mix.voice[1].level = v
         await asyncio.sleep(s)
     else:
         try:
@@ -2042,6 +2055,7 @@ async def upd_vol_async(s):
         if v < 0 or v > 1:
             v = .5
         mix.voice[0].level = v
+        mix.voice[1].level = v
         await asyncio.sleep(s)
 
 
@@ -2077,6 +2091,7 @@ def ch_vol(action):
 
 
 def ply_a_0(file_name, wait=True, repeat=False):
+    upd_vol(0)
     if not cfg["use_sd_card"] and "/sd/" in file_name:
         return
 
@@ -2104,11 +2119,54 @@ def ply_a_0(file_name, wait=True, repeat=False):
             upd_vol(0.1)
             pass
 
+def ply_a_1(file_name, wait=True, repeat=False):
+    upd_vol(0)
+    if not cfg["use_sd_card"] and "/sd/" in file_name:
+        return
+
+    # Stop if voice is currently playing
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+
+    # Choose decoder based on file extension
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    # Play the selected file
+    mix.voice[1].play(w1, loop=repeat)
+
+    # Wait until playback completes
+    if wait:
+        while mix.voice[1].playing:
+            exit_early()
+            upd_vol(0.1)
+            pass
+
+
+def wait_snd():
+    while mix.voice[0].playing:
+        exit_early()
+        pass
+
+def wait_snd_1():
+    while mix.voice[1].playing:
+        upd_vol(.1)
+        pass
 
 def stp_a_0():
     mix.voice[0].stop()
-    while mix.voice[0].playing:
-        pass
+    wait_snd()
+    gc_col("stp snd")
+
+def stp_a_1():
+    mix.voice[1].stop()
+    wait_snd_1()
 
 
 def exit_early():
@@ -2641,11 +2699,131 @@ async def set_hdw_async(cmd, dur=0):
             elif seg[0] == 'W':  # wait time
                 s = float(seg[1:])
                 await asyncio.sleep(s)
+            # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others ignored
+            elif seg[:2] == 'MB':  # play file
+                repeat = seg[2]
+                file_nm = seg[3:]
+                return repeat + "_" + file_nm
+            # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A animations, N mario, L luigi, M mvc, H horns) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
+            elif seg[0] == 'M':  # play file
+                if seg[1] == "S":
+                    stp_a_0()
+
+                elif seg[1] == "W" or seg[1] == "P":
+                    if seg[2] not in FOLDER_MAP:
+                        print("Unknown media folder code:", seg[2])
+                        continue
+
+                    folder = FOLDER_MAP[seg[2]]
+                    code = seg[3:]
+
+                    if "/sd/" in folder:
+                        extension = "wav"
+                    else:
+                        extension = "mp3"
+
+                    filename = None
+
+                    if code == "SEQN":
+                        filename, media_index[seg[2]] = get_indexed_media_file(
+                            folder,
+                            extension,
+                            media_index[seg[2]]
+                        )
+
+                    elif code == "SEQF":
+                        filename, media_index[seg[2]] = get_indexed_media_file(
+                            folder,
+                            extension,
+                            0
+                        )
+
+                    elif code == "RAND":
+                        filename = get_random_media_file(
+                            folder,
+                            extension
+                        )
+
+                    else:
+                        filename = code
+
+                    if filename is None:
+                        print(
+                            "No ."
+                            + extension
+                            + " files found in: "
+                            + folder
+                        )
+                        continue
+
+                    filename = filename + "." + extension
+                    full_path = folder + filename
+
+                    print("Filename is:", full_path)
+
+                    ply_a_1(
+                        full_path,
+                        False,
+                        False
+                    )
+
+                    if seg[1] == "W":
+                        wait_snd_1()            
             # abc... = AN_abc... using these lower case characters abcdefghijklmnopqrstuvwxyz
             elif seg[0] in "abcdefghijklmnopqrstuvwxyz":
                 add_command("AN_" + seg[0:])
     except Exception as e:
         files.log_item(e)
+
+def get_random_media_file(folder_to_search, file_ext):
+    if not file_ext.startswith("."):
+        file_ext = "." + file_ext
+
+    file_ext = file_ext.lower()
+
+    myfiles = files.return_directory(
+        "",
+        folder_to_search,
+        file_ext
+    )
+
+    if not myfiles:
+        return None
+
+    return random.choice(myfiles)
+
+
+def get_indexed_media_file(folder_to_search, file_ext, index):
+    if not file_ext.startswith("."):
+        file_ext = "." + file_ext
+
+    file_ext = file_ext.lower()
+
+    myfiles = files.return_directory(
+        "",
+        folder_to_search,
+        file_ext
+    )
+
+    if not myfiles:
+        return None, 0
+
+    index = index % len(myfiles)
+
+    selected_file = myfiles[index]
+    new_index = (index + 1) % len(myfiles)
+
+    print(
+        "playing:",
+        selected_file,
+        "(",
+        index,
+        "/",
+        len(myfiles),
+        ")"
+    )
+
+    return selected_file, new_index
 
 
 ################################################################################
