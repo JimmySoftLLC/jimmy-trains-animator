@@ -141,7 +141,7 @@ green_pin = board.GP8
 blue_pin = board.GP9
 
 DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
-MP_CMD_WAIT = .1
+MP_CMD_WAIT = .2
 IDLE_STATE = False
 MAXLEN = 1200
 CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255] #0, 0.078, 0.156, 0.235, 0.313
@@ -2279,67 +2279,84 @@ async def an_async(f_nm):
         files.log_item(e)
     an_running = False
 
-
 async def an_light_async(f_nm):
     global exit_set_hdw_async
-    """Asynchronous animation lighting."""
 
-    flsh_t = []
-    if f_exists("animations/" + f_nm + ".json"):
-        flsh_t = files.read_json_file("animations/" + f_nm + ".json")
+    animation_path = "animations/" + f_nm + ".json"
 
-    # add end command to time stamps so all time stamps are processed
-    ft_last = flsh_t[len(flsh_t)-1].split("|")
-    tm_last = float(ft_last[0]) + .001
+    if not f_exists(animation_path):
+        print("Animation file not found:", animation_path)
+        return
+
+    flsh_t = files.read_json_file(animation_path)
+
+    if not flsh_t:
+        print("Animation file is empty:", animation_path)
+        return
+
+    # Add end commands so the final real timestamp gets processed.
+    ft_last = flsh_t[-1].split("|")
+    tm_last = float(ft_last[0]) + 0.001
+
     flsh_t.append(str(tm_last) + "|E")
-    flsh_t.append(str(tm_last + .001) + "|E")
+    flsh_t.append(str(tm_last + 0.001) + "|E")
 
     flsh_i = 0
     srt_t = time.monotonic()
 
-    while True:
-        t_past = time.monotonic() - srt_t
-        if flsh_i < len(flsh_t) - 1:
-            ft1 = flsh_t[flsh_i].split("|")
-            ft2 = flsh_t[flsh_i + 1].split("|")
-            dur = float(ft2[0]) - float(ft1[0]) - 0.25
-        else:
-            dur = 0.25
+    while flsh_i < len(flsh_t) - 1:
+        ft1 = flsh_t[flsh_i].split("|")
+        ft2 = flsh_t[flsh_i + 1].split("|")
+
+        timestamp = float(ft1[0])
+
+        dur = float(ft2[0]) - timestamp - 0.25
+
         if dur < 0:
             dur = 0
 
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t) - 1:
-            files.log_item(f"time elapsed: {t_past} Timestamp: {ft1[0]}")
-            if len(ft1) == 1 or ft1[1] == "":
-                if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
-                    break
-            else:
+        t_past = time.monotonic() - srt_t
+
+        if t_past > timestamp - 0.25:
+            files.log_item(
+                "time elapsed: "
+                + str(t_past)
+                + " Timestamp: "
+                + ft1[0]
+            )
+
+            # Only run set_hdw_async when this timestamp has a command.
+            if len(ft1) > 1 and ft1[1] != "":
                 result = await set_hdw_async(ft1[1], dur)
+
                 if result == "STOP":
                     await asyncio.sleep(0)
                     break
+
             flsh_i += 1
-        if (l_sw_io.value == False):
+
+        if l_sw_io.value == False:
             sw = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
+                l_sw,
+                r_sw,
+                time.sleep,
+                3.0,
+                override_switch_state,
+                False
+            )
+
             if sw == "left" and cfg["can_cancel"]:
                 exit_set_hdw_async = True
-                flsh_i = len(flsh_t) - 1
+                break
+
             if sw == "left_held":
                 stop_all_commands()
                 exit_set_hdw_async = True
-                flsh_i = len(flsh_t) - 1
                 cont_mode_off()
+                break
 
-        await asyncio.sleep(0)  # Yield control to other tasks
-
-        # Exit condition for stopping animation
-        if flsh_i >= len(flsh_t)-1:
-            # led.fill((0, 0, 0))
-            # led.show()
-            break
-
+        await asyncio.sleep(0)
+        
 ##############################
 # animation effects
 
