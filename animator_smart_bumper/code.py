@@ -100,7 +100,7 @@ mdns_to_ip = {}
 n_px = 1
 
 # GP18 on smart bumper
-neo_pixel_pin = board.GP22
+neo_pixel_pin = board.GP12
 
 led = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
