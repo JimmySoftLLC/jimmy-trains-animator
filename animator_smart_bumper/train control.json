@@ -1,0 +1,6 @@
+[
+  "0.0|POS_25_20_L_FORWARD_9_40,L0_255_0_0,WAIT_2",
+  "10.0|L0_0_255_0,POS_25_15_G_REVERSE_5_20,TMCC_engine_25_7",
+  "14.0|TMCC_engine_25_REVERSE,TMCC_engine_25_SPEED_5,WAIT_3,TMCC_engine_25_2",
+  "17.0|API_bumpr.local_animation_{\"an\": \"train control\"}"
+]
