@@ -82,11 +82,17 @@ exit_set_hdw_async = False
 
 gc_col("config setup")
 
+animations = []
+mnu_o = []
 
 def upd_media():
-    global animations
-
+    global animations, mnu_o
+    animations = []
+    mnu_o = []
     animations = files.return_directory("", "animations", ".json")
+    mnu_o.extend(animations)
+    rnd_o = ['random all']
+    mnu_o.extend(rnd_o)
 
 upd_media()
 
@@ -163,6 +169,13 @@ def set_off():
     indicator.fill((0, 0, 0))
     indicator.show()
 
+
+def show_mode(cycles, r, g, b):
+    for _ in range(cycles):
+        indicator.fill((r, g, b))
+        time.sleep(.5)
+        indicator.fill((0, 0, 0))
+        time.sleep(.5)
 
 set_white()
 time.sleep(1)
@@ -940,11 +953,18 @@ def add_command(command, to_start=False):
 
 
 async def process_commands():
+    global last_an_call_end
+
     while command_queue:
-        command = command_queue.pop(0)  # Retrieve from the front of the queue
-        print("Processing command:", command)
-        await an_async(command)  # Process each command as an async operation
-        await asyncio.sleep(0)  # Yield control to the event loop
+        command = command_queue.pop(0)
+        if command.startswith("AN_"):
+            filename = command[3:]
+            if filename:
+                await an_async(filename)
+                await asyncio.sleep(0)
+        else:
+            await set_hdw_async(command)
+            await asyncio.sleep(0)
 
 
 def clear_command_queue():
@@ -972,67 +992,97 @@ def rst_def():
 # animations
 
 async def an_async(f_nm):
+    global an_running
+    """Run animation lighting as an async task."""
     print("Filename:", f_nm)
+    cur = f_nm
     try:
-        await an_light_async(f_nm)
-        gc_col("animation cleanup")
+        if f_nm == "random all":
+            hi = len(animations) - 1
+            cur = animations[random.randint(0, hi)]
+        an_running = True
+        await an_light_async(cur)
     except Exception as e:
         files.log_item(e)
-    gc_col("Animation complete.")
-
+    an_running = False
 
 async def an_light_async(f_nm):
-    flsh_t = []
-    if f_exists("animations/" + f_nm + ".json"):
-        flsh_t = files.read_json_file("animations/" + f_nm + ".json")
+    global exit_set_hdw_async
 
-    # add end command to time stamps to stop video when timestamps run out
-    ft_last = flsh_t[len(flsh_t)-1].split("|")
-    tm_last = float(ft_last[0]) + .1
+    animation_path = "animations/" + f_nm + ".json"
+
+    if not f_exists(animation_path):
+        print("Animation file not found:", animation_path)
+        return
+
+    flsh_t = files.read_json_file(animation_path)
+
+    if not flsh_t:
+        print("Animation file is empty:", animation_path)
+        return
+
+    # Add end commands so the final real timestamp gets processed.
+    ft_last = flsh_t[-1].split("|")
+    tm_last = float(ft_last[0]) + 0.001
+
     flsh_t.append(str(tm_last) + "|E")
-    flsh_t.append(str(tm_last + .1) + "|E")
+    flsh_t.append(str(tm_last + 0.001) + "|E")
 
     flsh_i = 0
-    
     srt_t = time.monotonic()
 
-    while True:
-        t_past = time.monotonic() - srt_t
-        if flsh_i < len(flsh_t)-1:
-            ft1 = flsh_t[flsh_i].split("|")
-            ft2 = flsh_t[flsh_i + 1].split("|")
-            dur = float(ft2[0]) - float(ft1[0]) - 0.25
-        else:
-            dur = 0.25
+    while flsh_i < len(flsh_t) - 1:
+        ft1 = flsh_t[flsh_i].split("|")
+        ft2 = flsh_t[flsh_i + 1].split("|")
+
+        timestamp = float(ft1[0])
+
+        dur = float(ft2[0]) - timestamp - 0.25
+
         if dur < 0:
             dur = 0
 
+        t_past = time.monotonic() - srt_t
 
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item(f"time elapsed: {t_past} Timestamp: {ft1[0]}")
-            if len(ft1) == 1 or ft1[1] == "":
-                pos = random.randint(60, 120)
-                lgt = random.randint(60, 120)
-                result = await set_hdw_async(f"L0{lgt},S0{pos}", dur)
-                if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
-                    break
-            else:
+        if t_past > timestamp - 0.25:
+            files.log_item(
+                "time elapsed: "
+                + str(t_past)
+                + " Timestamp: "
+                + ft1[0]
+            )
+
+            # Only run set_hdw_async when this timestamp has a command.
+            if len(ft1) > 1 and ft1[1] != "":
                 result = await set_hdw_async(ft1[1], dur)
+
                 if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
+                    await asyncio.sleep(0)
                     break
+
             flsh_i += 1
 
-        # print (flsh_i)
+        if l_sw_io.value == False or r_sw_io.value == False:
+            sw = utilities.switch_state(
+                l_sw,
+                r_sw,
+                time.sleep,
+                3.0,
+                override_switch_state,
+                False
+            )
 
-        await asyncio.sleep(0)  # Yield control to other tasks
+            if (sw == "left" or sw == "right"):
+                exit_set_hdw_async = True
+                break
 
-        # Exit condition for stopping animation
-        if flsh_i >= len(flsh_t)-1:
-            # led.fill((0, 0, 0))
-            # led.show()
-            break
+            if sw == "left_held" or sw == "right_held":
+                stop_all_commands()
+                exit_set_hdw_async = True
+                break
+
+        await asyncio.sleep(0)
+
 
 ##############################
 # animation effects
@@ -1113,7 +1163,7 @@ def bnd(c, l, u):
     return c
 
 
-async def set_hdw_async(input_string, dur):
+async def set_hdw_async(input_string, dur=0):
     global sp, br, exit_set_hdw_async, vl53
     segs = input_string.split(",")
 
@@ -1197,6 +1247,9 @@ async def set_hdw_async(input_string, dur):
                 max_retries = 2
                 attempts = 0
                 while attempts < max_retries:
+                    if l_sw_io.value == False or r_sw_io.value == False:
+                        exit_set_hdw_async = True
+                        break
                     ip_from_mdns = get_ip_from_mdns(
                         seg_split[1], overwrite=(attempts > 0))
                     files.log_item(
@@ -1429,6 +1482,8 @@ class BseSt(Ste):
         if (sw == "left" or sw == "right") and not an_running:
             add_command("AN_" + cfg["option_selected"])
             an_just_added = True
+        elif (sw == "left_held" or sw == "right_held"):
+            mch.go_to('main_menu')
 
 
 class Main(Ste):
@@ -1451,7 +1506,7 @@ class Main(Ste):
     def upd(self, mch):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
-        if sw == "left":
+        if (sw == "left" or sw == "right"):
             self.sel_i = self.i
             if self.sel_i == len(mnu_o) - 1:
                 show_mode(1, 255, 255, 255)
@@ -1460,7 +1515,7 @@ class Main(Ste):
             self.i += 1
             if self.i > len(mnu_o) - 1:
                 self.i = 0
-        if sw == "right":
+        if (sw == "left_held" or sw == "right_held"):
             cfg["option_selected"] = mnu_o[self.sel_i]
             indicator.fill((0, 255, 0))
             files.write_json_file("cfg.json", cfg)
@@ -1505,14 +1560,20 @@ gc_col("animations started.")
 # Main task handling
 
 
+startup_command_sent = False
+
 async def process_commands_task():
-    """Task to continuously process commands."""
+    global startup_command_sent
     while True:
+        if not startup_command_sent:
+            await asyncio.sleep(2)
+            startup_command_sent = True
+            add_command(cfg["startup_string"])
         try:
-            await process_commands()  # Async command processing
+            await process_commands()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)  # Yield control to other tasks
+        await asyncio.sleep(0.01)
 
 
 async def server_poll_task(server):
@@ -1527,8 +1588,9 @@ async def server_poll_task(server):
 
 async def garbage_collection_task():
     while True:
-        gc.collect()  # Collect garbage
-        await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
+        await asyncio.sleep(60)
+        if not an_running:
+            gc.collect()
 
 
 async def state_mach_upd_task(st_mch):

@@ -1,8 +1,50 @@
 import os
 import json
 
-def log_item(item):
-    print(item)
+# Optional function supplied by the main program.
+# Older programs do not need to set this.
+_console_writer = None
+
+
+def set_console_writer(writer=None):
+    """
+    Register an optional function that receives log messages.
+
+    Example:
+        files.set_console_writer(console_write)
+
+    Disable it with:
+        files.set_console_writer(None)
+    """
+    global _console_writer
+    _console_writer = writer
+
+
+def log_item(*items):
+    """
+    Print a message to the normal serial console and optionally send
+    the same message to a display callback.
+
+    Existing calls remain compatible:
+        log_item("message")
+        log_item(exception)
+
+    Multiple arguments are also supported:
+        log_item("Train position:", train_pos)
+    """
+    text = " ".join(str(item) for item in items)
+
+    # Preserve the original behavior.
+    print(text)
+
+    # Optionally send the message to the OLED console.
+    if _console_writer is not None:
+        try:
+            _console_writer(text)
+        except Exception as console_error:
+            # Do not call log_item() here because that would cause recursion.
+            print("OLED console error:", console_error)
+            
 
 def print_directory(path, tabs=0):
     log_item_name = ""
