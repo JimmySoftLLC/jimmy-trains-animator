@@ -22,13 +22,15 @@
 
 #######################################################
 
-
+import utilities
+from adafruit_debouncer import Debouncer
 from rainbowio import colorwheel
 import neopixel
 import asyncio
 import microcontroller
 import random
 import board
+import digitalio
 import busio
 import time
 import gc
@@ -86,13 +88,45 @@ def upd_media():
 
     animations = files.return_directory("", "animations", ".json")
 
-
 upd_media()
 
 br = 0
-
 mdns_to_ip = {}
+exit_set_hdw_async = False
+an_just_added = False
+an_running = False
+override_switch_state = {}
+override_switch_state["switch_value"] = ""
 
+################################################################################
+# setup switches
+
+# -------------------------------------------------------------------
+# Left bumper:
+#   GP21 = input with pull-up
+#   GP22 = output LOW (acts as ground)
+# -------------------------------------------------------------------
+
+gnd_pin = digitalio.DigitalInOut(board.GP22)
+gnd_pin.direction = digitalio.Direction.OUTPUT
+gnd_pin.value = False
+
+l_sw_io = digitalio.DigitalInOut(board.GP21)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw_io)
+
+
+# -------------------------------------------------------------------
+# Right bumper:
+#   GP8 = input with pull-up
+#   GND = other side of switch
+# -------------------------------------------------------------------
+
+r_sw_io = digitalio.DigitalInOut(board.GP8)
+r_sw_io.direction = digitalio.Direction.INPUT
+r_sw_io.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw_io)
 
 ################################################################################
 # Setup neo pixels
@@ -102,32 +136,32 @@ n_px = 1
 # GP18 on smart bumper
 neo_pixel_pin = board.GP12
 
-led = neopixel.NeoPixel(neo_pixel_pin, n_px)
+indicator = neopixel.NeoPixel(neo_pixel_pin, n_px)
 
 
 def set_red():
-    led.fill((255, 0, 0))
-    led.show()
+    indicator.fill((255, 0, 0))
+    indicator.show()
 
 
 def set_blue():
-    led.fill((0, 0, 255))
-    led.show()
+    indicator.fill((0, 0, 255))
+    indicator.show()
 
 
 def set_green():
-    led.fill((0, 255, 0))
-    led.show()
+    indicator.fill((0, 255, 0))
+    indicator.show()
 
 
 def set_white():
-    led.fill((255, 255, 255))
-    led.show()
+    indicator.fill((255, 255, 255))
+    indicator.show()
 
 
 def set_off():
-    led.fill((0, 0, 0))
-    led.show()
+    indicator.fill((0, 0, 0))
+    indicator.show()
 
 
 set_white()
@@ -193,11 +227,78 @@ def center_text(font, txt, y):
     t.y = y
     return t
 
+# Maximum number of fonts held in memory.
+# Sizes 20 and 30 are permanent, leaving room for two variable sizes.
+MAX_CACHED_FONTS = 4
+DEFAULT_FONT_SIZES = (20, 30)
+
+# Stores:
+#     font size: loaded font object
+font_cache = {}
+
+# Tracks only non-default fonts, oldest first.
+font_cache_order = []
+
+
+def font_filename(font_size):
+    return "fonts/Arial-BoldMT-" + str(font_size) + ".bdf"
+
 
 def load_font(font_size):
-    return bitmap_font.load_font(
-        "fonts/Arial-BoldMT-" + str(font_size) + ".bdf"
+    """
+    Return a loaded font object.
+
+    Font sizes 20 and 30 remain permanently cached.
+    Other sizes are cached until the four-font limit is reached.
+    The oldest non-default font is then removed.
+    """
+    font_size = int(font_size)
+
+    # Return an existing cached font immediately.
+    if font_size in font_cache:
+        # Treat variable fonts as recently used.
+        if font_size not in DEFAULT_FONT_SIZES:
+            if font_size in font_cache_order:
+                font_cache_order.remove(font_size)
+
+            font_cache_order.append(font_size)
+
+        return font_cache[font_size]
+
+    # Make room before loading another variable font.
+    if (
+        font_size not in DEFAULT_FONT_SIZES
+        and len(font_cache) >= MAX_CACHED_FONTS
+    ):
+        if font_cache_order:
+            oldest_size = font_cache_order.pop(0)
+
+            files.log_item(
+                "Removing font " + str(oldest_size) + " from cache"
+            )
+
+            del font_cache[oldest_size]
+            gc.collect()
+
+    files.log_item("Loading font size " + str(font_size))
+
+    loaded_font = bitmap_font.load_font(
+        font_filename(font_size)
     )
+
+    font_cache[font_size] = loaded_font
+
+    if font_size not in DEFAULT_FONT_SIZES:
+        font_cache_order.append(font_size)
+
+    return loaded_font
+
+
+# Load the two permanent fonts once during startup.
+font_cache[20] = bitmap_font.load_font(font_filename(20))
+font_cache[30] = bitmap_font.load_font(font_filename(30))
+
+gc_col("Default fonts loaded")
 
 
 if "i2c" not in cfg:
@@ -331,8 +432,17 @@ def draw_text(display_n, line1, line2):
     if not valid_display(display_n):
         return
 
-    line1_text = center_text(load_font(20), line1, 12)
-    line2_text = center_text(load_font(30), line2, 40)
+    line1_text = center_text(
+        font_cache[20],
+        line1,
+        12
+    )
+
+    line2_text = center_text(
+        font_cache[30],
+        line2,
+        40
+    )
 
     group = displayio.Group()
     group.append(line1_text)
@@ -371,7 +481,12 @@ async def display_text_async(display_n, line1, line2, blink_times, background_on
     invert_display(display_n, background_on)
 
 
-async def roll_text_async(display_n, line1, font_size, background_on=False):
+async def roll_text_async(
+    display_n,
+    line1,
+    font_size,
+    background_on=False
+):
     if not valid_display(display_n):
         return
 
@@ -427,8 +542,8 @@ print("--------------------")
 
 vl53.start_ranging()
 
-led.fill((255, 255, 0))
-led.show()
+indicator.fill((255, 255, 0))
+indicator.show()
 
 while not vl53.data_ready:
     print("data not ready")
@@ -443,8 +558,8 @@ print("Train pos: ", train_pos)
 
 time.sleep(1)
 
-led.fill((0, 0, 0))
-led.show()
+indicator.fill((0, 0, 0))
+indicator.show()
 ################################################################################
 # Setup wifi and web server
 
@@ -943,8 +1058,8 @@ async def rbow(spd, dur):
             if exit_set_hdw_async:
                 return
             pixel_index = (i * 256 // n_px) + j
-            led[0] = colorwheel(pixel_index & 255)
-            led.show()
+            indicator[0] = colorwheel(pixel_index & 255)
+            indicator.show()
             await asyncio.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
@@ -953,8 +1068,8 @@ async def rbow(spd, dur):
             if exit_set_hdw_async:
                 return
             pixel_index = (i * 256 // n_px) + j
-            led[0] = colorwheel(pixel_index & 255)
-            led.show()
+            indicator[0] = colorwheel(pixel_index & 255)
+            indicator.show()
             await asyncio.sleep(spd)
             te = time.monotonic()-st
             if te > dur:
@@ -975,8 +1090,8 @@ async def fire(dur):
         r1 = bnd(r-f, 0, 255)
         g1 = bnd(g-f, 0, 255)
         b1 = bnd(b-f, 0, 255)
-        led[0] = (r1, g1, b1)
-        led.show()
+        indicator[0] = (r1, g1, b1)
+        indicator.show()
         await asyncio.sleep(random.uniform(0.05, 0.1))
         te = time.monotonic()-st
         if te > dur:
@@ -987,7 +1102,7 @@ def multi_color():
     r = random.randint(0, 255)
     g = random.randint(0, 255)
     b = random.randint(0, 255)
-    led[0] = (r, g, b)
+    indicator[0] = (r, g, b)
 
 
 def bnd(c, l, u):
@@ -1015,12 +1130,12 @@ async def set_hdw_async(input_string, dur):
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
-                led[0] = (r, g, b)
+                indicator[0] = (r, g, b)
             # BXXX = Brightness XXX 000 to 100
             elif seg[0:1] == 'B':
                 br = int(seg[1:])
-                led.brightness = float(br/100)
-                led.show()
+                indicator.brightness = float(br/100)
+                indicator.show()
             # FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
             elif seg[0] == 'F':
                 segs_split = seg.split("_")
@@ -1029,11 +1144,11 @@ async def set_hdw_async(input_string, dur):
                 while not br == v:
                     if br < v:
                         br += 1
-                        led.brightness = float(br/100)
+                        indicator.brightness = float(br/100)
                     else:
                         br -= 1
-                        led.brightness = float(br/100)
-                    led.show()
+                        indicator.brightness = float(br/100)
+                    indicator.show()
                     await asyncio.sleep(s)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
@@ -1241,7 +1356,125 @@ def get_ip_from_mdns(mdns_name, overwrite=False):
                 ip_with_port = None
 
         return ip_with_port
+    
+################################################################################
+# State Machine
 
+
+class StMch(object):
+
+    def __init__(s):
+        s.ste = None
+        s.stes = {}
+        s.paused_state = None
+
+    def add(s, ste):
+        s.stes[ste.name] = ste
+
+    def go_to(s, ste):
+        if s.ste:
+            s.ste.exit(s)
+        s.ste = s.stes[ste]
+        s.ste.enter(s)
+
+    def upd(s):
+        if s.ste:
+            s.ste.upd(s)
+
+################################################################################
+# States
+
+# Abstract parent state class.
+
+
+class Ste(object):
+
+    def __init__(s):
+        pass
+
+    @property
+    def name(s):
+        return ""
+
+    def enter(s, mch):
+        pass
+
+    def exit(s, mch):
+        pass
+
+    def upd(s, mch):
+        pass
+
+
+class BseSt(Ste):
+
+    def __init__(self):
+        pass
+
+    @property
+    def name(self):
+        return 'base_state'
+
+    def enter(self, mch):
+        files.log_item("Entered base state")
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global an_just_added
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
+        if (sw == "left" or sw == "right") and not an_running:
+            add_command("AN_" + cfg["option_selected"])
+            an_just_added = True
+
+
+class Main(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return "main_menu"
+
+    def enter(self, mch):
+        files.log_item("Main menu")
+        indicator.fill((0, 0, 120))
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
+        if sw == "left":
+            self.sel_i = self.i
+            if self.sel_i == len(mnu_o) - 1:
+                show_mode(1, 255, 255, 255)
+            else:
+                show_mode(self.sel_i + 1, 255, 255, 0)
+            self.i += 1
+            if self.i > len(mnu_o) - 1:
+                self.i = 0
+        if sw == "right":
+            cfg["option_selected"] = mnu_o[self.sel_i]
+            indicator.fill((0, 255, 0))
+            files.write_json_file("cfg.json", cfg)
+            mch.go_to("base_state")
+
+###############################################################################
+# Create the state machine
+
+st_mch = StMch()
+st_mch.add(BseSt())
+st_mch.add(Main())
+
+################################################################################
+# Start server
 
 if (web):
     files.log_item("starting server...")
@@ -1264,6 +1497,11 @@ if web:
 else:
     set_red()
 
+st_mch.go_to('base_state')
+files.log_item("animator has started...")
+gc_col("animations started.")
+
+################################################################################
 # Main task handling
 
 
@@ -1293,11 +1531,23 @@ async def garbage_collection_task():
         await asyncio.sleep(10)  # Run every 10 seconds (adjust as needed)
 
 
+async def state_mach_upd_task(st_mch):
+    global an_just_added
+    while True:
+        st_mch.upd()
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0.02)
+
+
 async def main():
     # Create asyncio tasks
     tasks = [
         process_commands_task(),
         garbage_collection_task(),
+        state_mach_upd_task(st_mch)
     ]
 
     if web:
