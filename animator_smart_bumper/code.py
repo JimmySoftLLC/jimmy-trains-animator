@@ -1117,6 +1117,22 @@ if (web):
                     gc_col("get data")
                     return Response(request, "out of memory")
                 return Response(request, "success")
+            
+            @server.route("/mode", [POST])
+            def btn(request: Request):
+                global exit_set_hdw_async
+                rq_d = request.json()
+                if rq_d["an"] == "left":
+                    if an_running:
+                        override_switch_state["switch_value"] = "left"
+                        exit_set_hdw_async = True
+                        time.sleep(.1)
+                    else:
+                        override_switch_state["switch_value"] = "left"
+                elif rq_d["an"] == "left_held":
+                    override_switch_state["switch_value"] = "left_held"
+                return Response(request, "switch_value: " + override_switch_state["switch_value"])
+
             break
         except Exception as e:
             web = False
@@ -1888,11 +1904,6 @@ async def set_hdw_async(input_string, dur=0):
                     vl53.clear_interrupt()
                     train_pos = vl53.distance
 
-                    files.log_item(
-                        "train pos: ",
-                        train_pos
-                    )
-
                     if (
                         not print_console
                         and train_pos != last_displayed_train_pos
@@ -1922,6 +1933,10 @@ async def set_hdw_async(input_string, dur=0):
                             "target timeout exceeded"
                         )
                         break
+
+                    files.log_item(
+                        override_switch_state["switch_value"]
+                    )
 
                     if not l_sw_io.value or not r_sw_io.value:
                         files.log_item(
@@ -2109,7 +2124,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global an_just_added
+        global an_just_added, exit_set_hdw_async
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
         if (sw == "left" or sw == "right") and not an_running:

@@ -1080,8 +1080,8 @@
 
     // Get all buttons with the 'animator-hardware-update' class
     // Add click event listener to each button
-    var startupUpdateButtons = document.querySelectorAll('.animator-hardware-update');
-    startupUpdateButtons.forEach(function (button) {
+    var hardwareUpdateButtons = document.querySelectorAll('.animator-hardware-update');
+    hardwareUpdateButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             var url = this.getAttribute('data-url');
             var action = this.getAttribute('data-action');
@@ -1133,9 +1133,9 @@
             var data = {}
             if (action == "save") {
                 var startupStringElement = document.getElementById('startupString');
-                hardwareStringValue = startupStringElement.value
+                startupStringValue = startupStringElement.value
                 data = {
-                    text: hardwareStringValue,
+                    text: startupStringValue,
                     action: action
                 }
             } else {
