@@ -101,8 +101,11 @@ mdns_to_ip = {}
 exit_set_hdw_async = False
 an_just_added = False
 an_running = False
+button_release_required = False
+button_lockout_until = 0
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
+last_displayed_train_pos = None
 
 ################################################################################
 # setup switches
@@ -139,7 +142,7 @@ r_sw = Debouncer(r_sw_io)
 
 n_px = 1
 
-# GP18 on smart bumper
+# GP12 on smart bumper
 neo_pixel_pin = board.GP12
 
 indicator = neopixel.NeoPixel(neo_pixel_pin, n_px)
@@ -189,6 +192,22 @@ gc_col("Neopixels setup")
 
 MAX_ACTIVE_DISPLAYS = 2
 display_enabled = True
+
+# When True, files.log_item() output is also shown on the OLED.
+print_console = False
+
+# OLED used for console output.
+console_display_n = 0
+
+# terminalio.FONT is approximately 6 pixels wide.
+CONSOLE_CHARACTERS_PER_LINE = 21
+CONSOLE_LINE_COUNT = 8
+CONSOLE_LINE_SPACING = 8
+
+console_lines = []
+console_group = None
+console_labels = []
+console_initialized = False
 
 PIN_MAP = {
     "GP0": board.GP0,
@@ -327,6 +346,9 @@ def valid_display(display_n):
 
 def clear_active_displays():
     global active_display_nums
+    global console_group
+    global console_labels
+    global console_initialized
 
     displayio.release_displays()
 
@@ -334,6 +356,11 @@ def clear_active_displays():
     displays.clear()
     display_groups.clear()
     active_display_nums = []
+
+    # DisplayIO objects were released, so rebuild the console next time.
+    console_group = None
+    console_labels = []
+    console_initialized = False
 
 def select_display(display_n):
     global active_display_nums, display_enabled
@@ -372,7 +399,7 @@ def select_display(display_n):
 
         addr = i2c_addr(dev["address"])
         if addr not in found:
-            files.log_item("No OLED found at address " + dev["address"])
+            print("No OLED found at address " + dev["address"])
             return None
 
         display_bus = i2cdisplaybus.I2CDisplayBus(
@@ -397,7 +424,7 @@ def select_display(display_n):
         return disp
 
     except Exception as e:
-        files.log_item(e)
+        print(e)
         return None
     
 def set_display_group(display_n, group):
@@ -407,6 +434,133 @@ def set_display_group(display_n, group):
 
     disp.root_group = group
     display_groups[display_n] = group
+
+def initialize_console():
+    """
+    Create the OLED console labels once.
+
+    Reusing labels avoids creating and destroying display objects
+    every time a message is logged.
+    """
+    global console_group
+    global console_labels
+    global console_initialized
+
+    if console_initialized:
+        return True
+
+    if not valid_display(console_display_n):
+        return False
+
+    disp = select_display(console_display_n)
+
+    if disp is None:
+        return False
+
+    console_group = displayio.Group()
+    console_labels = []
+
+    for line_number in range(CONSOLE_LINE_COUNT):
+        console_label = label.Label(
+            terminalio.FONT,
+            text="",
+            color=0xFFFFFF,
+            x=0,
+            y=4 + line_number * CONSOLE_LINE_SPACING
+        )
+
+        console_labels.append(console_label)
+        console_group.append(console_label)
+
+    console_initialized = True
+    return True
+
+
+def split_console_line(text):
+    """
+    Split one message into lines that fit the 128-pixel-wide OLED.
+
+    Existing newline characters are also honored.
+    """
+    wrapped_lines = []
+
+    for original_line in str(text).split("\n"):
+        if original_line == "":
+            wrapped_lines.append("")
+            continue
+
+        while len(original_line) > CONSOLE_CHARACTERS_PER_LINE:
+            wrapped_lines.append(
+                original_line[:CONSOLE_CHARACTERS_PER_LINE]
+            )
+            original_line = original_line[
+                CONSOLE_CHARACTERS_PER_LINE:
+            ]
+
+        wrapped_lines.append(original_line)
+
+    return wrapped_lines
+
+
+def refresh_console():
+    """
+    Update the existing OLED label objects with the newest messages.
+    """
+    if not initialize_console():
+        return
+
+    for line_number in range(CONSOLE_LINE_COUNT):
+        if line_number < len(console_lines):
+            console_labels[line_number].text = console_lines[line_number]
+        else:
+            console_labels[line_number].text = ""
+
+    set_display_group(console_display_n, console_group)
+
+
+def console_write(item):
+    """
+    Callback used by files.log_item().
+
+    This function must accept one string argument.
+    """
+    global console_lines
+
+    if not print_console:
+        return
+
+    new_lines = split_console_line(str(item))
+    console_lines.extend(new_lines)
+
+    # Keep only the newest lines that fit on the OLED.
+    if len(console_lines) > CONSOLE_LINE_COUNT:
+        console_lines = console_lines[-CONSOLE_LINE_COUNT:]
+
+    refresh_console()
+
+
+def clear_console():
+    global console_lines
+
+    console_lines = []
+
+    if console_initialized:
+        refresh_console()
+
+
+def set_print_console(enabled):
+    """
+    Turn OLED console output on or off at runtime.
+    """
+    global print_console
+
+    print_console = bool(enabled)
+
+    if print_console:
+        files.set_console_writer(console_write)
+        refresh_console()
+    else:
+        files.set_console_writer(None)
 
 
 def invert_display(display_n, invert_on):
@@ -533,6 +687,11 @@ if len(cfg["i2c"]) > 1:
 
 time.sleep(1)
 
+# Send files.log_item() messages to the OLED when enabled.
+set_print_console(print_console)
+
+files.log_item("OLED console initialized")
+
 ################################################################################
 # setup distance sensor
 
@@ -544,14 +703,14 @@ vl53 = adafruit_vl53l4cd.VL53L4CD(i2c1)
 vl53.inter_measurement = 0
 vl53.timing_budget = 200
 
-print("VL53L4CD Simple Test.")
-print("--------------------")
+files.log_item("VL53L4CD Simple Test.")
+files.log_item("--------------------")
 model_id, module_type = vl53.model_info
-print("Model ID: 0x{:0X}".format(model_id))
-print("Module Type: 0x{:0X}".format(module_type))
-print("Timing Budget: {}".format(vl53.timing_budget))
-print("Inter-Measurement: {}".format(vl53.inter_measurement))
-print("--------------------")
+files.log_item("Model ID: 0x{:0X}".format(model_id))
+files.log_item("Module Type: 0x{:0X}".format(module_type))
+files.log_item("Timing Budget: {}".format(vl53.timing_budget))
+files.log_item("Inter-Measurement: {}".format(vl53.inter_measurement))
+files.log_item("--------------------")
 
 vl53.start_ranging()
 
@@ -559,7 +718,7 @@ indicator.fill((255, 255, 0))
 indicator.show()
 
 while not vl53.data_ready:
-    print("data not ready")
+    files.log_item("data not ready")
     time.sleep(.2)
 
 for _ in range(3):
@@ -567,7 +726,7 @@ for _ in range(3):
     time.sleep(0.1)
 vl53.clear_interrupt()
 train_pos = vl53.distance  # Distance in cm
-print("Train pos: ", train_pos)
+files.log_item("Train pos: ", train_pos)
 
 time.sleep(1)
 
@@ -578,49 +737,56 @@ indicator.show()
 
 
 def measure_signal_strength(MY_SSID, cycles):
-    print("Monitoring signal for:", MY_SSID)
-    print("Showing current RSSI + running average (simple sum + count)\n")
+    files.log_item("Monitoring signal for: " + MY_SSID)
+    files.log_item(
+        "Showing current RSSI + running average "
+        "(simple sum + count)"
+    )
 
-    total_sum = 0.0      # running sum of all valid RSSI values
-    count = 0            # number of valid readings so far
+    total_sum = 0.0
+    count = 0
+    avg_rssi = None
 
-    while True:
+    while count < cycles:
         current_rssi = None
-        found = False
 
         try:
             for network in wifi.radio.start_scanning_networks():
                 if network.ssid == MY_SSID:
                     current_rssi = network.rssi
-                    print(
-                        f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
-                    found = True
                     break
 
             wifi.radio.stop_scanning_networks()
 
-            if found and current_rssi is not None:
-                # Update running total
+            if current_rssi is not None:
                 total_sum += current_rssi
                 count += 1
+                avg_rssi = total_sum / count
 
-                # Calculate and show average
-                if count > 0:
-                    avg_rssi = total_sum / count
-                    print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
-                else:
-                    print("   |   Avg: waiting...")
+                files.log_item(
+                    str(round(time.monotonic(), 1))
+                    + "s | "
+                    + MY_SSID
+                    + " RSSI="
+                    + str(current_rssi)
+                    + " Avg="
+                    + str(round(avg_rssi, 1))
+                    + " dBm"
+                )
             else:
-                print(
-                    "   |   Could not see your SSID (hidden, out of range, or scan miss)")
+                files.log_item("SSID not found during scan")
 
         except Exception as e:
-            print(f"Scan error: {e}")
-            wifi.radio.stop_scanning_networks()  # cleanup on error
+            files.log_item("Scan error: " + str(e))
 
-        time.sleep(0.1)  # your fast polling; increase to 1–5 if needed
-        if count > cycles:
-            return avg_rssi
+            try:
+                wifi.radio.stop_scanning_networks()
+            except Exception:
+                pass
+
+        time.sleep(0.1)
+
+    return avg_rssi
 
 
 if (web):
@@ -644,10 +810,10 @@ if (web):
         WIFI_SSID = env["WIFI_SSID"]
         WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
-        print("Using env ssid and password")
+        files.log_item("Using env ssid and password")
     except Exception as e:
         files.log_item(e)
-        print("Using default ssid and password")
+        files.log_item("Using default ssid and password")
 
     set_blue()
 
@@ -700,7 +866,7 @@ if (web):
                 global cfg
                 rq_d = request.json()
                 cfg["option_selected"] = rq_d["an"]
-                add_command(cfg["option_selected"])
+                add_command("AN_" + cfg["option_selected"])
                 files.write_json_file("cfg.json", cfg)
                 return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
@@ -717,6 +883,77 @@ if (web):
             def btn(request: Request):
                 stop_all_commands()
                 return Response(request, "Stopped all commands")
+            
+            @server.route("/set-debug-console", [POST])
+            def set_debug_console_route(request: Request):
+                try:
+                    rq_d = request.json()
+                    enabled_value = rq_d.get("enabled", False)
+
+                    # Do not use bool("false"), because that evaluates to True.
+                    if isinstance(enabled_value, str):
+                        enabled = enabled_value.lower() in (
+                            "true",
+                            "1",
+                            "on",
+                            "yes"
+                        )
+                    else:
+                        enabled = bool(enabled_value)
+
+                    if enabled:
+                        clear_console()
+                        set_print_console(True)
+                        files.log_item("OLED debugging enabled")
+                        status = "on"
+                    else:
+                        # Log this before disconnecting the OLED callback so the
+                        # final message appears on the OLED.
+                        files.log_item("OLED debugging disabled")
+                        set_print_console(False)
+                        status = "off"
+
+                        # Restore your normal status display.
+                        if web and avg_rssi is not None:
+                            dbm_string = str(-int(avg_rssi)) + "dbm"
+                            display_text(
+                                0,
+                                cfg["HOST_NAME"] + ".local",
+                                dbm_string,
+                                0,
+                                False
+                            )
+
+                    return Response(
+                        request,
+                        json.dumps({
+                            "debug_console": status
+                        }),
+                        content_type="application/json"
+                    )
+
+                except Exception as e:
+                    print("Set debug console route error:", e)
+
+                    return Response(
+                        request,
+                        json.dumps({
+                            "error": str(e)
+                        }),
+                        content_type="application/json",
+                        status=500
+                    )
+
+
+            @server.route("/get-debug-console", [POST])
+            def get_debug_console_route(request: Request):
+                return Response(
+                    request,
+                    json.dumps({
+                        "debug_console": print_console
+                    }),
+                    content_type="application/json"
+                )
 
             @server.route("/lights", [POST])
             def btn(request: Request):
@@ -736,9 +973,9 @@ if (web):
                 try:
                     global data, animators_folder
                     rq_d = request.json()  # Parse the incoming JSON
-                    print(rq_d)
+                    files.log_item(rq_d)
                     f_n = animators_folder + rq_d["fn"] + ".json"
-                    print(f_n)
+                    files.log_item(f_n)
                     an_data = ["0.0|", "1.0|",
                                "2.0|", "3.0|"]
                     files.write_json_file(f_n, an_data)
@@ -767,9 +1004,9 @@ if (web):
                 try:
                     global data, animators_folder
                     rq_d = request.json()  # Parse the incoming JSON
-                    print(rq_d)
+                    files.log_item(rq_d)
                     f_n = animators_folder + rq_d["fn"] + ".json"
-                    print(f_n)
+                    files.log_item(f_n)
                     os.remove(f_n)
                     upd_media()
                     return Response(request, "Delete animation successfully.")
@@ -820,7 +1057,7 @@ if (web):
                 try:
                     set_blue()
                     rq_d = request.json()
-                    print(rq_d["an"])
+                    files.log_item(rq_d["an"])
                     gc_col("Added hardware task.")
                     # Schedule the async task
                     asyncio.create_task(set_hdw_async(rq_d["an"], 3))
@@ -909,14 +1146,14 @@ def send_animator_post(url, endpoint, new_data=None):
         files.log_item("Sending POST request to " + new_url)
 
         if new_data is not None:
-            print("sending new_data object")
+            files.log_item("sending new_data object")
             if isinstance(new_data, str):
                 new_data_loads = json.loads(new_data)
                 response = requests.post(new_url, json=new_data_loads)
             else:
                 response = requests.post(new_url, json=new_data)
         else:
-            print("not sending new_data object")
+            files.log_item("not sending new_data object")
             response = requests.post(new_url, json={"status": "empty"}
                                      )
 
@@ -931,7 +1168,7 @@ def send_animator_post(url, endpoint, new_data=None):
 if (web):
     cycles = 10
     avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
-    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+    files.log_item(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
 
 
 gc_col("web server")
@@ -946,10 +1183,10 @@ def add_command(command, to_start=False):
     exit_set_hdw_async = False
     if to_start:
         command_queue.insert(0, command)  # Add to the front
-        print("Command added to the start:", command)
+        files.log_item("Command added to the start:", command)
     else:
         command_queue.append(command)  # Add to the end
-        print("Command added to the end:", command)
+        files.log_item("Command added to the end:", command)
 
 
 async def process_commands():
@@ -969,14 +1206,14 @@ async def process_commands():
 
 def clear_command_queue():
     command_queue.clear()
-    print("Command queue cleared.")
+    files.log_item("Command queue cleared.")
 
 
 def stop_all_commands():
     global exit_set_hdw_async
     clear_command_queue()
     exit_set_hdw_async = True
-    print("Processing stopped and command queue cleared.")
+    files.log_item("Processing stopped and command queue cleared.")
 
 
 ################################################################################
@@ -993,18 +1230,23 @@ def rst_def():
 
 async def an_async(f_nm):
     global an_running
-    """Run animation lighting as an async task."""
-    print("Filename:", f_nm)
+
+    files.log_item("Filename:", f_nm)
     cur = f_nm
+    an_running = True
+
     try:
         if f_nm == "random all":
             hi = len(animations) - 1
             cur = animations[random.randint(0, hi)]
-        an_running = True
+
         await an_light_async(cur)
+
     except Exception as e:
         files.log_item(e)
-    an_running = False
+
+    finally:
+        an_running = False
 
 async def an_light_async(f_nm):
     global exit_set_hdw_async
@@ -1012,13 +1254,13 @@ async def an_light_async(f_nm):
     animation_path = "animations/" + f_nm + ".json"
 
     if not f_exists(animation_path):
-        print("Animation file not found:", animation_path)
+        files.log_item("Animation file not found:", animation_path)
         return
 
     flsh_t = files.read_json_file(animation_path)
 
     if not flsh_t:
-        print("Animation file is empty:", animation_path)
+        files.log_item("Animation file is empty:", animation_path)
         return
 
     # Add end commands so the final real timestamp gets processed.
@@ -1032,11 +1274,21 @@ async def an_light_async(f_nm):
     srt_t = time.monotonic()
 
     while flsh_i < len(flsh_t) - 1:
+
+        # Either bumper stops the current animation.
+        if not l_sw_io.value or not r_sw_io.value:
+            files.log_item("Bumper pressed - stopping animation")
+            stop_all_commands()
+            return "STOP"
+
+        if exit_set_hdw_async:
+            files.log_item("Animation stop requested")
+            return "STOP"
+
         ft1 = flsh_t[flsh_i].split("|")
         ft2 = flsh_t[flsh_i + 1].split("|")
 
         timestamp = float(ft1[0])
-
         dur = float(ft2[0]) - timestamp - 0.25
 
         if dur < 0:
@@ -1052,37 +1304,15 @@ async def an_light_async(f_nm):
                 + ft1[0]
             )
 
-            # Only run set_hdw_async when this timestamp has a command.
             if len(ft1) > 1 and ft1[1] != "":
                 result = await set_hdw_async(ft1[1], dur)
 
                 if result == "STOP":
-                    await asyncio.sleep(0)
-                    break
+                    return "STOP"
 
             flsh_i += 1
 
-        if l_sw_io.value == False or r_sw_io.value == False:
-            sw = utilities.switch_state(
-                l_sw,
-                r_sw,
-                time.sleep,
-                3.0,
-                override_switch_state,
-                False
-            )
-
-            if (sw == "left" or sw == "right"):
-                exit_set_hdw_async = True
-                break
-
-            if sw == "left_held" or sw == "right_held":
-                stop_all_commands()
-                exit_set_hdw_async = True
-                break
-
         await asyncio.sleep(0)
-
 
 ##############################
 # animation effects
@@ -1162,195 +1392,359 @@ def bnd(c, l, u):
         c = u
     return c
 
-
 async def set_hdw_async(input_string, dur=0):
-    global sp, br, exit_set_hdw_async, vl53
+    global sp, br, exit_set_hdw_async, vl53, last_displayed_train_pos
+
     segs = input_string.split(",")
 
     try:
         for seg in segs:
+
             if exit_set_hdw_async:
                 return "STOP"
-            # end animation
+
+            # End animation
             if seg[0] == 'E':
                 return "STOP"
-            # L_R_G_B = Neopixel light RGB 0 to 255
+
+            # L_R_G_B = NeoPixel RGB
             elif seg[:1] == 'L':
                 segs_split = seg.split("_")
                 r = int(segs_split[1])
                 g = int(segs_split[2])
                 b = int(segs_split[3])
                 indicator[0] = (r, g, b)
-            # BXXX = Brightness XXX 000 to 100
+
+            # BXXX = Brightness 000 to 100
             elif seg[0:1] == 'B':
                 br = int(seg[1:])
-                indicator.brightness = float(br/100)
+                indicator.brightness = float(br / 100)
                 indicator.show()
-            # FXXX_TTT = Fade brightness in or out XXX 0 to 100, TTT time between transitions in decimal seconds
+
+            # FXXX_TTT = Fade brightness
             elif seg[0] == 'F':
                 segs_split = seg.split("_")
                 v = int(segs_split[0][1:])
                 s = float(segs_split[1])
+
                 while not br == v:
+                    if exit_set_hdw_async:
+                        return "STOP"
+
                     if br < v:
                         br += 1
-                        indicator.brightness = float(br/100)
                     else:
                         br -= 1
-                        indicator.brightness = float(br/100)
+
+                    indicator.brightness = float(br / 100)
                     indicator.show()
                     await asyncio.sleep(s)
-            # ZRAND = Random rainbow, fire, or color change
-            elif seg[0:] == 'ZRAND':
+
+            # ZRAND = Random effect
+            elif seg == 'ZRAND':
                 await random_effect(1, 3, dur)
-            # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+
+            # ZRTTT = Rainbow
             elif seg[:2] == 'ZR':
                 v = float(seg[2:])
                 await rbow(v, dur)
+
             # ZFIRE = Fire
-            elif seg[0:] == 'ZFIRE':
+            elif seg == 'ZFIRE':
                 await fire(dur)
+
             # ZCOLCH = Color change
-            elif seg[0:] == 'ZCOLCH':
+            elif seg == 'ZCOLCH':
                 multi_color()
                 await asyncio.sleep(dur)
-            # QXXXX = Add command XXXX any command ie AN_filename to add new animation
+
+            # QXXXX = Queue another command
             elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
-            # DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB background 1 on 0 off
-            elif seg[:2] == "DT": 
+
+            # DT_NN_LLL_MMM_CC_BB = Display text
+            elif seg[:2] == "DT":
                 segs_split = seg.split("_")
                 screen_number = int(segs_split[1])
                 line1 = segs_split[2]
                 line2 = segs_split[3]
                 cycles = int(segs_split[4])
                 background = bool(int(segs_split[5]))
-                await display_text_async(screen_number, line1, line2, cycles, background)
-            # RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off
-            elif seg[:2] == "RT": 
+
+                await display_text_async(
+                    screen_number,
+                    line1,
+                    line2,
+                    cycles,
+                    background
+                )
+
+            # RT_NN_LLL_FF_BB = Rolling text
+            elif seg[:2] == "RT":
                 segs_split = seg.split("_")
                 screen_number = int(segs_split[1])
                 line1 = segs_split[2]
                 font_size = int(segs_split[3])
                 background = bool(int(segs_split[4]))
-                await roll_text_async(screen_number, line1, font_size, background)
-            # WXXX = Wait XXX decimal seconds
-            elif seg[0] == 'W':  # wait time
+
+                await roll_text_async(
+                    screen_number,
+                    line1,
+                    font_size,
+                    background
+                )
+
+            # WXXX = Wait
+            elif seg[0] == 'W':
                 s = float(seg[1:])
-                await asyncio.sleep(s)
-            # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":data_object}
+                start_wait = time.monotonic()
+
+                while time.monotonic() - start_wait < s:
+                    if exit_set_hdw_async:
+                        return "STOP"
+
+                    if not l_sw_io.value or not r_sw_io.value:
+                        stop_all_commands()
+                        return "STOP"
+
+                    await asyncio.sleep(0.05)
+
+            # API_UUU_EEE_DDD = API POST call
             elif seg[:3] == 'API':
                 seg_split = split_string(seg)
+
                 files.log_item("Split segment: " + str(seg_split))
                 files.log_item("Four params")
+
                 max_retries = 2
                 attempts = 0
+
                 while attempts < max_retries:
-                    if l_sw_io.value == False or r_sw_io.value == False:
-                        exit_set_hdw_async = True
-                        break
+
+                    if exit_set_hdw_async:
+                        return "STOP"
+
+                    if not l_sw_io.value or not r_sw_io.value:
+                        stop_all_commands()
+                        return "STOP"
+
                     ip_from_mdns = get_ip_from_mdns(
-                        seg_split[1], overwrite=(attempts > 0))
+                        seg_split[1],
+                        overwrite=(attempts > 0)
+                    )
+
                     files.log_item(
-                        f"Attempt {attempts + 1}: Resolved {seg_split[1]} to {ip_from_mdns}")
+                        "Attempt "
+                        + str(attempts + 1)
+                        + ": Resolved "
+                        + seg_split[1]
+                        + " to "
+                        + str(ip_from_mdns)
+                    )
+
                     if ip_from_mdns:
                         try:
                             response = send_animator_post(
-                                ip_from_mdns, seg_split[2], seg_split[3])
+                                ip_from_mdns,
+                                seg_split[2],
+                                seg_split[3]
+                            )
+
                             if response is not None:
                                 return response
+
                             files.log_item(
-                                f"send_animator_post failed with {ip_from_mdns}, retrying...")
+                                "send_animator_post failed with "
+                                + str(ip_from_mdns)
+                                + ", retrying..."
+                            )
+
                         except Exception as e:
                             files.log_item(
-                                f"Error with {ip_from_mdns}: {e}, retrying...")
+                                "Error with "
+                                + str(ip_from_mdns)
+                                + ": "
+                                + str(e)
+                                + ", retrying..."
+                            )
                     else:
                         files.log_item(
-                            f"Failed to resolve {seg_split[1]} to an IP, retrying...")
+                            "Failed to resolve "
+                            + seg_split[1]
+                            + " to an IP, retrying..."
+                        )
+
                     attempts += 1
 
                 if attempts >= max_retries:
                     if seg_split[1] in mdns_to_ip:
                         del mdns_to_ip[seg_split[1]]
-                        files.log_item(
-                            f"Removed {seg_split[1]} from dictionary after {max_retries} failed attempts")
-                    return "host not found after retries"
-                
-            # TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
-            # ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
-            # AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED) VALUE is optional (KNOB 1-9, SPEED 0-31)
-            if seg[:4] == 'TMCC':
-                seg_split = split_string(seg)
-                device = seg_split[1]  # "engine", "switch", "accessory", "route", "train", "group"
-                ii = int(seg_split[2])  # ID 1 to 99
-                button = seg_split[3]   # Button type
-                value = None            # Initialize value as None
-                if button in ["KNOB", "SPEED"]:
-                    value = int(seg_split[4])  # Value for KNOB (1-9) or SPEED (0-31)
-                # Construct the command string
-                command = f"API_animator-base3.local:8083_test-animation_{{\"an\":\"TMCC_{device}_{ii}_{button}"
-                if value is not None:
-                    command += f"_{value}"  # Append value if applicable
-                command += "\"}"
-                await set_hdw_async(command, 0)
 
-            # POS_II_PPP_GL_DDD_SSS_TT = Position car, II of engine (1-99),  PPP pos (decimal cm), GL G greater or L less than, DDD direction (FORWARD, REVERSE) SSS speed(1-31), TT timeout in seconds
+                        files.log_item(
+                            "Removed "
+                            + seg_split[1]
+                            + " from dictionary after "
+                            + str(max_retries)
+                            + " failed attempts"
+                        )
+
+                    return "host not found after retries"
+
+            # TMCC command
+            elif seg[:4] == 'TMCC':
+                seg_split = split_string(seg)
+
+                device = seg_split[1]
+                ii = int(seg_split[2])
+                button = seg_split[3]
+                value = None
+
+                if button in ["KNOB", "SPEED"]:
+                    value = int(seg_split[4])
+
+                command = (
+                    'API_animator-base3.local:8083_test-animation_'
+                    '{"an":"TMCC_'
+                    + device
+                    + "_"
+                    + str(ii)
+                    + "_"
+                    + button
+                )
+
+                if value is not None:
+                    command += "_" + str(value)
+
+                command += '"}'
+
+                result = await set_hdw_async(command, 0)
+
+                if result == "STOP":
+                    return "STOP"
+
+            # POS_II_PPP_GL_DDD_SSS_TT
             elif seg[:3] == 'POS':
                 seg_split = seg.split("_")
+
                 ii = int(seg_split[1])
                 position = float(seg_split[2])
                 gl = seg_split[3]
-                button = seg_split[4] # set direction
+                direction = seg_split[4]
                 speed = int(seg_split[5])
-                time_out = float(seg_split[6])  # Timeout in seconds
-                
-                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
-                    ii) + "_" + button + "\"}"
-                await set_hdw_async(command, 0)
+                time_out = float(seg_split[6])
+
+                stop_requested = False
+
+                # Set direction
+                command = (
+                    'API_animator-base3.local:8083_test-animation_'
+                    '{"an":"TMCC_engine_'
+                    + str(ii)
+                    + "_"
+                    + direction
+                    + '"}'
+                )
+
+                result = await set_hdw_async(command, 0)
+
+                if result == "STOP":
+                    return "STOP"
+
                 # Clear initial measurements
                 for _ in range(3):
                     vl53.clear_interrupt()
-                    time.sleep(0.1)
-                # set speed
-                button = "SPEED"
-                
-                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(
-                    ii) + "_" + button + "_" + str(speed) + "\"}"
-                await set_hdw_async(command, 0)
-                # check distance
+                    await asyncio.sleep(0.1)
+
+                # Set speed
+                command = (
+                    'API_animator-base3.local:8083_test-animation_'
+                    '{"an":"TMCC_engine_'
+                    + str(ii)
+                    + "_SPEED_"
+                    + str(speed)
+                    + '"}'
+                )
+
+                result = await set_hdw_async(command, 0)
+
+                if result == "STOP":
+                    return "STOP"
 
                 srt_t = time.monotonic()
+
                 while True:
                     vl53.clear_interrupt()
                     train_pos = vl53.distance
-                    print("train pos: ", train_pos)
+
+                    files.log_item("train pos: ", train_pos)
+
+                    if (
+                        not print_console
+                        and train_pos != last_displayed_train_pos
+                    ):
+                        last_displayed_train_pos = train_pos
+
+                        display_text(
+                            0,
+                            "Train Position",
+                            str(train_pos) + " cm",
+                            0,
+                            False
+                        )
+
                     if gl == "L":
                         if train_pos < position:
-                            print ("target found")
+                            files.log_item("target found")
                             break
                     else:
                         if train_pos > position:
-                            print ("target found")
+                            files.log_item("target found")
                             break
-                    t_past = time.monotonic() - srt_t
-                    if t_past > time_out:
-                        print("target timeout exceeded")
+
+                    if time.monotonic() - srt_t > time_out:
+                        files.log_item("target timeout exceeded")
                         break
+
+                    # Just spill out of the move.
+                    if not l_sw_io.value or not r_sw_io.value:
+                        files.log_item("Bumper pressed during POS")
+                        stop_requested = True
+                        break
+
                     if exit_set_hdw_async:
-                        print("aborting target stop pressed")
+                        files.log_item("POS stop requested")
+                        stop_requested = True
                         break
+
                     await asyncio.sleep(0.1)
-                
-                # set speed to 0 to stop train
+
+                # Existing normal stop command.
+                command = (
+                    'API_animator-base3.local:8083_test-animation_'
+                    '{"an":"TMCC_engine_'
+                    + str(ii)
+                    + '_SPEED_0"}'
+                )
+
+                # Temporarily allow this final stop command to execute.
+                previous_exit_state = exit_set_hdw_async
                 exit_set_hdw_async = False
-                button = "SPEED"
-                speed = 0
-                command = "API_animator-base3.local:8083_test-animation_{\"an\":\"TMCC_engine_" + str(ii) + "_" + button + "_" + str(speed) + "\"}"
+
                 await set_hdw_async(command, 0)
+
+                exit_set_hdw_async = previous_exit_state
+
+                # Spill completely out of the animation.
+                if stop_requested:
+                    stop_all_commands()
+                    return "STOP"
+
+        return None
 
     except Exception as e:
         files.log_item(e)
+        return None
 
 
 def split_string(seg):

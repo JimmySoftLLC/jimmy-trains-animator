@@ -33,6 +33,16 @@
             <div id="animationsContainer"></div>
         </div>
         <div class="mui-tabs__pane" id="settings">
+            <h2>Debug console:</h2>
+            <div>
+                <button id="debug-on-btn" class="mui-btn mui-btn--primary" onclick="setDebugConsole(true)">
+                    Debug OLED On
+                </button>
+
+                <button id="debug-off-btn" class="mui-btn mui-btn--danger" onclick="setDebugConsole(false)">
+                    Debug OLED Off
+                </button>
+            </div>
             <h2>Setup light string:</h2>
             <h2>Test light:</h2>
             <div>
@@ -141,15 +151,19 @@
             <div>ZFIRE = Fire</div>
             <div>ZCOLCH = Color change</div>
             <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
-            <div>DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB background 1 on 0 off</div>
+            <div>DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB
+                background 1 on 0 off</div>
             <div>RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off</div>
             <div>WAIT_SSS = Wait SSS seconds in decimal</div>
             <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
                 data_object}</div>
-            <div>TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
+            <div>TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train",
+                "group"),
                 ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
-                AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED, FORWARD, REVERSE, HORN2, LETOFF) VALUE is only for (KNOB 1-9, SPEED 0-31)</div>
-            <div>POS_II_PPP_GL_DDD_SSS_TT = Position car, II of engine (1-99),  PPP pos (decimal cm), GL G greater or L less than, DDD direction (FORWARD, REVERSE) SSS speed(1-31), TT timeout in seconds</div>   
+                AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED, FORWARD, REVERSE, HORN2, LETOFF) VALUE is
+                only for (KNOB 1-9, SPEED 0-31)</div>
+            <div>POS_II_PPP_GL_DDD_SSS_TT = Position car, II of engine (1-99), PPP pos (decimal cm), GL G greater or L
+                less than, DDD direction (FORWARD, REVERSE) SSS speed(1-31), TT timeout in seconds</div>
             <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                 Animations</button>
             <button class="mui-btn mui-btn--primary animator-action" data-value="" data-url="/stop" type="button">
@@ -237,8 +251,52 @@
                 console.log(error);
             });
 
+        getDebugConsoleStatus();
         getAnimations()
     });
+
+    function updateDebugButtons(enabled) {
+        document.getElementById("debug-on-btn").disabled = enabled;
+        document.getElementById("debug-off-btn").disabled = !enabled;
+    }
+
+    async function setDebugConsole(enabled) {
+        try {
+            const response = await fetch("/set-debug-console", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    enabled: enabled
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("Unable to change debug setting");
+            }
+
+            updateDebugButtons(enabled);
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function getDebugConsoleStatus() {
+        try {
+            const response = await fetch("/get-debug-console", {
+                method: "POST"
+            });
+
+            const result = await response.json();
+
+            updateDebugButtons(result.debug_console);
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
 
     function getAnimations() {
         // get Animations
