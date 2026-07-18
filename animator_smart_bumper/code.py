@@ -106,6 +106,7 @@ button_lockout_until = 0
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
 last_displayed_train_pos = None
+active_engine_number = None
 
 ################################################################################
 # setup switches
@@ -1164,6 +1165,86 @@ def send_animator_post(url, endpoint, new_data=None):
     except Exception as e:
         files.log_item("Comms issue: " + str(e))
         return None
+
+async def stop_active_engine_async():
+    """
+    Stop the most recently controlled engine.
+
+    This sends the command directly so it is not blocked by
+    exit_set_hdw_async or by a bumper that is still pressed.
+    """
+    global active_engine_number
+
+    if active_engine_number is None:
+        files.log_item("No active engine to stop")
+        return None
+
+    engine_number = active_engine_number
+
+    command_data = (
+        '{"an":"TMCC_engine_'
+        + str(engine_number)
+        + '_SPEED_0"}'
+    )
+
+    files.log_item(
+        "Stopping active engine "
+        + str(engine_number)
+    )
+
+    host = "animator-base3.local:8083"
+
+    ip_from_mdns = get_ip_from_mdns(
+        host,
+        overwrite=False
+    )
+
+    if not ip_from_mdns:
+        ip_from_mdns = get_ip_from_mdns(
+            host,
+            overwrite=True
+        )
+
+    if not ip_from_mdns:
+        files.log_item(
+            "Could not resolve Base3 while stopping engine"
+        )
+        return None
+
+    response = send_animator_post(
+        ip_from_mdns,
+        "test-animation",
+        command_data
+    )
+
+    if response is not None:
+        files.log_item(
+            "Engine "
+            + str(engine_number)
+            + " stop command sent"
+        )
+
+        active_engine_number = None
+
+    else:
+        files.log_item(
+            "Engine stop command failed"
+        )
+
+    await asyncio.sleep(0)
+
+    return response
+
+
+async def stop_animation_and_engine_async():
+    """
+    Stop the active engine first, then exit the animation.
+    """
+    await stop_active_engine_async()
+
+    stop_all_commands()
+
+    return "STOP"
     
 if (web):
     cycles = 10
@@ -1240,13 +1321,17 @@ async def an_async(f_nm):
             hi = len(animations) - 1
             cur = animations[random.randint(0, hi)]
 
-        await an_light_async(cur)
+        result = await an_light_async(cur)
+
+        if result == "STOP":
+            return "STOP"
 
     except Exception as e:
         files.log_item(e)
 
     finally:
         an_running = False
+
         display_text(
             0,
             "Animation",
@@ -1284,14 +1369,21 @@ async def an_light_async(f_nm):
 
     while flsh_i < len(flsh_t) - 1:
 
-        # Either bumper stops the current animation.
+        # Either bumper stops the engine and exits the animation.
         if not l_sw_io.value or not r_sw_io.value:
-            files.log_item("Bumper pressed - stopping animation")
-            stop_all_commands()
-            return "STOP"
+            files.log_item(
+                "Bumper pressed - stopping engine and animation"
+            )
 
+            return await stop_animation_and_engine_async()
+
+        # A stop was requested by another part of the program.
         if exit_set_hdw_async:
-            files.log_item("Animation stop requested")
+            files.log_item(
+                "Animation stop requested - stopping active engine"
+            )
+
+            await stop_active_engine_async()
             return "STOP"
 
         ft1 = flsh_t[flsh_i].split("|")
@@ -1402,18 +1494,28 @@ def bnd(c, l, u):
     return c
 
 async def set_hdw_async(input_string, dur=0):
-    global sp, br, exit_set_hdw_async, vl53, last_displayed_train_pos
+    global sp, br, exit_set_hdw_async, vl53
+    global last_displayed_train_pos, active_engine_number
 
     segs = input_string.split(",")
 
     try:
         for seg in segs:
-
             if exit_set_hdw_async:
+                files.log_item(
+                    "Hardware stop requested - stopping active engine"
+                )
+
+                await stop_active_engine_async()
                 return "STOP"
 
             # End animation
             if seg[0] == 'E':
+                files.log_item(
+                    "Hardware end requested - stopping active engine"
+                )
+
+                await stop_active_engine_async()
                 return "STOP"
 
             # L_R_G_B = NeoPixel RGB
@@ -1505,41 +1607,73 @@ async def set_hdw_async(input_string, dur=0):
                 )
 
             # WXXX = Wait
-            elif seg[0] == 'W':
+            elif seg[0] == "W":
                 s = float(seg[1:])
                 start_wait = time.monotonic()
 
                 while time.monotonic() - start_wait < s:
-                    if exit_set_hdw_async:
-                        return "STOP"
 
                     if not l_sw_io.value or not r_sw_io.value:
-                        stop_all_commands()
+                        files.log_item(
+                            "Bumper pressed during wait"
+                        )
+
+                        return await stop_animation_and_engine_async()
+
+                    if exit_set_hdw_async:
+                        files.log_item(
+                            "Wait stopped - stopping active engine"
+                        )
+
+                        await stop_active_engine_async()
                         return "STOP"
 
                     await asyncio.sleep(0.05)
 
-            # API_UUU_EEE_DDD = API POST call
-            elif seg[:3] == 'API':
+            # API_UUU_EEE or API_UUU_EEE_DDD
+            elif seg[:3] == "API":
                 seg_split = split_string(seg)
 
                 files.log_item("Split segment: " + str(seg_split))
-                files.log_item("Four params")
+
+                if len(seg_split) < 3:
+                    files.log_item("Invalid API command: " + seg)
+                    return None
+
+                host = seg_split[1]
+                endpoint = seg_split[2]
+
+                # The fourth parameter containing JSON is optional.
+                data = None
+
+                if len(seg_split) >= 4:
+                    data = seg_split[3]
+                    files.log_item("API command has data")
+                else:
+                    files.log_item("API command has no data")
 
                 max_retries = 2
                 attempts = 0
 
                 while attempts < max_retries:
 
-                    if exit_set_hdw_async:
-                        return "STOP"
-
                     if not l_sw_io.value or not r_sw_io.value:
-                        stop_all_commands()
+                        files.log_item(
+                            "Bumper pressed during API command"
+                        )
+
+                        return await stop_animation_and_engine_async()
+
+                    if exit_set_hdw_async:
+                        files.log_item(
+                            "API command stopped - stopping active engine"
+                        )
+
+                        await stop_active_engine_async()
                         return "STOP"
 
                     ip_from_mdns = get_ip_from_mdns(
-                        seg_split[1],
+                        host,
                         overwrite=(attempts > 0)
                     )
 
@@ -1547,7 +1681,7 @@ async def set_hdw_async(input_string, dur=0):
                         "Attempt "
                         + str(attempts + 1)
                         + ": Resolved "
-                        + seg_split[1]
+                        + host
                         + " to "
                         + str(ip_from_mdns)
                     )
@@ -1556,8 +1690,8 @@ async def set_hdw_async(input_string, dur=0):
                         try:
                             response = send_animator_post(
                                 ip_from_mdns,
-                                seg_split[2],
-                                seg_split[3]
+                                endpoint,
+                                data
                             )
 
                             if response is not None:
@@ -1577,31 +1711,31 @@ async def set_hdw_async(input_string, dur=0):
                                 + str(e)
                                 + ", retrying..."
                             )
+
                     else:
                         files.log_item(
                             "Failed to resolve "
-                            + seg_split[1]
+                            + host
                             + " to an IP, retrying..."
                         )
 
                     attempts += 1
 
-                if attempts >= max_retries:
-                    if seg_split[1] in mdns_to_ip:
-                        del mdns_to_ip[seg_split[1]]
+                if host in mdns_to_ip:
+                    del mdns_to_ip[host]
 
-                        files.log_item(
-                            "Removed "
-                            + seg_split[1]
-                            + " from dictionary after "
-                            + str(max_retries)
-                            + " failed attempts"
-                        )
+                    files.log_item(
+                        "Removed "
+                        + host
+                        + " from dictionary after "
+                        + str(max_retries)
+                        + " failed attempts"
+                    )
 
-                    return "host not found after retries"
+                return "host not found after retries"
 
             # TMCC command
-            elif seg[:4] == 'TMCC':
+            elif seg[:4] == "TMCC":
                 seg_split = split_string(seg)
 
                 device = seg_split[1]
@@ -1612,8 +1746,12 @@ async def set_hdw_async(input_string, dur=0):
                 if button in ["KNOB", "SPEED"]:
                     value = int(seg_split[4])
 
+                # Only remember an actual engine number.
+                if device.lower() == "engine":
+                    active_engine_number = ii
+
                 command = (
-                    'API_animator-base3.local:8083_test-animation_'
+                    "API_animator-base3.local:8083_test-animation_"
                     '{"an":"TMCC_'
                     + device
                     + "_"
@@ -1622,44 +1760,62 @@ async def set_hdw_async(input_string, dur=0):
                     + button
                 )
 
+                if value is not None:
+                    command += "_" + str(value)
+
+                command += '"}'
+
+                files.log_item(
+                    "TMCC API command: " + command
+                )
+
                 display_text(
                     0,
                     "TMCC cmd",
-                    f"{button} {value}" if value is not None else button,
+                    f"{button} {value}"
+                    if value is not None
+                    else button,
                     0,
                     False,
                     20,
                     20
                 )
 
-                if value is not None:
-                    command += "_" + str(value)
-
-                command += '"}'
-
                 result = await set_hdw_async(command, 0)
 
                 if result == "STOP":
                     return "STOP"
 
+                # The engine is no longer running after HALT or SPEED 0.
+                if device.lower() == "engine":
+
+                    if button == "HALT":
+                        active_engine_number = None
+
+                    elif button == "SPEED" and value == 0:
+                        active_engine_number = None
+
             # POS_II_PPP_GL_DDD_SSS_TT
-            elif seg[:3] == 'POS':
+            elif seg[:3] == "POS":
                 seg_split = seg.split("_")
 
-                ii = int(seg_split[1])
+                engine_number = int(seg_split[1])
                 position = float(seg_split[2])
                 gl = seg_split[3]
                 direction = seg_split[4]
                 speed = int(seg_split[5])
                 time_out = float(seg_split[6])
 
+                # Remember the engine for emergency stopping.
+                active_engine_number = engine_number
+
                 stop_requested = False
 
-                # Set direction
+                # Set direction.
                 command = (
-                    'API_animator-base3.local:8083_test-animation_'
+                    "API_animator-base3.local:8083_test-animation_"
                     '{"an":"TMCC_engine_'
-                    + str(ii)
+                    + str(engine_number)
                     + "_"
                     + direction
                     + '"}'
@@ -1680,16 +1836,32 @@ async def set_hdw_async(input_string, dur=0):
                 if result == "STOP":
                     return "STOP"
 
-                # Clear initial measurements
+                # Clear initial distance measurements.
                 for _ in range(3):
+
+                    if not l_sw_io.value or not r_sw_io.value:
+                        files.log_item(
+                            "Bumper pressed while preparing POS"
+                        )
+
+                        return await stop_animation_and_engine_async()
+
+                    if exit_set_hdw_async:
+                        files.log_item(
+                            "POS preparation stopped"
+                        )
+
+                        await stop_active_engine_async()
+                        return "STOP"
+
                     vl53.clear_interrupt()
                     await asyncio.sleep(0.1)
 
-                # Set speed
+                # Set engine speed.
                 command = (
-                    'API_animator-base3.local:8083_test-animation_'
+                    "API_animator-base3.local:8083_test-animation_"
                     '{"an":"TMCC_engine_'
-                    + str(ii)
+                    + str(engine_number)
                     + "_SPEED_"
                     + str(speed)
                     + '"}'
@@ -1716,7 +1888,10 @@ async def set_hdw_async(input_string, dur=0):
                     vl53.clear_interrupt()
                     train_pos = vl53.distance
 
-                    files.log_item("train pos: ", train_pos)
+                    files.log_item(
+                        "train pos: ",
+                        train_pos
+                    )
 
                     if (
                         not print_console
@@ -1736,58 +1911,73 @@ async def set_hdw_async(input_string, dur=0):
                         if train_pos < position:
                             files.log_item("target found")
                             break
+
                     else:
                         if train_pos > position:
                             files.log_item("target found")
                             break
 
                     if time.monotonic() - srt_t > time_out:
-                        files.log_item("target timeout exceeded")
+                        files.log_item(
+                            "target timeout exceeded"
+                        )
                         break
 
-                    # Just spill out of the move.
                     if not l_sw_io.value or not r_sw_io.value:
-                        files.log_item("Bumper pressed during POS")
+                        files.log_item(
+                            "Bumper pressed during POS"
+                        )
+
+                        await stop_active_engine_async()
                         stop_requested = True
                         break
 
                     if exit_set_hdw_async:
-                        files.log_item("POS stop requested")
+                        files.log_item(
+                            "POS stop requested"
+                        )
+
+                        await stop_active_engine_async()
                         stop_requested = True
                         break
 
                     await asyncio.sleep(0.1)
 
-                # Existing normal stop command.
-                command = (
-                    'API_animator-base3.local:8083_test-animation_'
-                    '{"an":"TMCC_engine_'
-                    + str(ii)
-                    + '_SPEED_0"}'
-                )
+                # Send the normal stop only if the emergency stop routine
+                # has not already stopped the engine.
+                if not stop_requested:
+                    command = (
+                        "API_animator-base3.local:8083_test-animation_"
+                        '{"an":"TMCC_engine_'
+                        + str(engine_number)
+                        + '_SPEED_0"}'
+                    )
 
-                # Temporarily allow this final stop command to execute.
-                previous_exit_state = exit_set_hdw_async
-                exit_set_hdw_async = False
+                    previous_exit_state = exit_set_hdw_async
+                    exit_set_hdw_async = False
 
-                display_text(
-                    0,
-                    "TMCC cmd",
-                    "SPEED 0",
-                    0,
-                    False,
-                    20,
-                    20
-                )
+                    display_text(
+                        0,
+                        "TMCC cmd",
+                        "SPEED 0",
+                        0,
+                        False,
+                        20,
+                        20
+                    )
 
-                await set_hdw_async(command, 0)
+                    await set_hdw_async(command, 0)
 
-                exit_set_hdw_async = previous_exit_state
+                    exit_set_hdw_async = previous_exit_state
+                    active_engine_number = None
 
-                # Spill completely out of the animation.
+                # Exit the entire animation after a bumper or stop request.
                 if stop_requested:
                     stop_all_commands()
                     return "STOP"
+
+
+
 
         return None
 
