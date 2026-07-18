@@ -595,18 +595,18 @@ def show_bmp(display_n, filename):
     set_display_group(display_n, group)
 
 
-def draw_text(display_n, line1, line2):
+def draw_text(display_n, line1, line2, line1_size=20, line2_size=30):
     if not valid_display(display_n):
         return
 
     line1_text = center_text(
-        font_cache[20],
+        font_cache[line1_size],
         line1,
         12
     )
 
     line2_text = center_text(
-        font_cache[30],
+        font_cache[line2_size],
         line2,
         40
     )
@@ -618,11 +618,11 @@ def draw_text(display_n, line1, line2):
     set_display_group(display_n, group)
 
 
-def display_text(display_n, line1, line2, blink_times, background_on=False):
+def display_text(display_n, line1, line2, blink_times, background_on=False, line1_size=20, line2_size=30):
     if not valid_display(display_n):
         return
 
-    draw_text(display_n, line1, line2)
+    draw_text(display_n, line1, line2, line1_size, line2_size)
 
     for x in range(blink_times):
         invert_display(display_n, True)
@@ -633,11 +633,11 @@ def display_text(display_n, line1, line2, blink_times, background_on=False):
     invert_display(display_n, background_on)
 
 
-async def display_text_async(display_n, line1, line2, blink_times, background_on=False):
+async def display_text_async(display_n, line1, line2, blink_times, background_on=False, line1_size=20, line2_size=30):
     if not valid_display(display_n):
         return
 
-    draw_text(display_n, line1, line2)
+    draw_text(display_n, line1, line2, line1_size=20, line2_size=30)
 
     for x in range(blink_times):
         invert_display(display_n, True)
@@ -1247,6 +1247,15 @@ async def an_async(f_nm):
 
     finally:
         an_running = False
+        display_text(
+            0,
+            "Animation",
+            "Done",
+            0,
+            False,
+            20,
+            30
+        )
 
 async def an_light_async(f_nm):
     global exit_set_hdw_async
@@ -1613,6 +1622,16 @@ async def set_hdw_async(input_string, dur=0):
                     + button
                 )
 
+                display_text(
+                    0,
+                    "TMCC cmd",
+                    f"{button} {value}" if value is not None else button,
+                    0,
+                    False,
+                    20,
+                    20
+                )
+
                 if value is not None:
                     command += "_" + str(value)
 
@@ -1646,6 +1665,16 @@ async def set_hdw_async(input_string, dur=0):
                     + '"}'
                 )
 
+                display_text(
+                    0,
+                    "TMCC cmd",
+                    direction,
+                    0,
+                    False,
+                    20,
+                    20
+                )
+
                 result = await set_hdw_async(command, 0)
 
                 if result == "STOP":
@@ -1664,6 +1693,16 @@ async def set_hdw_async(input_string, dur=0):
                     + "_SPEED_"
                     + str(speed)
                     + '"}'
+                )
+
+                display_text(
+                    0,
+                    "TMCC cmd",
+                    "SPEED " + str(speed),
+                    0,
+                    False,
+                    20,
+                    20
                 )
 
                 result = await set_hdw_async(command, 0)
@@ -1730,6 +1769,16 @@ async def set_hdw_async(input_string, dur=0):
                 # Temporarily allow this final stop command to execute.
                 previous_exit_state = exit_set_hdw_async
                 exit_set_hdw_async = False
+
+                display_text(
+                    0,
+                    "TMCC cmd",
+                    "SPEED 0",
+                    0,
+                    False,
+                    20,
+                    20
+                )
 
                 await set_hdw_async(command, 0)
 
