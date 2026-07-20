@@ -643,7 +643,7 @@ def send_animator_post(url, endpoint, new_data=None):
 ################################################################################
 # Setup serial communication
 
-global ser
+ser = None
 
 
 def list_serial_ports():
@@ -652,84 +652,312 @@ def list_serial_ports():
     return available_ports
 
 
+def find_base_3_serial_port():
+    """
+    Find the Base 3 serial port.
+
+    The device may reconnect as ttyUSB1 instead of ttyUSB0,
+    so check all USB and ACM serial ports.
+    """
+    ports = list_serial_ports()
+
+    # Prefer the normal port.
+    if "/dev/ttyUSB0" in ports:
+        return "/dev/ttyUSB0"
+
+    # Check for another ttyUSB number.
+    for port in ports:
+        if port.startswith("/dev/ttyUSB"):
+            return port
+
+    # Some USB serial devices appear as ttyACM.
+    for port in ports:
+        if port.startswith("/dev/ttyACM"):
+            return port
+
+    return None
+
+
 def open_serial_connection(port, baud_rate=115200):
-    ser = serial.Serial(port, baud_rate, timeout=1)
-    return ser
+    new_ser = serial.Serial(
+        port=port,
+        baudrate=baud_rate,
+        timeout=1,
+        write_timeout=1
+    )
+
+    # Remove any partial command left from startup or reconnection.
+    try:
+        new_ser.reset_input_buffer()
+        new_ser.reset_output_buffer()
+    except Exception:
+        pass
+
+    return new_ser
+
+
+def close_serial_connection():
+    """
+    Close the serial connection only when it has failed
+    or when the program is shutting down.
+    """
+    global ser
+
+    if ser is not None:
+        try:
+            if ser.is_open:
+                ser.close()
+        except Exception as e:
+            print(f"Error closing serial connection: {e}")
+
+    ser = None
+
+
+def reconnect_serial():
+    """
+    Wait for the USB serial device to return and reopen it.
+
+    This function is only called when there is no valid
+    serial connection.
+    """
+    global ser
+
+    while connect_to_base_3:
+        target_port = find_base_3_serial_port()
+
+        if target_port is None:
+            print("Base 3 serial device not found. Waiting...")
+            time.sleep(1)
+            continue
+
+        try:
+            ser = open_serial_connection(target_port)
+
+            print(
+                f"Base 3 serial connected on {target_port}"
+            )
+
+            return True
+
+        except (
+            serial.SerialException,
+            OSError
+        ) as e:
+            print(
+                f"Unable to open serial port {target_port}: {e}"
+            )
+
+            ser = None
+            time.sleep(1)
+
+    return False
 
 
 def get_usb_ports():
     ports = list_serial_ports()
+
     print("Available serial ports:", ports)
-    text_to_wav_file("Available serial ports are", tmp_wav_file_name, 2)
+
+    text_to_wav_file(
+        "Available serial ports are",
+        tmp_wav_file_name,
+        2
+    )
+
     for port in ports:
-        text_to_wav_file(port, tmp_wav_file_name, 2)
+        text_to_wav_file(
+            port,
+            tmp_wav_file_name,
+            2
+        )
 
 ################################################################################
 # Read and write serial commands connected to base3
 
 def read_command():
     global exit_set_hdw
-    while True:
+    global ser
+
+    while connect_to_base_3:
         try:
-            if ser.in_waiting >= 3:  # Check if at least 3 bytes are available to read
-                received_data = ser.read(3)
-                if len(received_data) == 3:
-                    word1, word2, word3 = received_data[0], received_data[1], received_data[2]
+            # Reconnect only when there is no active connection.
+            if ser is None or not ser.is_open:
+                reconnect_serial()
+                continue
 
-                    # Convert words to binary strings
-                    binary_word1 = f'{word1:0>8b}'
-                    binary_word2 = f'{word2:0>8b}'
-                    binary_word3 = f'{word3:0>8b}'
-                    print(f"Word 1: {binary_word1}")
-                    print(f"Word 2: {binary_word2}")
-                    print(f"Word 3: {binary_word3}\n")
+            # Nothing available yet.
+            if ser.in_waiting < 3:
+                time.sleep(0.01)
+                continue
 
-                    command_object = get_command_object(
-                        binary_word1, binary_word2, binary_word3)
+            received_data = ser.read(3)
 
-                    print(command_object["system"], command_object["device"],
-                          command_object["address"], command_object["command"], command_object["data"], command_object["button"], command_object["value"])
+            if len(received_data) != 3:
+                # This can happen if USB is removed during a read.
+                try:
+                    ser.reset_input_buffer()
+                except Exception:
+                    pass
 
-                    binary_word1, binary_word2, binary_word3 = get_command_binary_words(command_object["system"], command_object["device"], command_object["address"], command_object["button"], command_object["value"])   
-                    print(f"Word cmd 1: {binary_word1}")
-                    print(f"Word cmd 2: {binary_word2}")
-                    print(f"Word cmd 3: {binary_word3}\n")
+                continue
 
-                    matched_commands = animator_command_matches(command_object)
+            word1 = received_data[0]
+            word2 = received_data[1]
+            word3 = received_data[2]
 
-                    # Check if there are any matches
-                    if matched_commands:
-                        for matched_command, animator_command_rows in matched_commands:
-                            # Print each matched command and animators command rows
-                            # print(matched_command, command_object)
-                            if matched_command:
-                                exit_set_hdw = False
-                                set_hdw(matched_command[1], 1,
-                                        animator_command_rows["animatorIpAddress"])
-                    else:
-                        print("No matches found")
+            # Convert words to binary strings.
+            binary_word1 = f"{word1:08b}"
+            binary_word2 = f"{word2:08b}"
+            binary_word3 = f"{word3:08b}"
 
-                    time.sleep(1)
-                    ser.read(ser.in_waiting)
-                else:
-                    # Invalid command format, discard the data
-                    ser.read(ser.in_waiting)
+            print(f"Word 1: {binary_word1}")
+            print(f"Word 2: {binary_word2}")
+            print(f"Word 3: {binary_word3}\n")
+
+            command_object = get_command_object(
+                binary_word1,
+                binary_word2,
+                binary_word3
+            )
+
+            print(
+                command_object["system"],
+                command_object["device"],
+                command_object["address"],
+                command_object["command"],
+                command_object["data"],
+                command_object["button"],
+                command_object["value"]
+            )
+
+            binary_word1, binary_word2, binary_word3 = (
+                get_command_binary_words(
+                    command_object["system"],
+                    command_object["device"],
+                    command_object["address"],
+                    command_object["button"],
+                    command_object["value"]
+                )
+            )
+
+            print(f"Word cmd 1: {binary_word1}")
+            print(f"Word cmd 2: {binary_word2}")
+            print(f"Word cmd 3: {binary_word3}\n")
+
+            matched_commands = animator_command_matches(
+                command_object
+            )
+
+            if matched_commands:
+                for matched_command, animator_command_rows in matched_commands:
+                    if matched_command:
+                        exit_set_hdw = False
+
+                        set_hdw(
+                            matched_command[1],
+                            1,
+                            animator_command_rows[
+                                "animatorIpAddress"
+                            ]
+                        )
+            else:
+                print("No matches found")
+
+            time.sleep(1)
+
+            # Clear commands received while the animation command
+            # was being processed.
+            if ser is not None and ser.is_open:
+                waiting = ser.in_waiting
+
+                if waiting:
+                    ser.read(waiting)
+
+        except (
+            serial.SerialException,
+            OSError
+        ) as e:
+            print(f"Base 3 serial connection lost: {e}")
+
+            # Only close because the connection has failed.
+            close_serial_connection()
+
+            # Give Linux time to remove/recreate the device.
+            time.sleep(1)
+
+            # The next loop pass calls reconnect_serial().
+
         except Exception as e:
-            print(f"Comms issue: {e}")
+            # A bad or incomplete command should not normally
+            # force the USB connection to reopen.
+            print(f"Serial command processing issue: {e}")
 
-def send_command(system, device, address, button, value):
-    word1, word2, word3 = get_command_binary_words(system, device, address, button, value)
+            try:
+                if ser is not None and ser.is_open:
+                    ser.reset_input_buffer()
 
-    byte1 = int(word1, 2).to_bytes(1, 'big')
-    byte2 = int(word2, 2).to_bytes(1, 'big')
-    byte3 = int(word3, 2).to_bytes(1, 'big')
+            except (
+                serial.SerialException,
+                OSError
+            ):
+                close_serial_connection()
+
+            time.sleep(0.05)
+
+def send_command(
+    system,
+    device,
+    address,
+    button,
+    value
+):
+    global ser
+
+    word1, word2, word3 = get_command_binary_words(
+        system,
+        device,
+        address,
+        button,
+        value
+    )
+
+    byte1 = int(word1, 2).to_bytes(1, "big")
+    byte2 = int(word2, 2).to_bytes(1, "big")
+    byte3 = int(word3, 2).to_bytes(1, "big")
 
     command = byte1 + byte2 + byte3
 
     try:
+        if ser is None or not ser.is_open:
+            print(
+                "Cannot send command: "
+                "Base 3 serial is not connected"
+            )
+            return False
+
         ser.write(command)
-        print(f"Sent command: {word1} {word2} {word3}")
+        ser.flush()
+
+        print(
+            f"Sent command: "
+            f"{word1} {word2} {word3}"
+        )
+
         return True
+
+    except (
+        serial.SerialException,
+        OSError
+    ) as e:
+        print(
+            f"Serial connection lost while sending: {e}"
+        )
+
+        # The read thread will reconnect it.
+        close_serial_connection()
+
+        return False
+
     except Exception as e:
         print(f"Error sending command: {e}")
         return False
@@ -2494,28 +2722,62 @@ state_machine_thread = threading.Thread(target=run_state_machine)
 state_machine_thread.daemon = True
 state_machine_thread.start()
 
-if connect_to_base_3 == True:
-    target_port = "/dev/ttyUSB0"
-    ports = list_serial_ports()
-    if target_port in ports:
-        ser = open_serial_connection(target_port)
-        play_mix(code_folder + "mvc/connected_to_base3.wav")
+if connect_to_base_3:
+    target_port = find_base_3_serial_port()
 
-        # Start a thread to continuously read from the serial port
-        read_thread = threading.Thread(
-            target=read_command)
-        read_thread.daemon = True
-        read_thread.start()
+    if target_port is not None:
+        try:
+            ser = open_serial_connection(target_port)
+
+            print(
+                f"Initial Base 3 serial connection "
+                f"opened on {target_port}"
+            )
+
+            play_mix(
+                code_folder +
+                "mvc/connected_to_base3.wav"
+            )
+
+        except (
+            serial.SerialException,
+            OSError
+        ) as e:
+            print(
+                f"Initial serial connection failed: {e}"
+            )
+
+            ser = None
+
+    else:
+        print(
+            "Base 3 serial device was not connected "
+            "during startup"
+        )
+
+    # Always start the reader thread.
+    # It will wait and connect if the USB device
+    # was not available during startup.
+    read_thread = threading.Thread(
+        target=read_command,
+        name="base3-serial-reader",
+        daemon=True
+    )
+
+    read_thread.start()
 
 
 def stop_program():
     stop_all_commands()
-    if (web):
+
+    if web:
         print("Unregistering mDNS service...")
         zeroconf.unregister_service(mdns_info)
         zeroconf.close()
         httpd.shutdown()
-    ser.close()
+
+    close_serial_connection()
+
     quit()
 
 
