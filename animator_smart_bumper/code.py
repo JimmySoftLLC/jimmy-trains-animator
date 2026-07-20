@@ -107,6 +107,7 @@ override_switch_state = {}
 override_switch_state["switch_value"] = ""
 last_displayed_train_pos = None
 active_engine_number = None
+base3_host = "animator-base3.local"
 
 ################################################################################
 # setup switches
@@ -1208,16 +1209,14 @@ async def stop_active_engine_async():
         + str(engine_number)
     )
 
-    host = "animator-base3.local:8083"
-
     ip_from_mdns = get_ip_from_mdns(
-        host,
+        base3_host,
         overwrite=False
     )
 
     if not ip_from_mdns:
         ip_from_mdns = get_ip_from_mdns(
-            host,
+            base3_host,
             overwrite=True
         )
 
@@ -1767,7 +1766,7 @@ async def set_hdw_async(input_string, dur=0):
                     active_engine_number = ii
 
                 command = (
-                    "API_animator-base3.local:8083_test-animation_"
+                    "API_" + base3_host + "_test-animation_"
                     '{"an":"TMCC_'
                     + device
                     + "_"
@@ -1829,7 +1828,7 @@ async def set_hdw_async(input_string, dur=0):
 
                 # Set direction.
                 command = (
-                    "API_animator-base3.local:8083_test-animation_"
+                    "API_" + base3_host + "_test-animation_"
                     '{"an":"TMCC_engine_'
                     + str(engine_number)
                     + "_"
@@ -1875,7 +1874,7 @@ async def set_hdw_async(input_string, dur=0):
 
                 # Set engine speed.
                 command = (
-                    "API_animator-base3.local:8083_test-animation_"
+                    "API_" + base3_host + "_test-animation_"
                     '{"an":"TMCC_engine_'
                     + str(engine_number)
                     + "_SPEED_"
@@ -1962,7 +1961,7 @@ async def set_hdw_async(input_string, dur=0):
                 # has not already stopped the engine.
                 if not stop_requested:
                     command = (
-                        "API_animator-base3.local:8083_test-animation_"
+                        "API_" + base3_host + "_test-animation_"
                         '{"an":"TMCC_engine_'
                         + str(engine_number)
                         + '_SPEED_0"}'
