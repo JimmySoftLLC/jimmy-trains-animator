@@ -1,13 +1,10 @@
 {
-  "option_selected": "s",
-  "hardware_string": "trigger,trigger,trigger,trigger,servo",
+  "option_selected": "train control",
   "HOST_NAME": "bump",
-  "startup_string": "DT_0_Item1_$100_0_0",
+  "startup_string": "DT_0_intelli_BUMPER_20_20",
   "serve_webpage": true,
-  "CHAR_TO_HDW": { ">": "TR2_0.5", "<": "TR1_0.5", "^": "UPDLS" },
   "use_sd_card": false,
   "cont_mode": false,
-  "light_string": "neo-6",
   "volume": "50",
   "volume_pot": false,
   "i2c": [
