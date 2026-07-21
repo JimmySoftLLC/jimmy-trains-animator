@@ -647,7 +647,7 @@ def send_animator_post(url, endpoint, new_data=None):
 ################################################################################
 # Setup serial communication
 
-global ser
+ser = None
 
 
 def list_serial_ports():
@@ -656,17 +656,122 @@ def list_serial_ports():
     return available_ports
 
 
+def find_dcc_serial_port():
+    """
+    Find the DCC serial port.
+
+    The DCC device normally appears as /dev/ttyACM0, but after
+    unplugging and reconnecting it could appear as ttyACM1.
+    """
+    ports = list_serial_ports()
+
+    # Prefer the normal DCC port.
+    if "/dev/ttyACM0" in ports:
+        return "/dev/ttyACM0"
+
+    # Check for another ttyACM number.
+    for port in ports:
+        if port.startswith("/dev/ttyACM"):
+            return port
+
+    # Allow ttyUSB as a fallback.
+    for port in ports:
+        if port.startswith("/dev/ttyUSB"):
+            return port
+
+    return None
+
+
 def open_serial_connection(port, baud_rate=115200):
-    ser = serial.Serial(port, baud_rate, timeout=1)
-    return ser
+    new_ser = serial.Serial(
+        port=port,
+        baudrate=baud_rate,
+        timeout=1,
+        write_timeout=1
+    )
+
+    # Remove any incomplete line left from startup or reconnection.
+    try:
+        new_ser.reset_input_buffer()
+        new_ser.reset_output_buffer()
+    except Exception:
+        pass
+
+    return new_ser
+
+
+def close_serial_connection():
+    """
+    Close the connection only after a serial failure
+    or when the program is shutting down.
+    """
+    global ser
+
+    if ser is not None:
+        try:
+            if ser.is_open:
+                ser.close()
+        except Exception as e:
+            print(f"Error closing DCC serial connection: {e}")
+
+    ser = None
+
+
+def reconnect_serial():
+    """
+    Wait for the DCC USB serial device to return and reopen it.
+
+    This is only called when no valid serial connection exists.
+    """
+    global ser
+
+    while connect_to_dcc:
+        target_port = find_dcc_serial_port()
+
+        if target_port is None:
+            print("DCC serial device not found. Waiting...")
+            time.sleep(1)
+            continue
+
+        try:
+            ser = open_serial_connection(target_port)
+
+            print(f"DCC serial connected on {target_port}")
+
+            return True
+
+        except (
+            serial.SerialException,
+            OSError
+        ) as e:
+            print(
+                f"Unable to open DCC serial port "
+                f"{target_port}: {e}"
+            )
+
+            ser = None
+            time.sleep(1)
+
+    return False
 
 
 def get_usb_ports():
     ports = list_serial_ports()
+
     print("Available serial ports:", ports)
-    text_to_wav_file("Available serial ports are", tmp_wav_file_name, 2)
+
+    text_to_wav_file(
+        "Available serial ports are",
+        tmp_wav_file_name,
+        2
+    )
+
     for port in ports:
-        text_to_wav_file(port, tmp_wav_file_name, 2)
+        text_to_wav_file(
+            port,
+            tmp_wav_file_name,
+            2
+        )
 
 ################################################################################
 # Read and write serial commands connected to dcc
@@ -756,73 +861,195 @@ def find_matches(loco, animator_configs, changed_item):
                             matches.append({"command": row[2], "url": animator_config["baseUrl"]})
     return matches
 
+
 def read_command():
+    global ser
+
     start_t = time.monotonic()
 
-    while True:
+    while connect_to_dcc:
         try:
-            if ser.in_waiting > 0:
-                line = ser.readline().decode('utf-8').strip()
-                elasped_t = time.monotonic()-start_t
-                if line:
-                    command = parse_serial_line(line)
-                    if command:
-                        cmd_type = command[0]
-                        if cmd_type == "speed_update":
-                            _, addr, speed, direction, speed_steps = command
-                            if addr not in locomotives:
-                                locomotives[addr] = Locomotive(addr)
-                                is_new_loco = True
-                            else:
-                                is_new_loco = False
-                            loco = locomotives[addr]
-                            old_speed = loco.speed
-                            old_direction = loco.direction
-                            if loco.update_speed(speed, direction, speed_steps):
-                                matches = []
-                                if old_speed != speed or old_direction != direction:
-                                    matches += find_matches(loco, animator_configs, "speed")
-                                if is_new_loco:
-                                    matches += find_matches(loco, animator_configs, "speed")
-                                if matches:
-                                    print(matches)
-                                    for match in matches:
-                                        if elasped_t > 5:
-                                            set_hdw(match["command"], 0, match["url"])
-                                    
-                        elif cmd_type == "func_update":
-                            _, addr, function_string = command
-                            if addr not in locomotives:
-                                locomotives[addr] = Locomotive(addr)
-                                is_new_loco = True
-                            else:
-                                is_new_loco = False
-                            loco = locomotives[addr]
-                            old_functions = loco.functions.copy()
-                            if loco.update_functions(function_string):
-                                matches = []
-                                function_matches = re.findall(r"F(\d+)=(ON|OFF)", function_string)
-                                for func_num, state in function_matches:
-                                    func_num = int(func_num)
-                                    if 0 <= func_num <= 28 and loco.functions[func_num] != old_functions[func_num]:
-                                        changed_item = f"f{func_num}"
-                                        matches += find_matches(loco, animator_configs, changed_item)        
-                                if is_new_loco:
-                                    for func_num in range(29):
-                                        changed_item = f"f{func_num}"
-                                        matches += find_matches(loco, animator_configs, changed_item)
-                                if matches:
-                                    print(matches)
-                                    for match in matches:
-                                        if elasped_t > 5:
-                                            set_hdw(match["command"], 0, match["url"])
-                        elif cmd_type == "cv_ack":
-                            print(f"CV Ack at {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        except Exception as e:
-            print(f"Comms issue: {e}")
+            # Reconnect only when there is no active serial connection.
+            if ser is None or not ser.is_open:
+                reconnect_serial()
+
+                # Ignore initial DCC state reports for five seconds
+                # after each connection or reconnection.
+                start_t = time.monotonic()
+
+                continue
+
+            if ser.in_waiting <= 0:
+                time.sleep(0.01)
+                continue
+
+            serial_bytes = ser.readline()
+
+            # USB could have been removed during readline().
+            if not serial_bytes:
+                continue
+
+            try:
+                line = serial_bytes.decode(
+                    "utf-8"
+                ).strip()
+
+            except UnicodeDecodeError as e:
+                print(f"Invalid DCC serial text: {e}")
+
+                try:
+                    ser.reset_input_buffer()
+                except Exception:
+                    pass
+
+                continue
+
+            elapsed_t = time.monotonic() - start_t
+
+            if not line:
+                continue
+
+            command = parse_serial_line(line)
+
+            if not command:
+                continue
+
+            cmd_type = command[0]
+
+            if cmd_type == "speed_update":
+                _, addr, speed, direction, speed_steps = command
+
+                if addr not in locomotives:
+                    locomotives[addr] = Locomotive(addr)
+                    is_new_loco = True
+                else:
+                    is_new_loco = False
+
+                loco = locomotives[addr]
+
+                old_speed = loco.speed
+                old_direction = loco.direction
+
+                if loco.update_speed(
+                    speed,
+                    direction,
+                    speed_steps
+                ):
+                    matches = []
+
+                    if (
+                        old_speed != speed or
+                        old_direction != direction
+                    ):
+                        matches += find_matches(
+                            loco,
+                            animator_configs,
+                            "speed"
+                        )
+
+                    if is_new_loco:
+                        matches += find_matches(
+                            loco,
+                            animator_configs,
+                            "speed"
+                        )
+
+                    if matches:
+                        print(matches)
+
+                        for match in matches:
+                            if elapsed_t > 5:
+                                set_hdw(
+                                    match["command"],
+                                    0,
+                                    match["url"]
+                                )
+
+            elif cmd_type == "func_update":
+                _, addr, function_string = command
+
+                if addr not in locomotives:
+                    locomotives[addr] = Locomotive(addr)
+                    is_new_loco = True
+                else:
+                    is_new_loco = False
+
+                loco = locomotives[addr]
+                old_functions = loco.functions.copy()
+
+                if loco.update_functions(function_string):
+                    matches = []
+
+                    function_matches = re.findall(
+                        r"F(\d+)=(ON|OFF)",
+                        function_string
+                    )
+
+                    for func_num, state in function_matches:
+                        func_num = int(func_num)
+
+                        if (
+                            0 <= func_num <= 28 and
+                            loco.functions[func_num] !=
+                            old_functions[func_num]
+                        ):
+                            changed_item = f"f{func_num}"
+
+                            matches += find_matches(
+                                loco,
+                                animator_configs,
+                                changed_item
+                            )
+
+                    if is_new_loco:
+                        for func_num in range(29):
+                            changed_item = f"f{func_num}"
+
+                            matches += find_matches(
+                                loco,
+                                animator_configs,
+                                changed_item
+                            )
+
+                    if matches:
+                        print(matches)
+
+                        for match in matches:
+                            if elapsed_t > 5:
+                                set_hdw(
+                                    match["command"],
+                                    0,
+                                    match["url"]
+                                )
+
+            elif cmd_type == "cv_ack":
+                print(
+                    "CV Ack at "
+                    + time.strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                )
+
+        except (
+            serial.SerialException,
+            OSError
+        ) as e:
+            print(f"DCC serial connection lost: {e}")
+
+            # Close only because the serial connection failed.
+            close_serial_connection()
+
+            # Give Linux time to remove and recreate ttyACM.
             time.sleep(1)
 
+            # The next loop pass calls reconnect_serial().
 
+        except Exception as e:
+            # A parsing or command-processing error should not
+            # normally cause the serial port to reconnect.
+            print(f"DCC command processing issue: {e}")
+
+            time.sleep(0.05)
 
 ################################################################################
 # Setup wifi and web server
@@ -2148,29 +2375,65 @@ state_machine_thread = threading.Thread(target=run_state_machine)
 state_machine_thread.daemon = True
 state_machine_thread.start()
 
-if connect_to_dcc == True:
-    target_port = "/dev/ttyACM0"
-    ports = list_serial_ports()
-    print(ports)
-    if target_port in ports:
-        ser = open_serial_connection(target_port)
-        play_mix(code_folder + "mvc/connected_to_dcc.wav")
+if connect_to_dcc:
+    target_port = find_dcc_serial_port()
 
-        # Start a thread to continuously read from the serial port
-        read_thread = threading.Thread(
-            target=read_command)
-        read_thread.daemon = True
-        read_thread.start()
+    print("Available serial ports:", list_serial_ports())
+
+    if target_port is not None:
+        try:
+            ser = open_serial_connection(target_port)
+
+            print(
+                f"Initial DCC serial connection "
+                f"opened on {target_port}"
+            )
+
+            play_mix(
+                code_folder +
+                "mvc/connected_to_dcc.wav"
+            )
+
+        except (
+            serial.SerialException,
+            OSError
+        ) as e:
+            print(
+                f"Initial DCC serial connection "
+                f"failed: {e}"
+            )
+
+            ser = None
+
+    else:
+        print(
+            "DCC serial device was not connected "
+            "during startup"
+        )
+
+    # Always start the reader thread.
+    # It waits for the DCC device if it was not
+    # connected during program startup.
+    read_thread = threading.Thread(
+        target=read_command,
+        name="dcc-serial-reader",
+        daemon=True
+    )
+
+    read_thread.start()
 
 
 def stop_program():
     stop_all_commands()
-    if (web):
+
+    if web:
         print("Unregistering mDNS service...")
         zeroconf.unregister_service(mdns_info)
         zeroconf.close()
         httpd.shutdown()
-    ser.close()
+
+    close_serial_connection()
+
     quit()
 
 
