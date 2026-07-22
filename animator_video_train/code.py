@@ -1210,6 +1210,10 @@ def open_midori():
 ################################################################################
 # Setup routes
 
+class ReusableThreadingTCPServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
@@ -1810,14 +1814,25 @@ if web:
         print(f"Local IP address: {local_ip}")
 
         QUEUE_PORT = 8001
-        PORT = 8083
+        PORT = 80
+
+        # to make port 80 to work must set permissions for python
+        # sudo setcap 'cap_net_bind_service=+ep' $(readlink -f $(which python3))
 
         httpd = None
 
         def start_http_server():
             global httpd
+
             handler = MyHttpRequestHandler
-            httpd = socketserver.TCPServer((local_ip, PORT), handler)
+
+            if httpd:
+                try:
+                    httpd.server_close()
+                except Exception:
+                    pass
+
+            httpd = ReusableThreadingTCPServer((local_ip, PORT), handler)
             httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             print(f"Serving on {local_ip}:{PORT}")
             httpd.serve_forever()
@@ -2115,7 +2130,8 @@ def spk_web():
     play_mix(code_folder + "mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-video-train":
         play_mix(code_folder + "mvc/animator_dash_video_dash_train.wav")
-        play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
+        play_mix(code_folder + "mvc/dot.wav")
+        play_mix(code_folder + "mvc/local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
     play_mix(code_folder + "mvc/in_your_browser.wav")
