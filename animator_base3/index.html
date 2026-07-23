@@ -376,6 +376,7 @@
         getSceneChanges()
         getLifxEnabled()
         getTmccVoiceEnabled()
+        getWifiSignal()
     });
 
     function getMedia() {
@@ -559,6 +560,26 @@
                 showAlert(error);
             });
     }
+
+    function getWifiSignal() {
+        fetch('/get-wifi-signal', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                wifiSignal.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+                showAlert(error);
+            });
+    }
+
 
     function setAnimatorConfigButtons(my_data) {
         // Loop through the data and create a button for each item
