@@ -124,6 +124,13 @@ import serial
 import serial.tools.list_ports
 import re
 
+import busio
+import displayio
+import adafruit_displayio_ssd1306
+
+from adafruit_display_text import label
+from adafruit_bitmap_font import bitmap_font
+
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
 aud_en = digitalio.DigitalInOut(board.D26)
@@ -1050,6 +1057,748 @@ def read_command():
             print(f"DCC command processing issue: {e}")
 
             time.sleep(0.05)
+
+
+################################################################################
+# OLED display
+#
+# Raspberry Pi SBC version using:
+#
+#   Adafruit Blinka
+#   Blinka DisplayIO
+#   Adafruit DisplayIO SSD1306
+#
+# This is intentionally kept very close to the Pico version.
+################################################################################
+
+MAX_ACTIVE_DISPLAYS = 2
+display_enabled = True
+
+# When True, files.log_item() output is also shown on the OLED.
+print_console = False
+
+# OLED used for console output.
+console_display_n = 0
+
+# terminalio.FONT is approximately 6 pixels wide.
+CONSOLE_CHARACTERS_PER_LINE = 21
+CONSOLE_LINE_COUNT = 8
+CONSOLE_LINE_SPACING = 8
+
+console_lines = []
+console_group = None
+console_labels = []
+console_initialized = False
+
+
+################################################################################
+# Raspberry Pi I2C pin mapping
+#
+# This lets the Pi use the same cfg.json names as the Pico:
+#
+#     "GP0" becomes Raspberry Pi SDA, GPIO2, physical pin 3
+#     "GP1" becomes Raspberry Pi SCL, GPIO3, physical pin 5
+#
+# The SDA and SCL names are also accepted.
+################################################################################
+
+PIN_MAP = {
+    "GP0": board.SDA,
+    "GP1": board.SCL,
+
+    "SDA": board.SDA,
+    "SCL": board.SCL,
+}
+
+
+i2c_busses = {}
+display_buses = {}
+displays = {}
+display_groups = {}
+active_display_nums = []
+
+
+displayio.release_displays()
+
+
+################################################################################
+# I2CDisplayBus compatibility
+#
+# Newer versions:
+#
+#     i2cdisplaybus.I2CDisplayBus
+#
+# Older Blinka DisplayIO versions:
+#
+#     displayio.I2CDisplay
+################################################################################
+
+try:
+    import i2cdisplaybus
+
+    def create_i2c_display_bus(i2c_bus, addr):
+        return i2cdisplaybus.I2CDisplayBus(
+            i2c_bus,
+            device_address=addr
+        )
+
+except ImportError:
+
+    def create_i2c_display_bus(i2c_bus, addr):
+        return displayio.I2CDisplay(
+            i2c_bus,
+            device_address=addr
+        )
+
+
+################################################################################
+# I2C helpers
+################################################################################
+
+def get_pin(pin_name):
+    pin_name = str(pin_name).upper()
+
+    if pin_name not in PIN_MAP:
+        raise ValueError(
+            "Unsupported Raspberry Pi I2C pin: "
+            + pin_name
+        )
+
+    return PIN_MAP[pin_name]
+
+
+def i2c_addr(addr_text):
+    """
+    Accept:
+
+        "3C"
+        "0x3C"
+        60
+    """
+
+    if isinstance(addr_text, int):
+        return addr_text
+
+    addr_text = str(addr_text).strip()
+
+    if addr_text.lower().startswith("0x"):
+        return int(addr_text, 16)
+
+    return int(addr_text, 16)
+
+
+def i2c_key(dev):
+    return (
+        str(dev["sda"]).upper()
+        + "_"
+        + str(dev["scl"]).upper()
+    )
+
+
+def get_i2c_bus(dev):
+    key = i2c_key(dev)
+
+    if key not in i2c_busses:
+        i2c_busses[key] = busio.I2C(
+            scl=get_pin(dev["scl"]),
+            sda=get_pin(dev["sda"])
+        )
+
+    return i2c_busses[key]
+
+
+################################################################################
+# Text positioning
+################################################################################
+
+def center_text(font, txt, y):
+    if txt is None:
+        txt = ""
+    else:
+        txt = str(txt)
+
+    text_label = label.Label(
+        font,
+        text=txt,
+        color=0xFFFFFF
+    )
+
+    text_label.x = (
+        128 - text_label.bounding_box[2]
+    ) // 2
+
+    text_label.y = y
+
+    return text_label
+
+
+################################################################################
+# Font caching
+#
+# Font files:
+#
+#     Arial-BoldMT-10.bdf
+#     Arial-BoldMT-15.bdf
+#     Arial-BoldMT-20.bdf
+#     Arial-BoldMT-25.bdf
+#     Arial-BoldMT-30.bdf
+################################################################################
+
+# Maximum number of fonts held in memory.
+# Sizes 20 and 30 are permanent, leaving room for two variable sizes.
+MAX_CACHED_FONTS = 4
+
+DEFAULT_FONT_SIZES = (
+    20,
+    30
+)
+
+# Stores:
+#
+#     font size: loaded font object
+font_cache = {}
+
+# Tracks only non-default fonts, oldest first.
+font_cache_order = []
+
+
+def font_filename(font_size):
+    return (
+        code_folder
+        + "fonts/Arial-BoldMT-"
+        + str(font_size)
+        + ".bdf"
+    )
+
+
+def load_font(font_size):
+    """
+    Return a loaded BDF font object.
+
+    Font sizes 20 and 30 remain permanently cached.
+
+    Other sizes are cached until the four-font limit is reached.
+    The oldest non-default font is then removed.
+    """
+
+    font_size = int(font_size)
+
+    # Return an existing cached font immediately.
+    if font_size in font_cache:
+
+        # Treat variable fonts as recently used.
+        if font_size not in DEFAULT_FONT_SIZES:
+
+            if font_size in font_cache_order:
+                font_cache_order.remove(font_size)
+
+            font_cache_order.append(font_size)
+
+        return font_cache[font_size]
+
+    filename = font_filename(font_size)
+
+    if not os.path.exists(filename):
+        files.log_item(
+            "Font file not found: "
+            + filename
+        )
+
+        # Fall back to a permanent font so the display does not crash.
+        return font_cache[20]
+
+    # Make room before loading another variable font.
+    if (
+        font_size not in DEFAULT_FONT_SIZES
+        and len(font_cache) >= MAX_CACHED_FONTS
+    ):
+        if font_cache_order:
+            oldest_size = font_cache_order.pop(0)
+
+            files.log_item(
+                "Removing font "
+                + str(oldest_size)
+                + " from cache"
+            )
+
+            del font_cache[oldest_size]
+
+            try:
+                gc.collect()
+            except Exception:
+                pass
+
+    files.log_item(
+        "Loading font size "
+        + str(font_size)
+    )
+
+    loaded_font = bitmap_font.load_font(
+        filename
+    )
+
+    font_cache[font_size] = loaded_font
+
+    if font_size not in DEFAULT_FONT_SIZES:
+        font_cache_order.append(font_size)
+
+    return loaded_font
+
+
+# Load the two permanent fonts once during startup.
+font_cache[20] = bitmap_font.load_font(
+    font_filename(20)
+)
+
+font_cache[30] = bitmap_font.load_font(
+    font_filename(30)
+)
+
+files.log_item(
+    "Default OLED fonts loaded"
+)
+
+
+################################################################################
+# Default OLED configuration
+################################################################################
+
+if "i2c" not in cfg:
+    cfg["i2c"] = [
+        {
+            "sda": "GP0",
+            "scl": "GP1",
+            "address": "3C"
+        }
+    ]
+
+    files.write_json_file(
+        "cfg.json",
+        cfg
+    )
+
+
+################################################################################
+# Display creation and selection
+################################################################################
+
+def valid_display(display_n):
+    return (
+        isinstance(display_n, int)
+        and display_n >= 0
+        and display_n < len(cfg["i2c"])
+    )
+
+
+def clear_active_displays():
+    global active_display_nums
+    global console_group
+    global console_labels
+    global console_initialized
+
+    displayio.release_displays()
+
+    display_buses.clear()
+    displays.clear()
+    display_groups.clear()
+
+    active_display_nums = []
+
+    # DisplayIO objects were released, so rebuild the console next time.
+    console_group = None
+    console_labels = []
+    console_initialized = False
+
+
+def select_display(display_n):
+    global active_display_nums
+    global display_enabled
+
+    if not display_enabled:
+        return None
+
+    if not valid_display(display_n):
+        return None
+
+    if display_n in displays:
+        return displays[display_n]
+
+    dev = cfg["i2c"][display_n]
+    new_bus_key = i2c_key(dev)
+
+    # The original Pico logic releases displays if another configured
+    # display uses the same I2C bus.
+    #
+    # This is retained to keep behavior consistent between products.
+    for active_n in active_display_nums:
+        active_dev = cfg["i2c"][active_n]
+
+        if i2c_key(active_dev) == new_bus_key:
+            clear_active_displays()
+            break
+
+    if len(displays) >= MAX_ACTIVE_DISPLAYS:
+        clear_active_displays()
+
+    try:
+        i2c_bus = get_i2c_bus(dev)
+
+        # Verify that the display address exists.
+        while not i2c_bus.try_lock():
+            time.sleep(0.001)
+
+        try:
+            found = i2c_bus.scan()
+
+        finally:
+            i2c_bus.unlock()
+
+        addr = i2c_addr(
+            dev["address"]
+        )
+
+        if addr not in found:
+            files.log_item(
+                "No OLED found at address "
+                + str(dev["address"])
+            )
+
+            return None
+
+        display_bus = create_i2c_display_bus(
+            i2c_bus,
+            addr
+        )
+
+        disp = adafruit_displayio_ssd1306.SSD1306(
+            display_bus,
+            width=128,
+            height=64
+        )
+
+        group = displayio.Group()
+        disp.root_group = group
+
+        display_buses[display_n] = display_bus
+        displays[display_n] = disp
+        display_groups[display_n] = group
+
+        active_display_nums.append(
+            display_n
+        )
+
+        return disp
+
+    except Exception as e:
+        files.log_item(
+            "OLED initialization error: "
+            + str(e)
+        )
+
+        return None
+
+
+def set_display_group(display_n, group):
+    disp = select_display(display_n)
+
+    if disp is None:
+        return
+
+    disp.root_group = group
+    display_groups[display_n] = group
+
+
+################################################################################
+# Invert OLED
+################################################################################
+
+def invert_display(display_n, invert_on):
+    if select_display(display_n) is None:
+        return
+
+    try:
+        if invert_on:
+            display_buses[display_n].send(
+                0xA7,
+                b""
+            )
+
+        else:
+            display_buses[display_n].send(
+                0xA6,
+                b""
+            )
+
+    except Exception as e:
+        files.log_item(
+            "OLED invert error: "
+            + str(e)
+        )
+
+
+################################################################################
+# Bitmap display
+################################################################################
+
+def show_bmp(display_n, filename):
+    if not valid_display(display_n):
+        return
+
+    if not os.path.isabs(filename):
+        filename = (
+            code_folder
+            + filename
+        )
+
+    if not os.path.exists(filename):
+        files.log_item(
+            "OLED bitmap not found: "
+            + filename
+        )
+        return
+
+    try:
+        bitmap = displayio.OnDiskBitmap(
+            filename
+        )
+
+        tile_grid = displayio.TileGrid(
+            bitmap,
+            pixel_shader=bitmap.pixel_shader
+        )
+
+        tile_grid.x = (
+            128 - bitmap.width
+        ) // 2
+
+        tile_grid.y = (
+            64 - bitmap.height
+        ) // 2
+
+        group = displayio.Group()
+        group.append(
+            tile_grid
+        )
+
+        set_display_group(
+            display_n,
+            group
+        )
+
+    except Exception as e:
+        files.log_item(
+            "OLED bitmap error: "
+            + str(e)
+        )
+
+
+################################################################################
+# Two-line text display
+################################################################################
+
+def draw_text(
+    display_n,
+    line1,
+    line2,
+    line1_size=20,
+    line2_size=30
+):
+    if not valid_display(display_n):
+        return
+
+    if line1 is None:
+        line1 = ""
+    else:
+        line1 = str(line1)
+
+    if line2 is None:
+        line2 = ""
+    else:
+        line2 = str(line2)
+
+    # Use load_font(), not font_cache[], so variable font sizes are
+    # automatically loaded when requested.
+    line1_text = center_text(
+        load_font(line1_size),
+        line1,
+        12
+    )
+
+    line2_text = center_text(
+        load_font(line2_size),
+        line2,
+        40
+    )
+
+    group = displayio.Group()
+
+    group.append(
+        line1_text
+    )
+
+    group.append(
+        line2_text
+    )
+
+    set_display_group(
+        display_n,
+        group
+    )
+
+
+def display_text(
+    display_n,
+    line1,
+    line2,
+    blink_times,
+    background_on=False,
+    line1_size=20,
+    line2_size=30
+):
+    if not valid_display(display_n):
+        return
+
+    draw_text(
+        display_n,
+        line1,
+        line2,
+        line1_size,
+        line2_size
+    )
+
+    for _ in range(blink_times):
+        invert_display(
+            display_n,
+            True
+        )
+
+        time.sleep(1)
+
+        invert_display(
+            display_n,
+            False
+        )
+
+        time.sleep(1)
+
+    invert_display(
+        display_n,
+        background_on
+    )
+
+
+async def display_text_async(
+    display_n,
+    line1,
+    line2,
+    blink_times,
+    background_on=False,
+    line1_size=20,
+    line2_size=30
+):
+    if not valid_display(display_n):
+        return
+
+    # Use the supplied font sizes. The Pico Smart Bumpers example
+    # accidentally forced these to 20 and 30.
+    draw_text(
+        display_n,
+        line1,
+        line2,
+        line1_size,
+        line2_size
+    )
+
+    for _ in range(blink_times):
+        invert_display(
+            display_n,
+            True
+        )
+
+        await asyncio.sleep(1)
+
+        invert_display(
+            display_n,
+            False
+        )
+
+        await asyncio.sleep(1)
+
+    invert_display(
+        display_n,
+        background_on
+    )
+
+
+################################################################################
+# Rolling text
+################################################################################
+
+async def roll_text_async(
+    display_n,
+    line1,
+    font_size,
+    background_on=False
+):
+    if not valid_display(display_n):
+        return
+
+    if line1 is None:
+        line1 = ""
+    else:
+        line1 = str(line1)
+
+    invert_display(
+        display_n,
+        background_on
+    )
+
+    line1_text = label.Label(
+        load_font(font_size),
+        text=line1,
+        color=0xFFFFFF
+    )
+
+    line1_text.y = 32
+
+    group = displayio.Group()
+    group.append(
+        line1_text
+    )
+
+    set_display_group(
+        display_n,
+        group
+    )
+
+    text_width = line1_text.bounding_box[2]
+
+    for x in range(
+        128,
+        -text_width,
+        -1
+    ):
+        line1_text.x = x
+        await asyncio.sleep(0.01)
+
+
+################################################################################
+# Startup test
+################################################################################
+
+show_bmp(
+    0,
+    "fonts/logo.bmp"
+)
+
+if len(cfg["i2c"]) > 1:
+    show_bmp(
+        1,
+        "fonts/logo.bmp"
+    )
+
+time.sleep(1)
+
 
 ################################################################################
 # Wi-Fi RSSI measurement
@@ -2466,8 +3215,9 @@ is_gtts_reachable = check_gtts_status()
 
 if (web):
     spk_web()
-    response = measure_signal_strength()
-    print(response)
+    avg_rssi = measure_signal_strength()
+    dbm_string = str(-int(avg_rssi))+"dbm"
+    display_text(0, cfg["HOST_NAME"] + ".local", dbm_string, 0, 0)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
