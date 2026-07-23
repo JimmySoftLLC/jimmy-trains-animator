@@ -1134,6 +1134,11 @@ if (web):
                     override_switch_state["switch_value"] = "left_held"
                 return Response(request, "switch_value: " + override_switch_state["switch_value"])
 
+            @server.route("/get-wifi-signal", [POST])
+            def get_local_ip(request: Request):
+                avg_rssi = measure_signal_strength(WIFI_SSID, 10)
+                return Response(request, str(avg_rssi))
+
             break
         except Exception as e:
             web = False

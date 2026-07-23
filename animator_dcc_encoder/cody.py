@@ -1052,6 +1052,88 @@ def read_command():
             time.sleep(0.05)
 
 ################################################################################
+# Wi-Fi RSSI measurement
+
+RSSI_INTERFACE = "wlan0"
+
+def get_wifi_rssi(interface=RSSI_INTERFACE):
+    """
+    Return the current Wi-Fi RSSI in dBm.
+
+    Typical values:
+        -30 dBm = excellent
+        -50 dBm = very good
+        -60 dBm = good
+        -70 dBm = weak
+        -80 dBm = very weak
+
+    Returns None if Wi-Fi is disconnected or RSSI cannot be read.
+    """
+    try:
+        result = subprocess.run(
+            ["iw", "dev", interface, "link"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False
+        )
+
+        if result.returncode != 0:
+            print(
+                f"Unable to read Wi-Fi RSSI: "
+                f"{result.stderr.strip()}"
+            )
+            return None
+
+        # Example line:
+        # signal: -52 dBm
+        match = re.search(
+            r"signal:\s*(-?\d+(?:\.\d+)?)\s*dBm",
+            result.stdout
+        )
+
+        if match is None:
+            # This normally means wlan0 is not connected.
+            return None
+
+        return int(round(float(match.group(1))))
+
+    except subprocess.TimeoutExpired:
+        print("Wi-Fi RSSI command timed out")
+        return None
+
+    except FileNotFoundError:
+        print(
+            "The iw command is not installed. "
+            "Install it with: sudo apt install iw"
+        )
+        return None
+
+    except Exception as e:
+        files.log_item(e)
+        print(f"Wi-Fi RSSI measurement error: {e}")
+        return None
+
+
+def measure_signal_strength(cycles=10):
+    rssi_samples = deque(maxlen=cycles)
+
+    current_rssi = get_wifi_rssi()
+
+    if current_rssi is not None:
+        rssi_samples.append(current_rssi)
+
+    if not rssi_samples:
+        return None
+
+    average_rssi = round(
+        sum(rssi_samples) / len(rssi_samples),
+        1
+    )
+
+    return average_rssi
+
+################################################################################
 # Setup wifi and web server
 number_tries = 0
 
@@ -1272,6 +1354,15 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.test_animation_post(post_data_obj)
         elif self.path == "/get-local-ip":
             self.get_local_ip(post_data_obj)
+        elif self.path == "/get-wifi-signal":
+            self.get_wifi_signal_post(post_data_obj)
+
+    def get_wifi_signal_post(self, rq_d):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = str(measure_signal_strength())
+        self.wfile.write(response.encode('utf-8'))
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
@@ -2375,6 +2466,8 @@ is_gtts_reachable = check_gtts_status()
 
 if (web):
     spk_web()
+    response = measure_signal_strength()
+    print(response)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
