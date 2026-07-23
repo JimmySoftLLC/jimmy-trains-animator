@@ -114,9 +114,11 @@
                 data_object}</div>
             <div>API_EEE_DDD = Api POST using the base url for the current animator and EEE endpoint, DDD data object
                 i.e. {"an":data_object}</div>
-            <div>TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train", "group"), 
+            <div>TMCC_DDD_ID_BUTTON_VALUE = TMCC command DDD device ("engine", "switch", "accessory", "route", "train",
+                "group"),
                 ID 1 to 99, button (SET, LOWM, MEDM, HIGHM, DIR, HORN, BELL, BOOST, BRAKE, FCOUPLER, RCOUPLER,
-                AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED, FORWARD, REVERSE, HORN2, LETOFF) VALUE is only for (KNOB 1-9, SPEED 0-31)</div>
+                AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED, FORWARD, REVERSE, HORN2, LETOFF) VALUE is
+                only for (KNOB 1-9, SPEED 0-31)</div>
             <div>E = End script</div>
             <h2>Animator settings:</h2>
             <form class="mui-form">
@@ -308,7 +310,47 @@
                 appended with .local:8083. So your website url will be something like
                 "website-name.local:8083 and the ip address will be xx.xx.xx.xx:8083."
             </p>
-
+            <h2>WiFi RSSI Signal</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary" onclick="getWifiSignal()" type="button">Get</button>
+                <input class="input" id="wifiSignal" type="number" disabled>
+            </div>
+            <table class="mui-table">
+                <thead>
+                    <tr>
+                        <th>RSSI Range (dBm)</th>
+                        <th>Quality</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="excellent">
+                        <td>-30 to -50</td>
+                        <td>Excellent</td>
+                        <td>Very strong signal rock-solid connection</td>
+                    </tr>
+                    <tr class="good">
+                        <td>-50 to -65</td>
+                        <td>Good</td>
+                        <td>Strong & reliable for most uses</td>
+                    </tr>
+                    <tr class="fair">
+                        <td>-65 to -75</td>
+                        <td>Fair / Weak</td>
+                        <td>Marginal occasional retries</td>
+                    </tr>
+                    <tr class="poor">
+                        <td>Below -75 to -85</td>
+                        <td>Poor</td>
+                        <td>Weak frequent dropouts, timeouts, retransmissions likely</td>
+                    </tr>
+                    <tr class="unusable">
+                        <td>Below -90</td>
+                        <td>Basically unusable</td>
+                        <td>Very poor connection often fails completely</td>
+                    </tr>
+                </tbody>
+            </table>
             <h2>Utilities:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
                 type="button">
