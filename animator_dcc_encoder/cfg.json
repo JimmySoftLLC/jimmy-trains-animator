@@ -1,14 +1,9 @@
 {
-  "option_selected": "movies/the brave locomotive.mp4",
-  "can_cancel": true,
-  "tmcc_voice_enabled": true,
-  "volume_pot": false,
+  "voice_enabled": false,
   "volume": "100",
   "serve_webpage": true,
-  "show_webpage": false,
   "HOST_NAME": "animator-dcc",
-  "light_string": "bar-10",
-  "lifx_enabled": true,
+  "lifx_enabled": false,
   "scene_changes": {
     "noon": [255, 255, 255],
     "afternoon": [255, 223, 186],
@@ -26,14 +21,5 @@
     "beforenoon": [255, 223, 186],
     "secondnoon": [255, 255, 255]
   },
-  "neo_changes": {
-    "red": [255, 0, 0],
-    "green": [0, 255, 0],
-    "blue": [0, 0, 255],
-    "white": [255, 255, 255]
-  },
-  "intermission": "0.33",
-  "i2c": [
-    { "address": "3C", "scl": "GP1", "sda": "GP0" }
-  ]
+  "startup_string": "DT_0_Animator_DCC_0_0"
 }

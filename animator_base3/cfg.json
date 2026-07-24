@@ -1,7 +1,8 @@
 {
-  "volume": "60",
+  "voice_enabled": false,
+  "volume": "100",
   "serve_webpage": true,
-  "HOST_NAME": "base3",
+  "HOST_NAME": "animator-dcc",
   "lifx_enabled": false,
   "scene_changes": {
     "noon": [255, 255, 255],
@@ -20,6 +21,6 @@
     "beforenoon": [255, 223, 186],
     "secondnoon": [255, 255, 255]
   },
-  "vertical_resolution": 480,
-  "horizontal_resolution":800
+  "startup_string": "DT_0_Animator_Base3_0_0"
 }
+

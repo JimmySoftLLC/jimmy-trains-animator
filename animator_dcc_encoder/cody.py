@@ -90,6 +90,13 @@
 # sudo apt install ffmpeg
 # pip install pydub
 
+############################################################
+# Install these libraries to install ssd1306 on pi sbc
+# pip3 install adafruit-blinka
+# pip3 install adafruit-circuitpython-displayio-ssd1306
+# pip3 install adafruit-circuitpython-display-text
+# pip3 install adafruit-circuitpython-bitmap-font
+
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
 import http.server
@@ -968,7 +975,6 @@ def read_command():
                             if elapsed_t > 5:
                                 set_hdw(
                                     match["command"],
-                                    0,
                                     match["url"]
                                 )
 
@@ -1025,7 +1031,6 @@ def read_command():
                             if elapsed_t > 5:
                                 set_hdw(
                                     match["command"],
-                                    0,
                                     match["url"]
                                 )
 
@@ -1058,209 +1063,74 @@ def read_command():
 
             time.sleep(0.05)
 
-
 ################################################################################
 # OLED display
 #
-# Raspberry Pi SBC version using:
+# Raspberry Pi SBC version using Blinka DisplayIO.
 #
-#   Adafruit Blinka
-#   Blinka DisplayIO
-#   Adafruit DisplayIO SSD1306
+# This product permanently uses:
 #
-# This is intentionally kept very close to the Pico version.
+#     SSD1306 OLED
+#     I2C address 0x3C
+#     128 x 64 pixels
+#
+# The display_n argument remains in the public methods so the same calls can
+# still be used in the Pico and Raspberry Pi product code.
 ################################################################################
 
-MAX_ACTIVE_DISPLAYS = 2
 display_enabled = True
+display_lock = threading.RLock()
 
-# When True, files.log_item() output is also shown on the OLED.
-print_console = False
+OLED_ADDRESS = 0x3C
+OLED_WIDTH = 128
+OLED_HEIGHT = 64
 
-# OLED used for console output.
-console_display_n = 0
+oled_i2c = None
+oled_display_bus = None
+oled_display = None
 
-# terminalio.FONT is approximately 6 pixels wide.
-CONSOLE_CHARACTERS_PER_LINE = 21
-CONSOLE_LINE_COUNT = 8
-CONSOLE_LINE_SPACING = 8
+# Hold references to the currently displayed objects.
+oled_current_group = None
+oled_current_bitmap = None
+oled_current_tile_grid = None
 
-console_lines = []
-console_group = None
-console_labels = []
-console_initialized = False
-
-
-################################################################################
-# Raspberry Pi I2C pin mapping
-#
-# This lets the Pi use the same cfg.json names as the Pico:
-#
-#     "GP0" becomes Raspberry Pi SDA, GPIO2, physical pin 3
-#     "GP1" becomes Raspberry Pi SCL, GPIO3, physical pin 5
-#
-# The SDA and SCL names are also accepted.
-################################################################################
-
-PIN_MAP = {
-    "GP0": board.SDA,
-    "GP1": board.SCL,
-
-    "SDA": board.SDA,
-    "SCL": board.SCL,
-}
-
-
-i2c_busses = {}
-display_buses = {}
-displays = {}
-display_groups = {}
-active_display_nums = []
-
+# All five fonts are loaded once at startup.
+fonts = {}
 
 displayio.release_displays()
 
 
 ################################################################################
-# I2CDisplayBus compatibility
-#
-# Newer versions:
-#
-#     i2cdisplaybus.I2CDisplayBus
-#
-# Older Blinka DisplayIO versions:
-#
-#     displayio.I2CDisplay
+# I2C display-bus compatibility
 ################################################################################
 
 try:
     import i2cdisplaybus
 
-    def create_i2c_display_bus(i2c_bus, addr):
+    def create_i2c_display_bus(
+        i2c_bus,
+        address
+    ):
         return i2cdisplaybus.I2CDisplayBus(
             i2c_bus,
-            device_address=addr
+            device_address=address
         )
 
 except ImportError:
 
-    def create_i2c_display_bus(i2c_bus, addr):
+    def create_i2c_display_bus(
+        i2c_bus,
+        address
+    ):
         return displayio.I2CDisplay(
             i2c_bus,
-            device_address=addr
+            device_address=address
         )
 
 
 ################################################################################
-# I2C helpers
+# Font loading
 ################################################################################
-
-def get_pin(pin_name):
-    pin_name = str(pin_name).upper()
-
-    if pin_name not in PIN_MAP:
-        raise ValueError(
-            "Unsupported Raspberry Pi I2C pin: "
-            + pin_name
-        )
-
-    return PIN_MAP[pin_name]
-
-
-def i2c_addr(addr_text):
-    """
-    Accept:
-
-        "3C"
-        "0x3C"
-        60
-    """
-
-    if isinstance(addr_text, int):
-        return addr_text
-
-    addr_text = str(addr_text).strip()
-
-    if addr_text.lower().startswith("0x"):
-        return int(addr_text, 16)
-
-    return int(addr_text, 16)
-
-
-def i2c_key(dev):
-    return (
-        str(dev["sda"]).upper()
-        + "_"
-        + str(dev["scl"]).upper()
-    )
-
-
-def get_i2c_bus(dev):
-    key = i2c_key(dev)
-
-    if key not in i2c_busses:
-        i2c_busses[key] = busio.I2C(
-            scl=get_pin(dev["scl"]),
-            sda=get_pin(dev["sda"])
-        )
-
-    return i2c_busses[key]
-
-
-################################################################################
-# Text positioning
-################################################################################
-
-def center_text(font, txt, y):
-    if txt is None:
-        txt = ""
-    else:
-        txt = str(txt)
-
-    text_label = label.Label(
-        font,
-        text=txt,
-        color=0xFFFFFF
-    )
-
-    text_label.x = (
-        128 - text_label.bounding_box[2]
-    ) // 2
-
-    text_label.y = y
-
-    return text_label
-
-
-################################################################################
-# Font caching
-#
-# Font files:
-#
-#     Arial-BoldMT-10.bdf
-#     Arial-BoldMT-15.bdf
-#     Arial-BoldMT-20.bdf
-#     Arial-BoldMT-25.bdf
-#     Arial-BoldMT-30.bdf
-################################################################################
-
-# Maximum number of fonts held in memory.
-# Sizes 20 and 30 are permanent, leaving room for two variable sizes.
-MAX_CACHED_FONTS = 4
-
-DEFAULT_FONT_SIZES = (
-    20,
-    30
-)
-
-# Stores:
-#
-#     font size: loaded font object
-font_cache = {}
-
-# Tracks only non-default fonts, oldest first.
-font_cache_order = []
-
 
 def font_filename(font_size):
     return (
@@ -1271,277 +1141,352 @@ def font_filename(font_size):
     )
 
 
-def load_font(font_size):
+def load_all_fonts():
     """
-    Return a loaded BDF font object.
+    Load all OLED fonts into memory once during startup.
+    """
 
-    Font sizes 20 and 30 remain permanently cached.
+    global fonts
 
-    Other sizes are cached until the four-font limit is reached.
-    The oldest non-default font is then removed.
+    fonts = {}
+
+    for font_size in (
+        10,
+        15,
+        20,
+        25,
+        30
+    ):
+        filename = font_filename(
+            font_size
+        )
+
+        if not os.path.exists(filename):
+            raise FileNotFoundError(
+                "OLED font file not found: "
+                + filename
+            )
+
+        files.log_item(
+            "Loading OLED font size "
+            + str(font_size)
+        )
+
+        fonts[font_size] = bitmap_font.load_font(
+            filename
+        )
+
+    files.log_item(
+        "All OLED fonts loaded"
+    )
+
+
+def get_font(font_size):
+    """
+    Return a previously loaded OLED font.
     """
 
     font_size = int(font_size)
 
-    # Return an existing cached font immediately.
-    if font_size in font_cache:
-
-        # Treat variable fonts as recently used.
-        if font_size not in DEFAULT_FONT_SIZES:
-
-            if font_size in font_cache_order:
-                font_cache_order.remove(font_size)
-
-            font_cache_order.append(font_size)
-
-        return font_cache[font_size]
-
-    filename = font_filename(font_size)
-
-    if not os.path.exists(filename):
+    if font_size not in fonts:
         files.log_item(
-            "Font file not found: "
-            + filename
+            "Unsupported OLED font size "
+            + str(font_size)
+            + "; using size 20"
         )
 
-        # Fall back to a permanent font so the display does not crash.
-        return font_cache[20]
+        return fonts[20]
 
-    # Make room before loading another variable font.
-    if (
-        font_size not in DEFAULT_FONT_SIZES
-        and len(font_cache) >= MAX_CACHED_FONTS
-    ):
-        if font_cache_order:
-            oldest_size = font_cache_order.pop(0)
-
-            files.log_item(
-                "Removing font "
-                + str(oldest_size)
-                + " from cache"
-            )
-
-            del font_cache[oldest_size]
-
-            try:
-                gc.collect()
-            except Exception:
-                pass
-
-    files.log_item(
-        "Loading font size "
-        + str(font_size)
-    )
-
-    loaded_font = bitmap_font.load_font(
-        filename
-    )
-
-    font_cache[font_size] = loaded_font
-
-    if font_size not in DEFAULT_FONT_SIZES:
-        font_cache_order.append(font_size)
-
-    return loaded_font
-
-
-# Load the two permanent fonts once during startup.
-font_cache[20] = bitmap_font.load_font(
-    font_filename(20)
-)
-
-font_cache[30] = bitmap_font.load_font(
-    font_filename(30)
-)
-
-files.log_item(
-    "Default OLED fonts loaded"
-)
+    return fonts[font_size]
 
 
 ################################################################################
-# Default OLED configuration
+# Display initialization
 ################################################################################
 
-if "i2c" not in cfg:
-    cfg["i2c"] = [
-        {
-            "sda": "GP0",
-            "scl": "GP1",
-            "address": "3C"
-        }
-    ]
+def initialize_display():
+    """
+    Initialize the single SSD1306 OLED.
 
-    files.write_json_file(
-        "cfg.json",
-        cfg
-    )
+    Automatic refresh is disabled. Display changes are completed under
+    display_lock and followed by an explicit refresh.
+    """
 
-
-################################################################################
-# Display creation and selection
-################################################################################
-
-def valid_display(display_n):
-    return (
-        isinstance(display_n, int)
-        and display_n >= 0
-        and display_n < len(cfg["i2c"])
-    )
-
-
-def clear_active_displays():
-    global active_display_nums
-    global console_group
-    global console_labels
-    global console_initialized
-
-    displayio.release_displays()
-
-    display_buses.clear()
-    displays.clear()
-    display_groups.clear()
-
-    active_display_nums = []
-
-    # DisplayIO objects were released, so rebuild the console next time.
-    console_group = None
-    console_labels = []
-    console_initialized = False
-
-
-def select_display(display_n):
-    global active_display_nums
+    global oled_i2c
+    global oled_display_bus
+    global oled_display
     global display_enabled
 
-    if not display_enabled:
-        return None
-
-    if not valid_display(display_n):
-        return None
-
-    if display_n in displays:
-        return displays[display_n]
-
-    dev = cfg["i2c"][display_n]
-    new_bus_key = i2c_key(dev)
-
-    # The original Pico logic releases displays if another configured
-    # display uses the same I2C bus.
-    #
-    # This is retained to keep behavior consistent between products.
-    for active_n in active_display_nums:
-        active_dev = cfg["i2c"][active_n]
-
-        if i2c_key(active_dev) == new_bus_key:
-            clear_active_displays()
-            break
-
-    if len(displays) >= MAX_ACTIVE_DISPLAYS:
-        clear_active_displays()
-
-    try:
-        i2c_bus = get_i2c_bus(dev)
-
-        # Verify that the display address exists.
-        while not i2c_bus.try_lock():
-            time.sleep(0.001)
+    with display_lock:
+        if oled_display is not None:
+            return True
 
         try:
-            found = i2c_bus.scan()
-
-        finally:
-            i2c_bus.unlock()
-
-        addr = i2c_addr(
-            dev["address"]
-        )
-
-        if addr not in found:
-            files.log_item(
-                "No OLED found at address "
-                + str(dev["address"])
+            oled_i2c = busio.I2C(
+                scl=board.SCL,
+                sda=board.SDA
             )
 
-            return None
+            while not oled_i2c.try_lock():
+                time.sleep(0.001)
 
-        display_bus = create_i2c_display_bus(
-            i2c_bus,
-            addr
-        )
+            try:
+                addresses = oled_i2c.scan()
+            finally:
+                oled_i2c.unlock()
 
-        disp = adafruit_displayio_ssd1306.SSD1306(
-            display_bus,
-            width=128,
-            height=64
-        )
+            if OLED_ADDRESS not in addresses:
+                files.log_item(
+                    "OLED not found at I2C address 0x3C"
+                )
 
-        group = displayio.Group()
-        disp.root_group = group
+                display_enabled = False
+                return False
 
-        display_buses[display_n] = display_bus
-        displays[display_n] = disp
-        display_groups[display_n] = group
+            oled_display_bus = create_i2c_display_bus(
+                oled_i2c,
+                OLED_ADDRESS
+            )
 
-        active_display_nums.append(
-            display_n
-        )
+            oled_display = (
+                adafruit_displayio_ssd1306.SSD1306(
+                    oled_display_bus,
+                    width=OLED_WIDTH,
+                    height=OLED_HEIGHT,
+                    auto_refresh=False
+                )
+            )
 
-        return disp
+            display_enabled = True
 
-    except Exception as e:
-        files.log_item(
-            "OLED initialization error: "
-            + str(e)
-        )
+            files.log_item(
+                "OLED initialized at address 0x3C"
+            )
 
+            return True
+
+        except Exception as e:
+            display_enabled = False
+
+            files.log_item(
+                "OLED initialization error: "
+                + repr(e)
+            )
+
+            return False
+
+
+################################################################################
+# Display compatibility methods
+################################################################################
+
+def valid_display(display_n=0):
+    """
+    This product always has one OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    return display_enabled and initialize_display()
+
+
+def select_display(display_n=0):
+    """
+    Return the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    if not initialize_display():
         return None
 
-
-def set_display_group(display_n, group):
-    disp = select_display(display_n)
-
-    if disp is None:
-        return
-
-    disp.root_group = group
-    display_groups[display_n] = group
+    return oled_display
 
 
 ################################################################################
-# Invert OLED
+# Group replacement
 ################################################################################
 
-def invert_display(display_n, invert_on):
-    if select_display(display_n) is None:
+def set_display_group(
+    display_n,
+    group
+):
+    """
+    Replace everything currently displayed with a newly created group.
+
+    A completely new Group and new Label objects are used for each text
+    update. This avoids changing an existing Blinka DisplayIO TileGrid.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
+        return False
+
+    with display_lock:
+        if not initialize_display():
+            return False
+
+        try:
+            # Remove the old root group before installing the new one.
+            oled_display.root_group = None
+
+            oled_current_group = group
+
+            # Text groups do not require bitmap references.
+            oled_current_bitmap = None
+            oled_current_tile_grid = None
+
+            oled_display.root_group = oled_current_group
+
+            # Redraw the complete display.
+            oled_display.refresh()
+
+            return True
+
+        except Exception as e:
+            files.log_item(
+                "OLED group update error: "
+                + repr(e)
+            )
+
+            return False
+
+
+################################################################################
+# Clear display
+################################################################################
+
+def clear_display(display_n=0):
+    """
+    Clear the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
         return
 
-    try:
-        if invert_on:
-            display_buses[display_n].send(
-                0xA7,
-                b""
+    with display_lock:
+        if not initialize_display():
+            return
+
+        try:
+            oled_display.root_group = None
+
+            oled_current_group = None
+            oled_current_bitmap = None
+            oled_current_tile_grid = None
+
+            oled_display.refresh()
+
+        except Exception as e:
+            files.log_item(
+                "OLED clear error: "
+                + repr(e)
             )
 
-        else:
-            display_buses[display_n].send(
-                0xA6,
-                b""
-            )
 
-    except Exception as e:
-        files.log_item(
-            "OLED invert error: "
-            + str(e)
-        )
+################################################################################
+# Text label creation
+################################################################################
+
+def center_text(
+    font,
+    text,
+    y_position
+):
+    """
+    Create a new Label and horizontally center it.
+    """
+
+    if text is None:
+        text = ""
+    else:
+        text = str(text)
+
+    text_label = label.Label(
+        font,
+        text=text,
+        color=0xFFFFFF
+    )
+
+    text_width = text_label.bounding_box[2]
+
+    text_label.x = (
+        OLED_WIDTH - text_width
+    ) // 2
+
+    text_label.y = y_position
+
+    return text_label
+
+
+################################################################################
+# Invert display
+################################################################################
+
+def invert_display(
+    display_n,
+    invert_on
+):
+    """
+    Invert or restore the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    if not display_enabled:
+        return
+
+    with display_lock:
+        if not initialize_display():
+            return
+
+        try:
+            if invert_on:
+                oled_display_bus.send(
+                    0xA7,
+                    b""
+                )
+            else:
+                oled_display_bus.send(
+                    0xA6,
+                    b""
+                )
+
+        except Exception as e:
+            files.log_item(
+                "OLED invert error: "
+                + repr(e)
+            )
 
 
 ################################################################################
 # Bitmap display
 ################################################################################
 
-def show_bmp(display_n, filename):
-    if not valid_display(display_n):
+def show_bmp(
+    display_n,
+    filename
+):
+    """
+    Display a bitmap on the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
         return
 
     if not os.path.isabs(filename):
@@ -1555,45 +1500,57 @@ def show_bmp(display_n, filename):
             "OLED bitmap not found: "
             + filename
         )
+
         return
 
-    try:
-        bitmap = displayio.OnDiskBitmap(
-            filename
-        )
+    with display_lock:
+        if not initialize_display():
+            return
 
-        tile_grid = displayio.TileGrid(
-            bitmap,
-            pixel_shader=bitmap.pixel_shader
-        )
+        try:
+            bitmap = displayio.OnDiskBitmap(
+                filename
+            )
 
-        tile_grid.x = (
-            128 - bitmap.width
-        ) // 2
+            tile_grid = displayio.TileGrid(
+                bitmap,
+                pixel_shader=bitmap.pixel_shader
+            )
 
-        tile_grid.y = (
-            64 - bitmap.height
-        ) // 2
+            tile_grid.x = (
+                OLED_WIDTH - bitmap.width
+            ) // 2
 
-        group = displayio.Group()
-        group.append(
-            tile_grid
-        )
+            tile_grid.y = (
+                OLED_HEIGHT - bitmap.height
+            ) // 2
 
-        set_display_group(
-            display_n,
-            group
-        )
+            bitmap_group = displayio.Group()
 
-    except Exception as e:
-        files.log_item(
-            "OLED bitmap error: "
-            + str(e)
-        )
+            bitmap_group.append(
+                tile_grid
+            )
+
+            # Remove the old group first.
+            oled_display.root_group = None
+
+            # Retain references while the bitmap is displayed.
+            oled_current_bitmap = bitmap
+            oled_current_tile_grid = tile_grid
+            oled_current_group = bitmap_group
+
+            oled_display.root_group = oled_current_group
+            oled_display.refresh()
+
+        except Exception as e:
+            files.log_item(
+                "OLED bitmap error: "
+                + repr(e)
+            )
 
 
 ################################################################################
-# Two-line text display
+# Two-line text
 ################################################################################
 
 def draw_text(
@@ -1603,47 +1560,58 @@ def draw_text(
     line1_size=20,
     line2_size=30
 ):
-    if not valid_display(display_n):
+    """
+    Draw two lines using newly created Group and Label objects.
+
+    No existing Label or TileGrid is modified.
+    """
+
+    if not display_enabled:
         return
 
-    if line1 is None:
-        line1 = ""
-    else:
-        line1 = str(line1)
+    try:
+        if line1 is None:
+            line1 = ""
+        else:
+            line1 = str(line1)
 
-    if line2 is None:
-        line2 = ""
-    else:
-        line2 = str(line2)
+        if line2 is None:
+            line2 = ""
+        else:
+            line2 = str(line2)
 
-    # Use load_font(), not font_cache[], so variable font sizes are
-    # automatically loaded when requested.
-    line1_text = center_text(
-        load_font(line1_size),
-        line1,
-        12
-    )
+        line1_label = center_text(
+            get_font(line1_size),
+            line1,
+            12
+        )
 
-    line2_text = center_text(
-        load_font(line2_size),
-        line2,
-        40
-    )
+        line2_label = center_text(
+            get_font(line2_size),
+            line2,
+            40
+        )
 
-    group = displayio.Group()
+        text_group = displayio.Group()
 
-    group.append(
-        line1_text
-    )
+        text_group.append(
+            line1_label
+        )
 
-    group.append(
-        line2_text
-    )
+        text_group.append(
+            line2_label
+        )
 
-    set_display_group(
-        display_n,
-        group
-    )
+        set_display_group(
+            display_n,
+            text_group
+        )
+
+    except Exception as e:
+        files.log_item(
+            "OLED text creation error: "
+            + repr(e)
+        )
 
 
 def display_text(
@@ -1655,7 +1623,11 @@ def display_text(
     line1_size=20,
     line2_size=30
 ):
-    if not valid_display(display_n):
+    """
+    Display two lines and optionally blink the background.
+    """
+
+    if not display_enabled:
         return
 
     draw_text(
@@ -1666,7 +1638,9 @@ def display_text(
         line2_size
     )
 
-    for _ in range(blink_times):
+    for _ in range(
+        int(blink_times)
+    ):
         invert_display(
             display_n,
             True
@@ -1680,49 +1654,6 @@ def display_text(
         )
 
         time.sleep(1)
-
-    invert_display(
-        display_n,
-        background_on
-    )
-
-
-async def display_text_async(
-    display_n,
-    line1,
-    line2,
-    blink_times,
-    background_on=False,
-    line1_size=20,
-    line2_size=30
-):
-    if not valid_display(display_n):
-        return
-
-    # Use the supplied font sizes. The Pico Smart Bumpers example
-    # accidentally forced these to 20 and 30.
-    draw_text(
-        display_n,
-        line1,
-        line2,
-        line1_size,
-        line2_size
-    )
-
-    for _ in range(blink_times):
-        invert_display(
-            display_n,
-            True
-        )
-
-        await asyncio.sleep(1)
-
-        invert_display(
-            display_n,
-            False
-        )
-
-        await asyncio.sleep(1)
 
     invert_display(
         display_n,
@@ -1734,13 +1665,23 @@ async def display_text_async(
 # Rolling text
 ################################################################################
 
-async def roll_text_async(
+def roll_text(
     display_n,
     line1,
     font_size,
     background_on=False
 ):
-    if not valid_display(display_n):
+    """
+    Scroll one line across the single OLED.
+
+    A new group and label are created for the scrolling operation.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
         return
 
     if line1 is None:
@@ -1753,52 +1694,79 @@ async def roll_text_async(
         background_on
     )
 
-    line1_text = label.Label(
-        load_font(font_size),
-        text=line1,
-        color=0xFFFFFF
-    )
+    with display_lock:
+        if not initialize_display():
+            return
 
-    line1_text.y = 32
+        try:
+            rolling_label = label.Label(
+                get_font(font_size),
+                text=line1,
+                color=0xFFFFFF
+            )
 
-    group = displayio.Group()
-    group.append(
-        line1_text
-    )
+            rolling_label.x = OLED_WIDTH
+            rolling_label.y = 32
 
-    set_display_group(
-        display_n,
-        group
-    )
+            rolling_group = displayio.Group()
 
-    text_width = line1_text.bounding_box[2]
+            rolling_group.append(
+                rolling_label
+            )
 
-    for x in range(
-        128,
+            oled_display.root_group = None
+
+            oled_current_bitmap = None
+            oled_current_tile_grid = None
+            oled_current_group = rolling_group
+
+            oled_display.root_group = oled_current_group
+            oled_display.refresh()
+
+            text_width = rolling_label.bounding_box[2]
+
+        except Exception as e:
+            files.log_item(
+                "OLED rolling-text setup error: "
+                + repr(e)
+            )
+
+            return
+
+    for x_position in range(
+        OLED_WIDTH,
         -text_width,
         -1
     ):
-        line1_text.x = x
-        await asyncio.sleep(0.01)
+        with display_lock:
+            try:
+                rolling_label.x = x_position
+                oled_display.refresh()
+
+            except Exception as e:
+                files.log_item(
+                    "OLED rolling-text error: "
+                    + repr(e)
+                )
+
+                return
+
+        time.sleep(0.01)
 
 
 ################################################################################
-# Startup test
+# OLED startup
 ################################################################################
 
-show_bmp(
-    0,
-    "fonts/logo.bmp"
-)
+load_all_fonts()
 
-if len(cfg["i2c"]) > 1:
+if initialize_display():
     show_bmp(
-        1,
+        0,
         "fonts/logo.bmp"
     )
 
-time.sleep(1)
-
+    time.sleep(1)
 
 ################################################################################
 # Wi-Fi RSSI measurement
@@ -2105,6 +2073,26 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_local_ip(post_data_obj)
         elif self.path == "/get-wifi-signal":
             self.get_wifi_signal_post(post_data_obj)
+        elif self.path == "/get-startup-string":
+            self.get_startup_string_post(post_data_obj)
+        elif self.path == "/update-startup-string":
+            self.update_startup_string_post(post_data_obj)
+
+    def update_startup_string_post(self, rq_d):
+        global cfg
+        if rq_d["action"] in ("save"):
+            cfg["startup_string"] = rq_d["text"]
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            set_hdw(cfg["startup_string"])
+            response = cfg["startup_string"]
+            self.wfile.write(response.encode('utf-8'))  
+
+    def get_startup_string_post(self, rq_d):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = cfg["startup_string"]
+        self.wfile.write(response.encode('utf-8'))        
 
     def get_wifi_signal_post(self, rq_d):
         self.send_response(200)
@@ -2118,7 +2106,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         exit_set_hdw = False
         # Replace "default_value" with whatever you want
         url = rq_d.get("ip", "")
-        response = set_hdw(rq_d["an"], 3, url)
+        response = set_hdw(rq_d["an"], url)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2313,9 +2301,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def set_tmcc_voice_enabled(self, rq_d):
         global cfg
-        cfg["tmcc_voice_enabled"] = rq_d["enabled"]
+        cfg["voice_enabled"] = rq_d["enabled"]
         files.write_json_file(code_folder + "cfg.json", cfg)
-        response = cfg["tmcc_voice_enabled"]
+        response = cfg["voice_enabled"]
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2338,7 +2326,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def get_tmcc_voice_enabled(self, rq_d):
-        response = cfg["tmcc_voice_enabled"]
+        response = cfg["voice_enabled"]
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2348,7 +2336,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def lights_lifx_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        set_hdw(rq_d["an"], 1, "")
+        set_hdw(rq_d["an"])
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -2362,7 +2350,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         exit_set_hdw = False
         command = "LX0_" + str(rgb_value[0]) + "_" + \
             str(rgb_value[1]) + "_" + str(rgb_value[2])
-        set_hdw(command, 0, "")
+        set_hdw(command)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -2376,7 +2364,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         if rq_d["item"] == "lifx":
             command = "LX0_" + str(rq_d["r"]) + "_" + \
                 str(rq_d["g"]) + "_" + str(rq_d["b"])
-            set_hdw(command, 0, "")
+            set_hdw(command)
             if current_scene != "":
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
@@ -2439,45 +2427,6 @@ if web:
         web = False
 
 gc_col("web server")
-
-
-
-################################################################################
-# Command queue
-
-command_queue = deque()
-
-
-def add_command(command, to_start=False):
-    """Add a command to the queue. If to_start is True, add to the front."""
-    if to_start:
-        command_queue.appendleft(command)  # Add to the front
-        print(f"Command added to the start: {command}")
-    else:
-        command_queue.append(command)  # Add to the end
-        print(f"Command added to the end: {command}")
-
-
-def process_commands():
-    """Process commands in a FIFO order from the front."""
-    while command_queue:
-        command = command_queue.popleft()  # Retrieve from the front
-        print(f"Processing command: {command}")
-
-
-def clear_command_queue():
-    """Clear all commands from the queue."""
-    command_queue.clear()
-    print("Command queue cleared.")
-
-
-def stop_all_commands():
-    """Stop all commands and clear the queue."""
-    global exit_set_hdw
-    clear_command_queue()
-    exit_set_hdw = True
-    mix.stop()
-    print("Processing stopped and command queue cleared.")
 
 
 ################################################################################
@@ -2569,7 +2518,6 @@ def ch_vol(action):
     if v < 1:
         v = 1
     cfg["volume"] = str(v)
-    cfg["volume_pot"] = False
     upd_vol(.05)
     files.write_json_file(code_folder + "cfg.json", cfg)
     play_mix(code_folder + "mvc/volume.wav")
@@ -2799,7 +2747,7 @@ def rnd_prob(random_value):
     return False
 
 
-def set_hdw(cmd, dur, url):
+def set_hdw(cmd, url = ""):
     global sp, br, exit_set_hdw
 
     if cmd == "":
@@ -2851,6 +2799,38 @@ def set_hdw(cmd, dur, url):
             # ZJ = Joke
             elif seg[:2] == 'ZJ':
                 get_random_joke()
+
+            # DT_NN_LLL_MMM_CC_BB = Display text
+            elif seg[:2] == "DT":
+                segs_split = seg.split("_")
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                line2 = segs_split[3]
+                cycles = int(segs_split[4])
+                background = bool(int(segs_split[5]))
+                display_text(
+                    screen_number,
+                    line1,
+                    line2,
+                    cycles,
+                    background
+                )
+
+            # RT_NN_LLL_FF_BB = Rolling text
+            elif seg[:2] == "RT":
+                segs_split = seg.split("_")
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                font_size = int(segs_split[3])
+                background = bool(int(segs_split[4]))
+
+                roll_text(
+                    screen_number,
+                    line1,
+                    font_size,
+                    background
+                )
+
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = split_string(seg)
@@ -3039,7 +3019,6 @@ class BseSt(Ste):
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            add_command(cfg["option_selected"])
             time.sleep(.5)
         elif switch_state == "right":
             mch.go_to('main_menu')
@@ -3223,9 +3202,15 @@ st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
+startup_command_sent = False
 
 def run_state_machine():
+    global startup_command_sent
     while True:
+        if not startup_command_sent:
+            time.sleep(2)
+            startup_command_sent = True
+            set_hdw(cfg["startup_string"])
         st_mch.upd()
         time.sleep(0.05)
 
@@ -3284,8 +3269,6 @@ if connect_to_dcc:
 
 
 def stop_program():
-    stop_all_commands()
-
     if web:
         print("Unregistering mDNS service...")
         zeroconf.unregister_service(mdns_info)

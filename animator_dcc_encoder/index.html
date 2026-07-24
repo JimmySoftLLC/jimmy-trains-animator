@@ -120,6 +120,9 @@
                 AUX1, AUX2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, HALT, KNOB, SPEED, FORWARD, REVERSE, HORN2, LETOFF) VALUE is
                 only for (KNOB 1-9, SPEED 0-31)</div>
             <div>E = End script</div>
+            <div>DT_NN_LLL_MMM_CC_BB Display text, NN screen number, LLL line1, MMM line2, CC blink cycles, BB
+                background 1 on 0 off</div>
+            <div>RT_NN_LLL_FF_BB Rolling text, NN screen number, LLL line1, FF font size, BB background 1 on 0 off</div>
             <h2>Animator settings:</h2>
             <form class="mui-form">
                 <div class="mui-textfield">
@@ -287,6 +290,18 @@
                 Valid volume levels are from 1 to 100
             </p>
 
+            <h2>Start up string:</h2>
+            <div class="mui-textfield">
+                <p>
+                    Enter the startup string that will run once at startup.
+                </p>
+                <input class="input" id="startupString" type="text" placeholder="No startup string setup">
+                <button class="mui-btn mui-btn--primary animator-startup-update" type="button" data-action="save"
+                    data-url="/update-startup-string">
+                    Save
+                </button>
+            </div>
+
             <h2>Animator web page name and ip address:</h2>
 
             <div class="mui-textfield">
@@ -378,6 +393,23 @@
         getLifxEnabled()
         getTmccVoiceEnabled()
         getWifiSignal()
+
+        // get startup string
+        fetch('/get-startup-string', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                startupString.value = data; // Set the value of the input field with the received data
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
     });
 
     function getMedia() {
@@ -849,6 +881,50 @@
     settingsWebsiteUrl.addEventListener('input', function () {
         var validatedValue = this.value.replace(/[^a-zA-Z0-9-]/g, '');
         this.value = validatedValue;
+    });
+
+
+    // Get all buttons with the 'animator-startup-update' class
+    // Add click event listener to each button
+    var startupUpdateButtons = document.querySelectorAll('.animator-startup-update');
+    startupUpdateButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            var url = this.getAttribute('data-url');
+            var action = this.getAttribute('data-action');
+            var data = {}
+            if (action == "save") {
+                var startupStringElement = document.getElementById('startupString');
+                startupStringValue = startupStringElement.value
+                data = {
+                    text: startupStringValue,
+                    action: action
+                }
+            } else {
+                data = {
+                    text: action,
+                    action: action
+                }
+            }
+            button.setAttribute('disabled', 'true')
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+                .then(function (response) {
+                    return response.text(); // assuming the response is plain text
+                })
+                .then(function (data) {
+                    startupString.value = data; // Set the value of the input field with the received data
+                    button.removeAttribute('disabled')
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    button.removeAttribute('disabled')
+                });
+        });
     });
 
     function editPasteTableDialog() {

@@ -90,6 +90,13 @@
 # sudo apt install ffmpeg
 # pip install pydub
 
+############################################################
+# Install these libraries to install ssd1306 on pi sbc
+# pip3 install adafruit-blinka
+# pip3 install adafruit-circuitpython-displayio-ssd1306
+# pip3 install adafruit-circuitpython-display-text
+# pip3 install adafruit-circuitpython-bitmap-font
+
 from lifxlan import LifxLAN
 from concurrent.futures import ThreadPoolExecutor
 import http.server
@@ -123,6 +130,13 @@ import pyautogui
 import serial
 import serial.tools.list_ports
 import re
+
+import busio
+import displayio
+import adafruit_displayio_ssd1306
+
+from adafruit_display_text import label
+from adafruit_bitmap_font import bitmap_font
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -856,7 +870,6 @@ def read_command():
 
                         set_hdw(
                             matched_command[1],
-                            1,
                             animator_command_rows[
                                 "animatorIpAddress"
                             ]
@@ -1384,6 +1397,710 @@ def get_command_and_data(button, binary_word3, value=0):
     print(f"Warning: Button {button} not found")
     return binary_word3  # Return unchanged word
 
+################################################################################
+# OLED display
+#
+# Raspberry Pi SBC version using Blinka DisplayIO.
+#
+# This product permanently uses:
+#
+#     SSD1306 OLED
+#     I2C address 0x3C
+#     128 x 64 pixels
+#
+# The display_n argument remains in the public methods so the same calls can
+# still be used in the Pico and Raspberry Pi product code.
+################################################################################
+
+display_enabled = True
+display_lock = threading.RLock()
+
+OLED_ADDRESS = 0x3C
+OLED_WIDTH = 128
+OLED_HEIGHT = 64
+
+oled_i2c = None
+oled_display_bus = None
+oled_display = None
+
+# Hold references to the currently displayed objects.
+oled_current_group = None
+oled_current_bitmap = None
+oled_current_tile_grid = None
+
+# All five fonts are loaded once at startup.
+fonts = {}
+
+displayio.release_displays()
+
+
+################################################################################
+# I2C display-bus compatibility
+################################################################################
+
+try:
+    import i2cdisplaybus
+
+    def create_i2c_display_bus(
+        i2c_bus,
+        address
+    ):
+        return i2cdisplaybus.I2CDisplayBus(
+            i2c_bus,
+            device_address=address
+        )
+
+except ImportError:
+
+    def create_i2c_display_bus(
+        i2c_bus,
+        address
+    ):
+        return displayio.I2CDisplay(
+            i2c_bus,
+            device_address=address
+        )
+
+
+################################################################################
+# Font loading
+################################################################################
+
+def font_filename(font_size):
+    return (
+        code_folder
+        + "fonts/Arial-BoldMT-"
+        + str(font_size)
+        + ".bdf"
+    )
+
+
+def load_all_fonts():
+    """
+    Load all OLED fonts into memory once during startup.
+    """
+
+    global fonts
+
+    fonts = {}
+
+    for font_size in (
+        10,
+        15,
+        20,
+        25,
+        30
+    ):
+        filename = font_filename(
+            font_size
+        )
+
+        if not os.path.exists(filename):
+            raise FileNotFoundError(
+                "OLED font file not found: "
+                + filename
+            )
+
+        files.log_item(
+            "Loading OLED font size "
+            + str(font_size)
+        )
+
+        fonts[font_size] = bitmap_font.load_font(
+            filename
+        )
+
+    files.log_item(
+        "All OLED fonts loaded"
+    )
+
+
+def get_font(font_size):
+    """
+    Return a previously loaded OLED font.
+    """
+
+    font_size = int(font_size)
+
+    if font_size not in fonts:
+        files.log_item(
+            "Unsupported OLED font size "
+            + str(font_size)
+            + "; using size 20"
+        )
+
+        return fonts[20]
+
+    return fonts[font_size]
+
+
+################################################################################
+# Display initialization
+################################################################################
+
+def initialize_display():
+    """
+    Initialize the single SSD1306 OLED.
+
+    Automatic refresh is disabled. Display changes are completed under
+    display_lock and followed by an explicit refresh.
+    """
+
+    global oled_i2c
+    global oled_display_bus
+    global oled_display
+    global display_enabled
+
+    with display_lock:
+        if oled_display is not None:
+            return True
+
+        try:
+            oled_i2c = busio.I2C(
+                scl=board.SCL,
+                sda=board.SDA
+            )
+
+            while not oled_i2c.try_lock():
+                time.sleep(0.001)
+
+            try:
+                addresses = oled_i2c.scan()
+            finally:
+                oled_i2c.unlock()
+
+            if OLED_ADDRESS not in addresses:
+                files.log_item(
+                    "OLED not found at I2C address 0x3C"
+                )
+
+                display_enabled = False
+                return False
+
+            oled_display_bus = create_i2c_display_bus(
+                oled_i2c,
+                OLED_ADDRESS
+            )
+
+            oled_display = (
+                adafruit_displayio_ssd1306.SSD1306(
+                    oled_display_bus,
+                    width=OLED_WIDTH,
+                    height=OLED_HEIGHT,
+                    auto_refresh=False
+                )
+            )
+
+            display_enabled = True
+
+            files.log_item(
+                "OLED initialized at address 0x3C"
+            )
+
+            return True
+
+        except Exception as e:
+            display_enabled = False
+
+            files.log_item(
+                "OLED initialization error: "
+                + repr(e)
+            )
+
+            return False
+
+
+################################################################################
+# Display compatibility methods
+################################################################################
+
+def valid_display(display_n=0):
+    """
+    This product always has one OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    return display_enabled and initialize_display()
+
+
+def select_display(display_n=0):
+    """
+    Return the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    if not initialize_display():
+        return None
+
+    return oled_display
+
+
+################################################################################
+# Group replacement
+################################################################################
+
+def set_display_group(
+    display_n,
+    group
+):
+    """
+    Replace everything currently displayed with a newly created group.
+
+    A completely new Group and new Label objects are used for each text
+    update. This avoids changing an existing Blinka DisplayIO TileGrid.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
+        return False
+
+    with display_lock:
+        if not initialize_display():
+            return False
+
+        try:
+            # Remove the old root group before installing the new one.
+            oled_display.root_group = None
+
+            oled_current_group = group
+
+            # Text groups do not require bitmap references.
+            oled_current_bitmap = None
+            oled_current_tile_grid = None
+
+            oled_display.root_group = oled_current_group
+
+            # Redraw the complete display.
+            oled_display.refresh()
+
+            return True
+
+        except Exception as e:
+            files.log_item(
+                "OLED group update error: "
+                + repr(e)
+            )
+
+            return False
+
+
+################################################################################
+# Clear display
+################################################################################
+
+def clear_display(display_n=0):
+    """
+    Clear the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
+        return
+
+    with display_lock:
+        if not initialize_display():
+            return
+
+        try:
+            oled_display.root_group = None
+
+            oled_current_group = None
+            oled_current_bitmap = None
+            oled_current_tile_grid = None
+
+            oled_display.refresh()
+
+        except Exception as e:
+            files.log_item(
+                "OLED clear error: "
+                + repr(e)
+            )
+
+
+################################################################################
+# Text label creation
+################################################################################
+
+def center_text(
+    font,
+    text,
+    y_position
+):
+    """
+    Create a new Label and horizontally center it.
+    """
+
+    if text is None:
+        text = ""
+    else:
+        text = str(text)
+
+    text_label = label.Label(
+        font,
+        text=text,
+        color=0xFFFFFF
+    )
+
+    text_width = text_label.bounding_box[2]
+
+    text_label.x = (
+        OLED_WIDTH - text_width
+    ) // 2
+
+    text_label.y = y_position
+
+    return text_label
+
+
+################################################################################
+# Invert display
+################################################################################
+
+def invert_display(
+    display_n,
+    invert_on
+):
+    """
+    Invert or restore the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    if not display_enabled:
+        return
+
+    with display_lock:
+        if not initialize_display():
+            return
+
+        try:
+            if invert_on:
+                oled_display_bus.send(
+                    0xA7,
+                    b""
+                )
+            else:
+                oled_display_bus.send(
+                    0xA6,
+                    b""
+                )
+
+        except Exception as e:
+            files.log_item(
+                "OLED invert error: "
+                + repr(e)
+            )
+
+
+################################################################################
+# Bitmap display
+################################################################################
+
+def show_bmp(
+    display_n,
+    filename
+):
+    """
+    Display a bitmap on the single OLED.
+
+    display_n is ignored for compatibility with Pico code.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
+        return
+
+    if not os.path.isabs(filename):
+        filename = (
+            code_folder
+            + filename
+        )
+
+    if not os.path.exists(filename):
+        files.log_item(
+            "OLED bitmap not found: "
+            + filename
+        )
+
+        return
+
+    with display_lock:
+        if not initialize_display():
+            return
+
+        try:
+            bitmap = displayio.OnDiskBitmap(
+                filename
+            )
+
+            tile_grid = displayio.TileGrid(
+                bitmap,
+                pixel_shader=bitmap.pixel_shader
+            )
+
+            tile_grid.x = (
+                OLED_WIDTH - bitmap.width
+            ) // 2
+
+            tile_grid.y = (
+                OLED_HEIGHT - bitmap.height
+            ) // 2
+
+            bitmap_group = displayio.Group()
+
+            bitmap_group.append(
+                tile_grid
+            )
+
+            # Remove the old group first.
+            oled_display.root_group = None
+
+            # Retain references while the bitmap is displayed.
+            oled_current_bitmap = bitmap
+            oled_current_tile_grid = tile_grid
+            oled_current_group = bitmap_group
+
+            oled_display.root_group = oled_current_group
+            oled_display.refresh()
+
+        except Exception as e:
+            files.log_item(
+                "OLED bitmap error: "
+                + repr(e)
+            )
+
+
+################################################################################
+# Two-line text
+################################################################################
+
+def draw_text(
+    display_n,
+    line1,
+    line2,
+    line1_size=20,
+    line2_size=30
+):
+    """
+    Draw two lines using newly created Group and Label objects.
+
+    No existing Label or TileGrid is modified.
+    """
+
+    if not display_enabled:
+        return
+
+    try:
+        if line1 is None:
+            line1 = ""
+        else:
+            line1 = str(line1)
+
+        if line2 is None:
+            line2 = ""
+        else:
+            line2 = str(line2)
+
+        line1_label = center_text(
+            get_font(line1_size),
+            line1,
+            12
+        )
+
+        line2_label = center_text(
+            get_font(line2_size),
+            line2,
+            40
+        )
+
+        text_group = displayio.Group()
+
+        text_group.append(
+            line1_label
+        )
+
+        text_group.append(
+            line2_label
+        )
+
+        set_display_group(
+            display_n,
+            text_group
+        )
+
+    except Exception as e:
+        files.log_item(
+            "OLED text creation error: "
+            + repr(e)
+        )
+
+
+def display_text(
+    display_n,
+    line1,
+    line2,
+    blink_times,
+    background_on=False,
+    line1_size=20,
+    line2_size=30
+):
+    """
+    Display two lines and optionally blink the background.
+    """
+
+    if not display_enabled:
+        return
+
+    draw_text(
+        display_n,
+        line1,
+        line2,
+        line1_size,
+        line2_size
+    )
+
+    for _ in range(
+        int(blink_times)
+    ):
+        invert_display(
+            display_n,
+            True
+        )
+
+        time.sleep(1)
+
+        invert_display(
+            display_n,
+            False
+        )
+
+        time.sleep(1)
+
+    invert_display(
+        display_n,
+        background_on
+    )
+
+
+################################################################################
+# Rolling text
+################################################################################
+
+def roll_text(
+    display_n,
+    line1,
+    font_size,
+    background_on=False
+):
+    """
+    Scroll one line across the single OLED.
+
+    A new group and label are created for the scrolling operation.
+    """
+
+    global oled_current_group
+    global oled_current_bitmap
+    global oled_current_tile_grid
+
+    if not display_enabled:
+        return
+
+    if line1 is None:
+        line1 = ""
+    else:
+        line1 = str(line1)
+
+    invert_display(
+        display_n,
+        background_on
+    )
+
+    with display_lock:
+        if not initialize_display():
+            return
+
+        try:
+            rolling_label = label.Label(
+                get_font(font_size),
+                text=line1,
+                color=0xFFFFFF
+            )
+
+            rolling_label.x = OLED_WIDTH
+            rolling_label.y = 32
+
+            rolling_group = displayio.Group()
+
+            rolling_group.append(
+                rolling_label
+            )
+
+            oled_display.root_group = None
+
+            oled_current_bitmap = None
+            oled_current_tile_grid = None
+            oled_current_group = rolling_group
+
+            oled_display.root_group = oled_current_group
+            oled_display.refresh()
+
+            text_width = rolling_label.bounding_box[2]
+
+        except Exception as e:
+            files.log_item(
+                "OLED rolling-text setup error: "
+                + repr(e)
+            )
+
+            return
+
+    for x_position in range(
+        OLED_WIDTH,
+        -text_width,
+        -1
+    ):
+        with display_lock:
+            try:
+                rolling_label.x = x_position
+                oled_display.refresh()
+
+            except Exception as e:
+                files.log_item(
+                    "OLED rolling-text error: "
+                    + repr(e)
+                )
+
+                return
+
+        time.sleep(0.01)
+
+
+################################################################################
+# OLED startup
+################################################################################
+
+load_all_fonts()
+
+if initialize_display():
+    show_bmp(
+        0,
+        "fonts/logo.bmp"
+    )
+
+    time.sleep(1)
 
 ################################################################################
 # Wi-Fi RSSI measurement
@@ -1690,6 +2407,27 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_local_ip(post_data_obj)
         elif self.path == "/get-wifi-signal":
             self.get_wifi_signal_post(post_data_obj)
+        elif self.path == "/get-startup-string":
+            self.get_startup_string_post(post_data_obj)
+        elif self.path == "/update-startup-string":
+            self.update_startup_string_post(post_data_obj)
+
+    def update_startup_string_post(self, rq_d):
+        global cfg
+        if rq_d["action"] in ("save"):
+            cfg["startup_string"] = rq_d["text"]
+            files.write_json_file(code_folder + "cfg.json", cfg)
+            set_hdw(cfg["startup_string"])
+            response = cfg["startup_string"]
+            self.wfile.write(response.encode('utf-8'))  
+
+    def get_startup_string_post(self, rq_d):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        response = cfg["startup_string"]
+        self.wfile.write(response.encode('utf-8'))        
+
 
     def get_wifi_signal_post(self, rq_d):
         self.send_response(200)
@@ -1703,7 +2441,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         exit_set_hdw = False
         # Replace "default_value" with whatever you want
         url = rq_d.get("ip", "")
-        response = set_hdw(rq_d["an"], 3, url)
+        response = set_hdw(rq_d["an"], url)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -1933,7 +2671,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def lights_lifx_post(self, rq_d):
         global exit_set_hdw
         exit_set_hdw = False
-        set_hdw(rq_d["an"], 1, "")
+        set_hdw(rq_d["an"])
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
@@ -1947,7 +2685,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         exit_set_hdw = False
         command = "LX0_" + str(rgb_value[0]) + "_" + \
             str(rgb_value[1]) + "_" + str(rgb_value[2])
-        set_hdw(command, 0, "")
+        set_hdw(command)
         response = rgb_value
         self.send_response(200)
         self.send_header("Content-type", "application/json")
@@ -1961,7 +2699,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         if rq_d["item"] == "lifx":
             command = "LX0_" + str(rq_d["r"]) + "_" + \
                 str(rq_d["g"]) + "_" + str(rq_d["b"])
-            set_hdw(command, 0, "")
+            set_hdw(command)
             if current_scene != "":
                 cfg["scene_changes"][current_scene] = [
                     rq_d["r"], rq_d["g"], rq_d["b"]]
@@ -2025,43 +2763,6 @@ if web:
 
 gc_col("web server")
 
-
-################################################################################
-# Command queue
-
-command_queue = deque()
-
-
-def add_command(command, to_start=False):
-    """Add a command to the queue. If to_start is True, add to the front."""
-    if to_start:
-        command_queue.appendleft(command)  # Add to the front
-        print(f"Command added to the start: {command}")
-    else:
-        command_queue.append(command)  # Add to the end
-        print(f"Command added to the end: {command}")
-
-
-def process_commands():
-    """Process commands in a FIFO order from the front."""
-    while command_queue:
-        command = command_queue.popleft()  # Retrieve from the front
-        print(f"Processing command: {command}")
-
-
-def clear_command_queue():
-    """Clear all commands from the queue."""
-    command_queue.clear()
-    print("Command queue cleared.")
-
-
-def stop_all_commands():
-    """Stop all commands and clear the queue."""
-    global exit_set_hdw
-    clear_command_queue()
-    exit_set_hdw = True
-    mix.stop()
-    print("Processing stopped and command queue cleared.")
 
 
 ################################################################################
@@ -2153,7 +2854,6 @@ def ch_vol(action):
     if v < 1:
         v = 1
     cfg["volume"] = str(v)
-    cfg["volume_pot"] = False
     upd_vol(.05)
     files.write_json_file(code_folder + "cfg.json", cfg)
     play_mix(code_folder + "mvc/volume.wav")
@@ -2383,7 +3083,7 @@ def rnd_prob(random_value):
     return False
 
 
-def set_hdw(cmd, dur, url):
+def set_hdw(cmd, url = ""):
     global sp, br, exit_set_hdw
 
     if cmd == "":
@@ -2435,6 +3135,38 @@ def set_hdw(cmd, dur, url):
             # ZJ = Joke
             elif seg[:2] == 'ZJ':
                 get_random_joke()
+
+            # DT_NN_LLL_MMM_CC_BB = Display text
+            elif seg[:2] == "DT":
+                segs_split = seg.split("_")
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                line2 = segs_split[3]
+                cycles = int(segs_split[4])
+                background = bool(int(segs_split[5]))
+                display_text(
+                    screen_number,
+                    line1,
+                    line2,
+                    cycles,
+                    background
+                )
+
+            # RT_NN_LLL_FF_BB = Rolling text
+            elif seg[:2] == "RT":
+                segs_split = seg.split("_")
+                screen_number = int(segs_split[1])
+                line1 = segs_split[2]
+                font_size = int(segs_split[3])
+                background = bool(int(segs_split[4]))
+
+                roll_text(
+                    screen_number,
+                    line1,
+                    font_size,
+                    background
+                )
+
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
                 seg_split = split_string(seg)
@@ -2622,7 +3354,6 @@ class BseSt(Ste):
         switch_state = utilities.switch_state_four_switches(
             l_sw, r_sw, three_sw, four_sw, time.sleep, 3.0, override_switch_state)
         if switch_state == "left":
-            add_command(cfg["option_selected"])
             time.sleep(.5)
         elif switch_state == "right":
             mch.go_to('main_menu')
@@ -2798,14 +3529,23 @@ is_gtts_reachable = check_gtts_status()
 
 if (web):
     spk_web()
+    avg_rssi = measure_signal_strength()
+    dbm_string = str(-int(avg_rssi))+"dbm"
+    display_text(0, cfg["HOST_NAME"] + ".local", dbm_string, 0, 0)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
 gc_col("animations started.")
 
+startup_command_sent = False
 
 def run_state_machine():
+    global startup_command_sent
     while True:
+        if not startup_command_sent:
+            time.sleep(2)
+            startup_command_sent = True
+            set_hdw(cfg["startup_string"])
         st_mch.upd()
         time.sleep(0.05)
 
@@ -2861,8 +3601,6 @@ if connect_to_base_3:
 
 
 def stop_program():
-    stop_all_commands()
-
     if web:
         print("Unregistering mDNS service...")
         zeroconf.unregister_service(mdns_info)
