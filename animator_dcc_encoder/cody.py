@@ -970,13 +970,14 @@ def read_command():
 
                     if matches:
                         print(matches)
-
                         for match in matches:
                             if elapsed_t > 5:
+                                display_text(0,match["url"],match["command"],0,False,15,15)
                                 set_hdw(
                                     match["command"],
                                     match["url"]
                                 )
+                                
 
             elif cmd_type == "func_update":
                 _, addr, function_string = command
@@ -1029,10 +1030,12 @@ def read_command():
 
                         for match in matches:
                             if elapsed_t > 5:
+                                display_text(0,match["url"],match["command"],0,False,15,15)
                                 set_hdw(
                                     match["command"],
                                     match["url"]
                                 )
+                                
 
             elif cmd_type == "cv_ack":
                 print(

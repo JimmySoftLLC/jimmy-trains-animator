@@ -867,13 +867,14 @@ def read_command():
                 for matched_command, animator_command_rows in matched_commands:
                     if matched_command:
                         exit_set_hdw = False
-
+                        display_text(0, "API", matched_command[1], 0, False, 15, 15)
                         set_hdw(
                             matched_command[1],
                             animator_command_rows[
                                 "animatorIpAddress"
                             ]
                         )
+
             else:
                 print("No matches found")
 
@@ -934,6 +935,8 @@ def send_command(
         button,
         value
     )
+
+    display_text(0, str(device) + " " + str(address), str(button) + " " +  str(value), 0, False, 15, 15)
 
     byte1 = int(word1, 2).to_bytes(1, "big")
     byte2 = int(word2, 2).to_bytes(1, "big")
