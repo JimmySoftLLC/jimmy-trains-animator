@@ -1065,7 +1065,7 @@ def get_address(binary_word2, binary_word3, number_bits):
 
 def get_button(command_object):
     global cfg
-    speak_commands = cfg["tmcc_voice_enabled"]
+    speak_commands = cfg["voice_enabled"]
     command_object["value"] = 0
     command_object["button"] = ""
     if command_object["device"] == "accessory" or command_object["device"] == "engine":
@@ -2636,9 +2636,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def set_tmcc_voice_enabled(self, rq_d):
         global cfg
-        cfg["tmcc_voice_enabled"] = rq_d["enabled"]
+        cfg["voice_enabled"] = rq_d["enabled"]
         files.write_json_file(code_folder + "cfg.json", cfg)
-        response = cfg["tmcc_voice_enabled"]
+        response = cfg["voice_enabled"]
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
@@ -2661,7 +2661,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def get_tmcc_voice_enabled(self, rq_d):
-        response = cfg["tmcc_voice_enabled"]
+        response = cfg["voice_enabled"]
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()

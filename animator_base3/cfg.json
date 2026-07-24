@@ -2,7 +2,7 @@
   "voice_enabled": false,
   "volume": "100",
   "serve_webpage": true,
-  "HOST_NAME": "animator-dcc",
+  "HOST_NAME": "animator-base3",
   "lifx_enabled": false,
   "scene_changes": {
     "noon": [255, 255, 255],
