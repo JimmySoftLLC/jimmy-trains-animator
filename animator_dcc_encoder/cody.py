@@ -944,39 +944,24 @@ def read_command():
                 old_speed = loco.speed
                 old_direction = loco.direction
 
-                if loco.update_speed(
-                    speed,
-                    direction,
-                    speed_steps
-                ):
+                if loco.update_speed(speed,direction,speed_steps):
                     matches = []
 
                     if (
                         old_speed != speed or
                         old_direction != direction
                     ):
-                        matches += find_matches(
-                            loco,
-                            animator_configs,
-                            "speed"
-                        )
+                        matches += find_matches(loco,animator_configs,"speed")
 
                     if is_new_loco:
-                        matches += find_matches(
-                            loco,
-                            animator_configs,
-                            "speed"
-                        )
+                        matches += find_matches(loco,animator_configs,"speed")
 
                     if matches:
                         print(matches)
                         for match in matches:
                             if elapsed_t > 5:
                                 display_text(0,match["url"],match["command"],0,False,15,15)
-                                set_hdw(
-                                    match["command"],
-                                    match["url"]
-                                )
+                                set_hdw(match["command"],match["url"])
                                 
 
             elif cmd_type == "func_update":
@@ -1002,28 +987,16 @@ def read_command():
                     for func_num, state in function_matches:
                         func_num = int(func_num)
 
-                        if (
-                            0 <= func_num <= 28 and
-                            loco.functions[func_num] !=
-                            old_functions[func_num]
-                        ):
+                        if (0 <= func_num <= 28 and loco.functions[func_num] !=old_functions[func_num]):
                             changed_item = f"f{func_num}"
 
-                            matches += find_matches(
-                                loco,
-                                animator_configs,
-                                changed_item
-                            )
+                            matches += find_matches(loco,animator_configs,changed_item)
 
                     if is_new_loco:
                         for func_num in range(29):
                             changed_item = f"f{func_num}"
 
-                            matches += find_matches(
-                                loco,
-                                animator_configs,
-                                changed_item
-                            )
+                            matches += find_matches(loco,animator_configs,changed_item)
 
                     if matches:
                         print(matches)
@@ -1031,19 +1004,11 @@ def read_command():
                         for match in matches:
                             if elapsed_t > 5:
                                 display_text(0,match["url"],match["command"],0,False,15,15)
-                                set_hdw(
-                                    match["command"],
-                                    match["url"]
-                                )
+                                set_hdw(match["command"],match["url"])
                                 
 
             elif cmd_type == "cv_ack":
-                print(
-                    "CV Ack at "
-                    + time.strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                )
+                print("CV Ack at " + time.strftime("%Y-%m-%d %H:%M:%S"))
 
         except (
             serial.SerialException,
@@ -1492,7 +1457,7 @@ def draw_text(display_n, line1, line2, line1_size=20, line2_size=30, justify="ce
         files.log_item("OLED text creation error: " + repr(e))
 
 
-def display_text(display_n, line1, line2, blink_times, background_on=False, line1_size=20, line2_size=30):
+def display_text(display_n, line1, line2, blink_times, background_on=False, line1_size=20, line2_size=30, justify="center", margin=0):
     """
     Display two lines and optionally blink the background.
     """
@@ -1500,7 +1465,7 @@ def display_text(display_n, line1, line2, blink_times, background_on=False, line
     if not display_enabled:
         return
 
-    draw_text(display_n, line1, line2, line1_size, line2_size)
+    draw_text(display_n, line1, line2, line1_size, line2_size, justify, margin)
 
     blink_times = int(blink_times)
 
@@ -2642,13 +2607,7 @@ def set_hdw(cmd, url = ""):
                 line2 = segs_split[3]
                 cycles = int(segs_split[4])
                 background = bool(int(segs_split[5]))
-                display_text(
-                    screen_number,
-                    line1,
-                    line2,
-                    cycles,
-                    background
-                )
+                display_text(screen_number, line1, line2, cycles, background)
 
             # RT_NN_LLL_FF_BB = Rolling text
             elif seg[:2] == "RT":
@@ -2658,12 +2617,7 @@ def set_hdw(cmd, url = ""):
                 font_size = int(segs_split[3])
                 background = bool(int(segs_split[4]))
 
-                roll_text(
-                    screen_number,
-                    line1,
-                    font_size,
-                    background
-                )
+                roll_text(screen_number, line1, font_size, background)
 
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             if seg[:3] == 'API':
