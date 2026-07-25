@@ -1110,25 +1110,13 @@ displayio.release_displays()
 try:
     import i2cdisplaybus
 
-    def create_i2c_display_bus(
-        i2c_bus,
-        address
-    ):
-        return i2cdisplaybus.I2CDisplayBus(
-            i2c_bus,
-            device_address=address
-        )
+    def create_i2c_display_bus(i2c_bus, address):
+        return i2cdisplaybus.I2CDisplayBus(i2c_bus, device_address=address)
 
 except ImportError:
 
-    def create_i2c_display_bus(
-        i2c_bus,
-        address
-    ):
-        return displayio.I2CDisplay(
-            i2c_bus,
-            device_address=address
-        )
+    def create_i2c_display_bus(i2c_bus, address):
+        return displayio.I2CDisplay(i2c_bus, device_address=address)
 
 
 ################################################################################
@@ -1136,12 +1124,7 @@ except ImportError:
 ################################################################################
 
 def font_filename(font_size):
-    return (
-        code_folder
-        + "fonts/Arial-BoldMT-"
-        + str(font_size)
-        + ".bdf"
-    )
+    return code_folder + "fonts/Arial-BoldMT-" + str(font_size) + ".bdf"
 
 
 def load_all_fonts():
@@ -1153,35 +1136,17 @@ def load_all_fonts():
 
     fonts = {}
 
-    for font_size in (
-        10,
-        15,
-        20,
-        25,
-        30
-    ):
-        filename = font_filename(
-            font_size
-        )
+    for font_size in (10, 15, 20, 25, 30):
+        filename = font_filename(font_size)
 
         if not os.path.exists(filename):
-            raise FileNotFoundError(
-                "OLED font file not found: "
-                + filename
-            )
+            raise FileNotFoundError("OLED font file not found: " + filename)
 
-        files.log_item(
-            "Loading OLED font size "
-            + str(font_size)
-        )
+        files.log_item("Loading OLED font size " + str(font_size))
 
-        fonts[font_size] = bitmap_font.load_font(
-            filename
-        )
+        fonts[font_size] = bitmap_font.load_font(filename)
 
-    files.log_item(
-        "All OLED fonts loaded"
-    )
+    files.log_item("All OLED fonts loaded")
 
 
 def get_font(font_size):
@@ -1192,11 +1157,7 @@ def get_font(font_size):
     font_size = int(font_size)
 
     if font_size not in fonts:
-        files.log_item(
-            "Unsupported OLED font size "
-            + str(font_size)
-            + "; using size 20"
-        )
+        files.log_item("Unsupported OLED font size " + str(font_size) + "; using size 20")
 
         return fonts[20]
 
@@ -1225,10 +1186,7 @@ def initialize_display():
             return True
 
         try:
-            oled_i2c = busio.I2C(
-                scl=board.SCL,
-                sda=board.SDA
-            )
+            oled_i2c = busio.I2C(scl=board.SCL, sda=board.SDA)
 
             while not oled_i2c.try_lock():
                 time.sleep(0.001)
@@ -1239,42 +1197,26 @@ def initialize_display():
                 oled_i2c.unlock()
 
             if OLED_ADDRESS not in addresses:
-                files.log_item(
-                    "OLED not found at I2C address 0x3C"
-                )
+                files.log_item("OLED not found at I2C address 0x3C")
 
                 display_enabled = False
+
                 return False
 
-            oled_display_bus = create_i2c_display_bus(
-                oled_i2c,
-                OLED_ADDRESS
-            )
+            oled_display_bus = create_i2c_display_bus(oled_i2c, OLED_ADDRESS)
 
-            oled_display = (
-                adafruit_displayio_ssd1306.SSD1306(
-                    oled_display_bus,
-                    width=OLED_WIDTH,
-                    height=OLED_HEIGHT,
-                    auto_refresh=False
-                )
-            )
+            oled_display = adafruit_displayio_ssd1306.SSD1306(oled_display_bus, width=OLED_WIDTH, height=OLED_HEIGHT, auto_refresh=False)
 
             display_enabled = True
 
-            files.log_item(
-                "OLED initialized at address 0x3C"
-            )
+            files.log_item("OLED initialized at address 0x3C")
 
             return True
 
         except Exception as e:
             display_enabled = False
 
-            files.log_item(
-                "OLED initialization error: "
-                + repr(e)
-            )
+            files.log_item("OLED initialization error: " + repr(e))
 
             return False
 
@@ -1310,10 +1252,7 @@ def select_display(display_n=0):
 # Group replacement
 ################################################################################
 
-def set_display_group(
-    display_n,
-    group
-):
+def set_display_group(display_n, group):
     """
     Replace everything currently displayed with a newly created group.
 
@@ -1350,10 +1289,7 @@ def set_display_group(
             return True
 
         except Exception as e:
-            files.log_item(
-                "OLED group update error: "
-                + repr(e)
-            )
+            files.log_item("OLED group update error: " + repr(e))
 
             return False
 
@@ -1390,27 +1326,15 @@ def clear_display(display_n=0):
             oled_display.refresh()
 
         except Exception as e:
-            files.log_item(
-                "OLED clear error: "
-                + repr(e)
-            )
+            files.log_item("OLED clear error: " + repr(e))
 
 
 ################################################################################
 # Text label creation
 ################################################################################
 
-
-def justified_text(
-    font,
-    text,
-    y_position,
-    justify="center",
-    margin=0
-):
+def justified_text(font, text, y_position, justify="center", margin=0):
     """
-    Create a new Label with left, center, or right justification.
-
     justify:
         "left"
         "center"
@@ -1422,11 +1346,7 @@ def justified_text(
     else:
         text = str(text)
 
-    text_label = label.Label(
-        font,
-        text=text,
-        color=0xFFFFFF
-    )
+    text_label = label.Label(font, text=text, color=0xFFFFFF)
 
     text_width = text_label.bounding_box[2]
 
@@ -1436,7 +1356,7 @@ def justified_text(
     elif justify == "right":
         text_label.x = OLED_WIDTH - text_width - margin
 
-    else:   # center
+    else:
         text_label.x = (OLED_WIDTH - text_width) // 2
 
     text_label.y = y_position
@@ -1448,10 +1368,7 @@ def justified_text(
 # Invert display
 ################################################################################
 
-def invert_display(
-    display_n,
-    invert_on
-):
+def invert_display(display_n, invert_on):
     """
     Invert or restore the single OLED.
 
@@ -1467,31 +1384,19 @@ def invert_display(
 
         try:
             if invert_on:
-                oled_display_bus.send(
-                    0xA7,
-                    b""
-                )
+                oled_display_bus.send(0xA7, b"")
             else:
-                oled_display_bus.send(
-                    0xA6,
-                    b""
-                )
+                oled_display_bus.send(0xA6, b"")
 
         except Exception as e:
-            files.log_item(
-                "OLED invert error: "
-                + repr(e)
-            )
+            files.log_item("OLED invert error: " + repr(e))
 
 
 ################################################################################
 # Bitmap display
 ################################################################################
 
-def show_bmp(
-    display_n,
-    filename
-):
+def show_bmp(display_n, filename):
     """
     Display a bitmap on the single OLED.
 
@@ -1506,16 +1411,10 @@ def show_bmp(
         return
 
     if not os.path.isabs(filename):
-        filename = (
-            code_folder
-            + filename
-        )
+        filename = code_folder + filename
 
     if not os.path.exists(filename):
-        files.log_item(
-            "OLED bitmap not found: "
-            + filename
-        )
+        files.log_item("OLED bitmap not found: " + filename)
 
         return
 
@@ -1524,28 +1423,16 @@ def show_bmp(
             return
 
         try:
-            bitmap = displayio.OnDiskBitmap(
-                filename
-            )
+            bitmap = displayio.OnDiskBitmap(filename)
 
-            tile_grid = displayio.TileGrid(
-                bitmap,
-                pixel_shader=bitmap.pixel_shader
-            )
+            tile_grid = displayio.TileGrid(bitmap, pixel_shader=bitmap.pixel_shader)
 
-            tile_grid.x = (
-                OLED_WIDTH - bitmap.width
-            ) // 2
-
-            tile_grid.y = (
-                OLED_HEIGHT - bitmap.height
-            ) // 2
+            tile_grid.x = (OLED_WIDTH - bitmap.width) // 2
+            tile_grid.y = (OLED_HEIGHT - bitmap.height) // 2
 
             bitmap_group = displayio.Group()
 
-            bitmap_group.append(
-                tile_grid
-            )
+            bitmap_group.append(tile_grid)
 
             # Remove the old group first.
             oled_display.root_group = None
@@ -1556,26 +1443,18 @@ def show_bmp(
             oled_current_group = bitmap_group
 
             oled_display.root_group = oled_current_group
+
             oled_display.refresh()
 
         except Exception as e:
-            files.log_item(
-                "OLED bitmap error: "
-                + repr(e)
-            )
+            files.log_item("OLED bitmap error: " + repr(e))
 
 
 ################################################################################
 # Two-line text
 ################################################################################
 
-def draw_text(
-    display_n,
-    line1,
-    line2,
-    line1_size=20,
-    line2_size=30
-):
+def draw_text(display_n, line1, line2, line1_size=20, line2_size=30, justify="center", margin=0):
     """
     Draw two lines using newly created Group and Label objects.
 
@@ -1596,49 +1475,24 @@ def draw_text(
         else:
             line2 = str(line2)
 
-        line1_label = justified_text(
-            get_font(line1_size),
-            line1,
-            12
-        )
+        line1_font = get_font(line1_size)
+        line1_label = justified_text(line1_font, line1, 12, justify, margin)
 
-        line2_label = justified_text(
-            get_font(line2_size),
-            line2,
-            40
-        )
+        line2_font = get_font(line2_size)
+        line2_label = justified_text(line2_font, line2, 40, justify, margin)
 
         text_group = displayio.Group()
 
-        text_group.append(
-            line1_label
-        )
+        text_group.append(line1_label)
+        text_group.append(line2_label)
 
-        text_group.append(
-            line2_label
-        )
-
-        set_display_group(
-            display_n,
-            text_group
-        )
+        set_display_group(display_n, text_group)
 
     except Exception as e:
-        files.log_item(
-            "OLED text creation error: "
-            + repr(e)
-        )
+        files.log_item("OLED text creation error: " + repr(e))
 
 
-def display_text(
-    display_n,
-    line1,
-    line2,
-    blink_times,
-    background_on=False,
-    line1_size=20,
-    line2_size=30
-):
+def display_text(display_n, line1, line2, blink_times, background_on=False, line1_size=20, line2_size=30):
     """
     Display two lines and optionally blink the background.
     """
@@ -1646,47 +1500,27 @@ def display_text(
     if not display_enabled:
         return
 
-    draw_text(
-        display_n,
-        line1,
-        line2,
-        line1_size,
-        line2_size
-    )
+    draw_text(display_n, line1, line2, line1_size, line2_size)
 
-    for _ in range(
-        int(blink_times)
-    ):
-        invert_display(
-            display_n,
-            True
-        )
+    blink_times = int(blink_times)
+
+    for _ in range(blink_times):
+        invert_display(display_n, True)
 
         time.sleep(1)
 
-        invert_display(
-            display_n,
-            False
-        )
+        invert_display(display_n, False)
 
         time.sleep(1)
 
-    invert_display(
-        display_n,
-        background_on
-    )
+    invert_display(display_n, background_on)
 
 
 ################################################################################
 # Rolling text
 ################################################################################
 
-def roll_text(
-    display_n,
-    line1,
-    font_size,
-    background_on=False
-):
+def roll_text(display_n, line1, font_size, background_on=False):
     """
     Scroll one line across the single OLED.
 
@@ -1705,30 +1539,23 @@ def roll_text(
     else:
         line1 = str(line1)
 
-    invert_display(
-        display_n,
-        background_on
-    )
+    invert_display(display_n, background_on)
 
     with display_lock:
         if not initialize_display():
             return
 
         try:
-            rolling_label = label.Label(
-                get_font(font_size),
-                text=line1,
-                color=0xFFFFFF
-            )
+            rolling_font = get_font(font_size)
+
+            rolling_label = label.Label(rolling_font, text=line1, color=0xFFFFFF)
 
             rolling_label.x = OLED_WIDTH
             rolling_label.y = 32
 
             rolling_group = displayio.Group()
 
-            rolling_group.append(
-                rolling_label
-            )
+            rolling_group.append(rolling_label)
 
             oled_display.root_group = None
 
@@ -1737,38 +1564,29 @@ def roll_text(
             oled_current_group = rolling_group
 
             oled_display.root_group = oled_current_group
+
             oled_display.refresh()
 
             text_width = rolling_label.bounding_box[2]
 
         except Exception as e:
-            files.log_item(
-                "OLED rolling-text setup error: "
-                + repr(e)
-            )
+            files.log_item("OLED rolling-text setup error: " + repr(e))
 
             return
 
-    for x_position in range(
-        OLED_WIDTH,
-        -text_width,
-        -1
-    ):
+    for x_position in range(OLED_WIDTH, -text_width, -1):
         with display_lock:
             try:
                 rolling_label.x = x_position
+
                 oled_display.refresh()
 
             except Exception as e:
-                files.log_item(
-                    "OLED rolling-text error: "
-                    + repr(e)
-                )
+                files.log_item("OLED rolling-text error: " + repr(e))
 
                 return
 
         time.sleep(0.01)
-
 
 ################################################################################
 # OLED startup
