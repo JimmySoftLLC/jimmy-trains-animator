@@ -1734,13 +1734,20 @@ def clear_display(display_n=0):
 # Text label creation
 ################################################################################
 
-def center_text(
+def justified_text(
     font,
     text,
-    y_position
+    y_position,
+    justify="center",
+    margin=0
 ):
     """
-    Create a new Label and horizontally center it.
+    Create a new Label with left, center, or right justification.
+
+    justify:
+        "left"
+        "center"
+        "right"
     """
 
     if text is None:
@@ -1756,9 +1763,14 @@ def center_text(
 
     text_width = text_label.bounding_box[2]
 
-    text_label.x = (
-        OLED_WIDTH - text_width
-    ) // 2
+    if justify == "left":
+        text_label.x = margin
+
+    elif justify == "right":
+        text_label.x = OLED_WIDTH - text_width - margin
+
+    else:   # center
+        text_label.x = (OLED_WIDTH - text_width) // 2
 
     text_label.y = y_position
 
@@ -1917,13 +1929,13 @@ def draw_text(
         else:
             line2 = str(line2)
 
-        line1_label = center_text(
+        line1_label = justified_text(
             get_font(line1_size),
             line1,
             12
         )
 
-        line2_label = center_text(
+        line2_label = justified_text(
             get_font(line2_size),
             line2,
             40
