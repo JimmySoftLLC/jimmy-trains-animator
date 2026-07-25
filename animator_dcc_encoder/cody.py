@@ -961,7 +961,7 @@ def read_command():
                         for match in matches:
                             if elapsed_t > 5:
                                 set_hdw(match["command"],match["url"])
-                                display_text(0,match["url"],match["command"],0,False,15,15)
+                                display_text(0,match["url"],match["command"],0,False,15,15,justify_line2="right")
                                 
 
             elif cmd_type == "func_update":
@@ -1004,7 +1004,7 @@ def read_command():
                         for match in matches:
                             if elapsed_t > 5:
                                 set_hdw(match["command"],match["url"])
-                                display_text(0,match["url"],match["command"],0,False,15,15)
+                                display_text(0,match["url"],match["command"],0,False,15,15,justify_line2="right")
                                 
 
             elif cmd_type == "cv_ack":
@@ -1419,7 +1419,7 @@ def show_bmp(display_n, filename):
 # Two-line text
 ################################################################################
 
-def draw_text(display_n, line1, line2, line1_size=20, line2_size=30, justify="center", margin=0):
+def draw_text(display_n, line1, line2, line1_size=20, line2_size=30, justify_line1="center", margin_line1=0, justify_line2="center", margin_line2=0):
     """
     Draw two lines using newly created Group and Label objects.
 
@@ -1441,10 +1441,10 @@ def draw_text(display_n, line1, line2, line1_size=20, line2_size=30, justify="ce
             line2 = str(line2)
 
         line1_font = get_font(line1_size)
-        line1_label = justified_text(line1_font, line1, 12, justify, margin)
+        line1_label = justified_text(line1_font, line1, 12, justify_line1, margin_line1)
 
         line2_font = get_font(line2_size)
-        line2_label = justified_text(line2_font, line2, 40, justify, margin)
+        line2_label = justified_text(line2_font, line2, 40, justify_line2, margin_line2)
 
         text_group = displayio.Group()
 
@@ -1457,7 +1457,7 @@ def draw_text(display_n, line1, line2, line1_size=20, line2_size=30, justify="ce
         files.log_item("OLED text creation error: " + repr(e))
 
 
-def display_text(display_n, line1, line2, blink_times, background_on=False, line1_size=20, line2_size=30, justify="center", margin=0):
+def display_text(display_n, line1, line2, blink_times, background_on=False, line1_size=20, line2_size=30, justify_line1="center", margin_line1=0, justify_line2="center", margin_line2=0):
     """
     Display two lines and optionally blink the background.
     """
@@ -1465,7 +1465,7 @@ def display_text(display_n, line1, line2, blink_times, background_on=False, line
     if not display_enabled:
         return
 
-    draw_text(display_n, line1, line2, line1_size, line2_size, justify, margin)
+    draw_text(display_n, line1, line2, line1_size, line2_size, justify_line1, margin_line1, justify_line2, margin_line2)
 
     blink_times = int(blink_times)
 
