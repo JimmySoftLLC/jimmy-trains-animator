@@ -960,8 +960,8 @@ def read_command():
                         print(matches)
                         for match in matches:
                             if elapsed_t > 5:
-                                display_text(0,match["url"],match["command"],0,False,15,15)
                                 set_hdw(match["command"],match["url"])
+                                display_text(0,match["url"],match["command"],0,False,15,15)
                                 
 
             elif cmd_type == "func_update":
@@ -1003,8 +1003,8 @@ def read_command():
 
                         for match in matches:
                             if elapsed_t > 5:
-                                display_text(0,match["url"],match["command"],0,False,15,15)
                                 set_hdw(match["command"],match["url"])
+                                display_text(0,match["url"],match["command"],0,False,15,15)
                                 
 
             elif cmd_type == "cv_ack":
@@ -2984,7 +2984,7 @@ if (web):
     spk_web()
     avg_rssi = measure_signal_strength()
     dbm_string = str(-int(avg_rssi))+"dbm"
-    display_text(0, cfg["HOST_NAME"] + ".local", dbm_string, 0, 0)
+    display_text(0, cfg["HOST_NAME"] + ".local", dbm_string, 0, False)
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
