@@ -2,6 +2,10 @@ import storage
 import board
 import digitalio
 
+# Setup the switches prototype
+top_sw = board.GP20
+bot_sw = board.GP11
+
 # Setup the switches
 top_sw = board.GP11
 bot_sw = board.GP15

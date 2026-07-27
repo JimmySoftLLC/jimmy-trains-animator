@@ -66,6 +66,9 @@ gc_col("Imports gc, files")
 # pin setups prototype
 
 # prototype unit
+l_sw_pin = board.GP20
+r_sw_pin = board.GP11
+
 neo_branch_pin = board.GP6
 led_indicator_pin = board.GP14
 
