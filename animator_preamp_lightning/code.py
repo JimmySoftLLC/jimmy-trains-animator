@@ -80,15 +80,15 @@ aud_mute.direction = digitalio.Direction.OUTPUT
 aud_mute.value = True
 
 # Setup the switches
-l_sw = digitalio.DigitalInOut(board.GP6)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
+l_sw_io = digitalio.DigitalInOut(board.GP6)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw_io)
 
-r_sw = digitalio.DigitalInOut(board.GP7)
-r_sw.direction = digitalio.Direction.INPUT
-r_sw.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw)
+r_sw_io = digitalio.DigitalInOut(board.GP7)
+r_sw_io.direction = digitalio.Direction.INPUT
+r_sw_io.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw_io)
 
 # setup i2s audio
 i2s_bclk = board.GP18   # BCLK on MAX98357A
@@ -1027,16 +1027,27 @@ def stp_a_0():
     while mix.voice[0].playing:
         pass
 
+def check_for_animation_cancel():
+    global exit_set_hdw_async
+
+    # The raw value only tells us a press may have occurred.
+    # exit_early() uses the traditional switch_state routine to confirm it.
+    if not l_sw_io.value:
+        exit_early()
+
+    return exit_set_hdw_async
 
 def exit_early(wait_time=3.0):
     global cont_run, ovrde_sw_st, is_running_an, exit_set_hdw_async
-    sw = utilities.switch_state(
-        l_sw, r_sw, time.sleep, wait_time, ovrde_sw_st)
+
+    sw = utilities.switch_state(l_sw, r_sw, time.sleep, wait_time, ovrde_sw_st)
+
     if sw == "left" and cfg["can_cancel"]:
         exit_set_hdw_async = True
         mix.voice[0].stop()
         l_sw.update()
         r_sw.update()
+
     if sw == "left_held":
         exit_set_hdw_async = True
         mix.voice[0].stop()
@@ -1137,124 +1148,180 @@ def convert_to_new_format(my_object, my_type):
     flash_times = my_object.get("flashTime", [])
     return [f"{time}|{my_type}" for time in flash_times]
 
+async def wait_for_left_button_release():
+    """
+    Prevent the button press that cancelled the animation
+    from immediately starting another animation.
+    """
+
+    while not l_sw_io.value:
+        l_sw.update()
+        r_sw.update()
+        await asyncio.sleep(0.05)
+
+    # Allow the switch and debouncer to settle.
+    await asyncio.sleep(0.15)
+
+    l_sw.update()
+    r_sw.update()
+
+    # Clear any remaining debounced edge.
+    l_sw.update()
+    r_sw.update()
 
 async def an_async(fn):
-    global is_running_an, cfg
+    global is_running_an
+    global cfg
+    global exit_set_hdw_async
+
     print("Filename: " + fn)
+
     cur = fn
     is_running_an = True
+    was_cancelled = False
+
     try:
         if fn == "random built in":
             hi = len(snd_o) - 1
             cur = snd_o[random.randint(0, hi)]
+
         elif fn == "random my":
             hi = len(cus_o) - 1
             cur = cus_o[random.randint(0, hi)]
+
         elif fn == "random all":
             hi = len(all_o) - 1
             cur = all_o[random.randint(0, hi)]
+
         if ts_mode:
             an_ts(cur)
+
         else:
             if "customers_owned_music_" in cur:
                 await an_ls(cur, "ZRAND")
+
             elif cur == "alien lightshow":
                 await an_ls(cur, "ZRAND")
+
             elif cur == "inspiring cinematic ambient lightshow":
                 await an_ls(cur, "ZRAND")
+
             elif cur == "fireworks":
                 await an_ls(cur, "FRWK")
+
             else:
-                if ts_mode == True:
-                    await an_lightning(cur)
-                else:
-                    await an_ls(cur, "LIGHT")
+                await an_ls(cur, "LIGHT")
+
+        was_cancelled = exit_set_hdw_async
+
     except Exception as e:
         files.log_item(e)
         await no_trk()
         cfg["option_selected"] = "random built in"
-        return
-    is_running_an = False
-    cfg = files.read_json_file("/sd/cfg.json")
-    gc_col("Animation complete.")
 
+    finally:
+        mix.voice[0].stop()
+
+        led.fill((0, 0, 0))
+        led.show()
+
+        if exit_set_hdw_async or was_cancelled:
+            await wait_for_left_button_release()
+
+        # Do not let the base state run until the cancelling
+        # button has been released and settled.
+        exit_set_hdw_async = False
+        is_running_an = False
+
+        cfg = files.read_json_file("/sd/cfg.json")
+        gc_col("Animation complete.")
 
 async def an_ls(fn, my_type):
-    global ts_mode, cont_run, ovrde_sw_st
+    global ts_mode, cont_run, ovrde_sw_st, exit_set_hdw_async
 
     cust_f = "customers_owned_music_" in fn
 
     if cust_f:
         fn = fn.replace("customers_owned_music_", "")
+
         try:
-            flsh_t = files.read_json_file(
-                "/sd/customers_owned_music/" + fn + ".json")
+            flsh_t = files.read_json_file("/sd/customers_owned_music/" + fn + ".json")
+
         except Exception as e:
             files.log_item(e)
             ply_a_1("/sd/mvc/no_timestamp_file_found.wav")
+
             while True:
                 sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+
                 if sw == "left":
                     ts_mode = False
                     return
+
                 elif sw == "right":
                     ts_mode = True
                     ply_a_1("/sd/mvc/timestamp_instructions.wav")
                     return
-                await upd_vol_async(.1)
+
+                await upd_vol_async(0.1)
+
     else:
-        flsh_t = files.read_json_file(
-            "/sd/snds/" + fn + ".json")
-        
-    ft_last = flsh_t[len(flsh_t)-1].split("|")
+        flsh_t = files.read_json_file("/sd/snds/" + fn + ".json")
+
+    ft_last = flsh_t[len(flsh_t) - 1].split("|")
     tm_last = float(ft_last[0]) + 1
+
     flsh_t.append(str(tm_last) + "|")
 
     if cust_f:
-        w0 = audiocore.WaveFile(
-            open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
+        w0 = audiocore.WaveFile(open("/sd/customers_owned_music/" + fn + ".wav", "rb"))
     else:
-        w0 = audiocore.WaveFile(
-            open("/sd/snds/" + fn + ".wav", "rb"))
+        w0 = audiocore.WaveFile(open("/sd/snds/" + fn + ".wav", "rb"))
+
     mix.voice[0].play(w0, loop=False)
 
     srt_t = time.monotonic()
-
     flsh_i = 0
 
     while True:
-        t_past = time.monotonic()-srt_t
+        t_past = time.monotonic() - srt_t
 
-        if flsh_i < len(flsh_t)-1:
+        if flsh_i < len(flsh_t) - 1:
             ft1 = flsh_t[flsh_i].split("|")
-            ft2 = flsh_t[flsh_i+1].split("|")
+            ft2 = flsh_t[flsh_i + 1].split("|")
             dur = float(ft2[0]) - float(ft1[0]) - 0.25
         else:
             dur = 0.25
+
         if dur < 0:
             dur = 0
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item("time elapsed: " + str(t_past) +
-                           " Timestamp: " + ft1[0])
-            if (len(ft1) == 1 or ft1[1] == ""):
+
+        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t) - 1:
+            files.log_item("time elapsed: " + str(t_past) + " Timestamp: " + ft1[0])
+
+            if len(ft1) == 1 or ft1[1] == "":
                 pos = random.randint(60, 120)
                 lgt = random.randint(60, 120)
+
                 result = await set_hdw_async("L0" + str(lgt) + ",S0" + str(pos))
-                if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
-                    break
             else:
                 result = await set_hdw_async(ft1[1], dur)
-                if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
-                    break
+
+            if result == "STOP":
+                await asyncio.sleep(0)
+                return
+
             flsh_i += 1
-        exit_early()
+
+        if check_for_animation_cancel():
+            return
+
         if not mix.voice[0].playing:
             led.fill((0, 0, 0))
             led.show()
             return
-        await upd_vol_async(.1)
+
+        await upd_vol_async(0.1)
 
 def add_command_to_ts(command):
     global ts_mode, t_s, t_elsp
@@ -1309,7 +1376,7 @@ def an_ts(fn):
 
 
 async def an_lightning(file_name):
-    global cont_run
+    global cont_run,exit_set_hdw_async
 
     ftd = files.read_json_file(
         "/sd/snds/" + file_name + ".json")
@@ -1338,6 +1405,10 @@ async def an_lightning(file_name):
             ltng()
         if ftl == fti:
             fti = 0
+        if l_sw_io.value == False:
+            exit_set_hdw_async = True
+        if exit_set_hdw_async:
+            return
         exit_early()
         if not mix.voice[0].playing:
             break
@@ -1404,50 +1475,68 @@ async def set_hdw_async(input_string, dur=0):
 
 
 async def random_effect(il, ih, d):
-    if exit_set_hdw_async:
+    global exit_set_hdw_async
+
+    if check_for_animation_cancel():
         return
+
     i = random.randint(il, ih)
+
     if i == 1:
-        await rbow(.005, d)
+        await rbow(0.005, d)
+
     elif i == 2:
         multi_color()
         await asyncio.sleep(d)
+
     elif i == 3:
         await fire(d)
 
 
 async def rbow(spd, dur):
     global exit_set_hdw_async
+
     st = time.monotonic()
-    te = time.monotonic()-st
+    te = time.monotonic() - st
+
     while te < dur:
         for j in range(0, 255, 1):
-            if exit_set_hdw_async:
+            if check_for_animation_cancel():
                 return
+
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
+
             led.show()
             time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
-        for j in reversed(range(0, 255, 1)):
-            if exit_set_hdw_async:
-                return
-            for i in range(n_px):
-                pixel_index = (i * 256 // n_px) + j
-                led[i] = colorwheel(pixel_index & 255)
-            led.show()
-            time.sleep(spd)
-            te = time.monotonic()-st
+
+            te = time.monotonic() - st
+
             if te > dur:
                 return
 
+        for j in reversed(range(0, 255, 1)):
+            if check_for_animation_cancel():
+                return
+
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+
+            led.show()
+            time.sleep(spd)
+
+            te = time.monotonic() - st
+
+            if te > dur:
+                return
 
 async def fire(dur):
     global exit_set_hdw_async
+
     st = time.monotonic()
+
     led.brightness = 1.0
 
     bari = []
@@ -1471,22 +1560,26 @@ async def fire(dur):
     g = random.randint(0, 255)
     b = random.randint(0, 255)
 
-    # Flicker, based on our initial RGB values
     while True:
         for i in bari:
-            if exit_set_hdw_async:
+            if check_for_animation_cancel():
                 return
+
             f = random.randint(0, 110)
-            r1 = bnd(r-f, 0, 255)
-            g1 = bnd(g-f, 0, 255)
-            b1 = bnd(b-f, 0, 255)
+
+            r1 = bnd(r - f, 0, 255)
+            g1 = bnd(g - f, 0, 255)
+            b1 = bnd(b - f, 0, 255)
+
             led[i] = (r1, g1, b1)
             led.show()
+
         upd_vol(random.uniform(0.05, 0.1))
-        te = time.monotonic()-st
+
+        te = time.monotonic() - st
+
         if te > dur:
             return
-
 
 def fwrk_sprd(arr):
     c = len(arr) // 2
@@ -1518,27 +1611,27 @@ def r_w_b():
         b = 255
     return r, g, b
 
-
 async def frwk(duration):
     global exit_set_hdw_async
+
     st = time.monotonic()
+
     led.brightness = 1.0
 
-    
     bar_f = []
 
     if len(bars) > 0:
-        # choose which bar or more to fire
         for i, arr in enumerate(bars):
-            if i == random.randint(0, (len(bars)-1)):
+            if i == random.randint(0, len(bars) - 1):
                 bar_f.append(i)
-        # always fire at least one bar
+
         if len(bar_f) == 0:
-            i == random.randint(0, (len(bars)-1))
+            i = random.randint(0, len(bars) - 1)
             bar_f.append(i)
 
     for bolt in bolts:
         r, g, b = r_w_b()
+
         for bolt_index in bolt:
             led[bolt_index] = (r, g, b)
 
@@ -1547,37 +1640,50 @@ async def frwk(duration):
             r, g, b = r_w_b()
             led[nbolt_index] = (r, g, b)
 
-    # Burst from center
     ext = False
+
     while not ext:
         for i in bar_f:
             r, g, b = r_w_b()
             fs = fwrk_sprd(bars[i])
+
             for left, right in fs:
+                if check_for_animation_cancel():
+                    return
+
                 rst_bar()
+
                 led[left] = (r, g, b)
                 led[right] = (r, g, b)
+
                 led.show()
                 upd_vol(0.1)
-                te = time.monotonic()-st
+
+                te = time.monotonic() - st
+
                 if te > duration:
                     rst_bar()
                     led.show()
                     break
+
             led.show()
-            te = time.monotonic()-st
+
+            te = time.monotonic() - st
+
             if te > duration:
                 rst_bar()
                 led.show()
                 break
-        te = time.monotonic()-st
-        if exit_set_hdw_async:
+
+        if check_for_animation_cancel():
             return
+
+        te = time.monotonic() - st
+
         if te > duration:
             rst_bar()
             led.show()
             return
-
 
 def multi_color():
     for i in range(0, n_px):
@@ -1608,34 +1714,37 @@ def col_it(col, var):
     h = int(bnd(col+var/100*col, 0, 255))
     return random.randint(l, h)
 
-
 def ltng():
     global exit_set_hdw_async
-    # choose which bolt or no bolt to fire
+
     bolt = []
-    b_i = random.randint(-1, (len(bolts)-1))
+
+    b_i = random.randint(-1, len(bolts) - 1)
+
     if b_i != -1:
         for i, arr in enumerate(bolts):
             if i == b_i:
                 bolt.extend(arr)
 
-    # choose which nbolt or no bolt to fire
     nbolt = []
-    b_i = random.randint(-1, (len(nbolts)-1))
+
+    b_i = random.randint(-1, len(nbolts) - 1)
+
     if b_i != -1:
         for i, arr in enumerate(nbolts):
             if i == b_i:
                 nbolt.extend(arr)
 
-    # choose which bar one to all to fire
     bar = []
+
     for i, arr in enumerate(bars):
-        if i == random.randint(0, (len(bars)-1)):
+        if i == random.randint(0, len(bars) - 1):
             bar.extend(arr)
 
-    # choose which nood or no nood to fire
     nood = []
-    nood_i = random.randint(-1, (len(noods)-1))
+
+    nood_i = random.randint(-1, len(noods) - 1)
+
     if nood_i != -1:
         for i, arr in enumerate(noods):
             if i == nood_i:
@@ -1643,12 +1752,12 @@ def ltng():
 
     if len(nood) > 0 and len(bolt) > 0:
         b_i = random.randint(0, 1)
+
         if b_i == 0:
             bolt = []
         else:
             nood = []
 
-    # number of flashes
     f_num = random.randint(5, 10)
 
     if len(nood) > 0:
@@ -1656,57 +1765,64 @@ def ltng():
             l1 = 1
             l2 = 0
             l3 = 0
+
         if nood[1] == 2:
             l1 = random.randint(0, 1)
             l2 = 0
             l3 = random.randint(0, 1)
+
         if nood[1] == 3:
             l1 = random.randint(0, 1)
             l2 = random.randint(0, 1)
             l3 = random.randint(0, 1)
 
     for i in range(0, f_num):
-        if exit_set_hdw_async:
+        if check_for_animation_cancel():
             return
-        # set bolt base color
+
         bolt_r = col_it(cfg["bolts"]["r"], cfg["v"]["r1"])
         bolt_g = col_it(cfg["bolts"]["g"], cfg["v"]["g1"])
         bolt_b = col_it(cfg["bolts"]["b"], cfg["v"]["b1"])
 
-        # set bar base color
         bar_r = col_it(cfg["bars"]["r"], cfg["v"]["r2"])
         bar_g = col_it(cfg["bars"]["g"], cfg["v"]["g2"])
         bar_b = col_it(cfg["bars"]["b"], cfg["v"]["b2"])
 
         led.brightness = random.randint(150, 255) / 255
+
         for _ in range(4):
-            if exit_set_hdw_async:
+            if check_for_animation_cancel():
                 return
+
             if len(nood) > 0:
-                led[nood[0]] = (
-                    (255)*l2, (255)*l1, (255)*l3)
+                led[nood[0]] = (255 * l2, 255 * l1, 255 * l3)
+
             for j in bolt:
-                led[j] = (
-                    bolt_r, bolt_g, bolt_b)
+                led[j] = (bolt_r, bolt_g, bolt_b)
+
             for j in nbolt:
-                led[j] = (
-                    bolt_r, bolt_g, bolt_b)
+                led[j] = (bolt_r, bolt_g, bolt_b)
+
             for j in bar:
-                led[j] = (
-                    bar_r, bar_g, bar_b)
+                led[j] = (bar_r, bar_g, bar_b)
+
             led.show()
-            dly = random.randint(0, 75)  # flash offset range - ms
-            dly = dly/1000
+
+            dly = random.randint(0, 75)
+            dly = dly / 1000
+
             time.sleep(dly)
+
             led.fill((0, 0, 0))
             led.show()
 
-        dly = random.randint(1, 50)  # time to next flash range - ms
-        dly = dly/1000
+        dly = random.randint(1, 50)
+        dly = dly / 1000
+
         time.sleep(dly)
+
         led.fill((0, 0, 0))
         led.show()
-
 
 def bnd(cd, l, u):
     if (cd < l):
@@ -1782,23 +1898,48 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run, is_running_an
-        if not is_running_an:
-            sw = utilities.switch_state(
-                l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-            if sw == "left_held":
-                if cont_run:
-                    cont_run = False
-                    stp_all_cmds()
-                    ply_a_1("/sd/mvc/continuous_mode_deactivated.wav")
-                else:
-                    cont_run = True
-                    ply_a_1("/sd/mvc/continuous_mode_activated.wav")
-            elif sw == "left" or cont_run:
-                if not is_running_an:
-                    add_cmd("AN_" + cfg["option_selected"])
-            elif sw == "right":
-                mch.go_to('main_menu')
+        global cont_run
+        global is_running_an
+        global exit_set_hdw_async
+
+        if is_running_an:
+            return
+
+        sw = utilities.switch_state(
+            l_sw,
+            r_sw,
+            time.sleep,
+            3.0,
+            ovrde_sw_st
+        )
+
+        if sw == "left_held":
+            if cont_run:
+                cont_run = False
+                stp_all_cmds()
+                ply_a_1(
+                    "/sd/mvc/continuous_mode_deactivated.wav"
+                )
+            else:
+                cont_run = True
+                ply_a_1(
+                    "/sd/mvc/continuous_mode_activated.wav"
+                )
+
+        elif sw == "left" or cont_run:
+            # A physical left-button start is only accepted
+            # after the button has actually been released.
+            if sw == "left" and not l_sw_io.value:
+                return
+
+            if not is_running_an:
+                exit_set_hdw_async = False
+                add_cmd(
+                    "AN_" + cfg["option_selected"]
+                )
+
+        elif sw == "right":
+            mch.go_to('main_menu')
 
 
 class Main(Ste):
