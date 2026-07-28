@@ -80,79 +80,6 @@ def rst():
 gc_col("Imports gc, files")
 
 ################################################################################
-# pin setups prototype
-
-# prototype unit
-# l_sw_pin = board.GP20
-# r_sw_pin = board.GP11
-
-# neo_branch_pin = board.GP6
-# indicator_pin = board.GP14
-
-# s_1_pin = board.GP8
-# s_3_pin = board.GP12
-# s_4_pin = board.GP13
-# s_5_pin = board.GP21
-# s_6_pin = board.GP22
-
-# red_pin = board.GP3
-# green_pin = board.GP2
-# blue_pin = board.GP4
-
-# DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
-# MP_CMD_WAIT = .1
-# IDLE_STATE = False
-# MAXLEN = 1200
-# CENTERS = [0, 0.18, 0.26, 0.34, 0.42]
-# TOLERANCE = .04
-# CAPTURE_S = 0.02
-# WIN = 5
-# MIN_MAJ = 5
-# CONFIRM_COUNT = 3
-# ALPHA = 0.20
-
-# animator pico board
-a_in_pin = board.A2
-aud_en_pin = board.GP21
-
-bclk = board.GP18  # BCLK on MAX98357A i2s audio
-lrc = board.GP19  # LRC on MAX98357A i2s audio
-din = board.GP20  # DIN on MAX98357A i2s audio
-
-sck = board.GP2  # serial clock sdCard
-si = board.GP3  # MOSI sdCard
-so = board.GP4  # MISO sdCard
-cs = board.GP5  # chip select sdCard
-
-l_sw_pin = board.GP11
-r_sw_pin = board.GP15
-
-neo_branch_pin = board.GP16
-indicator_pin = board.GP17
-
-s_1_pin = board.GP10
-s_3_pin = board.GP12
-s_4_pin = board.GP13
-s_5_pin = board.GP14
-s_6_pin = board.GP22
-
-red_pin = board.GP6
-green_pin = board.GP8
-blue_pin = board.GP9
-
-DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
-MP_CMD_WAIT = .2
-IDLE_STATE = False
-MAXLEN = 1200
-CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255] #0, 0.078, 0.156, 0.235, 0.313
-TOLERANCE = 8/255
-CAPTURE_S = 0.002
-WIN = 5
-MIN_MAJ = 5
-CONFIRM_COUNT = 3
-ALPHA = 0.20
-
-################################################################################
 # config variables
 
 animations_folder = "/animations/"
@@ -203,6 +130,91 @@ override_switch_state = {}
 override_switch_state["switch_value"] = ""
 
 ################################################################################
+# pin setups
+
+
+# pico prototype unit ############################
+# a_in_pin = board.A2
+# aud_en_pin = board.A1
+
+# bclk = board.GP18  # BCLK on MAX98357A i2s audio
+# lrc = board.GP19  # LRC on MAX98357A i2s audio
+# din = board.GP21  # DIN on MAX98357A i2s audio
+
+# cfg["use_sd_card"] = False
+
+# l_sw_pin = board.GP20
+# r_sw_pin = board.GP11
+
+# neo_branch_pin = board.GP6
+# indicator_pin = board.GP14
+
+# s_1_pin = board.GP10
+# s_3_pin = board.GP12
+# s_4_pin = board.GP13
+# s_5_pin = board.GP15
+# s_6_pin = board.GP16
+
+# red_pin = board.GP3
+# green_pin = board.GP2
+# blue_pin = board.GP4
+
+# DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
+# MP_CMD_WAIT = .1
+# IDLE_STATE = False
+# MAXLEN = 1200
+# CENTERS = [0, 0.18, 0.26, 0.34, 0.42]
+# TOLERANCE = .04
+# CAPTURE_S = 0.02
+# WIN = 5
+# MIN_MAJ = 5
+# CONFIRM_COUNT = 3
+# ALPHA = 0.20
+
+# animator pico board ##############################
+a_in_pin = board.A2
+aud_en_pin = board.GP21
+
+bclk = board.GP18  # BCLK on MAX98357A i2s audio
+lrc = board.GP19  # LRC on MAX98357A i2s audio
+din = board.GP20  # DIN on MAX98357A i2s audio
+
+sck = board.GP2  # serial clock sdCard
+si = board.GP3  # MOSI sdCard
+so = board.GP4  # MISO sdCard
+cs = board.GP5  # chip select sdCard
+
+l_sw_pin = board.GP11
+r_sw_pin = board.GP15
+
+neo_branch_pin = board.GP16
+indicator_pin = board.GP17
+
+s_1_pin = board.GP10
+s_3_pin = board.GP12
+s_4_pin = board.GP13
+s_5_pin = board.GP14
+s_6_pin = board.GP22
+
+red_pin = board.GP6
+green_pin = board.GP8
+blue_pin = board.GP9
+
+DECODING_PINS = {"R": red_pin, "G": green_pin, "B": blue_pin}
+MP_CMD_WAIT = .2
+IDLE_STATE = False
+MAXLEN = 1200
+CENTERS = [0/255, 20/255, 40/255, 60/255, 80/255] #0, 0.078, 0.156, 0.235, 0.313
+TOLERANCE = 8/255
+CAPTURE_S = 0.002
+WIN = 5
+MIN_MAJ = 5
+CONFIRM_COUNT = 3
+ALPHA = 0.20
+
+
+
+################################################################################
 # Setup hardware
 
 # Setup for vol
@@ -228,8 +240,6 @@ aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
 aud_en.value = True
 
-spi = busio.SPI(sck, si, so)
-
 # Setup the mixer to play wav files
 mix = audiomixer.Mixer(voice_count=2, sample_rate=22050, channel_count=2,
                        bits_per_sample=16, samples_signed=True, buffer_size=8192)
@@ -239,6 +249,7 @@ mix.voice[0].level = .2
 mix.voice[1].level = .2
 
 if cfg["use_sd_card"]:
+    spi = busio.SPI(sck, si, so)
     try:
         sd = sdcardio.SDCard(spi, cs)
         vfs = storage.VfsFat(sd)
@@ -1265,13 +1276,13 @@ def set_neo_relay_to(mod_n, ind, off_on):
 
 
 def set_neo_pico_to(mod_n, char):
-    neo_relay_ids = get_neo_pico_ids()
+    neo_pico_ids = get_neo_pico_ids()
     r, g, b = char_to_pwm_rgb(char)
     if mod_n == 0:
-        for i in neo_relay_ids:
+        for i in neo_pico_ids:
             neo_branch[i] = (r, g, b)
     else:
-        neo_branch[neo_relay_ids[mod_n-1]] = (r, g, b)
+        neo_branch[neo_pico_ids[mod_n-1]] = (r, g, b)
     neo_branch.show()
 
 
@@ -2582,12 +2593,13 @@ async def set_hdw_async(cmd, dur=0):
 
                 if len(segs_split[1]) == 1:
                     set_neo_pico_to(mod_n, segs_split[1])
+                    time.sleep(MP_CMD_WAIT)
                 else:
                     set_neo_pico_to(mod_n, "?")
-                    await asyncio.sleep(MP_CMD_WAIT)
+                    time.sleep(MP_CMD_WAIT)
 
                     set_neo_pico_to(mod_n, "[")
-                    await asyncio.sleep(MP_CMD_WAIT)
+                    time.sleep(MP_CMD_WAIT)
 
                     prev = None
                     is_first = True
@@ -2595,17 +2607,17 @@ async def set_hdw_async(cmd, dur=0):
                     for v in segs_split[1]:
                         if v == prev and not is_first:
                             set_neo_pico_to(mod_n, "?")
-                            await asyncio.sleep(MP_CMD_WAIT)
+                            time.sleep(MP_CMD_WAIT)
 
                         is_first = False
 
                         set_neo_pico_to(mod_n, v)
-                        await asyncio.sleep(MP_CMD_WAIT)
+                        time.sleep(MP_CMD_WAIT)
 
                         prev = v
 
                     set_neo_pico_to(mod_n, "]")
-                    await asyncio.sleep(MP_CMD_WAIT)
+                    time.sleep(MP_CMD_WAIT)
 
                     end_time = time.monotonic()
                     print("Neo pico command time: ", end_time-start_time)
