@@ -1374,45 +1374,46 @@ def an_ts(fn):
     ply_a_1("/sd/mvc/timestamp_mode_off.wav")
     ply_a_1("/sd/mvc/animations_are_now_active.wav")
 
-
 async def an_lightning(file_name):
-    global cont_run,exit_set_hdw_async
+    global cont_run, exit_set_hdw_async
 
-    ftd = files.read_json_file(
-        "/sd/snds/" + file_name + ".json")
-
+    ftd = files.read_json_file("/sd/snds/" + file_name + ".json")
     ft = ftd["flashTime"]
 
     ftl = len(ft)
     fti = 0
 
-    w0 = audiocore.WaveFile(
-        open("/sd/snds/" + file_name + ".wav", "rb"))
+    w0 = audiocore.WaveFile(open("/sd/snds/" + file_name + ".wav", "rb"))
+
     mix.voice[0].play(w0, loop=False)
+
     st = time.monotonic()
 
     while True:
-        upd_vol(.1)
+        upd_vol(0.1)
+
         await asyncio.sleep(0)
-        te = time.monotonic()-st
-        # amount of time before you here thunder 0.5 is synched with the lightning 2 is 1.5 seconds later
-        rt = ft[fti] - random.uniform(.5, 1)
+
+        te = time.monotonic() - st
+
+        # Amount of time before thunder is heard.
+        rt = ft[fti] - random.uniform(0.5, 1)
+
         if te > rt:
-            exit_early()
-            print("TE: " + str(te) + " TS: " +
-                  str(rt) + " Dif: " + str(te-rt))
+            print("TE: " + str(te) + " TS: " + str(rt) + " Dif: " + str(te - rt))
+
             fti += 1
+
             ltng()
+
         if ftl == fti:
             fti = 0
-        if l_sw_io.value == False:
-            exit_set_hdw_async = True
-        if exit_set_hdw_async:
-            return
-        exit_early()
-        if not mix.voice[0].playing:
-            break
 
+        if check_for_animation_cancel():
+            return
+
+        if not mix.voice[0].playing:
+            return
 
 async def set_hdw_async(input_string, dur=0):
     global exit_set_hdw_async, cfg, cfg_backup
@@ -1500,8 +1501,11 @@ async def rbow(spd, dur):
     te = time.monotonic() - st
 
     while te < dur:
+        if check_for_animation_cancel():
+            return
+
         for j in range(0, 255, 1):
-            if check_for_animation_cancel():
+            if exit_set_hdw_async:
                 return
 
             for i in range(n_px):
@@ -1515,9 +1519,12 @@ async def rbow(spd, dur):
 
             if te > dur:
                 return
+
+        if check_for_animation_cancel():
+            return
 
         for j in reversed(range(0, 255, 1)):
-            if check_for_animation_cancel():
+            if exit_set_hdw_async:
                 return
 
             for i in range(n_px):
@@ -1531,7 +1538,7 @@ async def rbow(spd, dur):
 
             if te > dur:
                 return
-
+            
 async def fire(dur):
     global exit_set_hdw_async
 
@@ -1560,9 +1567,13 @@ async def fire(dur):
     g = random.randint(0, 255)
     b = random.randint(0, 255)
 
+    # Flicker based on the initial RGB values.
     while True:
+        if check_for_animation_cancel():
+            return
+
         for i in bari:
-            if check_for_animation_cancel():
+            if exit_set_hdw_async:
                 return
 
             f = random.randint(0, 110)
@@ -1580,7 +1591,7 @@ async def fire(dur):
 
         if te > dur:
             return
-
+        
 def fwrk_sprd(arr):
     c = len(arr) // 2
     for i in range(c):
@@ -1621,34 +1632,37 @@ async def frwk(duration):
     bar_f = []
 
     if len(bars) > 0:
+        # Choose one or more bars to fire.
         for i, arr in enumerate(bars):
             if i == random.randint(0, len(bars) - 1):
                 bar_f.append(i)
 
+        # Always fire at least one bar.
         if len(bar_f) == 0:
             i = random.randint(0, len(bars) - 1)
             bar_f.append(i)
 
+    # Set the bolt colors.
     for bolt in bolts:
         r, g, b = r_w_b()
 
         for bolt_index in bolt:
             led[bolt_index] = (r, g, b)
 
+    # Set the nbolt colors.
     for nbolt in nbolts:
         for nbolt_index in nbolt:
             r, g, b = r_w_b()
             led[nbolt_index] = (r, g, b)
 
-    ext = False
-
-    while not ext:
+    # Burst outward from the center of each selected bar.
+    while True:
         for i in bar_f:
             r, g, b = r_w_b()
             fs = fwrk_sprd(bars[i])
 
             for left, right in fs:
-                if check_for_animation_cancel():
+                if exit_set_hdw_async:
                     return
 
                 rst_bar()
@@ -1657,6 +1671,7 @@ async def frwk(duration):
                 led[right] = (r, g, b)
 
                 led.show()
+
                 upd_vol(0.1)
 
                 te = time.monotonic() - st
@@ -1664,18 +1679,13 @@ async def frwk(duration):
                 if te > duration:
                     rst_bar()
                     led.show()
-                    break
+                    return
 
             led.show()
 
-            te = time.monotonic() - st
-
-            if te > duration:
-                rst_bar()
-                led.show()
-                break
-
         if check_for_animation_cancel():
+            rst_bar()
+            led.show()
             return
 
         te = time.monotonic() - st
@@ -1684,7 +1694,6 @@ async def frwk(duration):
             rst_bar()
             led.show()
             return
-
 def multi_color():
     for i in range(0, n_px):
         r = random.randint(128, 255)
@@ -1717,6 +1726,7 @@ def col_it(col, var):
 def ltng():
     global exit_set_hdw_async
 
+    # Choose which bolt or no bolt to fire.
     bolt = []
 
     b_i = random.randint(-1, len(bolts) - 1)
@@ -1726,6 +1736,7 @@ def ltng():
             if i == b_i:
                 bolt.extend(arr)
 
+    # Choose which nbolt or no nbolt to fire.
     nbolt = []
 
     b_i = random.randint(-1, len(nbolts) - 1)
@@ -1735,12 +1746,14 @@ def ltng():
             if i == b_i:
                 nbolt.extend(arr)
 
+    # Choose which bar to fire.
     bar = []
 
     for i, arr in enumerate(bars):
         if i == random.randint(0, len(bars) - 1):
             bar.extend(arr)
 
+    # Choose which nood or no nood to fire.
     nood = []
 
     nood_i = random.randint(-1, len(noods) - 1)
@@ -1758,6 +1771,7 @@ def ltng():
         else:
             nood = []
 
+    # Number of flashes.
     f_num = random.randint(5, 10)
 
     if len(nood) > 0:
@@ -1777,13 +1791,15 @@ def ltng():
             l3 = random.randint(0, 1)
 
     for i in range(0, f_num):
-        if check_for_animation_cancel():
+        if exit_set_hdw_async:
             return
 
+        # Set bolt base color.
         bolt_r = col_it(cfg["bolts"]["r"], cfg["v"]["r1"])
         bolt_g = col_it(cfg["bolts"]["g"], cfg["v"]["g1"])
         bolt_b = col_it(cfg["bolts"]["b"], cfg["v"]["b1"])
 
+        # Set bar base color.
         bar_r = col_it(cfg["bars"]["r"], cfg["v"]["r2"])
         bar_g = col_it(cfg["bars"]["g"], cfg["v"]["g2"])
         bar_b = col_it(cfg["bars"]["b"], cfg["v"]["b2"])
@@ -1791,7 +1807,7 @@ def ltng():
         led.brightness = random.randint(150, 255) / 255
 
         for _ in range(4):
-            if check_for_animation_cancel():
+            if exit_set_hdw_async:
                 return
 
             if len(nood) > 0:
