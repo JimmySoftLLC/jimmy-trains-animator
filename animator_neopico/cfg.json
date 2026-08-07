@@ -32,5 +32,36 @@
       { "sda": "GP0", "scl": "GP1", "address": "3C" },
       { "sda": "GP0", "scl": "GP1", "address": "3D" }
     ]
+  },
+  "nprot": {
+    "option_selected": "s",
+    "hardware_string": "trigger,trigger",
+    "HOST_NAME": "nprot",
+    "startup_string": "DT_0_Rotating flag_$120_0_0",
+    "serve_webpage": true,
+    "CHAR_TO_HDW": { ">": "TR2_0.5", "<": "TR1_0.5", "^": "UPDLS" },
+    "use_sd_card": false,
+    "cont_mode": false,
+    "light_string": "neo-6,neo-6,neopico-1",
+    "volume": "50",
+    "volume_pot": false,
+    "i2c": [{ "sda": "GP0", "scl": "GP1", "address": "3C" }]
+  },
+  "npout": {
+    "option_selected": "s",
+    "hardware_string": "trigger,trigger,trigger,trigger",
+    "HOST_NAME": "npout",
+    "startup_string": "DT_0_Outhouse_$350_0_0, DT_1_Fly fisherman_$120/140_0_0",
+    "serve_webpage": true,
+    "CHAR_TO_HDW": { ">": "TR2_0.5", "<": "TR1_0.5", "^": "UPDLS" },
+    "use_sd_card": false,
+    "cont_mode": false,
+    "light_string": "neopico-1",
+    "volume": "50",
+    "volume_pot": false,
+    "i2c": [
+      { "sda": "GP0", "scl": "GP1", "address": "3C" },
+      { "address": "3D", "scl": "GP1", "sda": "GP0" }
+    ]
   }
 }
