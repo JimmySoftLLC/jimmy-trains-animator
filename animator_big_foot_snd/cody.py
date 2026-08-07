@@ -80,6 +80,7 @@ servo_arr = [servo_1, servo_2]
 # Setup the switches
 top_sw = board.GP6
 bot_sw = board.GP7
+trig_sw = board.GP12
 
 top_sw = digitalio.DigitalInOut(top_sw)
 top_sw.direction = digitalio.Direction.INPUT
@@ -90,6 +91,11 @@ bot_sw = digitalio.DigitalInOut(bot_sw)
 bot_sw.direction = digitalio.Direction.INPUT
 bot_sw.pull = digitalio.Pull.UP
 bot_sw = Debouncer(bot_sw)
+
+trig_sw = digitalio.DigitalInOut(trig_sw)
+trig_sw.direction = digitalio.Direction.INPUT
+trig_sw.pull = digitalio.Pull.UP
+trig_sw = Debouncer(trig_sw)
 
 ################################################################################
 # misc methods
@@ -310,7 +316,7 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global rand_timer, srt_t
-        sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
+        sw = utilities.switch_state_trigger(top_sw, bot_sw, trig_sw, time.sleep, 3.0)
         if sw == "left_held":
             rand_timer = 0
             if cfg["timer"] == True:
@@ -335,6 +341,9 @@ class BseSt(Ste):
                     print("Next time : " + next_time)
                 srt_t = time.monotonic()
         elif sw == "left":
+            an()
+            print("an done")
+        elif sw == "trigger":
             an()
             print("an done")
         elif sw == "right":
@@ -415,7 +424,7 @@ class ServoSet(Ste):
         bot_sw.update()
         done = False
         while not done:
-            sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 3.0)
+            sw = utilities.switch_state_trigger(top_sw, bot_sw, trig_sw, time.sleep, 3.0)
             if sw == "left":
                 ch_servo(0, current_setting, "raise")
             elif sw == "right":
