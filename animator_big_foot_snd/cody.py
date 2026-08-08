@@ -346,6 +346,9 @@ class BseSt(Ste):
                     next_time = "{:.1f}".format(rand_timer)
                     print("Next time : " + next_time)
                 srt_t = time.monotonic()
+            if sw == "trigger":
+                an()
+                print("an done")
         elif sw == "left":
             an()
             print("an done")
@@ -402,7 +405,6 @@ class Main(Ste):
 
 
 class ServoSet(Ste):
-    global current_setting, cfg
 
     def __init__(self):
         self.i = 0
@@ -416,8 +418,10 @@ class ServoSet(Ste):
         files.write_json_file("cfg.json", cfg)
         show_mode(4, True)
         if current_setting == "hidden":
+            cfg[current_setting] = cfg["hidden_default"]
             move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
         else:
+            cfg[current_setting] = cfg["visible_default"]
             move_at_speed(0, cfg["visible"], cfg["walking_speed"])
         files.log_item("Set " + current_setting + " servo settings")
         Ste.enter(self, mch)
@@ -426,6 +430,7 @@ class ServoSet(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
+        global current_setting
         top_sw.update()
         bot_sw.update()
         done = False
@@ -434,13 +439,21 @@ class ServoSet(Ste):
             if sw == "left":
                 ch_servo(0, current_setting, "raise")
             elif sw == "right":
-                ch_servo(0, current_setting, "lower")
-            elif sw == "right_held":
+                ch_servo(0, current_setting, "lower")     
+            elif sw == "right_held" and current_setting == "hidden":
                 files.write_json_file("cfg.json", cfg)
                 move_at_speed(1, cfg["forward"], cfg["turning_speed"])
                 move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
                 done = True
-                mch.go_to("base_state")
+                current_setting = "visible"
+                mch.go_to("servo_settings")
+                pass
+            elif sw == "right_held" and current_setting == "visible":
+                files.write_json_file("cfg.json", cfg)
+                move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+                move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
+                done = True
+                mch.go_to("base_state")    
             pass
 
 
@@ -454,13 +467,9 @@ st_mch.add(ServoSet())
 
 
 sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 6.0)
-if sw == "left_held":  # top switch hidden settings
+if sw == "left_held":  # left switch visible settings
     current_setting = "hidden"
-    cfg[current_setting] = cfg["hidden_default"]
-    st_mch.go_to("servo_settings")
-elif sw == "right_held":  # bottom switch visible settings
-    current_setting = "visible"
-    cfg[current_setting] = cfg["visible_default"]
+
     st_mch.go_to("servo_settings")
 else:  # initialize figures in correct position
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
