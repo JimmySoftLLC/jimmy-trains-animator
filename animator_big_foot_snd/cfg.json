@@ -13,6 +13,9 @@
   "swagger_speed": 0.015,
   "backward": 15,
   "forward": 165,
+  "volume_pot": false,
+  "volume": "50",
+  "use_sd_card": false,
   "main_menu": [
     "exit_this_menu",
     "timer_0_seconds",

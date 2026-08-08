@@ -30,6 +30,10 @@ import digitalio
 import random
 import gc
 import asyncio
+import audiobusio
+import audiomixer
+import audiocore
+import audiomp3
 
 from analogio import AnalogIn
 from adafruit_motor import servo
@@ -44,17 +48,32 @@ def gc_col(collection_point):
         " Available memory: {} bytes".format(start_mem)
     )
 
+def f_exists(filename):
+    try:
+        os.stat(filename)
+        return True
+    except OSError:
+        return False
 
-def reset_pico():
+def rst():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
     microcontroller.reset()
 
 
 ################################################################################
-# get the calibration settings from the picos flash memory
-cfg = files.read_json_file("/cfg.json")
+# config variables
 
-main_m = cfg["main_menu"]
+mvc_folder = "mvc/"
+b_folder = "bigfoot_snds/"
+
+FOLDER_MAP = {
+    'B': b_folder,
+    'M': mvc_folder
+}
+
+media_index = {'M': 0, 'B': 0}
+
+cfg = files.read_json_file("/cfg.json")
 
 rand_timer = 0
 srt_t = time.monotonic()
@@ -62,7 +81,7 @@ current_setting = "hidden"
 async_running = False
 
 ################################################################################
-# Setup pins
+# pin setups
 
 servo_1_pin = board.GP10
 servo_2_pin = board.GP11
@@ -70,6 +89,15 @@ servo_2_pin = board.GP11
 top_sw_pin = board.GP6
 bot_sw_pin = board.GP7
 trig_sw_pin = board.GP12
+
+bclk = board.GP18  # BCLK on MAX98357A i2s audio
+lrc = board.GP19  # LRC on MAX98357A i2s audio
+din = board.GP20  # DIN on MAX98357A i2s audio
+
+aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
+
+a_in_pin = board.A0
+aud_en_pin = board.GP22
 
 ################################################################################
 # Setup hardware
@@ -102,6 +130,22 @@ trig_sw = digitalio.DigitalInOut(trig_sw_pin)
 trig_sw.direction = digitalio.Direction.INPUT
 trig_sw.pull = digitalio.Pull.UP
 trig_sw = Debouncer(trig_sw)
+
+# Setup for vol
+a_in = AnalogIn(a_in_pin)
+
+# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+aud_en = digitalio.DigitalInOut(aud_en_pin)
+aud_en.direction = digitalio.Direction.OUTPUT
+aud_en.value = False
+
+# Setup the mixer to play wav files
+mix = audiomixer.Mixer(voice_count=2, sample_rate=22050, channel_count=2,
+                       bits_per_sample=16, samples_signed=True, buffer_size=8192)
+aud.play(mix)
+
+mix.voice[0].level = .2
+mix.voice[1].level = .2
 
 ################################################################################
 # misc methods
@@ -142,6 +186,203 @@ def m_servo(n, p):
         p = 180
     servo_arr[n].angle = p
     prev_pos_arr[n] = p
+
+################################################################################
+# Dialog and sound play methods
+
+def upd_vol(s):
+    if cfg["volume_pot"]:
+        volume = a_in.value / 65536
+        mix.voice[0].level = volume
+        mix.voice[1].level = volume
+        time.sleep(s)
+    else:
+        try:
+            volume = int(cfg["volume"]) / 100
+        except Exception as e:
+            files.log_item(e)
+            volume = .5
+        if volume < 0 or volume > 1:
+            volume = .5
+        mix.voice[0].level = volume
+        mix.voice[1].level = volume
+        time.sleep(s)
+
+
+async def upd_vol_async(s):
+    if cfg["volume_pot"]:
+        v = a_in.value / 65536
+        mix.voice[0].level = v
+        mix.voice[1].level = v
+        await asyncio.sleep(s)
+    else:
+        try:
+            v = int(cfg["volume"]) / 100
+        except Exception as e:
+            files.log_item(e)
+            v = .5
+        if v < 0 or v > 1:
+            v = .5
+        mix.voice[0].level = v
+        mix.voice[1].level = v
+        await asyncio.sleep(s)
+
+
+def ch_vol(action):
+    v = int(cfg["volume"])
+    if "volume" in action:
+        v = action.split("volume")
+        v = int(v[1])
+    if action == "lower1":
+        v -= 1
+    elif action == "raise1":
+        v += 1
+    elif action == "lower":
+        if v <= 10:
+            v -= 1
+        else:
+            v -= 10
+    elif action == "raise":
+        if v < 10:
+            v += 1
+        else:
+            v += 10
+    if v > 100:
+        v = 100
+    if v < 1:
+        v = 1
+    cfg["volume"] = str(v)
+    cfg["volume_pot"] = False
+    if not mix.voice[0].playing:
+        files.write_json_file("cfg.json", cfg)
+        ply_a_0(mvc_folder + "volume.wav")
+        spk_str(cfg["volume"], False)
+
+
+def ply_a_0(file_name, wait=True, repeat=False):
+    upd_vol(0)
+    if not cfg["use_sd_card"] and "/sd/" in file_name:
+        return
+
+    # Stop if voice is currently playing
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
+        while mix.voice[0].playing:
+            upd_vol(0.1)
+
+    # Choose decoder based on file extension
+    if file_name.lower().endswith(".mp3"):
+        w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w0 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    # Play the selected file
+    mix.voice[0].play(w0, loop=repeat)
+
+    # Wait until playback completes
+    if wait:
+        while mix.voice[0].playing:
+            upd_vol(0.1)
+            pass
+    print("play a0")
+
+def ply_a_1(file_name, wait=True, repeat=False):
+    upd_vol(0)
+    if not cfg["use_sd_card"] and "/sd/" in file_name:
+        return
+
+    # Stop if voice is currently playing
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+
+    # Choose decoder based on file extension
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    # Play the selected file
+    mix.voice[1].play(w1, loop=repeat)
+
+    # Wait until playback completes
+    if wait:
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+            pass
+
+
+def wait_snd():
+    while mix.voice[0].playing:
+        pass
+
+def wait_snd_1():
+    while mix.voice[1].playing:
+        upd_vol(.1)
+        pass
+
+def stp_a_0():
+    mix.voice[0].stop()
+    wait_snd()
+    gc_col("stp snd")
+
+def stp_a_1():
+    mix.voice[1].stop()
+    wait_snd_1()
+
+def spk_str(str_to_speak, addLocal):
+    for character in str_to_speak:
+        try:
+            if character == " ":
+                character = "space"
+            if character == "-":
+                character = "dash"
+            if character == ".":
+                character = "dot"
+            ply_a_0(mvc_folder + character + ".wav")
+        except Exception as e:
+            files.log_item(e)
+            print("Invalid character in string to speak")
+    if addLocal:
+        ply_a_0(mvc_folder + "dot.wav")
+        ply_a_0(mvc_folder + "local.wav")
+
+
+def l_r_but():
+    ply_a_0(mvc_folder + "press_left_button_right_button.wav")
+
+
+def sel_web():
+    ply_a_0(mvc_folder + "web_menu.wav")
+    l_r_but()
+
+
+def opt_sel():
+    ply_a_0(mvc_folder + "option_selected.wav")
+
+
+def spk_sng_num(song_number):
+    ply_a_0(mvc_folder + "song.wav")
+    spk_str(song_number, False)
+
+def spk_web():
+    ply_a_0(mvc_folder + "animator_available_on_network.wav")
+    ply_a_0(mvc_folder + "to_access_type.wav")
+    try:
+        if cfg["HOST_NAME"] == "neo-pico":
+            ply_a_0(mvc_folder + "neo_dash_pico.wav")
+            ply_a_0(mvc_folder + "dot.wav")
+            ply_a_0(mvc_folder + "local.wav")
+        else:
+            spk_str(cfg["HOST_NAME"], True)
+        ply_a_0(mvc_folder + "in_your_browser.wav")
+    except Exception as e:
+        files.log_item(e)
 
 
 ################################################################################
