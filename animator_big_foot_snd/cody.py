@@ -62,13 +62,23 @@ current_setting = "hidden"
 async_running = False
 
 ################################################################################
+# Setup pins
+
+servo_1_pin = board.GP10
+servo_2_pin = board.GP11
+
+top_sw_pin = board.GP6
+bot_sw_pin = board.GP7
+trig_sw_pin = board.GP12
+
+################################################################################
 # Setup hardware
 
 # Setup the servo this animation can have up to two servos
 # also get the programmed values for position which is stored on the pico itself
-servo_1 = pwmio.PWMOut(board.GP10, duty_cycle=2 ** 15,
+servo_1 = pwmio.PWMOut(servo_1_pin, duty_cycle=2 ** 15,
                        frequency=50)  # first prototype used GP10
-servo_2 = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
+servo_2 = pwmio.PWMOut(servo_2_pin, duty_cycle=2 ** 15, frequency=50)
 
 servo_1 = servo.Servo(servo_1, min_pulse=500, max_pulse=2500)
 servo_2 = servo.Servo(servo_2, min_pulse=500, max_pulse=2500)
@@ -78,21 +88,17 @@ prev_pos_arr = [cfg["hidden"], cfg["forward"]]
 servo_arr = [servo_1, servo_2]
 
 # Setup the switches
-top_sw = board.GP6
-bot_sw = board.GP7
-trig_sw = board.GP12
-
-top_sw = digitalio.DigitalInOut(top_sw)
+top_sw = digitalio.DigitalInOut(top_sw_pin)
 top_sw.direction = digitalio.Direction.INPUT
 top_sw.pull = digitalio.Pull.UP
 top_sw = Debouncer(top_sw)
 
-bot_sw = digitalio.DigitalInOut(bot_sw)
+bot_sw = digitalio.DigitalInOut(bot_sw_pin)
 bot_sw.direction = digitalio.Direction.INPUT
 bot_sw.pull = digitalio.Pull.UP
 bot_sw = Debouncer(bot_sw)
 
-trig_sw = digitalio.DigitalInOut(trig_sw)
+trig_sw = digitalio.DigitalInOut(trig_sw_pin)
 trig_sw.direction = digitalio.Direction.INPUT
 trig_sw.pull = digitalio.Pull.UP
 trig_sw = Debouncer(trig_sw)
