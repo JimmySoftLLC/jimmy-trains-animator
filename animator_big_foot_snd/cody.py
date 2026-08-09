@@ -64,7 +64,7 @@ def rst():
 # config variables
 
 mvc_folder = "mvc/"
-b_folder = "bigfoot_snds/"
+b_folder = "bigfoot/"
 
 FOLDER_MAP = {
     'B': b_folder,
@@ -286,7 +286,6 @@ def ply_a_0(file_name, wait=True, repeat=False):
         while mix.voice[0].playing:
             upd_vol(0.1)
             pass
-    print("play a0")
 
 def ply_a_1(file_name, wait=True, repeat=False):
     upd_vol(0)
@@ -384,6 +383,66 @@ def spk_web():
     except Exception as e:
         files.log_item(e)
 
+def get_random_media_file(folder_to_search, file_ext):
+    if not file_ext.startswith("."):
+        file_ext = "." + file_ext
+
+    file_ext = file_ext.lower()
+
+    myfiles = files.return_directory(
+        "",
+        folder_to_search,
+        file_ext
+    )
+
+    if not myfiles:
+        return None
+
+    return random.choice(myfiles)
+
+
+def get_indexed_media_file(folder_to_search, file_ext, index):
+    if not file_ext.startswith("."):
+        file_ext = "." + file_ext
+
+    file_ext = file_ext.lower()
+
+    myfiles = files.return_directory(
+        "",
+        folder_to_search,
+        file_ext
+    )
+
+    if not myfiles:
+        return None, 0
+
+    index = index % len(myfiles)
+
+    selected_file = myfiles[index]
+    new_index = (index + 1) % len(myfiles)
+
+    print(
+        "playing:",
+        selected_file,
+        "(",
+        index,
+        "/",
+        len(myfiles),
+        ")"
+    )
+
+    return selected_file, new_index
+
+def play_random_file(folder_to_search, file_ext):
+    filename = get_random_media_file(folder_to_search, file_ext)
+    filename = filename + "." + file_ext
+    full_path = folder_to_search + filename
+
+    print("Filename is:", full_path)
+    ply_a_1(full_path,False)
+
+def bigfoot_sound():
+    play_random_file(b_folder,"mp3")
 
 ################################################################################
 # async methods
@@ -426,6 +485,7 @@ async def swagger_walk(figure_location, figure_rotation):
 
 def an():
     if rnd_prob(.6): # come all the way out
+        bigfoot_sound()
         asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
@@ -433,10 +493,13 @@ def an():
         if rnd_prob(.4):
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
+            bigfoot_sound()
             move_at_speed(1, cfg["forward"], cfg["staring_speed"])
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
             move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+        else:
+            bigfoot_sound()
         asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     else: # peek to see if someone is there
@@ -710,7 +773,6 @@ st_mch.add(ServoSet())
 sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 6.0)
 if sw == "left_held":  # left switch visible settings
     current_setting = "hidden"
-
     st_mch.go_to("servo_settings")
 else:  # initialize figures in correct position
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
@@ -718,6 +780,8 @@ else:  # initialize figures in correct position
     st_mch.go_to("base_state")
     files.log_item("animator has started...")
     gc_col("animations started")
+    aud_en.value = True
+    ply_a_0(mvc_folder+"animations_are_now_active.mp3")
 
 while True:
     st_mch.upd()
