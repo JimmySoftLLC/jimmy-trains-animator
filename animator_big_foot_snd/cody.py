@@ -72,6 +72,8 @@ ending_folder = "ending/"
 
 cfg = files.read_json_file("/cfg.json")
 
+main_m = cfg["main_menu"]
+
 rand_timer = 0
 srt_t = time.monotonic()
 current_setting = "hidden"
@@ -515,13 +517,14 @@ async def swagger_walk(figure_location, figure_rotation, function_to_run = False
 
 
 def an():
-    intro_sound(True)
-    if rnd_prob(.6):  # come all the way out
+    if rnd_prob(.33):
+        intro_sound(True)
+    if rnd_prob(.67):  # come all the way out
         asyncio.run(swagger_walk(cfg["visible"], cfg["forward"], bigfoot_sound(False)))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
-        if rnd_prob(.4):
+        if rnd_prob(.33):
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
             move_at_speed(1, cfg["forward"], cfg["staring_speed"], bigfoot_sound(False))
@@ -739,8 +742,6 @@ class Main(Ste):
                 rand_timer = 0
                 files.write_json_file("cfg.json", cfg)
                 mch.go_to("base_state")
-
-
 class ServoSet(Ste):
 
     def __init__(self):

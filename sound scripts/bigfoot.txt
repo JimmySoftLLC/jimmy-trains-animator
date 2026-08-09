@@ -10,7 +10,7 @@ Was that Bigfoot? No way!
 
 Those are some BIG footprints!
 
-       I think something's watching us. 
+I think something's watching us. 
 
 Did you see something move?
 
@@ -19,6 +19,8 @@ Something's in those bushes!
 I heard a branch snap.
 
 Wait... did you hear that?
+
+
 
 I saw something over there!
 
@@ -74,7 +76,7 @@ I’m trembling in my boots!
 
 Which way did he go?
 
-      Did he see us?
+Did he see us?
 
 Don’t move! He’s right behind you!
 
@@ -89,6 +91,8 @@ He doesn’t look so scary to me.
 Maybe he just wants to say hello.
 
 I think he’s lonely.
+
+
 
 Aw, look at him. He just wants a friend.
 
