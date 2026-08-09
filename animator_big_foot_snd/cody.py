@@ -48,12 +48,14 @@ def gc_col(collection_point):
         " Available memory: {} bytes".format(start_mem)
     )
 
+
 def f_exists(filename):
     try:
         os.stat(filename)
         return True
     except OSError:
         return False
+
 
 def rst():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
@@ -63,15 +65,10 @@ def rst():
 ################################################################################
 # config variables
 
+bigfoot_folder = "bigfoot/"
 mvc_folder = "mvc/"
-b_folder = "bigfoot/"
-
-FOLDER_MAP = {
-    'B': b_folder,
-    'M': mvc_folder
-}
-
-media_index = {'M': 0, 'B': 0}
+intro_folder = "intro/"
+ending_folder = "ending/"
 
 cfg = files.read_json_file("/cfg.json")
 
@@ -150,6 +147,7 @@ mix.voice[1].level = .2
 ################################################################################
 # misc methods
 
+
 def rnd_prob(random_value):
     print("Using random value: " + str(random_value))
     if random_value == 0:
@@ -167,8 +165,10 @@ def rnd_prob(random_value):
 # Servo methods
 
 
-def move_at_speed(n, new_position, speed):
+def move_at_speed(n, new_position, speed, function_to_run = None):
     global prev_pos_arr
+    if function_to_run:
+        function_to_run
     sign = 1
     if prev_pos_arr[n] > new_position:
         sign = - 1
@@ -189,6 +189,7 @@ def m_servo(n, p):
 
 ################################################################################
 # Dialog and sound play methods
+
 
 def upd_vol(s):
     if cfg["volume_pot"]:
@@ -287,16 +288,20 @@ def ply_a_0(file_name, wait=True, repeat=False):
             upd_vol(0.1)
             pass
 
+
 def ply_a_1(file_name, wait=True, repeat=False):
     upd_vol(0)
     if not cfg["use_sd_card"] and "/sd/" in file_name:
         return
 
-    # Stop if voice is currently playing
-    if mix.voice[1].playing:
-        mix.voice[1].stop()
+    if wait:
         while mix.voice[1].playing:
             upd_vol(0.1)
+    else: # Stop if voice is currently playing
+        if mix.voice[1].playing:
+            mix.voice[1].stop()
+            while mix.voice[1].playing:
+                upd_vol(0.1)
 
     # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
@@ -320,19 +325,23 @@ def wait_snd():
     while mix.voice[0].playing:
         pass
 
+
 def wait_snd_1():
     while mix.voice[1].playing:
         upd_vol(.1)
         pass
+
 
 def stp_a_0():
     mix.voice[0].stop()
     wait_snd()
     gc_col("stp snd")
 
+
 def stp_a_1():
     mix.voice[1].stop()
     wait_snd_1()
+
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -369,6 +378,7 @@ def spk_sng_num(song_number):
     ply_a_0(mvc_folder + "song.wav")
     spk_str(song_number, False)
 
+
 def spk_web():
     ply_a_0(mvc_folder + "animator_available_on_network.wav")
     ply_a_0(mvc_folder + "to_access_type.wav")
@@ -382,6 +392,7 @@ def spk_web():
         ply_a_0(mvc_folder + "in_your_browser.wav")
     except Exception as e:
         files.log_item(e)
+
 
 def get_random_media_file(folder_to_search, file_ext):
     if not file_ext.startswith("."):
@@ -433,19 +444,30 @@ def get_indexed_media_file(folder_to_search, file_ext, index):
 
     return selected_file, new_index
 
-def play_random_file(folder_to_search, file_ext):
+
+def play_random_file(folder_to_search, file_ext, wait):
     filename = get_random_media_file(folder_to_search, file_ext)
+    if not filename:
+        return
     filename = filename + "." + file_ext
     full_path = folder_to_search + filename
 
     print("Filename is:", full_path)
-    ply_a_1(full_path,False)
+    ply_a_1(full_path, wait)
 
-def bigfoot_sound():
-    play_random_file(b_folder,"mp3")
+
+def bigfoot_sound(wait):
+    play_random_file(bigfoot_folder, "mp3", wait)
+
+def intro_sound(wait):
+    play_random_file(intro_folder, "mp3", wait)
+
+def ending_sound(wait):
+    play_random_file(ending_folder, "mp3", wait)
 
 ################################################################################
 # async methods
+
 
 loop = asyncio.get_event_loop()
 
@@ -456,7 +478,8 @@ async def move_at_speed_async(n, new_position, speed):
     if prev_pos_arr[n] > new_position:
         sign = - 1
     for servo_pos in range(prev_pos_arr[n], new_position, sign):
-        if not  async_running: return
+        if not async_running:
+            return
         m_servo(n, servo_pos)
         await asyncio.sleep(speed)
     m_servo(n, new_position)
@@ -466,44 +489,53 @@ async def walking_swagger(n, center_pt, spd, wiggle_amount):
     global async_running
     while async_running:
         await move_at_speed_async(n, center_pt-wiggle_amount, spd)
-        if not  async_running: return
+        if not async_running:
+            return
         await move_at_speed_async(n, center_pt+wiggle_amount, spd)
-        if not  async_running: return
+        if not async_running:
+            return
+
 
 async def walking(n, destination, spd,):
     global async_running
     await move_at_speed_async(n, destination, spd)
     async_running = False
 
-async def swagger_walk(figure_location, figure_rotation):
+
+async def swagger_walk(figure_location, figure_rotation, function_to_run = False):
     global async_running, cfg
+    if function_to_run:
+        function_to_run
     async_running = True
     walk_swag_f = asyncio.create_task(walking_swagger(1, figure_rotation,
-                     cfg["swagger_speed"], cfg["swagger"]))
-    walk_f = asyncio.create_task(walking(0, figure_location, cfg["walking_speed"]))
+                                                      cfg["swagger_speed"], cfg["swagger"]))
+    walk_f = asyncio.create_task(
+        walking(0, figure_location, cfg["walking_speed"]))
     await asyncio.gather(walk_f, walk_swag_f)
 
+
 def an():
-    if rnd_prob(.6): # come all the way out
-        bigfoot_sound()
-        asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
+    intro_sound(True)
+    if rnd_prob(.6):  # come all the way out
+        asyncio.run(swagger_walk(cfg["visible"], cfg["forward"], bigfoot_sound(False)))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
         if rnd_prob(.4):
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
-            bigfoot_sound()
-            move_at_speed(1, cfg["forward"], cfg["staring_speed"])
+            move_at_speed(1, cfg["forward"], cfg["staring_speed"], bigfoot_sound(False))
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
             move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+            asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         else:
-            bigfoot_sound()
-        asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
+            asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"],bigfoot_sound(False)))
+        ending_sound(True)
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
-    else: # peek to see if someone is there
-        peek_pos = int((cfg["visible"]-cfg["hidden"])*cfg["peek"]+cfg["hidden"])
+    else:  # peek to see if someone is there
+        peek_pos = int((cfg["visible"]-cfg["hidden"])
+                       * cfg["peek"]+cfg["hidden"])
         asyncio.run(swagger_walk(peek_pos, cfg["peek_rotation"]))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
@@ -626,7 +658,8 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global rand_timer, srt_t
-        sw = utilities.switch_state_trigger(top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+        sw = utilities.switch_state_trigger(
+            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
         if sw == "left_held":
             rand_timer = 0
             if cfg["timer"] == True:
@@ -739,11 +772,12 @@ class ServoSet(Ste):
         bot_sw.update()
         done = False
         while not done:
-            sw = utilities.switch_state_trigger(top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            sw = utilities.switch_state_trigger(
+                top_sw, bot_sw, trig_sw, time.sleep, 3.0)
             if sw == "left":
                 ch_servo(0, current_setting, "raise")
             elif sw == "right":
-                ch_servo(0, current_setting, "lower")     
+                ch_servo(0, current_setting, "lower")
             elif sw == "right_held" and current_setting == "hidden":
                 files.write_json_file("cfg.json", cfg)
                 move_at_speed(1, cfg["forward"], cfg["turning_speed"])
@@ -757,7 +791,7 @@ class ServoSet(Ste):
                 move_at_speed(1, cfg["forward"], cfg["turning_speed"])
                 move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
                 done = True
-                mch.go_to("base_state")    
+                mch.go_to("base_state")
             pass
 
 
