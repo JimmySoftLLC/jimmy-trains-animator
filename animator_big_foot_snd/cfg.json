@@ -1,27 +1,4 @@
 {
-  "peek_rotation": 90,
-  "turning_speed": 0.01,
-  "timer_val": "timer_0_seconds",
-  "visible": 48,
-  "staring_speed": 0.001,
-  "hidden": 136,
-  "show_mode_speed": 0.04,
-  "peek": 0.3,
-  "timer": false,
-  "swagger": 15,
-  "visible_default": 60,
-  "swagger_speed": 0.015,
-  "backward": 15,
-  "forward": 165,
-  "volume_pot": false,
-  "volume": "100",
-  "use_sd_card": false,
-  "main_menu": ["timer_menu", "volume_settings", "exit_this_menu"],
-  "volume_settings": [
-    "volume_level_adjustment",
-    "volume_pot_off",
-    "volume_pot_on"
-  ],
   "timer_menu": [
     "timer_off",
     "timer_0_seconds",
@@ -32,6 +9,29 @@
     "timer_10_seconds",
     "timer_20_seconds"
   ],
+  "turning_speed": 0.01,
+  "visible": 72,
+  "visible_default": 60,
+  "main_menu": ["timer_menu", "volume_settings", "exit_this_menu"],
   "hidden_default": 120,
-  "walking_speed": 0.04
+  "walking_speed": 0.04,
+  "forward": 165,
+  "hidden": 136,
+  "timer_val": "timer_0_seconds",
+  "peek": 0.3,
+  "swagger_speed": 0.015,
+  "staring_speed": 0.001,
+  "backward": 15,
+  "volume_pot": false,
+  "peek_rotation": 90,
+  "volume": "100",
+  "swagger": 15,
+  "timer": false,
+  "show_mode_speed": 0.04,
+  "use_sd_card": false,
+  "volume_settings": [
+    "volume_level_adjustment",
+    "volume_pot_off",
+    "volume_pot_on"
+  ]
 }

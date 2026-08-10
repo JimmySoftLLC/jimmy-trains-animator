@@ -140,7 +140,7 @@ aud_en = digitalio.DigitalInOut(aud_en_pin)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
-# Setup the mixer to play wav files
+# Setup the mixer to play mp3 files
 mix = audiomixer.Mixer(voice_count=2, sample_rate=22050, channel_count=2,
                        bits_per_sample=16, samples_signed=True, buffer_size=8192)
 aud.play(mix)
@@ -262,7 +262,7 @@ def ch_vol(action):
     cfg["volume_pot"] = False
     if not mix.voice[0].playing:
         files.write_json_file("cfg.json", cfg)
-        ply_a_0(mvc_folder + "volume.wav")
+        ply_a_0(mvc_folder + "volume.mp3")
         spk_str(cfg["volume"], False)
 
 
@@ -280,8 +280,8 @@ def ply_a_0(file_name, wait=True, repeat=False):
     # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
-    elif file_name.lower().endswith(".wav"):
-        w0 = audiocore.WaveFile(open(file_name, "rb"))
+    elif file_name.lower().endswith(".mp3"):
+        w0 = audiocore.mp3eFile(open(file_name, "rb"))
     else:
         raise ValueError("Unsupported audio format: " + file_name)
 
@@ -312,8 +312,8 @@ def ply_a_1(file_name, wait=True, repeat=False):
     # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
-    elif file_name.lower().endswith(".wav"):
-        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    elif file_name.lower().endswith(".mp3"):
+        w1 = audiocore.mp3eFile(open(file_name, "rb"))
     else:
         raise ValueError("Unsupported audio format: " + file_name)
 
@@ -358,44 +358,44 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_0(mvc_folder + character + ".wav")
+            ply_a_0(mvc_folder + character + ".mp3")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_0(mvc_folder + "dot.wav")
-        ply_a_0(mvc_folder + "local.wav")
+        ply_a_0(mvc_folder + "dot.mp3")
+        ply_a_0(mvc_folder + "local.mp3")
 
 
 def l_r_but():
-    ply_a_0(mvc_folder + "press_left_button_right_button.wav")
+    ply_a_0(mvc_folder + "press_left_button_right_button.mp3")
 
 
 def sel_web():
-    ply_a_0(mvc_folder + "web_menu.wav")
+    ply_a_0(mvc_folder + "web_menu.mp3")
     l_r_but()
 
 
 def opt_sel():
-    ply_a_0(mvc_folder + "option_selected.wav")
+    ply_a_0(mvc_folder + "option_selected.mp3")
 
 
 def spk_sng_num(song_number):
-    ply_a_0(mvc_folder + "song.wav")
+    ply_a_0(mvc_folder + "song.mp3")
     spk_str(song_number, False)
 
 
 def spk_web():
-    ply_a_0(mvc_folder + "animator_available_on_network.wav")
-    ply_a_0(mvc_folder + "to_access_type.wav")
+    ply_a_0(mvc_folder + "animator_available_on_network.mp3")
+    ply_a_0(mvc_folder + "to_access_type.mp3")
     try:
         if cfg["HOST_NAME"] == "neo-pico":
-            ply_a_0(mvc_folder + "neo_dash_pico.wav")
-            ply_a_0(mvc_folder + "dot.wav")
-            ply_a_0(mvc_folder + "local.wav")
+            ply_a_0(mvc_folder + "neo_dash_pico.mp3")
+            ply_a_0(mvc_folder + "dot.mp3")
+            ply_a_0(mvc_folder + "local.mp3")
         else:
             spk_str(cfg["HOST_NAME"], True)
-        ply_a_0(mvc_folder + "in_your_browser.wav")
+        ply_a_0(mvc_folder + "in_your_browser.mp3")
     except Exception as e:
         files.log_item(e)
 
@@ -726,7 +726,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_0(mvc_folder + "main_menu.wav")
+        ply_a_0(mvc_folder + "main_menu.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -737,27 +737,19 @@ class Main(Ste):
         sw_st = utilities.switch_state_trigger(
             top_sw, bot_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left":
-            ply_a_0(mvc_folder + "" + main_m[self.i] + ".wav")
+            ply_a_0(mvc_folder + "" + main_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
         if sw_st == "right":
             sel_mnu = main_m[self.sel_i]
-            if sel_mnu == "choose_sounds":
-                mch.go_to('choose_sounds')
+            if sel_mnu == "timer_settings":
+                mch.go_to('timer_settings')
             elif sel_mnu == "volume_settings":
                 mch.go_to('volume_settings')
-            elif sel_mnu == "adjust_feller_and_tree":
-                mch.go_to('adjust_feller_and_tree')
-            elif sel_mnu == "move_feller_and_tree":
-                mch.go_to('move_feller_and_tree')
-            elif sel_mnu == "set_dialog_options":
-                mch.go_to('set_dialog_options')
-            elif sel_mnu == "web_options":
-                mch.go_to('web_options')
             else:
-                ply_a_0(mvc_folder + "all_changes_complete.wav")
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 class TimerSet(Ste):
@@ -770,7 +762,7 @@ class TimerSet(Ste):
         return "timer_menu"
 
     def enter(self, mch):
-        files.log_item("Main menu")
+        files.log_item("timer_menu")
         show_mode(3, True)
         Ste.enter(self, mch)
 
@@ -818,7 +810,7 @@ class VolSet(Ste):
 
     def enter(s, mch):
         files.log_item('Set Web Options')
-        ply_a_0(mvc_folder + "volume_settings_menu.wav")
+        ply_a_0(mvc_folder + "volume_settings_menu.mp3")
         l_r_but()
         s.vol_adj_mode = False
         Ste.enter(s, mch)
@@ -830,7 +822,7 @@ class VolSet(Ste):
         sw_st = utilities.switch_state_trigger(
             top_sw, bot_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left" and not s.vol_adj_mode:
-            ply_a_0(mvc_folder + "" + vol_set_m[s.i] + ".wav")
+            ply_a_0(mvc_folder + "" + vol_set_m[s.i] + ".mp3")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set_m)-1:
@@ -838,14 +830,14 @@ class VolSet(Ste):
         if vol_set_m[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
             if sw_st == "right":
                 s.vol_adj_mode = True
-                ply_a_0(mvc_folder + "volume_adjustment_menu.wav")
+                ply_a_0(mvc_folder + "volume_adjustment_menu.mp3")
         elif sw_st == "left" and s.vol_adj_mode:
             ch_vol("lower")
         elif sw_st == "right" and s.vol_adj_mode:
             ch_vol("raise")
         elif sw_st == "right_held" and s.vol_adj_mode:
             files.write_json_file("cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            ply_a_0(mvc_folder + "all_changes_complete.mp3")
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1)
@@ -854,12 +846,12 @@ class VolSet(Ste):
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             files.write_json_file("cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            ply_a_0(mvc_folder + "all_changes_complete.mp3")
             mch.go_to('base_state')
         if sw_st == "right" and vol_set_m[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             files.write_json_file("cfg.json", cfg)
-            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            ply_a_0(mvc_folder + "all_changes_complete.mp3")
             mch.go_to('base_state')
 
 class ServoSet(Ste):
@@ -921,7 +913,7 @@ class ServoSet(Ste):
 
 st_mch = StMch()
 st_mch.add(BseSt())
-st_mch.add(Main)
+st_mch.add(Main())
 st_mch.add(TimerSet())
 st_mch.add(ServoSet())
 st_mch.add(VolSet())
@@ -934,6 +926,8 @@ if sw == "left_held":  # left switch visible settings
 else:  # initialize figures in correct position
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
+    print("Main state name:", Main().name)
+    print("Machine:", st_mch)
     st_mch.go_to("base_state")
     files.log_item("animator has started...")
     gc_col("animations started")
