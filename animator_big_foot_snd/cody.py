@@ -73,6 +73,8 @@ ending_folder = "ending/"
 cfg = files.read_json_file("/cfg.json")
 
 main_m = cfg["main_menu"]
+vol_set_m = cfg["volume_settings"]
+timer_m = cfg["timer_menu"]
 
 rand_timer = 0
 srt_t = time.monotonic()
@@ -712,15 +714,60 @@ class BseSt(Ste):
         elif sw == "right":
             mch.go_to("main_menu")
 
-
 class Main(Ste):
+
     def __init__(self):
         self.i = 0
         self.sel_i = 0
 
     @property
     def name(self):
-        return "main_menu"
+        return 'main_menu'
+
+    def enter(self, mch):
+        files.log_item('Main menu')
+        ply_a_0(mvc_folder + "main_menu.wav")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw_st = utilities.switch_state_trigger(
+            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+        if sw_st == "left":
+            ply_a_0(mvc_folder + "" + main_m[self.i] + ".wav")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(main_m)-1:
+                self.i = 0
+        if sw_st == "right":
+            sel_mnu = main_m[self.sel_i]
+            if sel_mnu == "choose_sounds":
+                mch.go_to('choose_sounds')
+            elif sel_mnu == "volume_settings":
+                mch.go_to('volume_settings')
+            elif sel_mnu == "adjust_feller_and_tree":
+                mch.go_to('adjust_feller_and_tree')
+            elif sel_mnu == "move_feller_and_tree":
+                mch.go_to('move_feller_and_tree')
+            elif sel_mnu == "set_dialog_options":
+                mch.go_to('set_dialog_options')
+            elif sel_mnu == "web_options":
+                mch.go_to('web_options')
+            else:
+                ply_a_0(mvc_folder + "all_changes_complete.wav")
+                mch.go_to('base_state')
+
+class TimerSet(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return "timer_menu"
 
     def enter(self, mch):
         files.log_item("Main menu")
@@ -732,17 +779,17 @@ class Main(Ste):
 
     def upd(self, mch):
         global rand_timer, srt_t
-        top_sw.update()
-        bot_sw.update()
-        if top_sw.fell:
+        sw_st = utilities.switch_state_trigger(
+            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+        if sw_st == "left":
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(main_m) - 1:
+            if self.i > len(timer_m) - 1:
                 self.i = 0
-            print(main_m[self.sel_i])
+            print(timer_m[self.sel_i])
             show_timer_program_option(self.sel_i+1)
-        if bot_sw.fell:
-            sel_i = main_m[self.sel_i]
+        if sw_st == "right":
+            sel_i = timer_m[self.sel_i]
             if sel_i == "exit_this_menu":
                 print(sel_i)
                 cfg["timer"] = False
@@ -756,6 +803,65 @@ class Main(Ste):
                 rand_timer = 0
                 files.write_json_file("cfg.json", cfg)
                 mch.go_to("base_state")
+
+
+class VolSet(Ste):
+
+    def __init__(s):
+        s.i = 0
+        s.sel_i = 0
+        s.vol_adj_mode = False
+
+    @property
+    def name(s):
+        return 'volume_settings'
+
+    def enter(s, mch):
+        files.log_item('Set Web Options')
+        ply_a_0(mvc_folder + "volume_settings_menu.wav")
+        l_r_but()
+        s.vol_adj_mode = False
+        Ste.enter(s, mch)
+
+    def exit(s, mch):
+        Ste.exit(s, mch)
+
+    def upd(s, mch):
+        sw_st = utilities.switch_state_trigger(
+            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+        if sw_st == "left" and not s.vol_adj_mode:
+            ply_a_0(mvc_folder + "" + vol_set_m[s.i] + ".wav")
+            s.sel_i = s.i
+            s.i += 1
+            if s.i > len(vol_set_m)-1:
+                s.i = 0
+        if vol_set_m[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
+            if sw_st == "right":
+                s.vol_adj_mode = True
+                ply_a_0(mvc_folder + "volume_adjustment_menu.wav")
+        elif sw_st == "left" and s.vol_adj_mode:
+            ch_vol("lower")
+        elif sw_st == "right" and s.vol_adj_mode:
+            ch_vol("raise")
+        elif sw_st == "right_held" and s.vol_adj_mode:
+            files.write_json_file("cfg.json", cfg)
+            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            s.vol_adj_mode = False
+            mch.go_to('base_state')
+            upd_vol(0.1)
+        if sw_st == "right" and vol_set_m[s.sel_i] == "volume_pot_off":
+            cfg["volume_pot"] = False
+            if cfg["volume"] == 0:
+                cfg["volume"] = 10
+            files.write_json_file("cfg.json", cfg)
+            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            mch.go_to('base_state')
+        if sw_st == "right" and vol_set_m[s.sel_i] == "volume_pot_on":
+            cfg["volume_pot"] = True
+            files.write_json_file("cfg.json", cfg)
+            ply_a_0(mvc_folder + "all_changes_complete.wav")
+            mch.go_to('base_state')
+
 class ServoSet(Ste):
 
     def __init__(self):
@@ -815,8 +921,10 @@ class ServoSet(Ste):
 
 st_mch = StMch()
 st_mch.add(BseSt())
-st_mch.add(Main())
+st_mch.add(Main)
+st_mch.add(TimerSet())
 st_mch.add(ServoSet())
+st_mch.add(VolSet())
 
 
 sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 6.0)

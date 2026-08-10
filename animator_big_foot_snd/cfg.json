@@ -14,10 +14,16 @@
   "backward": 15,
   "forward": 165,
   "volume_pot": false,
-  "volume": "50",
+  "volume": "100",
   "use_sd_card": false,
-  "main_menu": [
-    "exit_this_menu",
+  "main_menu": ["timer_menu", "volume_settings", "exit_this_menu"],
+  "volume_settings": [
+    "volume_level_adjustment",
+    "volume_pot_off",
+    "volume_pot_on"
+  ],
+  "timer_menu": [
+    "timer_off",
     "timer_0_seconds",
     "random_0_5",
     "random_5_10",
