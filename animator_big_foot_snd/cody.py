@@ -151,7 +151,7 @@ mix.voice[1].level = .2
 
 
 def rnd_prob(random_value):
-    print("Using random value: " + str(random_value))
+    
     if random_value == 0:
         return False
     elif random_value == 1:
@@ -159,7 +159,9 @@ def rnd_prob(random_value):
     else:
         y = random.random()
         if y < random_value:
+            print("True Random value: " + str(y) + " < Random limit: " + str(random_value))
             return True
+    print("False Random value: " + str(y) + " < Random limit: " + str(random_value))
     return False
 
 
@@ -519,23 +521,35 @@ async def swagger_walk(figure_location, figure_rotation, function_to_run = False
 def an():
     if rnd_prob(.33):
         intro_sound(True)
+        rand_timer = random.uniform(1.0, 5.0)
+        time.sleep(rand_timer)
     if rnd_prob(.67):  # come all the way out
-        asyncio.run(swagger_walk(cfg["visible"], cfg["forward"], bigfoot_sound(False)))
+        if rnd_prob(.75):
+            asyncio.run(swagger_walk(cfg["visible"], cfg["forward"], bigfoot_sound(False)))
+        else:
+            asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
         if rnd_prob(.33):
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
-            move_at_speed(1, cfg["forward"], cfg["staring_speed"], bigfoot_sound(False))
+            if rnd_prob(1):
+                move_at_speed(1, cfg["forward"], cfg["staring_speed"], bigfoot_sound(False))
+            else:
+                move_at_speed(1, cfg["forward"], cfg["staring_speed"]) 
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
             move_at_speed(1, cfg["backward"], cfg["turning_speed"])
             asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         else:
-            asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"],bigfoot_sound(False)))
+            if rnd_prob(.75):
+                asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"],bigfoot_sound(False)))
+            else:
+                asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
+        move_at_speed(1, cfg["forward"], cfg["turning_speed"])   
         ending_sound(True)
-        move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+
     else:  # peek to see if someone is there
         peek_pos = int((cfg["visible"]-cfg["hidden"])
                        * cfg["peek"]+cfg["hidden"])
