@@ -74,7 +74,7 @@ cfg = files.read_json_file("/cfg.json")
 
 main_m = cfg["main_menu"]
 vol_set_m = cfg["volume_settings"]
-timer_m = cfg["timer_menu"]
+timer_m = cfg["timer_settings"]
 
 rand_timer = 0
 srt_t = time.monotonic()
@@ -526,7 +526,7 @@ def an():
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
     if rnd_prob(.67):  # come all the way out
-        if rnd_prob(.75):
+        if rnd_prob(.67):
             asyncio.run(swagger_walk(cfg["visible"], cfg["forward"], bigfoot_sound(False)))
         else:
             asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
@@ -545,7 +545,7 @@ def an():
             move_at_speed(1, cfg["backward"], cfg["turning_speed"])
             asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         else:
-            if rnd_prob(.75):
+            if rnd_prob(.67):
                 asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"],bigfoot_sound(False)))
             else:
                 asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
@@ -759,11 +759,12 @@ class TimerSet(Ste):
 
     @property
     def name(self):
-        return "timer_menu"
+        return "timer_settings"
 
     def enter(self, mch):
-        files.log_item("timer_menu")
-        show_mode(3, True)
+        files.log_item("timer_settings_menu")
+        ply_a_0(mvc_folder + "timer_settings_menu.mp3")
+        l_r_but()
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -774,15 +775,14 @@ class TimerSet(Ste):
         sw_st = utilities.switch_state_trigger(
             top_sw, bot_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left":
+            ply_a_0(mvc_folder + "" + timer_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(timer_m) - 1:
+            if self.i > len(timer_m)-1:
                 self.i = 0
-            print(timer_m[self.sel_i])
-            show_timer_program_option(self.sel_i+1)
         if sw_st == "right":
             sel_i = timer_m[self.sel_i]
-            if sel_i == "exit_this_menu":
+            if sel_i == "timer_off":
                 print(sel_i)
                 cfg["timer"] = False
                 rand_timer = 0
@@ -926,8 +926,6 @@ if sw == "left_held":  # left switch visible settings
 else:  # initialize figures in correct position
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
-    print("Main state name:", Main().name)
-    print("Machine:", st_mch)
     st_mch.go_to("base_state")
     files.log_item("animator has started...")
     gc_col("animations started")
