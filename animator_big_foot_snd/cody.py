@@ -521,7 +521,7 @@ async def swagger_walk(figure_location, figure_rotation, function_to_run = False
 
 
 def an():
-    if rnd_prob(.33):
+    if rnd_prob(.67):
         intro_sound(True)
         rand_timer = random.uniform(1.0, 3.0)
         time.sleep(rand_timer)
@@ -550,8 +550,8 @@ def an():
             else:
                 asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])   
-        ending_sound(True)
-
+        if rnd_prob(.67):
+                ending_sound(True)
     else:  # peek to see if someone is there
         peek_pos = int((cfg["visible"]-cfg["hidden"])
                        * cfg["peek"]+cfg["hidden"])
@@ -582,9 +582,12 @@ def show_mode(cycles, stay_at_middle=False):
 
 def show_timer_mode():
     if cfg["timer"] == True:
+        ply_a_0(mvc_folder+"timer_on.mp3", False)
         show_mode(2)
     else:
+        ply_a_0(mvc_folder+"timer_off.mp3", False)
         show_mode(1)
+    wait_snd()
 
 
 def show_timer_program_option(cycles):
@@ -667,8 +670,9 @@ class BseSt(Ste):
     def name(self):
         return "base_state"
 
-    def enter(self, mch):
+    def enter(self, mch): 
         show_timer_mode()
+        ply_a_0(mvc_folder+"animations_are_now_active.mp3")
         files.log_item("Entered base Ste")
         Ste.enter(self, mch)
 
@@ -924,13 +928,12 @@ if sw == "left_held":  # left switch visible settings
     current_setting = "hidden"
     st_mch.go_to("servo_settings")
 else:  # initialize figures in correct position
+    aud_en.value = True
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
     st_mch.go_to("base_state")
     files.log_item("animator has started...")
     gc_col("animations started")
-    aud_en.value = True
-    ply_a_0(mvc_folder+"animations_are_now_active.mp3")
 
 while True:
     st_mch.upd()
