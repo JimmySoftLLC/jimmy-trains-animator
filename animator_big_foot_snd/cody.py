@@ -523,7 +523,7 @@ async def swagger_walk(figure_location, figure_rotation, function_to_run = False
 def an():
     if rnd_prob(.33):
         intro_sound(True)
-        rand_timer = random.uniform(1.0, 5.0)
+        rand_timer = random.uniform(1.0, 3.0)
         time.sleep(rand_timer)
     if rnd_prob(.67):  # come all the way out
         if rnd_prob(.67):
