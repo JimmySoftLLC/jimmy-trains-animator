@@ -1,0 +1,31 @@
+{
+  "wiggle": "7",
+  "cast_speed": 0.002,
+  "wiggle_speed": 0.03,
+  "wiggle_cycles_low": 2,
+  "wiggle_cycles_high": 2,
+  "wiggle_pos": 90,
+  "cast_pos": 180,
+  "gentle_speed": 0.03,
+  "main_menu": ["timer_settings", "volume_settings", "exit_this_menu"],
+  "timer_settings": [
+    "timer_off",
+    "timer_0_seconds",
+    "random_0_5",
+    "random_5_10",
+    "random_10_20",
+    "timer_5_seconds",
+    "timer_10_seconds",
+    "timer_20_seconds"
+  ],
+  "volume_pot": false,
+  "volume": "50",
+  "timer": false,
+  "timer_val": "random_5_10",
+  "volume_settings": [
+    "volume_level_adjustment",
+    "volume_pot_off",
+    "volume_pot_on"
+  ],
+  "use_sd_card": false
+}
