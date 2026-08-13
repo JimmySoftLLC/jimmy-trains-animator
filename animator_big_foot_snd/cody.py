@@ -48,20 +48,6 @@ def gc_col(collection_point):
         " Available memory: {} bytes".format(start_mem)
     )
 
-
-def f_exists(filename):
-    try:
-        os.stat(filename)
-        return True
-    except OSError:
-        return False
-
-
-def rst():
-    microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
-    microcontroller.reset()
-
-
 ################################################################################
 # config variables
 
@@ -519,6 +505,8 @@ async def swagger_walk(figure_location, figure_rotation, function_to_run = False
         walking(0, figure_location, cfg["walking_speed"]))
     await asyncio.gather(walk_f, walk_swag_f)
 
+################################################################################
+# animations
 
 def an():
     if rnd_prob(.67):
@@ -564,9 +552,6 @@ def an():
         asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
 
-
-################################################################################
-# animations
 
 def show_mode(cycles, stay_at_middle=False):
     middle_point = int((cfg["visible"]+cfg["hidden"])/2)
