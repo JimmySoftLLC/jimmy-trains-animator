@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 JimmySoftLLC
+# Copyright (c) 2026 JimmySoftLLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -523,7 +523,7 @@ async def swagger_walk(figure_location, figure_rotation, function_to_run = False
 def an():
     if rnd_prob(.67):
         intro_sound(True)
-        rand_timer = random.uniform(1.0, 3.0)
+        rand_timer = random.uniform(0.5, 3.0)
         time.sleep(rand_timer)
     if rnd_prob(.67):  # come all the way out
         if rnd_prob(.67):
@@ -551,6 +551,8 @@ def an():
                 asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])   
         if rnd_prob(.67):
+                rand_timer = random.uniform(0.5, 3.0)
+                time.sleep(rand_timer)
                 ending_sound(True)
     else:  # peek to see if someone is there
         peek_pos = int((cfg["visible"]-cfg["hidden"])

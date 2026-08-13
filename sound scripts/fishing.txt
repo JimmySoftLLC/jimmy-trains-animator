@@ -1,0 +1,107 @@
+son/cast_success
+
+"How was that, Dad?"
+"I did it!"
+"Right where you told me!"
+"That was a good cast!"
+"Look, Dad! I got it!"
+"I think I'm getting better!"
+"Did you see that?"
+"That one went pretty far!"
+
+son/cast_tree
+
+"Uh-oh, Dad. It's in the tree."
+"Oops! I think I'm stuck."
+"Dad... I have a little problem."
+"I caught a tree!"
+"Oh no! Not again!"
+"I don't think that's where it was supposed to go."
+"Dad, can you help me?"
+"Well... I missed the water."
+
+son/cast_missed
+These are for a bad cast that isn't necessarily in a tree.
+
+"Oops! That didn't go very far."
+"Can I try that again?"
+"That wasn't very good."
+"I think I let go too soon."
+"Oops! I messed that one up."
+"I'll get it this time."
+"I almost had it!"
+"Let me try one more time."
+
+son/got_bite
+These should be more excited because they can trigger Dad's next response.
+
+"Dad! I got a bite!"
+"Dad! Something's pulling!"
+"I think I got one!"
+"Whoa! I've got something!"
+"Dad! My line's moving!"
+"Something just grabbed it!"
+"I got one! I got one!"
+"Dad! What do I do?"
+
+son/fish_on
+This is after Dad has told him what to do.
+"He's pulling really hard!"
+"I'm trying, Dad!"
+"He's a strong one!"
+"I can't reel him in!"
+"He's getting closer!"
+"I can see him!"
+"Whoa! He's a big one!"
+"I'm not letting this one get away!"
+
+son/caught_fish
+"I got him!"
+"Look, Dad! I caught one!"
+"Wow! Look at this fish!"
+"I did it, Dad!"
+"That's my biggest one!"
+"Can we take a picture?"
+"I can't believe I caught him!"
+"Wait till Mom sees this!"
+
+son/lost_fish
+This could be especially fun because Dad can respond with encouragement or a joke.
+"Aw! He got away."
+"Dad! I lost him!"
+"Oh no! He came off!"
+"I almost had him!"
+"He was right there!"
+"That was a big fish!"
+"I think he was too strong."
+"Can we try again?"
+
+son/waiting
+This gives you some dialogue when nothing is happening.
+"Dad, how long does this take?"
+"Are there really fish in here?"
+"I don't think they're hungry."
+"Maybe the fish are sleeping."
+"Dad, can the fish see us?"
+"How do you know where the fish are?"
+"I haven't had a bite yet."
+"Maybe we need different bait."
+
+I particularly like the waiting folder, because it gives you opportunities for funny Dad responses. For example:
+
+Son: "Are there really fish in here?"
+Dad: "That's what the sign says."
+
+Or:
+
+Son: "Maybe the fish are sleeping."
+Dad: "Then let's try not to wake them."
+
+Or:
+
+Son: "Dad, how long does this take?"
+Dad: "That's why they call it fishing, not catching."
+
+That kind of dialogue could give the Fly Fisherman a lot of personality.
+
+I would also add a son/question folder, but don't randomly pair questions with generic Dad answers. Each type of question should have its own response category so the conversations always make sense.
