@@ -428,7 +428,7 @@ def get_indexed_media_file(folder_to_search, file_ext, index):
     return selected_file, new_index
 
 
-def play_random_file(folder_to_search, file_ext, wait):
+def play_random_file(folder_to_search, file_ext = "mp3", wait = True):
     filename = get_random_media_file(folder_to_search, file_ext)
     if not filename:
         return
@@ -438,16 +438,6 @@ def play_random_file(folder_to_search, file_ext, wait):
     print("Filename is:", full_path)
     ply_a_1(full_path, wait)
 
-
-# def bigfoot_sound(wait):
-#     play_random_file(bigfoot_folder, "mp3", wait)
-
-# def intro_sound(wait):
-#     play_random_file(intro_folder, "mp3", wait)
-
-# def ending_sound(wait):
-#     play_random_file(ending_folder, "mp3", wait)
-
 ################################################################################
 # animations
 
@@ -456,16 +446,319 @@ def s_1_wiggle_movement(n, center_pt, cyc, spd, wiggle_amount=7):
         move_at_speed(n, center_pt-wiggle_amount, spd)
         move_at_speed(n, center_pt+wiggle_amount, spd)
 
+fisherman_sequence = 0
+
+def conversation_pause(short_pause=False):
+    if short_pause:
+        pause_time = random.uniform(0.2, 0.6)
+    else:
+        pause_time = random.uniform(0.5, 1.2)
+    time.sleep(pause_time)
+
+def son_casting_sequence():
+    max_cast_attempts = 3
+    cast_attempt = 0
+    cast_successful = False
+
+    play_random_file("dad/cast_instruction/")
+
+    conversation_pause()
+
+    while cast_attempt < max_cast_attempts and not cast_successful:
+        cast_attempt += 1
+
+        print("Son cast attempt:", cast_attempt)
+        cast_result = random.choice([
+            "success",
+            "tree",
+            "missed"
+        ])
+        cast_motion(1)
+        play_random_file("son/cast_" + cast_result + "/")
+
+        conversation_pause(short_pause=True)
+
+        play_random_file("dad/respond_cast_" + cast_result + "/")
+
+        conversation_pause()
+
+        if cast_result == "success":
+            cast_successful = True
+            break
+
+        if cast_attempt < max_cast_attempts:
+            play_random_file("dad/try_again/")
+
+            conversation_pause()
+
+    if not cast_successful:
+        play_random_file("dad/give_up_casting/")
+        return False
+
+    return True
+
+
+def waiting_conversation():
+    play_random_file("son/waiting/")
+    conversation_pause(short_pause=True)
+    play_random_file("dad/respond_waiting/")
+
+
+def dad_casting_scene():
+    play_random_file("dad/own_cast")
+    conversation_pause(short_pause=True)
+    # Usually let the son comment on Dad's cast.
+    if random.randint(1, 4) != 1:
+        play_random_file("son/respond_dad_cast/")
+
+
+def dad_fishing_scene():
+    play_random_file("dad/own_got_bite/")
+    conversation_pause(short_pause=True)
+    play_random_file("son/respond_dad_bite/")
+
+    conversation_pause()
+
+    fish_result = random.choice([
+        "caught",
+        "lost"
+    ])
+
+    if fish_result == "caught":
+        play_random_file("dad/own_caught_fish/")
+        conversation_pause(short_pause=True)
+        play_random_file("son/respond_dad_caught/")
+    else:
+        play_random_file("dad/own_lost_fish/")
+        conversation_pause(short_pause=True)
+        play_random_file("son/respond_dad_lost/")
+
+
+def son_gets_bite_scene():
+    play_random_file("son/got_bite/")
+    conversation_pause(short_pause=True)
+    play_random_file("dad/respond_got_bite/")
+    conversation_pause()
+    play_random_file("son/fish_on/")
+    conversation_pause(short_pause=True)
+    play_random_file("dad/respond_fish_on/")
+
+
+def son_fish_result_scene():
+    fish_result = random.choice([
+        "caught",
+        "caught",
+        "lost"
+    ])
+
+    if fish_result == "caught":
+        play_random_file("son/caught_fish/")
+        conversation_pause(short_pause=True)
+        play_random_file("dad/respond_caught_fish/")
+    else:
+        play_random_file("son/lost_fish/")
+        conversation_pause(short_pause=True)
+        play_random_file("dad/respond_lost_fish/")
+
+
+def fly_fisherman_dialog():
+    global fisherman_sequence
+
+    print("Fly Fisherman sequence:", fisherman_sequence)
+
+    # =========================================================
+    # SEQUENCE 0
+    #
+    # Dad teaches the son to cast.
+    #
+    # Son may miss, hit a tree, and try again.
+    # Once successful, stop and wait for another button press.
+    # =========================================================
+
+    if fisherman_sequence == 0:
+        cast_successful = son_casting_sequence()
+
+        if cast_successful:
+            fisherman_sequence = 0
+
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
+
+
+    # # =========================================================
+    # # SEQUENCE 1
+    # #
+    # # Father and son wait for the fish.
+    # #
+    # # Son asks or says something.
+    # # Dad responds.
+    # # =========================================================
+
+    # if fisherman_sequence == 1:
+    #     waiting_conversation()
+
+    #     fisherman_sequence = 2
+
+    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+    #     return
+
+
+    # # =========================================================
+    # # SEQUENCE 2
+    # #
+    # # Dad does some fishing too.
+    # #
+    # # Dad casts and the son may comment.
+    # # =========================================================
+
+    # if fisherman_sequence == 2:
+    #     dad_casting_scene()
+
+    #     fisherman_sequence = 3
+
+    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+    #     return
+
+
+    # # =========================================================
+    # # SEQUENCE 3
+    # #
+    # # Something happens while fishing.
+    # #
+    # # Usually continue toward the son's fish.
+    # # Occasionally Dad gets the bite instead.
+    # # =========================================================
+
+    # if fisherman_sequence == 3:
+    #     event = random.choice([
+    #         "son",
+    #         "son",
+    #         "son",
+    #         "dad"
+    #     ])
+
+    #     if event == "dad":
+    #         dad_fishing_scene()
+
+    #         # After Dad's event, return focus to the son.
+    #         fisherman_sequence = 4
+
+    #     else:
+    #         # Son gets the bite.
+    #         son_gets_bite_scene()
+
+    #         fisherman_sequence = 5
+
+    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+    #     return
+
+
+    # # =========================================================
+    # # SEQUENCE 4
+    # #
+    # # Dad just had his fishing event.
+    # #
+    # # Son and Dad have another short waiting conversation.
+    # # Then the next press moves toward the son's bite.
+    # # =========================================================
+
+    # if fisherman_sequence == 4:
+    #     waiting_conversation()
+
+    #     fisherman_sequence = 6
+
+    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+    #     return
+
+
+    # # =========================================================
+    # # SEQUENCE 5
+    # #
+    # # Son already has the fish on.
+    # #
+    # # Now find out whether he catches it or loses it.
+    # # =========================================================
+
+    # if fisherman_sequence == 5:
+    #     son_fish_result_scene()
+
+    #     fisherman_sequence = 7
+
+    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+    #     return
+
+
+    # # =========================================================
+    # # SEQUENCE 6
+    # #
+    # # After Dad's event, it is now definitely the son's turn
+    # # to get a bite.
+    # # =========================================================
+
+    # if fisherman_sequence == 6:
+    #     son_gets_bite_scene()
+
+    #     fisherman_sequence = 5
+
+    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+    #     return
+
+
+    # # =========================================================
+    # # SEQUENCE 7
+    # #
+    # # Son finished his fish event.
+    # #
+    # # Have one more casual fishing conversation before
+    # # beginning another cycle.
+    # # =========================================================
+
+    # if fisherman_sequence == 7:
+    #     waiting_conversation()
+
+    #     # Most of the time keep fishing without repeating
+    #     # the teaching-to-cast section.
+    #     #
+    #     # Occasionally start the entire story over.
+
+    #     restart = random.choice([
+    #         False,
+    #         False,
+    #         False,
+    #         True
+    #     ])
+
+    #     if restart:
+    #         fisherman_sequence = 0
+    #     else:
+    #         fisherman_sequence = 2
+
+    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+    #     return
+
+
+    # # =========================================================
+    # # SAFETY
+    # #
+    # # If fisherman_sequence ever contains an invalid value,
+    # # reset the story.
+    # =========================================================
+
+    fisherman_sequence = 0
+
+    print("Invalid sequence - resetting Fly Fisherman")
+
 
 def an():
-    fisherman_index = random.randint(0, 1)
+    fly_fisherman_dialog()
+    
+def cast_motion(fisherman_index):
     print("fisherman: ",fisherman_index)
     move_at_speed(fisherman_index, cfg["wiggle_pos"], cfg["gentle_speed"])
     cyc = random.randint(cfg["wiggle_cycles_low"], cfg["wiggle_cycles_high"])
     s_1_wiggle_movement(fisherman_index, cfg["wiggle_pos"], cyc, cfg["wiggle_speed"])
     time.sleep(.1)
     move_at_speed(fisherman_index, cfg["cast_pos"], cfg["cast_speed"])
-
 
 def show_mode(cycles):
     middle_point = int((cfg["wiggle_pos"]+cfg["cast_pos"])/2)
