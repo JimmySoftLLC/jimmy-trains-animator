@@ -46,6 +46,7 @@ These should be more excited because they can trigger Dad's next response.
 
 son/fish_on
 This is after Dad has told him what to do.
+
 "He's pulling really hard!"
 "I'm trying, Dad!"
 "He's a strong one!"
@@ -56,6 +57,7 @@ This is after Dad has told him what to do.
 "I'm not letting this one get away!"
 
 son/caught_fish
+
 "I got him!"
 "Look, Dad! I caught one!"
 "Wow! Look at this fish!"
@@ -67,6 +69,7 @@ son/caught_fish
 
 son/lost_fish
 This could be especially fun because Dad can respond with encouragement or a joke.
+
 "Aw! He got away."
 "Dad! I lost him!"
 "Oh no! He came off!"
@@ -78,6 +81,7 @@ This could be especially fun because Dad can respond with encouragement or a jok
 
 son/waiting
 This gives you some dialogue when nothing is happening.
+
 "Dad, how long does this take?"
 "Are there really fish in here?"
 "I don't think they're hungry."
@@ -105,3 +109,245 @@ Dad: "That's why they call it fishing, not catching."
 That kind of dialogue could give the Fly Fisherman a lot of personality.
 
 I would also add a son/question folder, but don't randomly pair questions with generic Dad answers. Each type of question should have its own response category so the conversations always make sense.
+
+/cast_instruction
+
+"Okay, son, cast over by that rock."
+"Try putting your line near that log."
+"See that quiet spot? Try over there."
+"Cast it out a little farther this time."
+"Try casting toward the middle."
+"See that shady spot? Cast over there."
+"Try getting your bait close to those rocks."
+"Give it a nice easy cast out there."
+"See where the water gets darker? Try there."
+"Try that spot near the bank."
+"Okay, son, let's see your best cast."
+"I bet there's a fish hiding over there."
+"Aim for that calm spot."
+"Try putting it just beyond those weeds."
+"That looks like a good spot. Give it a cast."
+/respond_cast_success
+"Great cast, son!"
+"That's the way to do it!"
+"Perfect! Right where you want it."
+"Nice job!"
+"You're getting the hang of it."
+"That's much better!"
+"Now just let it sit there."
+"Good job! Keep doing that."
+"You're becoming quite the fisherman."
+"See? I knew you could do it."
+"That looked pretty good to me."
+"Now that's a cast!"
+"You've been practicing, haven't you?"
+"Couldn't have done it better myself."
+
+/respond_cast_tree
+These can be some of the funniest.
+
+"Son, we're fishing for fish, not squirrels."
+"I said the water, not the tree!"
+"Well, that's one way to catch a tree."
+"Looks like that tree caught your bait."
+"I don't think that tree is going to bite."
+"Nice cast... wrong direction."
+"Well, the birds might appreciate that."
+"I think that branch just stole your hook."
+"Don't worry. It happens to everyone."
+"That's going to be a little hard to reel in."
+"I don't remember trees being in season."
+"Well, at least you caught something."
+"That's a pretty big one... for a tree."
+"Let's leave the squirrels out of this."
+
+/respond_cast_missed
+
+"That's okay. Give it another try."
+"Almost! You'll get it."
+"Take your time."
+"Don't rush it. Nice and easy."
+"You're getting closer."
+"No problem. Every cast gets a little better."
+"Just reel it back in."
+"That's part of learning."
+"Keep practicing. You'll get it."
+"Not bad. Let's try that again."
+"A little more practice and you'll have it."
+"Don't worry about it, son."
+"I've made plenty of casts like that."
+"You'll get the next one."
+
+/try_again
+I'd make these particularly generic because they follow either a tree or missed response.
+
+"Okay, let's try that again."
+"Give it another shot."
+"Go ahead and try one more time."
+"Reel it in and give it another cast."
+"Take your time and try again."
+"Here, give it another try."
+"Let's see what you can do this time."
+"Okay, one more cast."
+"You've got this. Try again."
+"Nice and easy this time."
+"Let's give it another go."
+"Go ahead, son. Try it again."
+
+/give_up_casting
+Since this only happens after three failures, Dad shouldn't sound frustrated.
+
+"That's okay. We'll try again later."
+"Let's give it a rest for a little while."
+"We'll work on that casting later."
+"No worries, son. You'll get it."
+"Let's take a little break."
+"Maybe the fish need a break from us."
+"We'll give it another try later."
+"I think the trees have enough hooks for today."
+"Don't worry. Fishing takes practice."
+"We'll get it next time."
+"Let's sit for a while and enjoy the water."
+
+/respond_waiting
+"Patience, son. That's part of fishing."
+"They'll bite when they're ready."
+"Give them a little more time."
+"The fish aren't on our schedule."
+"That's why they call it fishing, not catching."
+"Just enjoy being out here."
+"Sometimes waiting is the best part."
+"The big ones are worth waiting for."
+"Maybe they're having lunch somewhere else."
+"I'm starting to wonder if the fish know we're here."
+"Keep watching that line."
+"You never know when one will bite."
+"Sometimes they bite when you least expect it."
+"Just be patient. One will come along."
+
+/respond_got_bite
+These should sound more urgent and excited.
+
+"Easy, son! Don't pull too hard!"
+"Keep the line tight!"
+"Start reeling him in!"
+"Easy! Let him fight a little."
+"You've got him! Keep reeling!"
+"Don't let that line go slack!"
+"Hold on to him!"
+"Take your time. Don't lose him!"
+"That's it! Nice and steady."
+"Looks like you've got yourself a fish!"
+"Keep that rod up!"
+"Easy now! Don't rush it!"
+"That's it, son! You've got him!"
+"Reel! Reel!"
+"Hang on! He sounds like a fighter!"
+
+/respond_fish_on
+"Keep reeling! You're doing great!"
+"Nice and easy. Don't rush him."
+"That's it! Bring him this way."
+"Keep that rod up!"
+"You're doing fine. Take your time."
+"He's putting up quite a fight!"
+"Don't give up now!"
+"He's almost here!"
+"Steady... steady..."
+"I think you've got a big one!"
+"Keep the pressure on him!"
+"You're doing great, son!"
+"I can almost see him!"
+"Just a little closer!"
+"Don't let him get away now!"
+/respond_caught_fish
+"Great job, son!"
+"Look at that! You got him!"
+"Now that's a nice fish!"
+"I knew you could do it!"
+"You caught that one all by yourself!"
+"I'm proud of you, son."
+"That's one you'll remember."
+"Looks like we've got ourselves a fisherman!"
+"I think you're getting better at this than me."
+"That's a beauty!"
+"You did everything just right."
+"Now that's what I call fishing!"
+"Wait until everyone hears about this one."
+"You earned that one!"
+"Nice catch, son!"
+
+/respond_lost_fish
+"That's okay. There'll be another one."
+"Don't worry. You almost had him."
+"That's fishing, son."
+"He got lucky this time."
+"We'll get the next one."
+"At least we know they're biting!"
+"That must have been a big one."
+"Don't give up. We'll try again."
+"Sometimes they just get away."
+"I bet he's down there bragging to his friends."
+"We'll be ready for him next time."
+"You gave him a good fight."
+"He wasn't getting away without a struggle."
+"Don't worry. There are plenty more down there."
+"That's one fish with a good story to tell."
+
+These next four are different because Dad himself is fishing.
+
+/own_cast
+"I think I'll try that spot over there."
+"Let me get my line back out there."
+"Let's see if Dad can catch one."
+"I'll give that spot a try."
+"I haven't given up on that big one yet."
+"Let's see what's hiding over there."
+"I think I'll cast near those rocks."
+"That looks like a good spot."
+"Okay, now it's Dad's turn."
+"Let's see if the old man still knows how to fish."
+"I'll put my line out while we wait."
+"Maybe I'll have better luck over here."
+
+/own_got_bite
+"Whoa! I think I've got one!"
+"I've got a bite!"
+"Hang on, something's on my line!"
+"Looks like Dad's got one!"
+"Whoa! There he is!"
+"I've got something!"
+"Here we go!"
+"This one's pulling pretty hard!"
+"I think I've hooked one!"
+"Well, look at that! I've got a bite!"
+"Hang on, son. I've got one!"
+"This might be a good one!"
+
+/own_caught_fish
+"Got him!"
+"Well, look at that!"
+"That's a nice fish."
+"There we go!"
+"Not bad, huh?"
+"Looks like Dad's still got it."
+"That's what we've been waiting for."
+"Finally! One for Dad."
+"Now that's a good-looking fish."
+"I knew there was one hiding down there."
+"Looks like we found where they're hiding."
+"There he is!"
+
+/own_lost_fish
+"Ah, he got away."
+"Well, that one beat me."
+"I almost had him."
+"He's still down there somewhere."
+"There he goes!"
+"Well, you can't catch them all."
+"He slipped right off the hook."
+"That was a clever fish."
+"I guess he wasn't ready to meet us."
+"He won that round."
+"I'll get him next time."
+"Well, son, even Dad loses one sometimes."
