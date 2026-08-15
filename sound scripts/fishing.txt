@@ -375,3 +375,38 @@ These next four are different because Dad himself is fishing.
 "He won that round."
 "I'll get him next time."
 "Well, son, even Dad loses one sometimes."
+
+Positive / excited: for kid
+
+"Wow!"
+"Awesome!"
+"Nice!"
+"Whoa!"
+"Cool!"
+"Amazing!"
+"Yes!"
+"Woohoo!"
+"Great!"
+"Sweet!"
+"Nice, Dad!"
+"Go, Dad!"
+"Good one!"
+"You gotcha!"
+"Way cool!"
+
+Lost / disappointed:
+
+"Oh no!"
+"Aw, man!"
+"So close!"
+"Almost!"
+"Too bad!"
+"Oh darn!"
+"Bummer!"
+"Aw, shoot!"
+"Shoot!"
+"Darn!"
+"Maybe next!"
+"Nice try!"
+"So sad!"
+"Oh well!"

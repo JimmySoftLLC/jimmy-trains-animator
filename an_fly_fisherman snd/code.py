@@ -308,7 +308,7 @@ def ply_a_1(file_name, wait=True, repeat = False, figure_index = None):
             else:
                 upd_vol(0.1)
             pass
-        
+
 def wait_snd():
     while mix.voice[0].playing:
         pass
@@ -524,7 +524,7 @@ def dad_casting_scene():
 def dad_fishing_scene():
     play_random_file("dad/own_got_bite/")
     conversation_pause(short_pause=True)
-    play_random_file("son/respond_dad_bite/")
+    play_random_file("son/happy/")
 
     conversation_pause()
 
@@ -536,11 +536,11 @@ def dad_fishing_scene():
     if fish_result == "caught":
         play_random_file("dad/own_caught_fish/")
         conversation_pause(short_pause=True)
-        play_random_file("son/respond_dad_caught/")
+        play_random_file("son/happy/")
     else:
         play_random_file("dad/own_lost_fish/")
         conversation_pause(short_pause=True)
-        play_random_file("son/respond_dad_lost/")
+        play_random_file("son/sad/")
 
 
 def son_gets_bite_scene():
@@ -658,8 +658,8 @@ def fly_fisherman_dialog():
 
     #         fisherman_sequence = 5
 
-    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
-    #     return
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
 
 
     # # =========================================================
