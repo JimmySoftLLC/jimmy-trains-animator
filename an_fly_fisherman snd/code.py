@@ -257,8 +257,8 @@ def ply_a_0(file_name, wait=True, repeat=False):
     # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
-    elif file_name.lower().endswith(".mp3"):
-        w0 = audiocore.mp3eFile(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w0 = audiocore.waveFile(open(file_name, "rb"))
     else:
         raise ValueError("Unsupported audio format: " + file_name)
 
@@ -289,10 +289,12 @@ def ply_a_1(file_name, wait=True, repeat = False, figure_index = None):
     # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
-    elif file_name.lower().endswith(".mp3"):
-        w1 = audiocore.mp3eFile(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.waveFile(open(file_name, "rb"))
     else:
         raise ValueError("Unsupported audio format: " + file_name)
+
+    spk_rot = 7
 
     # Play the selected file
     mix.voice[1].play(w1, loop=repeat)
@@ -301,14 +303,12 @@ def ply_a_1(file_name, wait=True, repeat = False, figure_index = None):
     if wait:
         while mix.voice[1].playing:
             if figure_index != None:
-                move_figure(figure_index)
+                m_servo(figure_index, prev_pos_arr[figure_index] + spk_rot)
+                m_servo(figure_index, prev_pos_arr[figure_index] - spk_rot)
             else:
                 upd_vol(0.1)
             pass
-
-def move_figure(figure_index):
-    return
-
+        
 def wait_snd():
     while mix.voice[0].playing:
         pass
@@ -441,7 +441,7 @@ def play_random_file(folder_to_search, file_ext = "mp3", wait = True, figure_ind
     full_path = folder_to_search + filename
 
     print("Filename is:", full_path)
-    ply_a_1(full_path, wait)
+    ply_a_1(full_path, wait, False, figure_index)
 
 ################################################################################
 # animations
@@ -465,7 +465,7 @@ def son_casting_sequence():
     cast_attempt = 0
     cast_successful = False
 
-    play_random_file("dad/cast_instruction/")
+    play_random_file("dad/cast_instruction/", "mp3", True, 0)
 
     conversation_pause()
 
@@ -482,11 +482,11 @@ def son_casting_sequence():
             "missed",
         ])
         cast_motion(1)
-        play_random_file("son/cast_" + cast_result + "/")
+        play_random_file("son/cast_" + cast_result + "/", "mp3", True, 1)
 
         conversation_pause(short_pause=True)
 
-        play_random_file("dad/respond_cast_" + cast_result + "/")
+        play_random_file("dad/respond_cast_" + cast_result + "/", "mp3", True, 0)
 
         conversation_pause()
 
@@ -495,30 +495,30 @@ def son_casting_sequence():
             break
 
         if cast_attempt < max_cast_attempts:
-            play_random_file("dad/try_again/")
+            play_random_file("dad/try_again/", "mp3", True, 0)
 
             conversation_pause()
 
     if not cast_successful:
-        play_random_file("dad/give_up_casting/")
+        play_random_file("dad/give_up_casting/", "mp3", True, 0)
         return False
 
     return True
 
 
 def waiting_conversation():
-    play_random_file("son/waiting/")
+    play_random_file("son/waiting/", "mp3", True, 1)
     conversation_pause(short_pause=True)
-    play_random_file("dad/respond_waiting/")
+    play_random_file("dad/respond_waiting/", "mp3", True, 0)
 
 
 def dad_casting_scene():
-    play_random_file("dad/own_cast/")
+    play_random_file("dad/own_cast/", "mp3", True, 0)
     cast_motion(0)
     conversation_pause(short_pause=True)
     # Usually let the son comment on Dad's cast.
     if random.randint(1, 4) != 1:
-        play_random_file("son/respond_dad_cast/")
+        play_random_file("son/respond_dad_cast/", "mp3", True, 1)
 
 
 def dad_fishing_scene():
@@ -1070,3 +1070,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     time.sleep(0.01)
+
