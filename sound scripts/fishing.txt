@@ -91,6 +91,29 @@ This gives you some dialogue when nothing is happening.
 "I haven't had a bite yet."
 "Maybe we need different bait."
 
+/son/respond_dad_cast
+
+"Nice cast, Dad!"
+"Good one, Dad!"
+"Wow, that went far!"
+"That was a good cast!"
+"Think you'll catch one?"
+"Think there's a fish over there?"
+"Maybe you'll get the big one!"
+"I bet you'll catch one there."
+"That looks like a good spot."
+"Your turn, Dad!"
+"Let's see what you can catch!"
+"I think there's one over there."
+"Maybe you'll have better luck."
+"Show me how it's done, Dad!"
+"I bet you get one this time."
+"That looked pretty good!"
+"Now we just have to wait."
+"Come on, fish!"
+"I hope you catch a big one!"
+"Maybe there's a big one hiding over there."
+
 I particularly like the waiting folder, because it gives you opportunities for funny Dad responses. For example:
 
 Son: "Are there really fish in here?"
@@ -127,6 +150,7 @@ I would also add a son/question folder, but don't randomly pair questions with g
 "Aim for that calm spot."
 "Try putting it just beyond those weeds."
 "That looks like a good spot. Give it a cast."
+
 /respond_cast_success
 "Great cast, son!"
 "That's the way to do it!"

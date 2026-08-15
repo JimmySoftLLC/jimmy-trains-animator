@@ -272,7 +272,7 @@ def ply_a_0(file_name, wait=True, repeat=False):
             pass
 
 
-def ply_a_1(file_name, wait=True, repeat=False):
+def ply_a_1(file_name, wait=True, repeat = False, figure_index = None):
     upd_vol(0)
     if not cfg["use_sd_card"] and "/sd/" in file_name:
         return
@@ -300,9 +300,14 @@ def ply_a_1(file_name, wait=True, repeat=False):
     # Wait until playback completes
     if wait:
         while mix.voice[1].playing:
-            upd_vol(0.1)
+            if figure_index != None:
+                move_figure(figure_index)
+            else:
+                upd_vol(0.1)
             pass
 
+def move_figure(figure_index):
+    return
 
 def wait_snd():
     while mix.voice[0].playing:
@@ -428,7 +433,7 @@ def get_indexed_media_file(folder_to_search, file_ext, index):
     return selected_file, new_index
 
 
-def play_random_file(folder_to_search, file_ext = "mp3", wait = True):
+def play_random_file(folder_to_search, file_ext = "mp3", wait = True, figure_index = None):
     filename = get_random_media_file(folder_to_search, file_ext)
     if not filename:
         return
@@ -471,7 +476,10 @@ def son_casting_sequence():
         cast_result = random.choice([
             "success",
             "tree",
-            "missed"
+            "success",
+            "missed",
+            "success",
+            "missed",
         ])
         cast_motion(1)
         play_random_file("son/cast_" + cast_result + "/")
@@ -505,7 +513,8 @@ def waiting_conversation():
 
 
 def dad_casting_scene():
-    play_random_file("dad/own_cast")
+    play_random_file("dad/own_cast/")
+    cast_motion(0)
     conversation_pause(short_pause=True)
     # Usually let the son comment on Dad's cast.
     if random.randint(1, 4) != 1:
@@ -579,7 +588,7 @@ def fly_fisherman_dialog():
         cast_successful = son_casting_sequence()
 
         if cast_successful:
-            fisherman_sequence = 0
+            fisherman_sequence = 1
 
         print("Fly Fisherman stopped at sequence:", fisherman_sequence)
         return
@@ -594,13 +603,13 @@ def fly_fisherman_dialog():
     # # Dad responds.
     # # =========================================================
 
-    # if fisherman_sequence == 1:
-    #     waiting_conversation()
+    if fisherman_sequence == 1:
+        waiting_conversation()
 
-    #     fisherman_sequence = 2
+        fisherman_sequence = 2
 
-    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
-    #     return
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
 
 
     # # =========================================================
@@ -611,13 +620,13 @@ def fly_fisherman_dialog():
     # # Dad casts and the son may comment.
     # # =========================================================
 
-    # if fisherman_sequence == 2:
-    #     dad_casting_scene()
+    if fisherman_sequence == 2:
+        dad_casting_scene()
 
-    #     fisherman_sequence = 3
+        fisherman_sequence = 3
 
-    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
-    #     return
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
 
 
     # # =========================================================
