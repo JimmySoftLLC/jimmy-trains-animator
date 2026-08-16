@@ -522,9 +522,9 @@ def dad_casting_scene():
 
 
 def dad_fishing_scene():
-    play_random_file("dad/own_got_bite/")
+    play_random_file("dad/own_got_bite/", "mp3", True, 0)
     conversation_pause(short_pause=True)
-    play_random_file("son/happy/")
+    play_random_file("son/happy/", "mp3", True, 1)
 
     conversation_pause()
 
@@ -534,15 +534,16 @@ def dad_fishing_scene():
     ])
 
     if fish_result == "caught":
-        play_random_file("dad/own_caught_fish/")
+        play_random_file("dad/own_caught_fish/", "mp3", True, 0)
         conversation_pause(short_pause=True)
-        play_random_file("son/happy/")
+        play_random_file("son/happy/", "mp3", True, 1)     
+
     else:
-        play_random_file("dad/own_lost_fish/")
+        play_random_file("dad/own_lost_fish/", "mp3", True, 0)
         conversation_pause(short_pause=True)
-        play_random_file("son/sad/")
-
-
+        play_random_file("son/sad/", "mp3", True, 1)
+        
+        
 def son_gets_bite_scene():
     play_random_file("son/got_bite/")
     conversation_pause(short_pause=True)
@@ -646,20 +647,21 @@ def fly_fisherman_dialog():
     #         "dad"
     #     ])
 
-    #     if event == "dad":
-    #         dad_fishing_scene()
+        if event == "dad":
+            dad_fishing_scene()
 
-    #         # After Dad's event, return focus to the son.
-    #         fisherman_sequence = 4
+            # After Dad's event, return focus to the son.
+            fisherman_sequence = 4
 
-    #     else:
-    #         # Son gets the bite.
-    #         son_gets_bite_scene()
+        else:
+            # Son gets the bite.
+            son_gets_bite_scene()
 
-    #         fisherman_sequence = 5
+            fisherman_sequence = 5
 
         print("Fly Fisherman stopped at sequence:", fisherman_sequence)
         return
+
 
 
     # # =========================================================
@@ -752,6 +754,7 @@ def fly_fisherman_dialog():
     # # If fisherman_sequence ever contains an invalid value,
     # # reset the story.
     # =========================================================
+
 
     fisherman_sequence = 0
 
