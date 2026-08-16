@@ -284,6 +284,7 @@ These should sound more urgent and excited.
 "I can almost see him!"
 "Just a little closer!"
 "Don't let him get away now!"
+
 /respond_caught_fish
 "Great job, son!"
 "Look at that! You got him!"

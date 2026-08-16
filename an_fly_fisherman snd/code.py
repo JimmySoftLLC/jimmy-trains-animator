@@ -545,13 +545,13 @@ def dad_fishing_scene():
         
         
 def son_gets_bite_scene():
-    play_random_file("son/got_bite/")
+    play_random_file("son/got_bite/", "mp3", True, 1)
     conversation_pause(short_pause=True)
-    play_random_file("dad/respond_got_bite/")
+    # play_random_file("dad/respond_got_bite/", "mp3", True, 0)
     conversation_pause()
-    play_random_file("son/fish_on/")
+    play_random_file("son/fish_on/", "mp3", True, 1)
     conversation_pause(short_pause=True)
-    play_random_file("dad/respond_fish_on/")
+    # play_random_file("dad/respond_fish_on/", "mp3", True, 0)
 
 
 def son_fish_result_scene():
@@ -562,13 +562,13 @@ def son_fish_result_scene():
     ])
 
     if fish_result == "caught":
-        play_random_file("son/caught_fish/")
+        play_random_file("son/caught_fish/", "mp3", True, 1)
         conversation_pause(short_pause=True)
-        play_random_file("dad/respond_caught_fish/")
+        # play_random_file("dad/respond_caught_fish/", "mp3", True, 0)
     else:
-        play_random_file("son/lost_fish/")
+        play_random_file("son/lost_fish/", "mp3", True, 1)
         conversation_pause(short_pause=True)
-        play_random_file("dad/respond_lost_fish/")
+        # play_random_file("dad/respond_lost_fish/", "mp3", True, 0)
 
 
 def fly_fisherman_dialog():
@@ -639,13 +639,13 @@ def fly_fisherman_dialog():
     # # Occasionally Dad gets the bite instead.
     # # =========================================================
 
-    # if fisherman_sequence == 3:
-    #     event = random.choice([
-    #         "son",
-    #         "son",
-    #         "son",
-    #         "dad"
-    #     ])
+    if fisherman_sequence == 3:
+        event = random.choice([
+            "son",
+            "son",
+            "son",
+            "dad"
+        ])
 
         if event == "dad":
             dad_fishing_scene()
@@ -673,13 +673,13 @@ def fly_fisherman_dialog():
     # # Then the next press moves toward the son's bite.
     # # =========================================================
 
-    # if fisherman_sequence == 4:
-    #     waiting_conversation()
+    if fisherman_sequence == 4:
+        waiting_conversation()
 
-    #     fisherman_sequence = 6
+        fisherman_sequence = 6
 
-    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
-    #     return
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
 
 
     # # =========================================================
@@ -690,13 +690,13 @@ def fly_fisherman_dialog():
     # # Now find out whether he catches it or loses it.
     # # =========================================================
 
-    # if fisherman_sequence == 5:
-    #     son_fish_result_scene()
+    if fisherman_sequence == 5:
+        son_fish_result_scene()
 
-    #     fisherman_sequence = 7
+        fisherman_sequence = 7
 
-    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
-    #     return
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
 
 
     # # =========================================================
@@ -706,13 +706,13 @@ def fly_fisherman_dialog():
     # # to get a bite.
     # # =========================================================
 
-    # if fisherman_sequence == 6:
-    #     son_gets_bite_scene()
+    if fisherman_sequence == 6:
+        son_gets_bite_scene()
 
-    #     fisherman_sequence = 5
+        fisherman_sequence = 5
 
-    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
-    #     return
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
 
 
     # # =========================================================
@@ -724,28 +724,28 @@ def fly_fisherman_dialog():
     # # beginning another cycle.
     # # =========================================================
 
-    # if fisherman_sequence == 7:
-    #     waiting_conversation()
+    if fisherman_sequence == 7:
+        waiting_conversation()
 
-    #     # Most of the time keep fishing without repeating
-    #     # the teaching-to-cast section.
-    #     #
-    #     # Occasionally start the entire story over.
+        # Most of the time keep fishing without repeating
+        # the teaching-to-cast section.
+        #
+        # Occasionally start the entire story over.
 
-    #     restart = random.choice([
-    #         False,
-    #         False,
-    #         False,
-    #         True
-    #     ])
+        restart = random.choice([
+            False,
+            False,
+            False,
+            True
+        ])
 
-    #     if restart:
-    #         fisherman_sequence = 0
-    #     else:
-    #         fisherman_sequence = 2
+        if restart:
+            fisherman_sequence = 0
+        else:
+            fisherman_sequence = 2
 
-    #     print("Fly Fisherman stopped at sequence:", fisherman_sequence)
-    #     return
+        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        return
 
 
     # # =========================================================
