@@ -62,6 +62,8 @@ timer_m = cfg["timer_settings"]
 rand_timer = 0
 srt_t = time.monotonic()
 
+fisherman_sequence = 0
+
 ################################################################################
 # pin setups
 
@@ -574,8 +576,6 @@ def son_fish_result_scene():
 def fly_fisherman_dialog():
     global fisherman_sequence
 
-    print("Fly Fisherman sequence:", fisherman_sequence)
-
     # =========================================================
     # SEQUENCE 0
     #
@@ -591,7 +591,7 @@ def fly_fisherman_dialog():
         if cast_successful:
             fisherman_sequence = 1
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
 
 
@@ -609,8 +609,10 @@ def fly_fisherman_dialog():
 
         fisherman_sequence = 2
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
+
+
 
 
     # # =========================================================
@@ -626,7 +628,7 @@ def fly_fisherman_dialog():
 
         fisherman_sequence = 3
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
 
 
@@ -659,7 +661,7 @@ def fly_fisherman_dialog():
 
             fisherman_sequence = 5
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
 
 
@@ -678,7 +680,7 @@ def fly_fisherman_dialog():
 
         fisherman_sequence = 6
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
 
 
@@ -695,7 +697,7 @@ def fly_fisherman_dialog():
 
         fisherman_sequence = 7
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
 
 
@@ -711,7 +713,7 @@ def fly_fisherman_dialog():
 
         fisherman_sequence = 5
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
 
 
@@ -725,8 +727,6 @@ def fly_fisherman_dialog():
     # # =========================================================
 
     if fisherman_sequence == 7:
-        waiting_conversation()
-
         # Most of the time keep fishing without repeating
         # the teaching-to-cast section.
         #
@@ -738,11 +738,17 @@ def fly_fisherman_dialog():
         ])
 
         if restart:
-            fisherman_sequence = 0
+            cast_successful = son_casting_sequence()
+            if cast_successful:
+                fisherman_sequence = 1
+            else:
+                fisherman_sequence = 0
         else:
+            cast_motion(1)
+            waiting_conversation()
             fisherman_sequence = 2
 
-        print("Fly Fisherman stopped at sequence:", fisherman_sequence)
+        print("Fly Fisherman stopped, next sequence:", fisherman_sequence)
         return
 
 
