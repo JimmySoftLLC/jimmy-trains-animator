@@ -547,11 +547,11 @@ def dad_fishing_scene():
 def son_gets_bite_scene():
     play_random_file("son/got_bite/", "mp3", True, 1)
     conversation_pause(short_pause=True)
-    # play_random_file("dad/respond_got_bite/", "mp3", True, 0)
+    play_random_file("dad/respond_got_bite/", "mp3", True, 0)
     conversation_pause()
     play_random_file("son/fish_on/", "mp3", True, 1)
     conversation_pause(short_pause=True)
-    # play_random_file("dad/respond_fish_on/", "mp3", True, 0)
+    play_random_file("dad/respond_fish_on/", "mp3", True, 0)
 
 
 def son_fish_result_scene():
@@ -564,11 +564,11 @@ def son_fish_result_scene():
     if fish_result == "caught":
         play_random_file("son/caught_fish/", "mp3", True, 1)
         conversation_pause(short_pause=True)
-        # play_random_file("dad/respond_caught_fish/", "mp3", True, 0)
+        play_random_file("dad/respond_caught_fish/", "mp3", True, 0)
     else:
         play_random_file("son/lost_fish/", "mp3", True, 1)
         conversation_pause(short_pause=True)
-        # play_random_file("dad/respond_lost_fish/", "mp3", True, 0)
+        play_random_file("dad/respond_lost_fish/", "mp3", True, 0)
 
 
 def fly_fisherman_dialog():
@@ -733,8 +733,6 @@ def fly_fisherman_dialog():
         # Occasionally start the entire story over.
 
         restart = random.choice([
-            False,
-            False,
             False,
             True
         ])
