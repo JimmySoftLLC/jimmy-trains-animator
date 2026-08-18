@@ -1,13 +1,8 @@
 {
-  "wiggle": "7",
-  "cast_speed": 0.002,
-  "wiggle_speed": 0.03,
-  "wiggle_cycles_low": 2,
+  "timer_val": "timer_0_seconds",
+  "volume_pot": true,
   "wiggle_cycles_high": 2,
-  "wiggle_pos": 90,
-  "cast_pos": 180,
-  "gentle_speed": 0.03,
-  "main_menu": ["timer_settings", "volume_settings", "exit_this_menu"],
+  "start_pos": 90,
   "timer_settings": [
     "timer_off",
     "timer_0_seconds",
@@ -18,14 +13,19 @@
     "timer_10_seconds",
     "timer_20_seconds"
   ],
-  "volume_pot": false,
-  "volume": "50",
-  "timer": false,
-  "timer_val": "random_5_10",
+  "wiggle": "7",
+  "volume": "10",
+  "gentle_speed": 0.03,
+  "main_menu": ["timer_settings", "volume_settings", "exit_this_menu"],
+  "wiggle_cycles_low": 2,
+  "wiggle_speed": 0.03,
+  "cast_speed": 0.002,
   "volume_settings": [
     "volume_level_adjustment",
     "volume_pot_off",
     "volume_pot_on"
   ],
+  "cast_pos": 180,
+  "timer": false,
   "use_sd_card": false
 }

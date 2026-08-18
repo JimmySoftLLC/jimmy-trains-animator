@@ -77,8 +77,8 @@ fisherman_sequence = 0
 servo_1_pin = board.GP16
 servo_2_pin = board.GP17
 
-top_sw_pin = board.GP11
-bot_sw_pin = board.GP15
+left_sw_pin = board.GP11
+right_sw_pin = board.GP15
 trig_sw_pin = board.GP22
 
 bclk = board.GP18  # BCLK on MAX98357A i2s audio
@@ -108,15 +108,15 @@ prev_pos_arr = [180, 180]
 servo_arr = [servo_1, servo_2]
 
 # Setup the switches
-top_sw = digitalio.DigitalInOut(top_sw_pin)
-top_sw.direction = digitalio.Direction.INPUT
-top_sw.pull = digitalio.Pull.UP
-top_sw = Debouncer(top_sw)
+left_sw = digitalio.DigitalInOut(left_sw_pin)
+left_sw.direction = digitalio.Direction.INPUT
+left_sw.pull = digitalio.Pull.UP
+left_sw = Debouncer(left_sw)
 
-bot_sw = digitalio.DigitalInOut(bot_sw_pin)
-bot_sw.direction = digitalio.Direction.INPUT
-bot_sw.pull = digitalio.Pull.UP
-bot_sw = Debouncer(bot_sw)
+right_sw = digitalio.DigitalInOut(right_sw_pin)
+right_sw.direction = digitalio.Direction.INPUT
+right_sw.pull = digitalio.Pull.UP
+right_sw = Debouncer(right_sw)
 
 trig_sw = digitalio.DigitalInOut(trig_sw_pin)
 trig_sw.direction = digitalio.Direction.INPUT
@@ -526,16 +526,20 @@ def dad_casting_scene():
     cast_motion(0)
     conversation_pause(short_pause=True)
     # Usually let the son comment on Dad's cast.
-    if random.randint(1, 4) != 1:
+    if rnd_prob(.80): 
         play_random_file("son/respond_dad_cast/", "mp3", True, 1)
 
 
 def dad_fishing_scene():
+    bite_motion(0)
+
     play_random_file("dad/own_got_bite/", "mp3", True, 0)
     conversation_pause(short_pause=True)
     play_random_file("son/happy/", "mp3", True, 1)
 
     conversation_pause()
+
+    fish_on_motion(0)
 
     fish_result = random.choice([
         "caught",
@@ -543,23 +547,34 @@ def dad_fishing_scene():
     ])
 
     if fish_result == "caught":
+        caught_fish_motion(0)
+
         play_random_file("dad/own_caught_fish/", "mp3", True, 0)
         conversation_pause(short_pause=True)
-        play_random_file("son/happy/", "mp3", True, 1)     
+        play_random_file("son/happy/", "mp3", True, 1)
 
     else:
+        lost_fish_motion(0)
+
         play_random_file("dad/own_lost_fish/", "mp3", True, 0)
         conversation_pause(short_pause=True)
         play_random_file("son/sad/", "mp3", True, 1)
         
         
 def son_gets_bite_scene():
+    bite_motion(1)
+
     play_random_file("son/got_bite/", "mp3", True, 1)
     conversation_pause(short_pause=True)
+
     play_random_file("dad/respond_got_bite/", "mp3", True, 0)
     conversation_pause()
+
+    fish_on_motion(1)
+
     play_random_file("son/fish_on/", "mp3", True, 1)
     conversation_pause(short_pause=True)
+
     play_random_file("dad/respond_fish_on/", "mp3", True, 0)
 
 
@@ -571,10 +586,17 @@ def son_fish_result_scene():
     ])
 
     if fish_result == "caught":
+        caught_fish_motion(1)
+
         play_random_file("son/caught_fish/", "mp3", True, 1)
         conversation_pause(short_pause=True)
         play_random_file("dad/respond_caught_fish/", "mp3", True, 0)
+        # Usually let the son comment on Dad's cast.
+        if rnd_prob(.20): 
+            play_random_file("dad/cheer/", "mp3", True, None)
     else:
+        lost_fish_motion(1)
+
         play_random_file("son/lost_fish/", "mp3", True, 1)
         conversation_pause(short_pause=True)
         play_random_file("dad/respond_lost_fish/", "mp3", True, 0)
@@ -650,7 +672,6 @@ def fly_fisherman_dialog():
 
     if fisherman_sequence == 3:
         event = random.choice([
-            "son",
             "son",
             "son",
             "dad"
@@ -777,14 +798,141 @@ def an():
     
 def cast_motion(fisherman_index):
     print("fisherman: ",fisherman_index)
-    move_at_speed(fisherman_index, cfg["wiggle_pos"], cfg["gentle_speed"])
+    move_at_speed(fisherman_index, cfg["start_pos"], cfg["gentle_speed"])
     cyc = random.randint(cfg["wiggle_cycles_low"], cfg["wiggle_cycles_high"])
-    s_1_wiggle_movement(fisherman_index, cfg["wiggle_pos"], cyc, cfg["wiggle_speed"])
+    s_1_wiggle_movement(fisherman_index, cfg["start_pos"], cyc, cfg["wiggle_speed"])
     time.sleep(.1)
     move_at_speed(fisherman_index, cfg["cast_pos"], cfg["cast_speed"])
 
+def bite_motion(fisherman_index):
+    cast_pos = cfg["cast_pos"]
+    start_pos = cfg["start_pos"]
+
+    direction = 1 if start_pos > cast_pos else -1
+
+    bite_amount = random.randint(3, 6)
+    bite_pos = cast_pos + (bite_amount * direction)
+
+    cycles = random.randint(2, 4)
+
+    for _ in range(cycles):
+        move_at_speed(fisherman_index, bite_pos, 0.008)
+        move_at_speed(fisherman_index, cast_pos, 0.015)
+        time.sleep(random.uniform(0.08, 0.18))
+
+
+def fish_on_motion(fisherman_index):
+    cast_pos = cfg["cast_pos"]
+    start_pos = cfg["start_pos"]
+
+    total_distance = start_pos - cast_pos
+
+    reel_end = cast_pos + int(total_distance * random.uniform(0.45, 0.60))
+
+    current_pos = prev_pos_arr[fisherman_index]
+
+    while abs(current_pos - reel_end) > 5:
+        distance_remaining = reel_end - current_pos
+        direction = 1 if distance_remaining > 0 else -1
+
+        pull_amount = random.randint(7, 12)
+        recover_amount = random.randint(2, 5)
+
+        pull_pos = current_pos + (pull_amount * direction)
+
+        if direction > 0 and pull_pos > reel_end:
+            pull_pos = reel_end
+
+        if direction < 0 and pull_pos < reel_end:
+            pull_pos = reel_end
+
+        move_at_speed(fisherman_index, pull_pos, random.uniform(0.008, 0.015))
+
+        current_pos = prev_pos_arr[fisherman_index]
+
+        if current_pos != reel_end:
+            recover_pos = current_pos - (recover_amount * direction)
+            move_at_speed(fisherman_index, recover_pos, random.uniform(0.012, 0.020))
+
+        current_pos = prev_pos_arr[fisherman_index]
+
+        time.sleep(random.uniform(0.08, 0.18))
+
+
+def caught_fish_motion(fisherman_index):
+    start_pos = cfg["start_pos"]
+    current_pos = prev_pos_arr[fisherman_index]
+
+    while abs(current_pos - start_pos) > 5:
+        distance_remaining = start_pos - current_pos
+        direction = 1 if distance_remaining > 0 else -1
+
+        pull_amount = random.randint(7, 12)
+        recover_amount = random.randint(1, 4)
+
+        pull_pos = current_pos + (pull_amount * direction)
+
+        if direction > 0 and pull_pos > start_pos:
+            pull_pos = start_pos
+
+        if direction < 0 and pull_pos < start_pos:
+            pull_pos = start_pos
+
+        move_at_speed(fisherman_index, pull_pos, random.uniform(0.008, 0.015))
+
+        current_pos = prev_pos_arr[fisherman_index]
+
+        if current_pos != start_pos:
+            recover_pos = current_pos - (recover_amount * direction)
+            move_at_speed(fisherman_index, recover_pos, random.uniform(0.012, 0.020))
+
+        current_pos = prev_pos_arr[fisherman_index]
+
+        time.sleep(random.uniform(0.07, 0.15))
+
+    move_at_speed(fisherman_index, start_pos, cfg["gentle_speed"])
+
+
+def lost_fish_motion(fisherman_index):
+    cast_pos = cfg["cast_pos"]
+    start_pos = cfg["start_pos"]
+
+    current_pos = prev_pos_arr[fisherman_index]
+    direction = 1 if start_pos > cast_pos else -1
+
+    cycles = random.randint(1, 2)
+
+    for _ in range(cycles):
+        pull_amount = random.randint(5, 9)
+        pull_pos = current_pos + (pull_amount * direction)
+
+        if direction > 0 and pull_pos > start_pos:
+            pull_pos = start_pos
+
+        if direction < 0 and pull_pos < start_pos:
+            pull_pos = start_pos
+
+        move_at_speed(fisherman_index, pull_pos, 0.008)
+
+        current_pos = prev_pos_arr[fisherman_index]
+
+        release_amount = random.randint(4, 7)
+        release_pos = current_pos - (release_amount * direction)
+
+        if direction > 0 and release_pos < cast_pos:
+            release_pos = cast_pos
+
+        if direction < 0 and release_pos > cast_pos:
+            release_pos = cast_pos
+
+        move_at_speed(fisherman_index, release_pos, 0.018)
+
+        current_pos = prev_pos_arr[fisherman_index]
+
+        time.sleep(random.uniform(0.08, 0.15))
+
 def show_mode(cycles):
-    middle_point = int((cfg["wiggle_pos"]+cfg["cast_pos"])/2)
+    middle_point = int((cfg["start_pos"]+cfg["cast_pos"])/2)
     show_mode_spd = 0.01
     move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
     for _ in range(cycles):
@@ -800,7 +948,7 @@ def show_timer_mode():
 
 
 def show_timer_program_option(cycles):
-    middle_point = int((cfg["wiggle_pos"]+cfg["cast_pos"])/2)
+    middle_point = int((cfg["start_pos"]+cfg["cast_pos"])/2)
     middle_point = int((middle_point+cfg["cast_pos"])/2)
     move_at_speed(0, cfg["cast_pos"], cfg["wiggle_speed"])
     for _ in range(cycles):
@@ -876,7 +1024,7 @@ class BseSt(Ste):
     def upd(self, mch):
         global rand_timer, srt_t
         sw = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw == "left_held":
             rand_timer = 0
             if cfg["timer"] == True:
@@ -934,7 +1082,7 @@ class Main(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left":
             ply_a_0(mvc_folder + "" + main_m[self.i] + ".mp3")
             self.sel_i = self.i
@@ -972,7 +1120,7 @@ class TimerSet(Ste):
     def upd(self, mch):
         global rand_timer, srt_t
         sw_st = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left":
             ply_a_0(mvc_folder + "" + timer_m[self.i] + ".mp3")
             self.sel_i = self.i
@@ -1018,7 +1166,7 @@ class VolSet(Ste):
 
     def upd(s, mch):
         sw_st = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left" and not s.vol_adj_mode:
             ply_a_0(mvc_folder + "" + vol_set_m[s.i] + ".mp3")
             s.sel_i = s.i
@@ -1062,7 +1210,7 @@ st_mch.add(Main())
 st_mch.add(TimerSet())
 st_mch.add(VolSet())
 
-sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 6.0)
+sw = utilities.switch_state(left_sw, right_sw, time.sleep, 6.0)
 if sw == "left_held":  # top switch counter clockwise
     cfg["cast_pos"] = 0
     files.write_json_file("cfg.json", cfg)
@@ -1073,7 +1221,7 @@ elif sw == "right_held":  # top switch clockwise
     show_mode(4)
 else:
     aud_en.value = True
-    move_at_speed(0, cfg["wiggle_pos"], cfg["gentle_speed"])
+    move_at_speed(0, cfg["start_pos"], cfg["gentle_speed"])
     time.sleep(5)
 
 st_mch.go_to("base_state")
