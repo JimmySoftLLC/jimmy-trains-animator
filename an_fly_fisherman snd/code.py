@@ -67,12 +67,19 @@ fisherman_sequence = 0
 ################################################################################
 # pin setups
 
-servo_1_pin = board.GP10
-servo_2_pin = board.GP11
+# servo_1_pin = board.GP10
+# servo_2_pin = board.GP11
 
-top_sw_pin = board.GP6
-bot_sw_pin = board.GP7
-trig_sw_pin = board.GP12
+# top_sw_pin = board.GP6
+# bot_sw_pin = board.GP7
+# trig_sw_pin = board.GP12
+
+servo_1_pin = board.GP16
+servo_2_pin = board.GP17
+
+top_sw_pin = board.GP11
+bot_sw_pin = board.GP15
+trig_sw_pin = board.GP22
 
 bclk = board.GP18  # BCLK on MAX98357A i2s audio
 lrc = board.GP19  # LRC on MAX98357A i2s audio
@@ -81,7 +88,7 @@ din = board.GP20  # DIN on MAX98357A i2s audio
 aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
 a_in_pin = board.A0
-aud_en_pin = board.GP22
+aud_en_pin = board.GP21
 
 ################################################################################
 # Setup hardware
