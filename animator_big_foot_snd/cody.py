@@ -24,7 +24,6 @@ import files
 import utilities
 import time
 import board
-import microcontroller
 import pwmio
 import digitalio
 import random
@@ -70,12 +69,12 @@ async_running = False
 ################################################################################
 # pin setups
 
-servo_1_pin = board.GP10
-servo_2_pin = board.GP11
+servo_1_pin = board.GP16
+servo_2_pin = board.GP17
 
-top_sw_pin = board.GP6
-bot_sw_pin = board.GP7
-trig_sw_pin = board.GP12
+left_sw_pin = board.GP11
+right_sw_pin = board.GP15
+trig_sw_pin = board.GP22
 
 bclk = board.GP18  # BCLK on MAX98357A i2s audio
 lrc = board.GP19  # LRC on MAX98357A i2s audio
@@ -84,7 +83,7 @@ din = board.GP20  # DIN on MAX98357A i2s audio
 aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
 a_in_pin = board.A0
-aud_en_pin = board.GP22
+aud_en_pin = board.GP21
 
 ################################################################################
 # Setup hardware
@@ -103,15 +102,15 @@ prev_pos_arr = [cfg["hidden"], cfg["forward"]]
 servo_arr = [servo_1, servo_2]
 
 # Setup the switches
-top_sw = digitalio.DigitalInOut(top_sw_pin)
-top_sw.direction = digitalio.Direction.INPUT
-top_sw.pull = digitalio.Pull.UP
-top_sw = Debouncer(top_sw)
+left_sw = digitalio.DigitalInOut(left_sw_pin)
+left_sw.direction = digitalio.Direction.INPUT
+left_sw.pull = digitalio.Pull.UP
+left_sw = Debouncer(left_sw)
 
-bot_sw = digitalio.DigitalInOut(bot_sw_pin)
-bot_sw.direction = digitalio.Direction.INPUT
-bot_sw.pull = digitalio.Pull.UP
-bot_sw = Debouncer(bot_sw)
+right_sw = digitalio.DigitalInOut(right_sw_pin)
+right_sw.direction = digitalio.Direction.INPUT
+right_sw.pull = digitalio.Pull.UP
+right_sw = Debouncer(right_sw)
 
 trig_sw = digitalio.DigitalInOut(trig_sw_pin)
 trig_sw.direction = digitalio.Direction.INPUT
@@ -669,7 +668,7 @@ class BseSt(Ste):
     def upd(self, mch):
         global rand_timer, srt_t
         sw = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw == "left_held":
             rand_timer = 0
             if cfg["timer"] == True:
@@ -726,7 +725,7 @@ class Main(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left":
             ply_a_0(mvc_folder + "" + main_m[self.i] + ".mp3")
             self.sel_i = self.i
@@ -764,7 +763,7 @@ class TimerSet(Ste):
     def upd(self, mch):
         global rand_timer, srt_t
         sw_st = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left":
             ply_a_0(mvc_folder + "" + timer_m[self.i] + ".mp3")
             self.sel_i = self.i
@@ -811,7 +810,7 @@ class VolSet(Ste):
 
     def upd(s, mch):
         sw_st = utilities.switch_state_trigger(
-            top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+            left_sw, right_sw, trig_sw, time.sleep, 3.0)
         if sw_st == "left" and not s.vol_adj_mode:
             ply_a_0(mvc_folder + "" + vol_set_m[s.i] + ".mp3")
             s.sel_i = s.i
@@ -872,12 +871,12 @@ class ServoSet(Ste):
 
     def upd(self, mch):
         global current_setting
-        top_sw.update()
-        bot_sw.update()
+        left_sw.update()
+        right_sw.update()
         done = False
         while not done:
             sw = utilities.switch_state_trigger(
-                top_sw, bot_sw, trig_sw, time.sleep, 3.0)
+                left_sw, right_sw, trig_sw, time.sleep, 3.0)
             if sw == "left":
                 ch_servo(0, current_setting, "raise")
             elif sw == "right":
@@ -910,7 +909,7 @@ st_mch.add(ServoSet())
 st_mch.add(VolSet())
 
 
-sw = utilities.switch_state(top_sw, bot_sw, time.sleep, 6.0)
+sw = utilities.switch_state(left_sw, right_sw, time.sleep, 6.0)
 if sw == "left_held":  # left switch visible settings
     current_setting = "hidden"
     st_mch.go_to("servo_settings")

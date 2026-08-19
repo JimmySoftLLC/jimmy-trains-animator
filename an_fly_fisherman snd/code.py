@@ -66,13 +66,6 @@ fisherman_sequence = 0
 ################################################################################
 # pin setups
 
-# servo_1_pin = board.GP10
-# servo_2_pin = board.GP11
-
-# top_sw_pin = board.GP6
-# bot_sw_pin = board.GP7
-# trig_sw_pin = board.GP12
-
 servo_1_pin = board.GP16
 servo_2_pin = board.GP17
 
