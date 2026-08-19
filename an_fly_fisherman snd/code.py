@@ -24,7 +24,6 @@ import files
 import utilities
 import time
 import board
-import microcontroller
 import pwmio
 import digitalio
 import random
