@@ -301,6 +301,8 @@ if cfg["bumper_mode"]:
             bumper_progress = controller.off_bumper_time / controller.time_forward
 
         print("Bumper calibration complete")
+        print("Forward time:", controller.time_forward)
+        print("Reverse time:", controller.time_reverse)
 
     else:
         print("Bumper calibration failed")
@@ -1798,9 +1800,6 @@ async def bumper_tsk():
     global bumper_last_time
     global current_throttle
 
-    left_was_hit = False
-    right_was_hit = False
-
     bumper_last_time = time.monotonic()
 
     while True:
@@ -1808,33 +1807,121 @@ async def bumper_tsk():
         dt = now - bumper_last_time
         bumper_last_time = now
 
+        # --------------------------------------------------
+        # BUMPER MODE NOT AVAILABLE
+        # --------------------------------------------------
+
         if not cfg["bumper_mode"] or not bumper_ready:
             await asyncio.sleep(.01)
             continue
 
-        left_hit = not l_sw_io.value
-        right_hit = not r_sw_io.value
-
-        if left_hit and not left_was_hit:
-            print("Left bumper")
-
-            bumper_direction = 1
-            bumper_progress = 0.0
-
-        if right_hit and not right_was_hit:
-            print("Right bumper")
-
-            bumper_direction = -1
-            bumper_progress = 0.0
-
-        left_was_hit = left_hit
-        right_was_hit = right_hit
+        # --------------------------------------------------
+        # ANIMATION WANTS THE TROLLEY STOPPED
+        #
+        # Do NOT reset bumper_direction or bumper_progress.
+        # This remembers where we were for the next animation.
+        # --------------------------------------------------
 
         if bumper_requested_throttle <= 0:
             train.throttle = 0
             current_throttle = 0
+
             await asyncio.sleep(.01)
             continue
+
+        # --------------------------------------------------
+        # MOVING RIGHT
+        #
+        # Only look at RIGHT bumper.
+        # Same logic as working shuttle.
+        # --------------------------------------------------
+
+        if bumper_direction > 0 and controller._right_hit():
+            print("RIGHT bumper")
+
+            # Stop immediately
+            train.throttle = 0
+            current_throttle = 0
+
+            await asyncio.sleep(.05)
+
+            # Back away from RIGHT bumper
+            backoff_speed = controller.base_speed
+
+            if backoff_speed is None or backoff_speed <= 0:
+                backoff_speed = 0.2
+
+            train.throttle = -backoff_speed
+            current_throttle = -int(backoff_speed * 100)
+
+            await asyncio.sleep(controller.off_bumper_time)
+
+            train.throttle = 0
+            current_throttle = 0
+
+            # We are now traveling toward LEFT
+            bumper_direction = -1
+
+            if controller.time_reverse:
+                bumper_progress = controller.off_bumper_time / controller.time_reverse
+            else:
+                bumper_progress = 0.0
+
+            bumper_last_time = time.monotonic()
+
+            print("Now traveling LEFT")
+
+            await asyncio.sleep(.01)
+            continue
+
+        # --------------------------------------------------
+        # MOVING LEFT
+        #
+        # Only look at LEFT bumper.
+        # Same logic as working shuttle.
+        # --------------------------------------------------
+
+        if bumper_direction < 0 and controller._left_hit():
+            print("LEFT bumper")
+
+            # Stop immediately
+            train.throttle = 0
+            current_throttle = 0
+
+            await asyncio.sleep(.05)
+
+            # Back away from LEFT bumper
+            backoff_speed = controller.base_speed
+
+            if backoff_speed is None or backoff_speed <= 0:
+                backoff_speed = 0.2
+
+            train.throttle = backoff_speed
+            current_throttle = int(backoff_speed * 100)
+
+            await asyncio.sleep(controller.off_bumper_time)
+
+            train.throttle = 0
+            current_throttle = 0
+
+            # We are now traveling toward RIGHT
+            bumper_direction = 1
+
+            if controller.time_forward:
+                bumper_progress = controller.off_bumper_time / controller.time_forward
+            else:
+                bumper_progress = 0.0
+
+            bumper_last_time = time.monotonic()
+
+            print("Now traveling RIGHT")
+
+            await asyncio.sleep(.01)
+            continue
+
+        # --------------------------------------------------
+        # GET ESTIMATED TRAVEL TIME
+        # --------------------------------------------------
 
         if bumper_direction > 0:
             est_time = controller.time_forward
@@ -1844,22 +1931,35 @@ async def bumper_tsk():
         if est_time is None or est_time <= 0:
             train.throttle = 0
             current_throttle = 0
+
             await asyncio.sleep(.01)
             continue
+
+        # --------------------------------------------------
+        # ANIMATION CONTROLS SPEED
+        # BUMPER CONTROLLER CONTROLS DIRECTION
+        # --------------------------------------------------
+
+        commanded_speed = abs(bumper_requested_throttle)
+
+        ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, bumper_progress)
+
+        train.throttle = ramped_throttle
+        current_throttle = int(ramped_throttle * 100)
+
+        # --------------------------------------------------
+        # TRACK POSITION
+        #
+        # Calibration was done at controller.base_speed.
+        # Compensate when animation uses another speed.
+        # --------------------------------------------------
 
         base_speed = controller.base_speed
 
         if base_speed is None or base_speed <= 0:
-            base_speed = bumper_requested_throttle
-
-        commanded_speed = bumper_requested_throttle
-
-        ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, bumper_progress)
+            base_speed = commanded_speed
 
         actual_speed = abs(ramped_throttle)
-
-        train.throttle = ramped_throttle
-        current_throttle = int(ramped_throttle * 100)
 
         if base_speed > 0:
             bumper_progress += dt * (actual_speed / base_speed) / est_time
@@ -1868,7 +1968,6 @@ async def bumper_tsk():
             bumper_progress = 1.0
 
         await asyncio.sleep(.01)
-
 
 async def process_cmd_tsk():
     """Task to continuously process commands."""
