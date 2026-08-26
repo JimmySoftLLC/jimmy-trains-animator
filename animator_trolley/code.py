@@ -269,26 +269,26 @@ train.decay_mode = d_mde
 train.throttle = 0
 current_throttle = 0
 
-# from trolley_controller import TrolleyController
+from trolley_controller import TrolleyController
 
-# controller = TrolleyController(
-#     train,
-#     l_sw_io,
-#     r_sw_io,
-#     ramp_start_ratio=0.7,
-#     min_throttle=0.12,
-#     off_bumper_time=0.3,
-#     ramp_steps=3,
-# )
+controller = TrolleyController(
+    train,
+    l_sw_io,
+    r_sw_io,
+    ramp_start_ratio=0.7,
+    min_throttle=0.12,
+    off_bumper_time=0.3,
+    ramp_steps=3,
+)
 
-# print("Calibrating...")
-# cal = controller.calibrate(speed=0.3, cycles=3)
-# print("Cal:", cal)
+print("Calibrating...")
+cal = controller.calibrate(speed=0.3, cycles=3)
+print("Cal:", cal)
 
 # # Start by heading toward the RIGHT bumper
-# controller.shuttle(start_direction=+1, cycles=10)
+controller.shuttle(start_direction=+1, cycles=10)
 
-# Or start toward LEFT:
+# # Or start toward LEFT:
 # controller.shuttle(start_direction=-1, cycles=20)
 
 
