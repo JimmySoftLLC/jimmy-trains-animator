@@ -323,7 +323,8 @@ async def set_bumper_speed(target_throttle, acceleration=None):
 
     if acceleration is None or acceleration <= 0:
         bumper_requested_throttle = target_throttle / 100
-        return
+        await asyncio.sleep(0)
+        return False
 
     target = target_throttle / 100
     step = acceleration / 100
@@ -334,7 +335,14 @@ async def set_bumper_speed(target_throttle, acceleration=None):
         else:
             bumper_requested_throttle = max(bumper_requested_throttle - step, target)
 
-        await asyncio.sleep(.02)
+        if an_running:
+            if await animation_wait(.02):
+                return True
+        else:
+            await asyncio.sleep(.02)
+
+    return False
+
 ################################################################################
 # Setup wifi and web server
 
@@ -732,6 +740,45 @@ def stop_all_cmds():
     print("Processing stopped and command queue cleared.")
 
 
+async def animation_wait(wait_time):
+    global an_running, bumper_requested_throttle, current_throttle
+
+    start_time = time.monotonic()
+
+    while time.monotonic() - start_time < wait_time:
+        sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, None, False)
+
+        if sw == "both_held":
+            cfg["bumper_mode"] = not cfg["bumper_mode"]
+
+            if cfg["bumper_mode"]:
+                print("BUMPER MODE ON")
+            else:
+                print("BUMPER MODE OFF")
+
+        elif sw == "left_held":
+            print("LEFT HELD - STOP ANIMATION")
+
+            bumper_requested_throttle = 0.0
+            train.throttle = 0
+            current_throttle = 0
+
+            stop_all_cmds()
+            files.write_json_file("/sd/cfg.json", cfg)
+
+            an_running = False
+            return True
+
+        time.sleep(.001)
+
+        # This does NOT control animation timing.
+        # It only lets bumper_tsk() run.
+        await asyncio.sleep(0)
+
+    return False
+
+
+
 def add_command_to_ts(command):
     global ts_mode, t_s, t_elsp
     if not ts_mode:
@@ -850,9 +897,16 @@ def wait_snd():
         pass
 
 
-def wait_snd_1():
+async def wait_snd_1():
     while mix.voice[1].playing:
-        pass
+        if an_running:
+            if await animation_wait(.01):
+                return True
+        else:
+            time.sleep(.01)
+            await asyncio.sleep(0)
+
+    return False
 
 
 def stp_a_0():
@@ -860,16 +914,19 @@ def stp_a_0():
     wait_snd()
 
 
-def stp_a_1():
+async def stp_a_1():
     mix.voice[1].stop()
-    wait_snd_1()
+    await wait_snd_1()
 
 
 def exit_early():
-    upd_vol(0.1)
+    upd_vol(0)
 
-    if cfg["bumper_mode"] and an_running:
+    if an_running:
+        animation_wait(.1)
         return
+
+    time.sleep(.1)
 
     l_sw.update()
 
@@ -995,9 +1052,8 @@ async def an_light_async(f_nm):
 
     flsh_t = []
 
-    if (f_exists(animations_folder + f_nm + ".json") == True):
-        flsh_t = files.read_json_file(
-            animations_folder + f_nm + ".json")
+    if f_exists(animations_folder + f_nm + ".json") == True:
+        flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
 
     flsh_i = 0
 
@@ -1005,30 +1061,45 @@ async def an_light_async(f_nm):
         ft1 = flsh_t[flsh_i].split("|")
         result = await set_hdw_async(ft1[1])
         print("Result is: ", result)
+
+        if result == "STOP":
+            an_running = False
+            return
+
         result = result.split("_")
+
         if result and len(result) > 1:
             w0_exists = f_exists(animations_folder + result[1])
+
             if w0_exists:
                 if result[0] == "1":
                     repeat = True
                 else:
                     repeat = False
+
                 ply_a_0(animations_folder + result[1], False, repeat)
+
             else:
+                an_running = False
                 return
+
             srt_t = time.monotonic()
 
             ft1 = []
             ft2 = []
 
-            # add end command to time stamps so all table values can be used
             ft_last = flsh_t[len(flsh_t)-1].split("|")
             tm_last = float(ft_last[0]) + .1
             flsh_t.append(str(tm_last) + "|")
+
         else:
+            an_running = False
             return
+
         flsh_i += 1
+
     else:
+        an_running = False
         return
 
     while True:
@@ -1038,52 +1109,43 @@ async def an_light_async(f_nm):
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
             dur = float(ft2[0]) - float(ft1[0]) - 0.25
+
         else:
             dur = 0.25
+
         if dur < 0:
             dur = 0
+
         if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item("time elapsed: " + str(t_past) +
-                           " Timestamp: " + ft1[0] + " Command: " + ft1[1])
-            if (len(ft1) == 1 or ft1[1] == ""):
+            files.log_item("time elapsed: " + str(t_past) + " Timestamp: " + ft1[0] + " Command: " + ft1[1])
+
+            if len(ft1) == 1 or ft1[1] == "":
                 result = await set_hdw_async("", dur)
+
                 if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
-                    break
+                    an_running = False
+                    return
+
             else:
                 result = await set_hdw_async(ft1[1], dur)
+
                 if result == "STOP":
-                    await asyncio.sleep(0)  # Yield control to other tasks
-                    break
+                    an_running = False
+                    return
+
             flsh_i += 1
-        if not cfg["bumper_mode"]:
-            sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
 
-            if sw == "left":
-                flsh_i = len(flsh_t)-1
-                mix.voice[0].stop()
-                mix.voice[1].stop()
-                exit_set_hdw_async = True
-                add_cmd("TA_0_2")
-                an_running = False
-                return
-
-            if sw == "left_held":
-                mix.voice[0].stop()
-                flsh_i = len(flsh_t) - 1
-
-                if cfg["cont_mode"]:
-                    stop_all_cmds()
-                    ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-                    cfg["cont_mode"] = False
-                    files.write_json_file("/sd/cfg.json", cfg)
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
             add_cmd("TA_0_2")
             an_running = False
             return
-        await upd_vol_async(.1)
+
+        upd_vol(0)
+
+        if await animation_wait(.1):
+            return
 
 
 def add_command_to_ts(command):
@@ -1192,15 +1254,18 @@ def set_hdw_lights(seg):
         br = int(seg[1:])
         led.brightness = float(br/100)
 
-
 async def set_hdw_async(cmd, dur=3):
     global br, current_throttle, media_index, exit_set_hdw_async, bumper_requested_throttle
+
     if cmd == "":
         return "NOCMDS"
-    # Split the input string into segments
+
     segs = cmd.split(",")
-    # Process each segment
+
     for seg in segs:
+        if exit_set_hdw_async:
+            return "STOP"
+
         # TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100
         if seg[:2] == 'TA':
             try:
@@ -1209,7 +1274,8 @@ async def set_hdw_async(cmd, dur=3):
                 acceleration = int(seg_split[2])
 
                 if cfg["bumper_mode"]:
-                    await set_bumper_speed(target_throttle, acceleration)
+                    if await set_bumper_speed(target_throttle, acceleration):
+                        return "STOP"
 
                 else:
                     diff = target_throttle - current_throttle
@@ -1224,24 +1290,38 @@ async def set_hdw_async(cmd, dur=3):
                         current_throttle = new_throttle
                         diff = target_throttle - current_throttle
 
-                        await asyncio.sleep(.02)
+                        if an_running:
+                            if await animation_wait(.02):
+                                return "STOP"
+                        else:
+                            await asyncio.sleep(.02)
 
             except Exception as e:
                 print(e)
-        # ZRAND = Random rainbow, fire, or color change
+
         elif seg[0:] == 'ZRAND':
             await random_effect(1, 3, dur)
-        # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+
+            if exit_set_hdw_async:
+                return "STOP"
+
         elif seg[:2] == 'ZR':
             v = float(seg[2:])
             await rbow(v, dur)
-        # ZFIRE = Fire
+
+            if exit_set_hdw_async:
+                return "STOP"
+
         elif seg[0:] == 'ZFIRE':
             await fire(dur)
-        # ZCOLCH = Color change
+
+            if exit_set_hdw_async:
+                return "STOP"
+
         elif seg[0:] == 'ZCOLCH':
-            multi_color()
-        # TXXX = Train XXX throttle -100 to 100
+            if multi_color():
+                return "STOP"
+
         elif seg[:1] == 'T':
             try:
                 target_throttle = int(seg[1:])
@@ -1255,63 +1335,87 @@ async def set_hdw_async(cmd, dur=3):
 
             except Exception as e:
                 print(e)
-        # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others ignored
-        elif seg[:2] == 'MB':  # play file
+
+        elif seg[:2] == 'MB':
             repeat = seg[2]
             file_nm = seg[3:]
             return repeat + "_" + file_nm
-        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
-        elif seg[0] == 'M':  # play file
+
+        elif seg[0] == 'M':
             if seg[1] == "S":
                 stp_a_0()
+
             elif seg[1] == "W" or seg[1] == "P":
                 if seg[2] in FOLDER_MAP:
                     folder = FOLDER_MAP[seg[2]]
-                    code   = seg[3:]
+                    code = seg[3:]
+
                     if code == "SEQN":
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
+
                     elif code == "SEQF":
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
+
                     elif code == "RAND":
                         filename = get_random_media_file(folder)
+
                     else:
                         filename = code
+
                     w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
+
                 if seg[1] == "W" or seg[1] == "P":
-                    stp_a_1()
-                    mix.voice[1].play(w1, loop=False)        
+                    await stp_a_1()
+                    mix.voice[1].play(w1, loop=False)
+
                 if seg[1] == "W":
-                    wait_snd_1()
-        # HA = Blow horn or bell, A (H Horn, B Bell)
-        elif seg[0] == 'H':  # play file
-            stp_a_1()
+                    if await wait_snd_1():
+                        return "STOP"
+
+        elif seg[0] == 'H':
+            await stp_a_1()
+
             if seg[1] == "B":
                 fn = get_snds("bells/", "bell")
                 w1 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[1].play(w1, loop=False)
+
             elif seg[1] == "H":
                 fn = get_snds("horns/", "horn")
                 w1 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[1].play(w1, loop=False)
-        # lights LNZZZ_R_G_B or BXXX
+
         elif seg[:2] == 'LN' or seg[0] == 'B':
             set_hdw_lights(seg)
-        # FXXX = Fade brightness in or out XXX 0 to 100
+
         elif seg[0] == 'F':
             v = int(seg[1:])
+
             while not br == v:
                 if br < v:
                     br += 1
                     led.brightness = float(br/100)
+
                 else:
                     br -= 1
                     led.brightness = float(br/100)
+
                 led.show()
-                time.sleep(.01)
-        # WXXX = Wait XXX decimal seconds
-        elif seg[0] == 'W':  # wait time
+
+                if an_running:
+                    if await animation_wait(.01):
+                        return "STOP"
+                else:
+                    time.sleep(.01)
+
+        elif seg[0] == 'W':
             s = float(seg[1:])
-            await asyncio.sleep(s)
+
+            if an_running:
+                if await animation_wait(s):
+                    return "STOP"
+            else:
+                await asyncio.sleep(s)
 
 
 def set_neo_to(light_n, r, g, b):
@@ -1326,12 +1430,21 @@ def set_neo_to(light_n, r, g, b):
 async def random_effect(il, ih, d):
     if exit_set_hdw_async:
         return
+
     i = random.randint(il, ih)
+
     if i == 1:
         await rbow(0.012, d)
+
     elif i == 2:
         multi_color()
-        await asyncio.sleep(d)
+
+        if an_running:
+            if await animation_wait(d):
+                return
+        else:
+            await asyncio.sleep(d)
+
     elif i == 3:
         await fire(d)
 
@@ -1339,25 +1452,28 @@ async def random_effect(il, ih, d):
 async def rbow(spd, dur):
     st = time.monotonic()
     te = time.monotonic()-st
+
     while te < dur:
         for j in range(0, 255, 1):
-            if not (cfg["bumper_mode"] and an_running):
-                pressed_sw = l_sw_io.value
-
-                if pressed_sw:
-                    ovrde_sw_st["switch_value"] = "left"
-                    return
             if exit_set_hdw_async:
                 return
+
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
+
             led.show()
-            time.sleep(spd)
+
+            if an_running:
+                if await animation_wait(spd):
+                    return
+            else:
+                time.sleep(spd)
+
             te = time.monotonic()-st
+
             if te > dur:
                 return
-
 
 def multi_color():
     for i in range(n_px):
@@ -1365,56 +1481,62 @@ def multi_color():
         g = random.randint(128, 255)
         b = random.randint(128, 255)
         c = random.randint(0, 2)
+
         if c == 0:
             r1 = r
             g1 = 0
             b1 = 0
+
         elif c == 1:
             r1 = 0
             g1 = g
             b1 = 0
+
         elif c == 2:
             r1 = 0
             g1 = 0
             b1 = b
-        led[i] = (r1, g1, b1)
-        if not (cfg["bumper_mode"] and an_running):
-            pressed_sw = l_sw_io.value
 
-            if pressed_sw:
-                ovrde_sw_st["switch_value"] = "left"
-                return
+        led[i] = (r1, g1, b1)
+
     led.show()
 
+    return False
 
 async def fire(dur):
     st = time.monotonic()
+
     r = random.randint(0, 255)
     g = random.randint(0, 255)
     b = random.randint(0, 255)
 
-    # Flicker, based on our initial RGB values
     while True:
+        if exit_set_hdw_async:
+            return
+
         for i in range(n_px):
-            if exit_set_hdw_async:
-                return
             f = random.randint(0, 110)
+
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
             b1 = bnd(b-f, 0, 255)
-            led[i] = (r1, g1, b1)
-        led.show()
-        if not (cfg["bumper_mode"] and an_running):
-            pressed_sw = l_sw_io.value
 
-            if pressed_sw:
-                ovrde_sw_st["switch_value"] = "left"
+            led[i] = (r1, g1, b1)
+
+        led.show()
+
+        upd_vol(0)
+
+        if an_running:
+            if await animation_wait(random.uniform(0.05, 0.1)):
                 return
-        await upd_vol_async(random.uniform(0.05, 0.1))
+        else:
+            time.sleep(random.uniform(0.05, 0.1))
+
         te = time.monotonic()-st
+
         if te > dur:
             return
-
 
 def bnd(c, l, u):
     if (c < l):
@@ -1510,39 +1632,53 @@ class BseSt(Ste):
     def enter(self, mch):
         ply_a_0(mvc_folder + "animations_are_now_active.mp3")
         files.log_item("Entered base state")
+
+        l_sw.update()
+        r_sw.update()
+
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
+
     def upd(self, mch):
         global an_just_added
 
-        if cfg["bumper_mode"] and an_running:
+        if an_running:
             return
 
-        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st)
 
-        if sw == "left_held":
-            if cfg["cont_mode"]:
-                stop_all_cmds()
-                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-                cfg["cont_mode"] = False
-                files.write_json_file("/sd/cfg.json", cfg)
+        if sw == "both_held":
+            cfg["bumper_mode"] = not cfg["bumper_mode"]
+
+            if cfg["bumper_mode"]:
+                print("BUMPER MODE ON")
             else:
-                stop_all_cmds()
+                print("BUMPER MODE OFF")
+
+        elif sw == "both":
+            pass
+
+        elif sw == "left_held":
+            if not cfg["cont_mode"]:
                 cfg["cont_mode"] = True
                 ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
                 files.write_json_file("/sd/cfg.json", cfg)
 
-        elif (sw == "left" or cfg["cont_mode"]) and not mix.voice[0].playing and not an_running:
+        elif sw == "left":
+            if not mix.voice[0].playing and not an_running:
+                add_cmd("AN_" + cfg["option_selected"])
+                an_just_added = True
+
+        elif sw == "right":
+            if not mix.voice[0].playing:
+                mch.go_to("main_menu")
+
+        if cfg["cont_mode"] and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
-
-        elif sw == "right" and not mix.voice[0].playing:
-            mch.go_to('main_menu')
-
-
 class Main(Ste):
 
     def __init__(self):
@@ -1812,111 +1948,102 @@ async def bumper_tsk():
         # --------------------------------------------------
 
         if not cfg["bumper_mode"] or not bumper_ready:
-            await asyncio.sleep(.01)
+            await asyncio.sleep(0)
             continue
 
         # --------------------------------------------------
         # ANIMATION WANTS THE TROLLEY STOPPED
-        #
-        # Do NOT reset bumper_direction or bumper_progress.
-        # This remembers where we were for the next animation.
         # --------------------------------------------------
 
         if bumper_requested_throttle <= 0:
             train.throttle = 0
             current_throttle = 0
 
-            await asyncio.sleep(.01)
+            await asyncio.sleep(0)
             continue
 
         # --------------------------------------------------
-        # MOVING RIGHT
+        # CHECK TARGET BUMPER
         #
-        # Only look at RIGHT bumper.
-        # Same logic as working shuttle.
+        # Same switch logic as shuttle:
+        #
+        # direction > 0 -> RIGHT bumper
+        # direction < 0 -> LEFT bumper
+        #
+        # Use raw Hall IO for immediate response.
         # --------------------------------------------------
 
-        if bumper_direction > 0 and controller._right_hit():
+        bumper_hit = False
+
+        if bumper_direction > 0 and r_sw_io.value:
             print("RIGHT bumper")
+            bumper_hit = True
 
-            # Stop immediately
-            train.throttle = 0
-            current_throttle = 0
-
-            await asyncio.sleep(.05)
-
-            # Back away from RIGHT bumper
-            backoff_speed = controller.base_speed
-
-            if backoff_speed is None or backoff_speed <= 0:
-                backoff_speed = 0.2
-
-            train.throttle = -backoff_speed
-            current_throttle = -int(backoff_speed * 100)
-
-            await asyncio.sleep(controller.off_bumper_time)
-
-            train.throttle = 0
-            current_throttle = 0
-
-            # We are now traveling toward LEFT
-            bumper_direction = -1
-
-            if controller.time_reverse:
-                bumper_progress = controller.off_bumper_time / controller.time_reverse
-            else:
-                bumper_progress = 0.0
-
-            bumper_last_time = time.monotonic()
-
-            print("Now traveling LEFT")
-
-            await asyncio.sleep(.01)
-            continue
-
-        # --------------------------------------------------
-        # MOVING LEFT
-        #
-        # Only look at LEFT bumper.
-        # Same logic as working shuttle.
-        # --------------------------------------------------
-
-        if bumper_direction < 0 and controller._left_hit():
+        elif bumper_direction < 0 and l_sw_io.value:
             print("LEFT bumper")
+            bumper_hit = True
 
-            # Stop immediately
+        # --------------------------------------------------
+        # BUMPER HIT
+        #
+        # Same sequence as shuttle:
+        #
+        # stop
+        # back off
+        # reverse direction
+        # --------------------------------------------------
+
+        if bumper_hit:
             train.throttle = 0
             current_throttle = 0
 
-            await asyncio.sleep(.05)
-
-            # Back away from LEFT bumper
             backoff_speed = controller.base_speed
 
             if backoff_speed is None or backoff_speed <= 0:
                 backoff_speed = 0.2
 
-            train.throttle = backoff_speed
-            current_throttle = int(backoff_speed * 100)
+            # Same as TrolleyController._back_off():
+            #
+            # self.train.throttle = -direction * mag
+            #
+            train.throttle = -bumper_direction * backoff_speed
+            current_throttle = int(train.throttle * 100)
 
-            await asyncio.sleep(controller.off_bumper_time)
+            # Ignore the bumper switches while backing off,
+            # exactly like the shuttle controller.
+            backoff_start = time.monotonic()
+
+            while time.monotonic() - backoff_start < controller.off_bumper_time:
+                await asyncio.sleep(0)
 
             train.throttle = 0
             current_throttle = 0
 
-            # We are now traveling toward RIGHT
-            bumper_direction = 1
+            # Same as shuttle:
+            # direction *= -1
+            bumper_direction *= -1
 
-            if controller.time_forward:
-                bumper_progress = controller.off_bumper_time / controller.time_forward
+            # We have already moved off the bumper a little,
+            # so account for that in estimated track position.
+            if bumper_direction > 0:
+                if controller.time_forward:
+                    bumper_progress = controller.off_bumper_time / controller.time_forward
+                else:
+                    bumper_progress = 0.0
+
+                print("Now traveling RIGHT")
+
             else:
-                bumper_progress = 0.0
+                if controller.time_reverse:
+                    bumper_progress = controller.off_bumper_time / controller.time_reverse
+                else:
+                    bumper_progress = 0.0
+
+                print("Now traveling LEFT")
 
             bumper_last_time = time.monotonic()
 
-            print("Now traveling RIGHT")
-
-            await asyncio.sleep(.01)
+            await asyncio.sleep(0)
             continue
 
         # --------------------------------------------------
@@ -1932,7 +2059,7 @@ async def bumper_tsk():
             train.throttle = 0
             current_throttle = 0
 
-            await asyncio.sleep(.01)
+            await asyncio.sleep(0)
             continue
 
         # --------------------------------------------------
@@ -1942,7 +2069,11 @@ async def bumper_tsk():
 
         commanded_speed = abs(bumper_requested_throttle)
 
-        ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, bumper_progress)
+        ramped_throttle = controller._ramped_throttle(
+            bumper_direction,
+            commanded_speed,
+            bumper_progress
+        )
 
         train.throttle = ramped_throttle
         current_throttle = int(ramped_throttle * 100)
@@ -1951,7 +2082,7 @@ async def bumper_tsk():
         # TRACK POSITION
         #
         # Calibration was done at controller.base_speed.
-        # Compensate when animation uses another speed.
+        # Compensate if animation uses another speed.
         # --------------------------------------------------
 
         base_speed = controller.base_speed
@@ -1967,7 +2098,8 @@ async def bumper_tsk():
         if bumper_progress > 1.0:
             bumper_progress = 1.0
 
-        await asyncio.sleep(.01)
+        await asyncio.sleep(0)
+
 
 async def process_cmd_tsk():
     """Task to continuously process commands."""
