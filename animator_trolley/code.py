@@ -1655,27 +1655,7 @@ class BseSt(Ste):
 
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st)
 
-        if sw == "right_held":
-            cfg["bumper_mode"] = not cfg["bumper_mode"]
-            files.write_json_file("/sd/cfg.json", cfg)
-            if cfg["bumper_mode"]:
-                print("BUMPER MODE ON")
-                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
-                time.sleep(2)
-            else:
-                print("BUMPER MODE OFF")
-                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
-                time.sleep(2)
-        elif sw == "both":
-            pass
-
-        elif sw == "left_held":
-            if not cfg["cont_mode"]:
-                cfg["cont_mode"] = True
-                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-                files.write_json_file("/sd/cfg.json", cfg)
-
-        elif sw == "left":
+        if sw == "left":
             if not mix.voice[0].playing and not an_running:
                 add_cmd("AN_" + cfg["option_selected"])
                 an_just_added = True
@@ -1684,9 +1664,16 @@ class BseSt(Ste):
             if not mix.voice[0].playing:
                 mch.go_to("main_menu")
 
+        elif sw == "left_held":
+            if not cfg["cont_mode"]:
+                cfg["cont_mode"] = True
+                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
+                files.write_json_file("/sd/cfg.json", cfg)
+
         if cfg["cont_mode"] and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
+
 class Main(Ste):
 
     def __init__(self):
@@ -1892,6 +1879,48 @@ class WebOpt(Ste):
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
+class BumperOpt(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'bumper_options'
+
+    def enter(self, mch):
+        files.log_item('Set Bumper Options')
+        sel_web()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0(mvc_folder + web_m[self.i] + ".mp3")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(web_m)-1:
+                self.i = 0
+        if sw == "right":
+            selected_menu_item = web_m[self.sel_i]
+            if selected_menu_item == "web_on":
+                cfg["bumper_mode"] = True
+                opt_sel()
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                mch.go_to('base_state')
+            elif selected_menu_item == "web_off":
+                cfg["bumper_mode"] = False
+                opt_sel()
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                mch.go_to('base_state')
+
+
 ###############################################################################
 # Create the state machine
 
@@ -1902,6 +1931,7 @@ st_mch.add(Main())
 st_mch.add(Snds())
 st_mch.add(AddSnds())
 st_mch.add(WebOpt())
+st_mch.add(BumperOpt())
 
 aud_en.value = True
 
