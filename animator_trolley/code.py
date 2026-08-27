@@ -281,8 +281,6 @@ controller = TrolleyController(
     ramp_steps=3,
 )
 
-cfg["bumper_mode"] = True
-
 bumper_direction = 1
 bumper_requested_throttle = 0.0
 bumper_progress = 0.0
@@ -748,13 +746,19 @@ async def animation_wait(wait_time):
     while time.monotonic() - start_time < wait_time:
         sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, None, False)
 
-        if sw == "both_held":
+        if sw == "right_held":
             cfg["bumper_mode"] = not cfg["bumper_mode"]
-
+            files.write_json_file("/sd/cfg.json", cfg)
             if cfg["bumper_mode"]:
                 print("BUMPER MODE ON")
+                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
+                time.wait(2)
             else:
                 print("BUMPER MODE OFF")
+                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+                time.wait(2)
+        elif sw == "both":
+            pass
 
         elif sw == "left_held":
             print("LEFT HELD - STOP ANIMATION")
@@ -764,6 +768,7 @@ async def animation_wait(wait_time):
             current_throttle = 0
 
             stop_all_cmds()
+            ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
             files.write_json_file("/sd/cfg.json", cfg)
 
             an_running = False
@@ -1648,16 +1653,19 @@ class BseSt(Ste):
         if an_running:
             return
 
-        sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st)
+        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st)
 
-        if sw == "both_held":
+        if sw == "right_held":
             cfg["bumper_mode"] = not cfg["bumper_mode"]
-
+            files.write_json_file("/sd/cfg.json", cfg)
             if cfg["bumper_mode"]:
                 print("BUMPER MODE ON")
+                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
+                time.sleep(2)
             else:
                 print("BUMPER MODE OFF")
-
+                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+                time.sleep(2)
         elif sw == "both":
             pass
 
