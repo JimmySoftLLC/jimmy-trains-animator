@@ -225,6 +225,12 @@ cfg_add_song = files.read_json_file(mvc_folder +
                                     "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
+cfg_bump_set = files.read_json_file(mvc_folder +
+                                    "bumper_settings.json")
+bump_set = cfg_bump_set["bumper_settings"]
+
+
+
 local_ip = ""
 
 ovrde_sw_st = {}
@@ -257,6 +263,212 @@ led.show()
 gc_col("Neopixels setup")
 
 ################################################################################
+# Dialog and sound play methods
+
+
+def upd_vol(s):
+    try:
+        volume = int(cfg["volume"]) / 100
+    except Exception as e:
+        files.log_item(e)
+        volume = .5
+    if volume < 0 or volume > 1:
+        volume = .5
+    mix.voice[0].level = volume
+    mix.voice[1].level = volume
+    time.sleep(s)
+
+
+async def upd_vol_async(s):
+    try:
+        v = int(cfg["volume"]) / 100
+    except Exception as e:
+        files.log_item(e)
+        v = .5
+    if v < 0 or v > 1:
+        v = .5
+    mix.voice[0].level = v
+    mix.voice[1].level = v
+    await asyncio.sleep(s)
+
+
+def ch_vol(action):
+    v = int(cfg["volume"])
+    if "volume" in action:
+        v = action.split("volume")
+        v = int(v[1])
+    if action == "lower1":
+        v -= 1
+    elif action == "raise1":
+        v += 1
+    elif action == "lower":
+        if v <= 10:
+            v -= 1
+        else:
+            v -= 10
+    elif action == "raise":
+        if v < 10:
+            v += 1
+        else:
+            v += 10
+    if v > 100:
+        v = 100
+    if v < 1:
+        v = 1
+    cfg["volume"] = str(v)
+    if not mix.voice[0].playing:
+        files.write_json_file("/sd/cfg.json", cfg)
+        ply_a_0(mvc_folder + "volume.mp3")
+        spk_str(cfg["volume"], False)
+
+
+def ply_a_0(file_name, wait=True, repeat=False):
+    # Stop if voice is currently playing
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
+        while mix.voice[0].playing:
+            upd_vol(0.1)
+
+    # Choose decoder based on file extension
+    if file_name.lower().endswith(".mp3"):
+        w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w0 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    # Play the selected file
+    mix.voice[0].play(w0, loop=repeat)
+
+    # Wait until playback completes
+    if wait:
+        while mix.voice[0].playing:
+            exit_early()
+            pass
+
+
+def wait_snd():
+    while mix.voice[0].playing:
+        pass
+
+
+async def wait_snd_1():
+    while mix.voice[1].playing:
+        if an_running:
+            if await animation_wait(.01):
+                return True
+        else:
+            time.sleep(.01)
+            await asyncio.sleep(0)
+
+    return False
+
+
+def stp_a_0():
+    mix.voice[0].stop()
+    wait_snd()
+
+
+async def stp_a_1():
+    mix.voice[1].stop()
+    await wait_snd_1()
+
+
+def exit_early():
+    upd_vol(0)
+
+    if an_running:
+        animation_wait(.1)
+        return
+
+    time.sleep(.1)
+
+    l_sw.update()
+
+    if l_sw.fell:
+        mix.voice[0].stop()
+
+
+def spk_str(str_to_speak, addLocal):
+    for character in str_to_speak:
+        try:
+            if character == " ":
+                character = "space"
+            if character == "-":
+                character = "dash"
+            if character == ".":
+                character = "dot"
+            ply_a_0(mvc_folder + character + ".mp3")
+        except Exception as e:
+            files.log_item(e)
+            print("Invalid character in string to speak")
+    if addLocal:
+        ply_a_0(mvc_folder + "dot.mp3")
+        ply_a_0(mvc_folder + "local.mp3")
+
+
+def l_r_but():
+    ply_a_0(mvc_folder + "press_left_button_right_button.mp3")
+
+
+def sel_web():
+    ply_a_0(mvc_folder + "web_menu.mp3")
+    l_r_but()
+
+def sel_bumper():
+    ply_a_0(mvc_folder + "bumper_settings_menu.mp3")
+    l_r_but()
+
+
+def opt_sel():
+    ply_a_0(mvc_folder + "option_selected.mp3")
+
+
+def spk_sng_num(song_number):
+    ply_a_0(mvc_folder + "song.mp3")
+    spk_str(song_number, False)
+
+
+async def no_trk():
+    ply_a_0(mvc_folder + "no_user_soundtrack_found.mp3")
+    while True:
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        l_sw.update()
+        r_sw.update()
+        if sw == "left":
+            break
+        if sw == "right":
+            ply_a_0(mvc_folder + "create_sound_track_files.mp3")
+            break
+        await asyncio.sleep(.1)
+
+
+def spk_web():
+    ply_a_0(mvc_folder + "animator_available_on_network.mp3")
+    ply_a_0(mvc_folder + "to_access_type.mp3")
+    if cfg["HOST_NAME"] == "animator-trolley":
+        ply_a_0(mvc_folder + "animator_trolley.mp3")
+        ply_a_0(mvc_folder + "dot.mp3")
+        ply_a_0(mvc_folder + "local.mp3")
+    else:
+        spk_str(cfg["HOST_NAME"], True)
+    ply_a_0(mvc_folder + "in_your_browser.mp3")
+
+
+def get_snds(dir, typ):
+    sds = []
+    s = files.return_directory("", dir, ".mp3")
+    for el in s:
+        p = el.split('_')
+        if p[0] == typ:
+            sds.append(el)
+    mx = len(sds) - 1
+    i = random.randint(0, mx)
+    fn = dir + "/" + sds[i] + ".mp3"
+    return fn
+
+################################################################################
 # Setup motor controller
 p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
 d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
@@ -287,7 +499,15 @@ bumper_progress = 0.0
 bumper_last_time = time.monotonic()
 bumper_ready = False
 
-if cfg["bumper_mode"]:
+def calibrate_bumper():
+    global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_ready
+
+    bumper_direction = 1
+    bumper_requested_throttle = 0.0
+    bumper_progress = 0.0
+    bumper_last_time = time.monotonic()
+    bumper_ready = False
+
     print("Calibrating...")
 
     bumper_ready = controller.calibrate(speed=0.2, cycles=3)
@@ -302,14 +522,10 @@ if cfg["bumper_mode"]:
         print("Forward time:", controller.time_forward)
         print("Reverse time:", controller.time_reverse)
 
+        ply_a_0(mvc_folder + "the_calibration_was_successful.mp3")
+
     else:
         print("Bumper calibration failed")
-
-# # Start by heading toward the RIGHT bumper
-# controller.shuttle(start_direction=+1, cycles=10)
-
-# # Or start toward LEFT:
-# controller.shuttle(start_direction=-1, cycles=20)
 
 async def set_bumper_speed(target_throttle, acceleration=None):
     global bumper_requested_throttle
@@ -812,207 +1028,7 @@ def rst_def():
     cfg["HOST_NAME"] = "animator-trolley"
     cfg["serve_webpage"] = True
 
-################################################################################
-# Dialog and sound play methods
 
-
-def upd_vol(s):
-    try:
-        volume = int(cfg["volume"]) / 100
-    except Exception as e:
-        files.log_item(e)
-        volume = .5
-    if volume < 0 or volume > 1:
-        volume = .5
-    mix.voice[0].level = volume
-    mix.voice[1].level = volume
-    time.sleep(s)
-
-
-async def upd_vol_async(s):
-    try:
-        v = int(cfg["volume"]) / 100
-    except Exception as e:
-        files.log_item(e)
-        v = .5
-    if v < 0 or v > 1:
-        v = .5
-    mix.voice[0].level = v
-    mix.voice[1].level = v
-    await asyncio.sleep(s)
-
-
-def ch_vol(action):
-    v = int(cfg["volume"])
-    if "volume" in action:
-        v = action.split("volume")
-        v = int(v[1])
-    if action == "lower1":
-        v -= 1
-    elif action == "raise1":
-        v += 1
-    elif action == "lower":
-        if v <= 10:
-            v -= 1
-        else:
-            v -= 10
-    elif action == "raise":
-        if v < 10:
-            v += 1
-        else:
-            v += 10
-    if v > 100:
-        v = 100
-    if v < 1:
-        v = 1
-    cfg["volume"] = str(v)
-    if not mix.voice[0].playing:
-        files.write_json_file("/sd/cfg.json", cfg)
-        ply_a_0(mvc_folder + "volume.mp3")
-        spk_str(cfg["volume"], False)
-
-
-def ply_a_0(file_name, wait=True, repeat=False):
-    # Stop if voice is currently playing
-    if mix.voice[0].playing:
-        mix.voice[0].stop()
-        while mix.voice[0].playing:
-            upd_vol(0.1)
-
-    # Choose decoder based on file extension
-    if file_name.lower().endswith(".mp3"):
-        w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
-    elif file_name.lower().endswith(".wav"):
-        w0 = audiocore.WaveFile(open(file_name, "rb"))
-    else:
-        raise ValueError("Unsupported audio format: " + file_name)
-
-    # Play the selected file
-    mix.voice[0].play(w0, loop=repeat)
-
-    # Wait until playback completes
-    if wait:
-        while mix.voice[0].playing:
-            exit_early()
-            pass
-
-
-def wait_snd():
-    while mix.voice[0].playing:
-        pass
-
-
-async def wait_snd_1():
-    while mix.voice[1].playing:
-        if an_running:
-            if await animation_wait(.01):
-                return True
-        else:
-            time.sleep(.01)
-            await asyncio.sleep(0)
-
-    return False
-
-
-def stp_a_0():
-    mix.voice[0].stop()
-    wait_snd()
-
-
-async def stp_a_1():
-    mix.voice[1].stop()
-    await wait_snd_1()
-
-
-def exit_early():
-    upd_vol(0)
-
-    if an_running:
-        animation_wait(.1)
-        return
-
-    time.sleep(.1)
-
-    l_sw.update()
-
-    if l_sw.fell:
-        mix.voice[0].stop()
-
-
-def spk_str(str_to_speak, addLocal):
-    for character in str_to_speak:
-        try:
-            if character == " ":
-                character = "space"
-            if character == "-":
-                character = "dash"
-            if character == ".":
-                character = "dot"
-            ply_a_0(mvc_folder + character + ".mp3")
-        except Exception as e:
-            files.log_item(e)
-            print("Invalid character in string to speak")
-    if addLocal:
-        ply_a_0(mvc_folder + "dot.mp3")
-        ply_a_0(mvc_folder + "local.mp3")
-
-
-def l_r_but():
-    ply_a_0(mvc_folder + "press_left_button_right_button.mp3")
-
-
-def sel_web():
-    ply_a_0(mvc_folder + "web_menu.mp3")
-    l_r_but()
-
-
-def opt_sel():
-    ply_a_0(mvc_folder + "option_selected.mp3")
-
-
-def spk_sng_num(song_number):
-    ply_a_0(mvc_folder + "song.mp3")
-    spk_str(song_number, False)
-
-
-async def no_trk():
-    ply_a_0(mvc_folder + "no_user_soundtrack_found.mp3")
-    while True:
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        l_sw.update()
-        r_sw.update()
-        if sw == "left":
-            break
-        if sw == "right":
-            ply_a_0(mvc_folder + "create_sound_track_files.mp3")
-            break
-        await asyncio.sleep(.1)
-
-
-def spk_web():
-    ply_a_0(mvc_folder + "animator_available_on_network.mp3")
-    ply_a_0(mvc_folder + "to_access_type.mp3")
-    if cfg["HOST_NAME"] == "animator-trolley":
-        ply_a_0(mvc_folder + "animator_trolley.mp3")
-        ply_a_0(mvc_folder + "dot.mp3")
-        ply_a_0(mvc_folder + "local.mp3")
-    else:
-        spk_str(cfg["HOST_NAME"], True)
-    ply_a_0(mvc_folder + "in_your_browser.mp3")
-
-
-def get_snds(dir, typ):
-    sds = []
-    s = files.return_directory("", dir, ".mp3")
-    for el in s:
-        p = el.split('_')
-        if p[0] == typ:
-            sds.append(el)
-    mx = len(sds) - 1
-    i = random.randint(0, mx)
-    fn = dir + "/" + sds[i] + ".mp3"
-    return fn
 
 ################################################################################
 # Animations
@@ -1726,6 +1742,8 @@ class Main(Ste):
                 mch.go_to('add_sounds_animate')
             elif sel_mnu == "web_options":
                 mch.go_to('web_options')
+            elif sel_mnu == "bumper_settings":
+                mch.go_to('bumper_settings')
             else:
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
@@ -1886,11 +1904,11 @@ class BumperOpt(Ste):
 
     @property
     def name(self):
-        return 'bumper_options'
+        return 'bumper_settings'
 
     def enter(self, mch):
         files.log_item('Set Bumper Options')
-        sel_web()
+        sel_bumper()
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -1900,22 +1918,24 @@ class BumperOpt(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_0(mvc_folder + web_m[self.i] + ".mp3")
+            ply_a_0(mvc_folder + bump_set[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(web_m)-1:
+            if self.i > len(bump_set)-1:
                 self.i = 0
         if sw == "right":
-            selected_menu_item = web_m[self.sel_i]
-            if selected_menu_item == "web_on":
+            selected_menu_item = bump_set[self.sel_i]
+            if selected_menu_item == "bumper_mode_on":
                 cfg["bumper_mode"] = True
-                opt_sel()
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0(mvc_folder + "bumper_instructions.mp3")
+                mch.go_to('base_state')
+            elif selected_menu_item == "bumper_mode_off":
+                cfg["bumper_mode"] = False
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
-            elif selected_menu_item == "web_off":
-                cfg["bumper_mode"] = False
-                opt_sel()
+            else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
@@ -1960,6 +1980,9 @@ else:
 
 # initialize items
 upd_vol(.5)
+
+if cfg["bumper_mode"]:
+    calibrate_bumper()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
