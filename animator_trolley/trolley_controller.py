@@ -29,14 +29,19 @@ class TrolleyController:
     # PUBLIC API
     # --------------------------------------------------
 
+
+
     def calibrate(self, speed=0.3, cycles=3):
         """
         Calibrate travel time between bumpers at a fixed speed.
 
+        Before official calibration begins, find the LEFT bumper.
+        This guarantees that every calibration starts from a known
+        position and prevents the first measurement from being a
+        partial trip.
+
         Returns True if calibration succeeds.
         Returns False if calibration fails.
-
-        No exceptions are raised for normal trolley problems.
         """
 
         s = abs(float(speed))
@@ -53,6 +58,30 @@ class TrolleyController:
             cycles = 1
 
         self.base_speed = s
+
+        # --------------------------------------------------
+        # FIND STARTING BUMPER
+        # --------------------------------------------------
+
+        print("Finding LEFT bumper before calibration")
+
+        t_home = self._leg_constant(-1, s)
+
+        if t_home is None:
+            print("Calibration failed while finding LEFT bumper")
+            self.train.throttle = 0.0
+            return False
+
+        # Move away from the left bumper to establish the
+        # exact same starting condition used during calibration.
+        self._back_off(-1)
+
+        print("LEFT bumper found")
+        print("Starting official calibration")
+
+        # --------------------------------------------------
+        # OFFICIAL CALIBRATION
+        # --------------------------------------------------
 
         f_times = []
         r_times = []
@@ -103,6 +132,8 @@ class TrolleyController:
         print("Reverse time:", self.time_reverse)
 
         return True
+
+
 
     def shuttle(self, start_direction, cycles=None):
         """
