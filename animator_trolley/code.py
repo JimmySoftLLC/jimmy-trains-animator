@@ -510,6 +510,8 @@ def calibrate_bumper():
 
     print("Calibrating...")
 
+    ply_a_0(mvc_folder + "bumper_cal_starting.mp3")
+
     bumper_ready = controller.calibrate(speed=0.2, cycles=3)
 
     if bumper_ready:
@@ -1990,6 +1992,7 @@ gc_col("animations started.")
 
 # Main task handling
 
+
 async def bumper_tsk():
     global bumper_direction
     global bumper_requested_throttle
@@ -2026,8 +2029,6 @@ async def bumper_tsk():
         # --------------------------------------------------
         # CHECK TARGET BUMPER
         #
-        # Same switch logic as shuttle:
-        #
         # direction > 0 -> RIGHT bumper
         # direction < 0 -> LEFT bumper
         #
@@ -2047,45 +2048,34 @@ async def bumper_tsk():
         # --------------------------------------------------
         # BUMPER HIT
         #
-        # Same sequence as shuttle:
-        #
-        # stop
-        # back off
-        # reverse direction
+        # Hit bumper
+        # Immediately back off
+        # Reverse direction
+        # Continue moving without another stop
         # --------------------------------------------------
 
         if bumper_hit:
-            train.throttle = 0
-            current_throttle = 0
-
             backoff_speed = controller.base_speed
 
             if backoff_speed is None or backoff_speed <= 0:
                 backoff_speed = 0.2
 
-            # Same as TrolleyController._back_off():
-            #
-            # self.train.throttle = -direction * mag
-            #
+            # Immediately move away from the bumper.
             train.throttle = -bumper_direction * backoff_speed
             current_throttle = int(train.throttle * 100)
 
-            # Ignore the bumper switches while backing off,
-            # exactly like the shuttle controller.
+            # Ignore the bumper while backing away.
             backoff_start = time.monotonic()
 
             while time.monotonic() - backoff_start < controller.off_bumper_time:
                 await asyncio.sleep(0)
 
-            train.throttle = 0
-            current_throttle = 0
-
-            # Same as shuttle:
-            # direction *= -1
+            # The backoff direction is already the new travel direction.
+            # Do not stop the motor here.
             bumper_direction *= -1
 
-            # We have already moved off the bumper a little,
-            # so account for that in estimated track position.
+            # We already traveled away from the bumper,
+            # so include that movement in the estimated position.
             if bumper_direction > 0:
                 if controller.time_forward:
                     bumper_progress = controller.off_bumper_time / controller.time_forward
@@ -2130,11 +2120,7 @@ async def bumper_tsk():
 
         commanded_speed = abs(bumper_requested_throttle)
 
-        ramped_throttle = controller._ramped_throttle(
-            bumper_direction,
-            commanded_speed,
-            bumper_progress
-        )
+        ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, bumper_progress)
 
         train.throttle = ramped_throttle
         current_throttle = int(ramped_throttle * 100)
@@ -2160,7 +2146,6 @@ async def bumper_tsk():
             bumper_progress = 1.0
 
         await asyncio.sleep(0)
-
 
 async def process_cmd_tsk():
     """Task to continuously process commands."""
