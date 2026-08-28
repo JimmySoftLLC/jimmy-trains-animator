@@ -504,6 +504,10 @@ bumper_target_position = None
 bumper_positioning = False
 bumper_position_success = False
 
+BUMPER_BACKOFF_SPEED = 0.12
+BUMPER_RELEASE_TIME = 0.15
+BUMPER_BACKOFF_TIMEOUT = 2.0
+
 
 def calibrate_bumper():
     global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_ready
@@ -577,6 +581,57 @@ async def set_bumper_speed(target_throttle, acceleration=None):
     return False
 
 
+async def back_off_bumper(hit_direction):
+    global current_throttle
+
+    backoff_speed = BUMPER_BACKOFF_SPEED
+
+    if backoff_speed <= 0:
+        backoff_speed = 0.12
+
+    # Move away from the bumper slowly.
+    train.throttle = -hit_direction * backoff_speed
+    current_throttle = int(train.throttle * 100)
+
+    backoff_start = time.monotonic()
+    clear_start = None
+
+    while True:
+        now = time.monotonic()
+
+        # Right bumper was hit.
+        if hit_direction > 0:
+            bumper_active = r_sw_io.value
+
+        # Left bumper was hit.
+        else:
+            bumper_active = l_sw_io.value
+
+        if bumper_active:
+            # Bumper is still detected.
+            # Start the clear timer over again.
+            clear_start = None
+
+        else:
+            # Bumper is no longer detected.
+            if clear_start is None:
+                clear_start = now
+
+            elif now - clear_start >= BUMPER_RELEASE_TIME:
+                break
+
+        # Safety in case a bumper/sensor becomes stuck.
+        if now - backoff_start >= BUMPER_BACKOFF_TIMEOUT:
+            print("Bumper backoff timeout")
+            break
+
+        await asyncio.sleep(0)
+
+    elapsed = time.monotonic() - backoff_start
+
+    return elapsed, backoff_speed
+
+
 async def position_trolley(speed, percentage):
     global bumper_direction, bumper_requested_throttle
     global bumper_target_position, bumper_positioning, bumper_position_success
@@ -599,8 +654,8 @@ async def position_trolley(speed, percentage):
         print("POS speed must be greater than 0")
         return False
 
-    if percentage <= 0 or percentage >= 100:
-        print("POS position must be between 1 and 99")
+    if percentage < 0 or percentage > 100:
+        print("POS position must be between 0 and 100")
         return False
 
     target = percentage / 100
@@ -610,30 +665,63 @@ async def position_trolley(speed, percentage):
     print("Current position:", int(bumper_progress * 100))
     print("Target position:", percentage)
 
-    # Close enough already.
-    if abs(bumper_progress - target) <= 0.01:
-        train.throttle = 0
-        current_throttle = 0
-        bumper_requested_throttle = 0.0
-        print("Already at requested position")
-        return True
+    # --------------------------------------------------
+    # 0 = HOME TO LEFT BUMPER
+    # --------------------------------------------------
 
-    # Determine which direction reaches the destination.
-    if target > bumper_progress:
-        bumper_direction = 1
-        print("POS traveling RIGHT")
-    else:
+    if percentage == 0:
         bumper_direction = -1
-        print("POS traveling LEFT")
+        bumper_target_position = 0.0
+        bumper_positioning = True
+        bumper_position_success = False
+        bumper_requested_throttle = speed / 100
 
-    bumper_target_position = target
-    bumper_positioning = True
-    bumper_position_success = False
-    bumper_requested_throttle = speed / 100
+        print("POS homing LEFT")
 
-    # bumper_tsk() actually moves the trolley.
-    # We simply wait here until it reaches the destination
-    # or the position operation is cancelled.
+    # --------------------------------------------------
+    # 100 = HOME TO RIGHT BUMPER
+    # --------------------------------------------------
+
+    elif percentage == 100:
+        bumper_direction = 1
+        bumper_target_position = 1.0
+        bumper_positioning = True
+        bumper_position_success = False
+        bumper_requested_throttle = speed / 100
+
+        print("POS homing RIGHT")
+
+    # --------------------------------------------------
+    # NORMAL POSITION
+    # --------------------------------------------------
+
+    else:
+        # Close enough already.
+        if abs(bumper_progress - target) <= 0.01:
+            train.throttle = 0
+            current_throttle = 0
+            bumper_requested_throttle = 0.0
+
+            print("Already at requested position")
+            return True
+
+        if target > bumper_progress:
+            bumper_direction = 1
+            print("POS traveling RIGHT")
+
+        else:
+            bumper_direction = -1
+            print("POS traveling LEFT")
+
+        bumper_target_position = target
+        bumper_positioning = True
+        bumper_position_success = False
+        bumper_requested_throttle = speed / 100
+
+    # --------------------------------------------------
+    # WAIT FOR BUMPER TASK
+    # --------------------------------------------------
+
     while bumper_positioning:
         if an_running:
             if await animation_wait(.01):
@@ -641,9 +729,12 @@ async def position_trolley(speed, percentage):
                 bumper_positioning = False
                 bumper_position_success = False
                 bumper_requested_throttle = 0.0
+
                 train.throttle = 0
                 current_throttle = 0
+
                 return False
+
         else:
             await asyncio.sleep(0)
 
@@ -652,6 +743,7 @@ async def position_trolley(speed, percentage):
         return True
 
     print("POS did not reach destination")
+
     return False
 
 ################################################################################
@@ -2146,9 +2238,6 @@ async def bumper_tsk():
 
         # --------------------------------------------------
         # BUMPER MODE OFF
-        #
-        # Do absolutely nothing with the motor.
-        # T and TA control train.throttle directly.
         # --------------------------------------------------
 
         if not cfg["bumper_mode"]:
@@ -2157,7 +2246,7 @@ async def bumper_tsk():
             continue
 
         # --------------------------------------------------
-        # BUMPER MODE ON BUT NOT CALIBRATED
+        # BUMPER MODE NOT CALIBRATED
         # --------------------------------------------------
 
         if not bumper_ready:
@@ -2170,22 +2259,18 @@ async def bumper_tsk():
         bumper_last_time = now
 
         # --------------------------------------------------
-        # TROLLEY IS REQUESTED TO BE STOPPED
+        # TROLLEY STOPPED
         # --------------------------------------------------
 
         if bumper_requested_throttle <= 0:
             train.throttle = 0
             current_throttle = 0
+
             await asyncio.sleep(0)
             continue
 
         # --------------------------------------------------
-        # CHECK TARGET BUMPER
-        #
-        # direction > 0 -> RIGHT bumper
-        # direction < 0 -> LEFT bumper
-        #
-        # Use raw Hall IO for immediate response.
+        # CHECK BUMPER
         # --------------------------------------------------
 
         bumper_hit = False
@@ -2201,86 +2286,70 @@ async def bumper_tsk():
 
         # --------------------------------------------------
         # BUMPER HIT
-        #
-        # Normal T / TA movement:
-        #     Hit bumper
-        #     Immediately back away
-        #     Reverse direction
-        #     Continue
-        #
-        # POS movement:
-        #     Hit bumper
-        #     Immediately back away
-        #     Stop
-        #     Cancel POS
         # --------------------------------------------------
 
         if bumper_hit:
-            backoff_speed = controller.base_speed
 
-            if backoff_speed is None or backoff_speed <= 0:
-                backoff_speed = 0.2
+            # Remember whether this was intentional homing.
+            homing_to_bumper = False
 
-            # Immediately move away from the bumper.
-            train.throttle = -hit_direction * backoff_speed
-            current_throttle = int(train.throttle * 100)
+            if bumper_positioning and bumper_target_position is not None:
+                if hit_direction < 0 and bumper_target_position == 0.0:
+                    homing_to_bumper = True
 
-            # Ignore the bumper while backing away.
-            backoff_start = time.monotonic()
+                elif hit_direction > 0 and bumper_target_position == 1.0:
+                    homing_to_bumper = True
 
-            while time.monotonic() - backoff_start < controller.off_bumper_time:
-                await asyncio.sleep(0)
+            # --------------------------------------------------
+            # SLOWLY MOVE AWAY UNTIL BUMPER IS CLEAR
+            # --------------------------------------------------
 
-            # Backoff direction is now our new direction.
+            backoff_time, backoff_speed = await back_off_bumper(hit_direction)
+
+            # We are now traveling away from the bumper.
             bumper_direction = -hit_direction
 
             # --------------------------------------------------
-            # RESET ABSOLUTE POSITION FROM THE BUMPER
-            #
-            # bumper_progress:
-            #
-            # 0.0 = LEFT bumper
-            # 1.0 = RIGHT bumper
+            # RESET ABSOLUTE POSITION USING KNOWN BUMPER
             # --------------------------------------------------
 
             if hit_direction < 0:
-                # Hit LEFT bumper and backed away RIGHT.
+                # LEFT bumper = exact position 0 before backoff.
 
-                if controller.time_forward:
-                    bumper_progress = controller.off_bumper_time / controller.time_forward
+                if controller.time_forward and controller.base_speed:
+                    bumper_progress = backoff_time * (backoff_speed / controller.base_speed) / controller.time_forward
                 else:
+                    bumper_progress = 0.0
+
+                if bumper_progress < 0.0:
                     bumper_progress = 0.0
 
                 if bumper_progress > 1.0:
                     bumper_progress = 1.0
 
-                print("Position reset from LEFT bumper:",
-                      int(bumper_progress * 100), "%")
+                print("Position reset from LEFT bumper:", int(bumper_progress * 100), "%")
 
             else:
-                # Hit RIGHT bumper and backed away LEFT.
+                # RIGHT bumper = exact position 1 before backoff.
 
-                if controller.time_reverse:
-                    bumper_progress = 1.0 - \
-                        (controller.off_bumper_time / controller.time_reverse)
+                if controller.time_reverse and controller.base_speed:
+                    bumper_progress = 1.0 - (backoff_time * (backoff_speed / controller.base_speed) / controller.time_reverse)
                 else:
                     bumper_progress = 1.0
 
                 if bumper_progress < 0.0:
                     bumper_progress = 0.0
 
-                print("Position reset from RIGHT bumper:",
-                      int(bumper_progress * 100), "%")
+                if bumper_progress > 1.0:
+                    bumper_progress = 1.0
+
+                print("Position reset from RIGHT bumper:", int(bumper_progress * 100), "%")
 
             # --------------------------------------------------
-            # POS BUMPER HIT
-            #
-            # POS should not reverse and continue.
-            # Back away and stop.
+            # POS COMMAND
             # --------------------------------------------------
 
             if bumper_positioning:
-                print("POS aborted - bumper reached")
 
                 train.throttle = 0
                 current_throttle = 0
@@ -2288,7 +2357,14 @@ async def bumper_tsk():
 
                 bumper_target_position = None
                 bumper_positioning = False
-                bumper_position_success = False
+
+                if homing_to_bumper:
+                    bumper_position_success = True
+                    print("POS homing complete")
+
+                else:
+                    bumper_position_success = False
+                    print("POS aborted - unexpected bumper reached")
 
                 bumper_last_time = time.monotonic()
 
@@ -2296,13 +2372,15 @@ async def bumper_tsk():
                 continue
 
             # --------------------------------------------------
-            # NORMAL T / TA MOVEMENT
+            # NORMAL T / TA
             #
-            # Continue immediately in the backoff direction.
+            # Continue traveling away from bumper.
+            # No stop between backoff and normal movement.
             # --------------------------------------------------
 
             if bumper_direction > 0:
                 print("Now traveling RIGHT")
+
             else:
                 print("Now traveling LEFT")
 
@@ -2312,7 +2390,7 @@ async def bumper_tsk():
             continue
 
         # --------------------------------------------------
-        # GET ESTIMATED TRAVEL TIME
+        # GET CALIBRATED TRAVEL TIME
         # --------------------------------------------------
 
         if bumper_direction > 0:
@@ -2323,25 +2401,18 @@ async def bumper_tsk():
         if est_time is None or est_time <= 0:
             train.throttle = 0
             current_throttle = 0
+
             await asyncio.sleep(0)
             continue
 
         # --------------------------------------------------
-        # COMMAND CONTROLS SPEED
-        # BUMPER TASK CONTROLS DIRECTION
+        # COMMANDED SPEED
         # --------------------------------------------------
 
         commanded_speed = abs(bumper_requested_throttle)
 
         # --------------------------------------------------
-        # CONVERT ABSOLUTE POSITION TO DIRECTIONAL PROGRESS
-        #
-        # Absolute:
-        #     LEFT = 0.0
-        #     RIGHT = 1.0
-        #
-        # _ramped_throttle() wants progress from the bumper
-        # we left toward the bumper we are approaching.
+        # ABSOLUTE POSITION -> DIRECTIONAL PROGRESS
         # --------------------------------------------------
 
         if bumper_direction > 0:
@@ -2349,8 +2420,7 @@ async def bumper_tsk():
         else:
             travel_progress = 1.0 - bumper_progress
 
-        ramped_throttle = controller._ramped_throttle(
-            bumper_direction, commanded_speed, travel_progress)
+        ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, travel_progress)
 
         train.throttle = ramped_throttle
         current_throttle = int(ramped_throttle * 100)
@@ -2381,31 +2451,36 @@ async def bumper_tsk():
             bumper_progress = 0.0
 
         # --------------------------------------------------
-        # CHECK POS DESTINATION
+        # NORMAL POS DESTINATION
+        #
+        # Do NOT use estimated position to finish 0 or 100.
+        # Those must physically reach their bumper.
         # --------------------------------------------------
 
         if bumper_positioning and bumper_target_position is not None:
-            target_reached = False
 
-            if bumper_direction > 0 and bumper_progress >= bumper_target_position:
-                target_reached = True
+            if bumper_target_position > 0.0 and bumper_target_position < 1.0:
 
-            elif bumper_direction < 0 and bumper_progress <= bumper_target_position:
-                target_reached = True
+                target_reached = False
 
-            if target_reached:
-                bumper_progress = bumper_target_position
+                if bumper_direction > 0 and bumper_progress >= bumper_target_position:
+                    target_reached = True
 
-                train.throttle = 0
-                current_throttle = 0
-                bumper_requested_throttle = 0.0
+                elif bumper_direction < 0 and bumper_progress <= bumper_target_position:
+                    target_reached = True
 
-                print("POS destination reached:",
-                      int(bumper_progress * 100), "%")
+                if target_reached:
+                    bumper_progress = bumper_target_position
 
-                bumper_target_position = None
-                bumper_positioning = False
-                bumper_position_success = True
+                    train.throttle = 0
+                    current_throttle = 0
+                    bumper_requested_throttle = 0.0
+
+                    print("POS destination reached:", int(bumper_progress * 100), "%")
+
+                    bumper_target_position = None
+                    bumper_positioning = False
+                    bumper_position_success = True
 
         await asyncio.sleep(0)
 
