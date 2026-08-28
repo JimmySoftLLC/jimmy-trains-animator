@@ -266,29 +266,67 @@ gc_col("Neopixels setup")
 # Dialog and sound play methods
 
 
-def upd_vol(s):
+def upd_vol(s, bckgrnd_ratio=None):
+    global bckgrnd_vol
+
+    if bckgrnd_ratio is not None:
+        bckgrnd_vol = bckgrnd_ratio
+
+    if bckgrnd_vol > 100:
+        bckgrnd_vol = 100
+
+    if bckgrnd_vol < 0:
+        bckgrnd_vol = 0
+
     try:
         volume = int(cfg["volume"]) / 100
+        bckgrnd_volume = volume * (bckgrnd_vol / 100)
     except Exception as e:
         files.log_item(e)
         volume = .5
+        bckgrnd_volume = .5
+
     if volume < 0 or volume > 1:
         volume = .5
-    mix.voice[0].level = volume
+
+    if bckgrnd_volume < 0 or bckgrnd_volume > 1:
+        bckgrnd_volume = .5
+
+    mix.voice[0].level = bckgrnd_volume
     mix.voice[1].level = volume
+
     time.sleep(s)
 
 
-async def upd_vol_async(s):
+async def upd_vol_async(s, bckgrnd_ratio=None):
+    global bckgrnd_vol
+
+    if bckgrnd_ratio is not None:
+        bckgrnd_vol = bckgrnd_ratio
+
+    if bckgrnd_vol > 100:
+        bckgrnd_vol = 100
+
+    if bckgrnd_vol < 0:
+        bckgrnd_vol = 0
+
     try:
-        v = int(cfg["volume"]) / 100
+        volume = int(cfg["volume"]) / 100
+        bckgrnd_volume = volume * (bckgrnd_vol / 100)
     except Exception as e:
         files.log_item(e)
-        v = .5
-    if v < 0 or v > 1:
-        v = .5
-    mix.voice[0].level = v
-    mix.voice[1].level = v
+        volume = .5
+        bckgrnd_volume = .5
+
+    if volume < 0 or volume > 1:
+        volume = .5
+
+    if bckgrnd_volume < 0 or bckgrnd_volume > 1:
+        bckgrnd_volume = .5
+
+    mix.voice[0].level = bckgrnd_volume
+    mix.voice[1].level = volume
+
     await asyncio.sleep(s)
 
 
@@ -896,6 +934,11 @@ if (web):
                 set_hdw_lights(command)
                 return Response(request, "Utility: " + "Utility: set lights")
 
+            @server.route("/get-wifi-signal", [POST])
+            def get_local_ip(request: Request):
+                avg_rssi = measure_signal_strength(WIFI_SSID, 10)
+                return Response(request, str(avg_rssi))
+
             @server.route("/get-track-voltage", [POST])
             def btn(request: Request):
                 track_voltage = get_track_voltage()
@@ -1432,7 +1475,11 @@ async def an_ts(f_nm):
 
 ##############################
 # animation effects
-br = 0
+
+brightness = 0
+bckgrnd_vol = 100
+bckgrnd_track_throttle = False
+
 e_media_file_index = 0
 t_media_file_index = 0
 c_media_file_index = 0
@@ -1441,7 +1488,8 @@ h_media_file_index = 0
 
 
 def set_hdw_lights(seg):
-    global br
+    global brightness
+
     # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
     if seg[:2] == 'LN':
         seg_split = seg.split("_")
@@ -1450,14 +1498,15 @@ def set_hdw_lights(seg):
         g = int(seg_split[2])
         b = int(seg_split[3])
         set_neo_to(light_n, r, g, b)
+
     # BXXX = Brightness XXX 0 to 100
     elif seg[0] == 'B':
-        br = int(seg[1:])
-        led.brightness = float(br/100)
-
+        brightness = int(seg[1:])
+        led.brightness = float(brightness / 100)
 
 async def set_hdw_async(cmd, dur=3):
-    global br, current_throttle, media_index, exit_set_hdw_async, bumper_requested_throttle
+    global brightness, current_throttle, media_index, exit_set_hdw_async, bumper_requested_throttle
+    global bckgrnd_vol, bckgrnd_track_throttle
 
     if cmd == "":
         return "NOCMDS"
@@ -1484,14 +1533,16 @@ async def set_hdw_async(cmd, dur=3):
 
                     while diff != 0:
                         if diff > 0:
-                            new_throttle = min(
-                                current_throttle + acceleration, target_throttle)
+                            new_throttle = min(current_throttle + acceleration, target_throttle)
                         else:
-                            new_throttle = max(
-                                current_throttle - acceleration, target_throttle)
+                            new_throttle = max(current_throttle - acceleration, target_throttle)
 
                         train.throttle = new_throttle / 100
                         current_throttle = new_throttle
+
+                        if bckgrnd_track_throttle:
+                            await upd_vol_async(0, abs(current_throttle))
+
                         diff = target_throttle - current_throttle
 
                         if an_running:
@@ -1544,6 +1595,7 @@ async def set_hdw_async(cmd, dur=3):
             if multi_color():
                 return "STOP"
 
+        # TXXX = Train throttle -100 to 100
         elif seg[:1] == 'T':
             try:
                 target_throttle = int(seg[1:])
@@ -1555,9 +1607,68 @@ async def set_hdw_async(cmd, dur=3):
                     train.throttle = target_throttle / 100
                     current_throttle = target_throttle
 
+                    if bckgrnd_track_throttle:
+                        await upd_vol_async(0, abs(target_throttle))
+
             except Exception as e:
                 print(e)
 
+        # VRT = Background volume automatically tracks trolley throttle
+        elif seg == 'VRT':
+            bckgrnd_track_throttle = True
+
+            if cfg["bumper_mode"]:
+                await upd_vol_async(0, abs(bumper_requested_throttle) * 100)
+            else:
+                await upd_vol_async(0, abs(current_throttle))
+
+        # VRFXXX = Fade background volume to XXX, 0 to 100
+        elif seg[:3] == 'VRF':
+            try:
+                bckgrnd_track_throttle = False
+                target_vol = int(seg[3:])
+
+                if target_vol > 100:
+                    target_vol = 100
+
+                if target_vol < 0:
+                    target_vol = 0
+
+                while bckgrnd_vol != target_vol:
+                    if bckgrnd_vol < target_vol:
+                        new_vol = min(bckgrnd_vol + 2, target_vol)
+                    else:
+                        new_vol = max(bckgrnd_vol - 2, target_vol)
+
+                    await upd_vol_async(0, new_vol)
+
+                    if an_running:
+                        if await animation_wait(.03):
+                            return "STOP"
+                    else:
+                        await asyncio.sleep(.03)
+
+            except Exception as e:
+                print("VRF error:", e)
+
+        # VRXXX = Set background volume to XXX, 0 to 100
+        elif seg[:2] == 'VR':
+            try:
+                bckgrnd_track_throttle = False
+                target_vol = int(seg[2:])
+
+                if target_vol > 100:
+                    target_vol = 100
+
+                if target_vol < 0:
+                    target_vol = 0
+
+                await upd_vol_async(0, target_vol)
+
+            except Exception as e:
+                print("VR error:", e)
+
+        # MBXfilename = Background media
         elif seg[:2] == 'MB':
             repeat = seg[2]
             file_nm = seg[3:]
@@ -1573,12 +1684,10 @@ async def set_hdw_async(cmd, dur=3):
                     code = seg[3:]
 
                     if code == "SEQN":
-                        filename, media_index[seg[2]] = get_indexed_media_file(
-                            folder, "mp3", media_index[seg[2]])
+                        filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
 
                     elif code == "SEQF":
-                        filename, media_index[seg[2]] = get_indexed_media_file(
-                            folder, "mp3", 0)
+                        filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
 
                     elif code == "RAND":
                         filename = get_random_media_file(folder)
@@ -1586,8 +1695,7 @@ async def set_hdw_async(cmd, dur=3):
                     else:
                         filename = code
 
-                    w1 = audiomp3.MP3Decoder(
-                        open(folder + filename + ".mp3", "rb"))
+                    w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
 
                 if seg[1] == "W" or seg[1] == "P":
                     await stp_a_1()
@@ -1613,17 +1721,18 @@ async def set_hdw_async(cmd, dur=3):
         elif seg[:2] == 'LN' or seg[0] == 'B':
             set_hdw_lights(seg)
 
+        # FXXX = Fade NeoPixel brightness to XXX
         elif seg[0] == 'F':
-            v = int(seg[1:])
+            target_brightness = int(seg[1:])
 
-            while not br == v:
-                if br < v:
-                    br += 1
-                    led.brightness = float(br/100)
+            while brightness != target_brightness:
+                if brightness < target_brightness:
+                    brightness += 1
+                    led.brightness = float(brightness / 100)
 
                 else:
-                    br -= 1
-                    led.brightness = float(br/100)
+                    brightness -= 1
+                    led.brightness = float(brightness / 100)
 
                 led.show()
 
@@ -2233,14 +2342,24 @@ async def bumper_tsk():
     global bumper_target_position
     global bumper_positioning
     global bumper_position_success
+    global bckgrnd_track_throttle
 
     bumper_last_time = time.monotonic()
 
     while True:
+
+        # --------------------------------------------------
+        # BUMPER MODE OFF
+        # --------------------------------------------------
+
         if not cfg["bumper_mode"]:
             bumper_last_time = time.monotonic()
             await asyncio.sleep(0)
             continue
+
+        # --------------------------------------------------
+        # BUMPER MODE NOT CALIBRATED
+        # --------------------------------------------------
 
         if not bumper_ready:
             bumper_last_time = time.monotonic()
@@ -2251,12 +2370,23 @@ async def bumper_tsk():
         dt = now - bumper_last_time
         bumper_last_time = now
 
+        # --------------------------------------------------
+        # TROLLEY STOPPED
+        # --------------------------------------------------
+
         if bumper_requested_throttle <= 0:
             train.throttle = 0
             current_throttle = 0
 
+            if bckgrnd_track_throttle:
+                await upd_vol_async(0, 0)
+
             await asyncio.sleep(0)
             continue
+
+        # --------------------------------------------------
+        # CHECK BUMPER
+        # --------------------------------------------------
 
         bumper_hit = False
         hit_direction = bumper_direction
@@ -2269,8 +2399,13 @@ async def bumper_tsk():
             print("LEFT bumper")
             bumper_hit = True
 
+        # --------------------------------------------------
+        # BUMPER HIT
+        # --------------------------------------------------
+
         if bumper_hit:
 
+            # Remember whether this was intentional homing.
             homing_to_bumper = False
 
             if bumper_positioning and bumper_target_position is not None:
@@ -2280,16 +2415,24 @@ async def bumper_tsk():
                 elif hit_direction > 0 and bumper_target_position == 1.0:
                     homing_to_bumper = True
 
+            # --------------------------------------------------
+            # SLOWLY MOVE AWAY UNTIL BUMPER IS CLEAR
+            # --------------------------------------------------
+
             backoff_time, backoff_speed = await back_off_bumper(hit_direction)
 
+            # We are now traveling away from the bumper.
             bumper_direction = -hit_direction
 
+            # --------------------------------------------------
+            # RESET ABSOLUTE POSITION USING KNOWN BUMPER
+            # --------------------------------------------------
+
             if hit_direction < 0:
+                # LEFT bumper = exact position 0 before backoff.
 
                 if controller.time_forward and controller.base_speed:
-                    bumper_progress = backoff_time * \
-                        (backoff_speed / controller.base_speed) / \
-                        controller.time_forward
+                    bumper_progress = backoff_time * (backoff_speed / controller.base_speed) / controller.time_forward
                 else:
                     bumper_progress = 0.0
 
@@ -2299,15 +2442,13 @@ async def bumper_tsk():
                 if bumper_progress > 1.0:
                     bumper_progress = 1.0
 
-                print("Position reset from LEFT bumper:",
-                      int(bumper_progress * 100), "%")
+                print("Position reset from LEFT bumper:", int(bumper_progress * 100), "%")
 
             else:
+                # RIGHT bumper = exact position 1 before backoff.
 
                 if controller.time_reverse and controller.base_speed:
-                    bumper_progress = 1.0 - \
-                        (backoff_time * (backoff_speed /
-                         controller.base_speed) / controller.time_reverse)
+                    bumper_progress = 1.0 - (backoff_time * (backoff_speed / controller.base_speed) / controller.time_reverse)
                 else:
                     bumper_progress = 1.0
 
@@ -2317,14 +2458,20 @@ async def bumper_tsk():
                 if bumper_progress > 1.0:
                     bumper_progress = 1.0
 
-                print("Position reset from RIGHT bumper:",
-                      int(bumper_progress * 100), "%")
+                print("Position reset from RIGHT bumper:", int(bumper_progress * 100), "%")
+
+            # --------------------------------------------------
+            # POS COMMAND
+            # --------------------------------------------------
 
             if bumper_positioning:
 
                 train.throttle = 0
                 current_throttle = 0
                 bumper_requested_throttle = 0.0
+
+                if bckgrnd_track_throttle:
+                    await upd_vol_async(0, 0)
 
                 bumper_target_position = None
                 bumper_positioning = False
@@ -2342,8 +2489,16 @@ async def bumper_tsk():
                 await asyncio.sleep(0)
                 continue
 
+            # --------------------------------------------------
+            # NORMAL T / TA
+            #
+            # Continue traveling away from bumper.
+            # No stop between backoff and normal movement.
+            # --------------------------------------------------
+
             if bumper_direction > 0:
                 print("Now traveling RIGHT")
+
             else:
                 print("Now traveling LEFT")
 
@@ -2351,6 +2506,10 @@ async def bumper_tsk():
 
             await asyncio.sleep(0)
             continue
+
+        # --------------------------------------------------
+        # GET CALIBRATED TRAVEL TIME
+        # --------------------------------------------------
 
         if bumper_direction > 0:
             est_time = controller.time_forward
@@ -2361,40 +2520,38 @@ async def bumper_tsk():
             train.throttle = 0
             current_throttle = 0
 
+            if bckgrnd_track_throttle:
+                await upd_vol_async(0, 0)
+
             await asyncio.sleep(0)
             continue
 
+        # --------------------------------------------------
+        # COMMANDED SPEED
+        # --------------------------------------------------
+
         commanded_speed = abs(bumper_requested_throttle)
 
-        if bumper_positioning and bumper_target_position is not None:
+        if bckgrnd_track_throttle:
+            await upd_vol_async(0, commanded_speed * 100)
 
-            if bumper_target_position > 0.0 and bumper_target_position < 1.0:
+        # --------------------------------------------------
+        # ABSOLUTE POSITION -> DIRECTIONAL PROGRESS
+        # --------------------------------------------------
 
-                distance_remaining = abs(
-                    bumper_target_position - bumper_progress)
-
-                if distance_remaining < POS_RAMP_DISTANCE:
-
-                    ramp_ratio = distance_remaining / POS_RAMP_DISTANCE
-
-                    min_speed = POS_MIN_SPEED
-
-                    if commanded_speed < min_speed:
-                        min_speed = commanded_speed
-
-                    commanded_speed = min_speed + \
-                        ((commanded_speed - min_speed) * ramp_ratio)
-                    
         if bumper_direction > 0:
             travel_progress = bumper_progress
         else:
             travel_progress = 1.0 - bumper_progress
 
-        ramped_throttle = controller._ramped_throttle(
-            bumper_direction, commanded_speed, travel_progress)
+        ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, travel_progress)
 
         train.throttle = ramped_throttle
         current_throttle = int(ramped_throttle * 100)
+
+        # --------------------------------------------------
+        # UPDATE ABSOLUTE POSITION
+        # --------------------------------------------------
 
         base_speed = controller.base_speed
 
@@ -2417,6 +2574,13 @@ async def bumper_tsk():
         if bumper_progress < 0.0:
             bumper_progress = 0.0
 
+        # --------------------------------------------------
+        # NORMAL POS DESTINATION
+        #
+        # Do NOT use estimated position to finish 0 or 100.
+        # Those must physically reach their bumper.
+        # --------------------------------------------------
+
         if bumper_positioning and bumper_target_position is not None:
 
             if bumper_target_position > 0.0 and bumper_target_position < 1.0:
@@ -2436,14 +2600,17 @@ async def bumper_tsk():
                     current_throttle = 0
                     bumper_requested_throttle = 0.0
 
-                    print("POS destination reached:",
-                          int(bumper_progress * 100), "%")
+                    if bckgrnd_track_throttle:
+                        await upd_vol_async(0, 0)
+
+                    print("POS destination reached:", int(bumper_progress * 100), "%")
 
                     bumper_target_position = None
                     bumper_positioning = False
                     bumper_position_success = True
 
         await asyncio.sleep(0)
+
 
 
 async def process_cmd_tsk():
