@@ -964,21 +964,7 @@ async def animation_wait(wait_time):
     while time.monotonic() - start_time < wait_time:
         sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, None, False)
 
-        if sw == "right_held":
-            cfg["bumper_mode"] = not cfg["bumper_mode"]
-            files.write_json_file("/sd/cfg.json", cfg)
-            if cfg["bumper_mode"]:
-                print("BUMPER MODE ON")
-                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
-                time.wait(2)
-            else:
-                print("BUMPER MODE OFF")
-                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
-                time.wait(2)
-        elif sw == "both":
-            pass
-
-        elif sw == "left_held":
+        if sw == "left_held":
             print("LEFT HELD - STOP ANIMATION")
 
             bumper_requested_throttle = 0.0
@@ -1671,6 +1657,14 @@ class BseSt(Ste):
         if an_running:
             return
 
+        # When bumper mode is controlling a moving trolley,
+        # the left/right switches are bumpers, not user buttons.
+        #
+        # Do NOT update the Debouncer here. bumper_tsk() reads
+        # l_sw_io and r_sw_io directly and handles the bumper hit.
+        if cfg["bumper_mode"] and bumper_ready and bumper_requested_throttle > 0:
+            return
+
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st)
 
         if sw == "left":
@@ -1678,15 +1672,15 @@ class BseSt(Ste):
                 add_cmd("AN_" + cfg["option_selected"])
                 an_just_added = True
 
-        elif sw == "right":
-            if not mix.voice[0].playing:
-                mch.go_to("main_menu")
-
         elif sw == "left_held":
             if not cfg["cont_mode"]:
                 cfg["cont_mode"] = True
                 ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
                 files.write_json_file("/sd/cfg.json", cfg)
+
+        elif sw == "right":
+            if not mix.voice[0].playing:
+                mch.go_to("main_menu")
 
         if cfg["cont_mode"] and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
