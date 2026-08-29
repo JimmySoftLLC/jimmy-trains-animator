@@ -249,6 +249,8 @@ t_elsp = 0.0
 an_running = False
 an_just_added = False
 
+cfg["volume"]="2"
+
 ################################################################################
 # Setup neo pixels
 
@@ -902,6 +904,8 @@ if (web):
                 rq_d = request.json()
                 if rq_d["an"] == "left":
                     ovrde_sw_st["switch_value"] = "left"
+                elif rq_d["an"] == "left_held":
+                    ovrde_sw_st["switch_value"] = "left_held"
                 elif rq_d["an"] == "right":
                     ovrde_sw_st["switch_value"] = "right"
                 elif rq_d["an"] == "right_held":
@@ -1404,13 +1408,14 @@ async def an_light_async(f_nm):
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
-            add_cmd("TA_0_2")
+            result = await set_hdw_async("TA_0_2", 0)
             an_running = False
             return
 
         upd_vol(0)
 
         if await animation_wait(.1):
+            result = await set_hdw_async("TA_0_2", 0)
             return
 
 
@@ -1654,7 +1659,7 @@ async def set_hdw_async(cmd, dur=3):
         elif seg == 'VRT':
             bckgrnd_track_throttle = True
 
-        # VRFXXX = Fade background volume to XXX, 0 to 100
+        # VRFXXX = Fade background volume to XXX, 0 to 100, turns off volume tracking to throttle
         elif seg[:3] == 'VRF':
             try:
                 bckgrnd_track_throttle = False
@@ -1683,7 +1688,7 @@ async def set_hdw_async(cmd, dur=3):
             except Exception as e:
                 print("VRF error:", e)
 
-        # VRXXX = Set background volume to XXX, 0 to 100
+        # VRXXX = Set background volume to XXX, 0 to 100, turns off volume tracking to throttle
         elif seg[:2] == 'VR':
             try:
                 bckgrnd_track_throttle = False
