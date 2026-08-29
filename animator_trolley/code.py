@@ -249,7 +249,7 @@ t_elsp = 0.0
 an_running = False
 an_just_added = False
 
-cfg["volume"]="2"
+cfg["volume"]="10"
 
 ################################################################################
 # Setup neo pixels
@@ -572,6 +572,18 @@ BUMPER_BACKOFF_TIMEOUT = 2.0
 POS_RAMP_DISTANCE = 0.12
 POS_MIN_SPEED = 0.10
 
+# Virtual position support when bumpers are disabled or not calibrated.
+# The virtual position is only used so POS commands still behave realistically
+# on a loop of track.
+virtual_position = 50.0
+
+# Approximate time to travel from virtual 0 to virtual 100 at throttle 20.
+# A new random value is chosen for every POS move.
+VIRTUAL_FULL_TRAVEL_MIN = 8.0
+VIRTUAL_FULL_TRAVEL_MAX = 12.0
+VIRTUAL_REFERENCE_SPEED = 20.0
+VIRTUAL_ACCELERATION = 2
+
 
 def calibrate_bumper():
     global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_ready
@@ -696,18 +708,86 @@ async def back_off_bumper(hit_direction):
     return elapsed, backoff_speed
 
 
+async def position_trolley_virtual(speed, percentage):
+    global virtual_position, current_throttle
+
+    speed = abs(speed)
+
+    if speed > 100:
+        speed = 100
+
+    if speed <= 0:
+        print("Virtual POS speed must be greater than 0")
+        return False
+
+    if percentage < 0 or percentage > 100:
+        print("Virtual POS position must be between 0 and 100")
+        return False
+
+    distance = abs(percentage - virtual_position)
+
+    print("Virtual POS command")
+    print("Speed:", speed)
+    print("Virtual current position:", int(virtual_position))
+    print("Virtual target position:", percentage)
+    print("Virtual distance:", int(distance), "%")
+
+    if distance <= 1:
+        await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
+        virtual_position = float(percentage)
+        print("Already at virtual position")
+        return True
+
+    if percentage > virtual_position:
+        direction = 1
+        print("Virtual POS traveling FORWARD")
+    else:
+        direction = -1
+        print("Virtual POS traveling REVERSE")
+
+    full_travel_time = random.uniform(VIRTUAL_FULL_TRAVEL_MIN, VIRTUAL_FULL_TRAVEL_MAX)
+
+    speed_ratio = VIRTUAL_REFERENCE_SPEED / speed
+    distance_ratio = distance / 100.0
+
+    travel_time = full_travel_time * distance_ratio * speed_ratio
+
+    if travel_time < 0.25:
+        travel_time = 0.25
+
+    print("Virtual full travel time:", full_travel_time)
+    print("Virtual travel time:", travel_time)
+
+    target_throttle = int(speed) * direction
+
+    result = await set_hdw_async("TA_" + str(target_throttle) + "_" + str(VIRTUAL_ACCELERATION), 0)
+
+    if result == "STOP":
+        return False
+
+    if an_running:
+        if await animation_wait(travel_time):
+            await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
+            return False
+    else:
+        await asyncio.sleep(travel_time)
+
+    result = await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
+
+    if result == "STOP":
+        return False
+
+    virtual_position = float(percentage)
+
+    print("Virtual POS complete:", percentage, "%")
+
+    return True
+
+
 async def position_trolley(speed, percentage):
     global bumper_direction, bumper_requested_throttle
     global bumper_target_position, bumper_positioning, bumper_position_success
     global current_throttle
-
-    if not cfg["bumper_mode"]:
-        print("POS requires bumper mode")
-        return False
-
-    if not bumper_ready:
-        print("POS requires bumper calibration")
-        return False
 
     speed = abs(speed)
 
@@ -721,6 +801,20 @@ async def position_trolley(speed, percentage):
     if percentage < 0 or percentage > 100:
         print("POS position must be between 0 and 100")
         return False
+
+    # --------------------------------------------------
+    # VIRTUAL POSITION MODE
+    #
+    # If bumper mode is off OR bumper calibration is not
+    # available, pretend there are invisible bumpers.
+    # --------------------------------------------------
+
+    if not cfg["bumper_mode"] or not bumper_ready:
+        return await position_trolley_virtual(speed, percentage)
+
+    # --------------------------------------------------
+    # REAL CALIBRATED BUMPER POSITION MODE
+    # --------------------------------------------------
 
     target = percentage / 100
 
@@ -760,7 +854,6 @@ async def position_trolley(speed, percentage):
     # --------------------------------------------------
 
     else:
-        # Close enough already.
         if abs(bumper_progress - target) <= 0.01:
             train.throttle = 0
             current_throttle = 0
@@ -809,6 +902,7 @@ async def position_trolley(speed, percentage):
     print("POS did not reach destination")
 
     return False
+
 
 ################################################################################
 # Setup wifi and web server
@@ -1210,12 +1304,17 @@ def clr_cmd_queue():
 def stop_all_cmds():
     global exit_set_hdw_async, flsh_i, flsh_t
     flsh_i = len(flsh_t)-1
-    cfg["cont_mode"] = False
+    if cfg["cont_mode"] == True:
+        result = True
+        cfg["cont_mode"] = False
+    else:
+        result = False
     mix.voice[0].stop()
     mix.voice[1].stop()
     clr_cmd_queue()
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
+    return result
 
 
 async def animation_wait(wait_time):
@@ -1224,8 +1323,7 @@ async def animation_wait(wait_time):
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
-        sw = utilities.switch_state_trolley(
-            l_sw, r_sw, upd_vol, 3.0, None, False)
+        sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
 
         if sw == "left_held":
             print("LEFT HELD - STOP ANIMATION")
@@ -1234,17 +1332,18 @@ async def animation_wait(wait_time):
             train.throttle = 0
             current_throttle = 0
 
-            stop_all_cmds()
-            ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-            files.write_json_file("/sd/cfg.json", cfg)
+            result = stop_all_cmds()
+
+            if result == True:
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                files.write_json_file("/sd/cfg.json", cfg)
+            else:
+                ply_a_0(mvc_folder + "animation_canceled.mp3")
 
             an_running = False
             return True
 
         time.sleep(.001)
-
-        # This does NOT control animation timing.
-        # It only lets bumper_tsk() run.
         await asyncio.sleep(0)
 
     return False
@@ -1409,6 +1508,7 @@ async def an_light_async(f_nm):
             mix.voice[0].stop()
             mix.voice[1].stop()
             result = await set_hdw_async("TA_0_2", 0)
+            result = await set_hdw_async("VR100", 0)
             an_running = False
             return
 
@@ -1416,6 +1516,7 @@ async def an_light_async(f_nm):
 
         if await animation_wait(.1):
             result = await set_hdw_async("TA_0_2", 0)
+            result = await set_hdw_async("VR100", 0)
             return
 
 
