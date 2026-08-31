@@ -557,7 +557,7 @@ bumper_direction = 1
 bumper_requested_throttle = 0.0
 bumper_progress = 0.0
 bumper_last_time = time.monotonic()
-bumper_ready = False
+bumper_calibrated = False
 
 bumper_target_position = None
 bumper_positioning = False
@@ -577,14 +577,14 @@ VIRTUAL_ACCELERATION = 2
 
 
 def calibrate_bumper():
-    global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_ready
+    global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_calibrated
     global bumper_target_position, bumper_positioning, bumper_position_success
 
     bumper_direction = 1
     bumper_requested_throttle = 0.0
     bumper_progress = 0.0
     bumper_last_time = time.monotonic()
-    bumper_ready = False
+    bumper_calibrated = False
 
     bumper_target_position = None
     bumper_positioning = False
@@ -594,9 +594,9 @@ def calibrate_bumper():
 
     ply_a_0(mvc_folder + "bumper_cal_starting.mp3")
 
-    bumper_ready = controller.calibrate(speed=0.2, cycles=3)
+    bumper_calibrated = controller.calibrate(speed=0.2, cycles=3)
 
-    if bumper_ready:
+    if bumper_calibrated:
         bumper_direction = 1
 
         if controller.time_forward:
@@ -784,7 +784,7 @@ async def position_trolley(speed, percentage):
         print("POS position must be between 0 and 100")
         return False
 
-    if not cfg["bumper_mode"] or not bumper_ready:
+    if not cfg["bumper_mode"] or not bumper_calibrated:
         return await position_trolley_virtual(speed, percentage)
 
     target = percentage / 100
@@ -1261,12 +1261,17 @@ def stop_all_cmds():
 
 
 async def animation_wait(wait_time):
-    global an_running, bumper_requested_throttle, current_throttle
+    global an_running, bumper_requested_throttle, current_throttle, flsh_i, t_elsp
 
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
         sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
+
+        if t_elsp > 2:
+            track_voltage = get_track_voltage()
+            if track_voltage < 9.0:
+                sw = "left_held"
 
         if sw == "left_held":
             print("LEFT HELD - STOP ANIMATION")
@@ -1302,11 +1307,7 @@ def add_command_to_ts(command):
 ################################################################################
 # Misc Methods
 
-track_voltage_file_number = 0
-
-
-def get_track_voltage():
-    samples = 20
+def get_track_voltage(samples = 20):
     total = 0.0
 
     for _ in range(samples):
@@ -1356,7 +1357,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global flsh_i, flsh_t, an_running, exit_set_hdw_async
+    global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp
 
     an_running = True
 
@@ -1415,7 +1416,7 @@ async def an_light_async(f_nm):
         return
 
     while True:
-        t_past = time.monotonic()-srt_t
+        t_elsp = time.monotonic()-srt_t
 
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
@@ -1428,8 +1429,8 @@ async def an_light_async(f_nm):
         if dur < 0:
             dur = 0
 
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item("time elapsed: " + str(t_past) +
+        if t_elsp > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
+            files.log_item("time elapsed: " + str(t_elsp) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
 
             if len(ft1) == 1 or ft1[1] == "":
@@ -2056,7 +2057,7 @@ class BseSt(Ste):
         if an_running:
             return
 
-        if cfg["bumper_mode"] and bumper_ready and bumper_requested_throttle > 0:
+        if cfg["bumper_mode"] and bumper_calibrated and bumper_requested_throttle > 0:
             return
 
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
@@ -2373,7 +2374,7 @@ async def bumper_tsk():
             await asyncio.sleep(0)
             continue
 
-        if not bumper_ready:
+        if not bumper_calibrated:
             bumper_last_time = time.monotonic()
             await asyncio.sleep(0)
             continue
@@ -2645,7 +2646,7 @@ async def bumper_tsk():
             await asyncio.sleep(0)
             continue
 
-        if not bumper_ready:
+        if not bumper_calibrated:
             bumper_last_time = time.monotonic()
             await asyncio.sleep(0)
             continue
