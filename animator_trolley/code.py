@@ -245,6 +245,7 @@ flsh_t = []
 
 t_s = []
 t_elsp = 0.0
+animation_start_time = 0.0
 
 an_running = False
 an_just_added = False
@@ -386,14 +387,17 @@ def ply_a_0(file_name, wait=True, repeat=False):
     # Stop if voice is currently playing
     if mix.voice[0].playing:
         mix.voice[0].stop()
+
         while mix.voice[0].playing:
-            upd_vol(0.1)
+            time.sleep(.01)
 
     # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
+
     elif file_name.lower().endswith(".wav"):
         w0 = audiocore.WaveFile(open(file_name, "rb"))
+
     else:
         raise ValueError("Unsupported audio format: " + file_name)
 
@@ -403,8 +407,8 @@ def ply_a_0(file_name, wait=True, repeat=False):
     # Wait until playback completes
     if wait:
         while mix.voice[0].playing:
-            exit_early()
-            pass
+            upd_vol(0)
+            time.sleep(.01)
 
 
 def wait_snd():
@@ -431,22 +435,6 @@ def stp_a_0():
 async def stp_a_1():
     mix.voice[1].stop()
     await wait_snd_1()
-
-
-def exit_early():
-    upd_vol(0)
-
-    if an_running:
-        animation_wait(.1)
-        return
-
-    time.sleep(.1)
-
-    l_sw.update()
-
-    if l_sw.fell:
-        mix.voice[0].stop()
-
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -715,7 +703,11 @@ async def position_trolley_virtual(speed, percentage):
     print("Virtual distance:", int(distance), "%")
 
     if distance <= 1:
-        await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
+        result = await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
+
+        if result == "STOP":
+            return "STOP"
+
         virtual_position = float(percentage)
         print("Already at virtual position")
         return True
@@ -745,19 +737,18 @@ async def position_trolley_virtual(speed, percentage):
     result = await set_hdw_async("TA_" + str(target_throttle) + "_" + str(VIRTUAL_ACCELERATION), 0)
 
     if result == "STOP":
-        return False
+        return "STOP"
 
     if an_running:
         if await animation_wait(travel_time):
-            await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
-            return False
+            return "STOP"
     else:
         await asyncio.sleep(travel_time)
 
     result = await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
 
     if result == "STOP":
-        return False
+        return "STOP"
 
     virtual_position = float(percentage)
 
@@ -785,7 +776,12 @@ async def position_trolley(speed, percentage):
         return False
 
     if not cfg["bumper_mode"] or not bumper_calibrated:
-        return await position_trolley_virtual(speed, percentage)
+        result = await position_trolley_virtual(speed, percentage)
+
+        if result == "STOP":
+            return "STOP"
+
+        return result
 
     target = percentage / 100
 
@@ -841,7 +837,7 @@ async def position_trolley(speed, percentage):
                 train.throttle = 0
                 current_throttle = 0
 
-                return False
+                return "STOP"
 
         else:
             await asyncio.sleep(0)
@@ -853,6 +849,14 @@ async def position_trolley(speed, percentage):
     print("POS did not reach destination")
 
     return False
+
+
+def api_call_stop_animation():
+    global bumper_requested_throttle, current_throttle
+    stop_all_cmds()
+    bumper_requested_throttle = 0.0
+    train.throttle = 0
+    current_throttle = 0
 
 
 ################################################################################
@@ -899,7 +903,7 @@ if (web):
             files.log_item("Connected")
 
             pool = socketpool.SocketPool(wifi.radio)
-            server = Server(pool, "/static", debug=True)
+            server = Server(pool, "/static", debug=False)
             server.port = 80  # Explicitly set port to 80
 
             gc_col("wifi server")
@@ -930,7 +934,7 @@ if (web):
 
             @server.route("/defaults", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 rq_d = request.json()
                 if rq_d["an"] == "reset_to_defaults":
                     rst_def()
@@ -956,29 +960,29 @@ if (web):
                 elif rq_d["an"] == "four":
                     ovrde_sw_st["switch_value"] = "four"
                 elif rq_d["an"] == "cont_mode_on":
-                    stop_all_cmds()
+                    api_call_stop_animation()
                     ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
                     cfg["cont_mode"] = True
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "cont_mode_off":
-                    stop_all_cmds()
+                    api_call_stop_animation()
                     ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
                     cfg["cont_mode"] = False
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
-                    stop_all_cmds()
+                    api_call_stop_animation()
                     ts_mode = True
                     ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
                     ply_a_0(mvc_folder + "timestamp_instructions.mp3")
                 elif rq_d["an"] == "timestamp_mode_off":
-                    stop_all_cmds()
+                    api_call_stop_animation()
                     ts_mode = False
                     ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/speaker", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
                     ply_a_0(mvc_folder + "left_speaker_right_speaker.mp3")
@@ -1013,7 +1017,7 @@ if (web):
 
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 rq_d = request.json()
                 cfg["HOST_NAME"] = rq_d["an"]
                 files.write_json_file("/sd/cfg.json", cfg)
@@ -1031,7 +1035,7 @@ if (web):
 
             @server.route("/update-volume", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 rq_d = request.json()
                 ch_vol(rq_d["action"])
                 files.write_json_file("/sd/cfg.json", cfg)
@@ -1049,7 +1053,7 @@ if (web):
 
             @server.route("/get-animations", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 sounds = []
                 sounds.extend(snd_opt)
                 my_string = files.json_stringify(sounds)
@@ -1057,7 +1061,7 @@ if (web):
 
             @server.route("/create-animation", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 try:
                     global data, animations_folder
                     rq_d = request.json()  # Parse the incoming JSON
@@ -1074,7 +1078,7 @@ if (web):
 
             @server.route("/rename-animation", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 try:
                     global data, animations_folder
                     rq_d = request.json()  # Parse the incoming JSON
@@ -1089,7 +1093,7 @@ if (web):
 
             @server.route("/delete-animation", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 try:
                     global data, animations_folder
                     rq_d = request.json()  # Parse the incoming JSON
@@ -1115,7 +1119,7 @@ if (web):
 
             @server.route("/get-animation", [POST])
             def btn(request: Request):
-                stop_all_cmds()
+                api_call_stop_animation()
                 rq_d = request.json()
                 snd_f = rq_d["an"]
                 if (f_exists(animations_folder + snd_f + ".json") == True):
@@ -1130,7 +1134,7 @@ if (web):
             @server.route("/save-data", [POST])
             def btn(request: Request):
                 global data
-                stop_all_cmds()
+                api_call_stop_animation()
                 rq_d = request.json()
                 try:
                     if rq_d[0] == 0:
@@ -1262,19 +1266,37 @@ def stop_all_cmds():
 
 async def animation_wait(wait_time):
     global an_running, bumper_requested_throttle, current_throttle, flsh_i, t_elsp
+    global animation_start_time
 
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
-        sw = utilities.switch_state_trolley(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
 
-        if t_elsp > 2:
-            track_voltage = get_track_voltage()
-            if track_voltage < 9.0:
+        # When bumper mode is active, the physical left/right switches
+        # are bumpers. They must NOT cancel the animation.
+        if cfg["bumper_mode"]:
+            sw = ""
+
+            # Still allow a web override left-hold to stop the animation.
+            if ovrde_sw_st["switch_value"] == "left_held":
                 sw = "left_held"
+                ovrde_sw_st["switch_value"] = ""
+
+        else:
+            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
+
+        if animation_start_time > 0:
+            animation_elapsed = time.monotonic() - animation_start_time
+
+            if animation_elapsed > 2:
+                track_voltage = get_track_voltage()
+
+                if track_voltage < 9.0:
+                    print("TRACK VOLTAGE LOW:", track_voltage)
+                    sw = "left_held"
 
         if sw == "left_held":
-            print("LEFT HELD - STOP ANIMATION")
+            print("STOP ANIMATION")
 
             bumper_requested_throttle = 0.0
             train.throttle = 0
@@ -1282,13 +1304,14 @@ async def animation_wait(wait_time):
 
             result = stop_all_cmds()
 
+            an_running = False
+
             if result == True:
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
                 files.write_json_file("/sd/cfg.json", cfg)
             else:
                 ply_a_0(mvc_folder + "animation_canceled.mp3")
 
-            an_running = False
             return True
 
         await asyncio.sleep(0)
@@ -1355,11 +1378,12 @@ async def an_async(f_nm):
         return
     gc_col("Animation complete.")
 
-
 async def an_light_async(f_nm):
     global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp
+    global animation_start_time
 
     an_running = True
+    animation_start_time = 0.0
 
     stp_a_0()
 
@@ -1372,7 +1396,9 @@ async def an_light_async(f_nm):
 
     if flsh_i < len(flsh_t)-1:
         ft1 = flsh_t[flsh_i].split("|")
+
         result = await set_hdw_async(ft1[1])
+
         print("Result is: ", result)
 
         if result == "STOP":
@@ -1397,6 +1423,7 @@ async def an_light_async(f_nm):
                 return
 
             srt_t = time.monotonic()
+            animation_start_time = srt_t
 
             ft1 = []
             ft2 = []
@@ -1416,7 +1443,7 @@ async def an_light_async(f_nm):
         return
 
     while True:
-        t_elsp = time.monotonic()-srt_t
+        t_elsp = time.monotonic() - srt_t
 
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
@@ -1430,8 +1457,7 @@ async def an_light_async(f_nm):
             dur = 0
 
         if t_elsp > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item("time elapsed: " + str(t_elsp) +
-                           " Timestamp: " + ft1[0] + " Command: " + ft1[1])
+            files.log_item("time elapsed: " + str(t_elsp) + " Timestamp: " + ft1[0] + " Command: " + ft1[1])
 
             if len(ft1) == 1 or ft1[1] == "":
                 result = await set_hdw_async("", dur)
@@ -1452,9 +1478,13 @@ async def an_light_async(f_nm):
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
+
             result = await set_hdw_async("TA_0_2", 0)
             result = await set_hdw_async("VR100", 0)
+
             an_running = False
+            animation_start_time = 0.0
+
             return
 
         upd_vol(0)
@@ -1462,9 +1492,9 @@ async def an_light_async(f_nm):
         if await animation_wait(.1):
             result = await set_hdw_async("TA_0_2", 0)
             result = await set_hdw_async("VR100", 0)
+            animation_start_time = 0.0
             return
-
-
+        
 def add_command_to_ts(command):
     global ts_mode, t_s, t_elsp
     if not ts_mode:
@@ -1643,7 +1673,10 @@ async def set_hdw_async(cmd, dur=3):
                 speed = int(seg_split[1])
                 percentage = int(seg_split[2])
 
-                await position_trolley(speed, percentage)
+                result = await position_trolley(speed, percentage)
+
+                if result == "STOP":
+                    return "STOP"
 
             except Exception as e:
                 print("POS error:", e)
