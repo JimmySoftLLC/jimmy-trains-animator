@@ -249,8 +249,6 @@ t_elsp = 0.0
 an_running = False
 an_just_added = False
 
-cfg["volume"]="10"
-
 ################################################################################
 # Setup neo pixels
 
@@ -1362,13 +1360,19 @@ def add_command_to_ts(command):
 
 
 def get_track_voltage():
-    """Get the track voltage from the analog input."""
-    if track_a_in.value is None:
-        return 0.0
-    # Convert the analog value to a voltage (0-3.3V) and scale it for the track voltage
-    # Assuming a 14.7:1 scaling factor for the track voltage
-    return track_a_in.value / 65536 * 3.3 * 14.7
+    samples = 200
+    total = 0
 
+    for _ in range(samples):
+        total += track_a_in.value
+        time.sleep(.0017)
+
+    average = total / samples
+    average = average / 65536 * 3.3 * 14.7
+
+    # spk_str("{:.0f}".format(average-4.6), False)
+
+    return average
 
 def rst_def():
     cfg["option_selected"] = "random all"
@@ -2126,16 +2130,18 @@ class BseSt(Ste):
 
         # When bumper mode is controlling a moving trolley,
         # the left/right switches are bumpers, not user buttons.
-        #
-        # Do NOT update the Debouncer here. bumper_tsk() reads
-        # l_sw_io and r_sw_io directly and handles the bumper hit.
         if cfg["bumper_mode"] and bumper_ready and bumper_requested_throttle > 0:
             return
 
-        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st)
+        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
+
+        track_voltage = get_track_voltage()
+
+        if track_voltage < 9.0:
+            sw = "left"
 
         if sw == "left":
-            if not mix.voice[0].playing and not an_running:
+            if not mix.voice[0].playing and not an_running and not an_just_added:
                 add_cmd("AN_" + cfg["option_selected"])
                 an_just_added = True
 
@@ -2149,10 +2155,9 @@ class BseSt(Ste):
             if not mix.voice[0].playing:
                 mch.go_to("main_menu")
 
-        if cfg["cont_mode"] and not mix.voice[0].playing and not an_running:
+        if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
-
 
 class Main(Ste):
 
