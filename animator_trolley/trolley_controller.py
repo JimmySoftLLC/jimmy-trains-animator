@@ -2,15 +2,6 @@ import time
 
 
 class TrolleyController:
-    """
-    Simple trolley controller.
-
-    Assumptions:
-      - train.throttle is in [-1.0 .. 1.0]
-      - l_sw_io.value == True when LEFT bumper is hit
-      - r_sw_io.value == True when RIGHT bumper is hit
-    """
-
     def __init__(self, train, l_sw_io, r_sw_io, ramp_start_ratio=0.7, min_throttle=0.08, off_bumper_time=0.3, ramp_steps=3):
         self.train = train
         self.l_sw_io = l_sw_io
@@ -25,24 +16,7 @@ class TrolleyController:
         self.time_forward = None
         self.time_reverse = None
 
-    # --------------------------------------------------
-    # PUBLIC API
-    # --------------------------------------------------
-
-
-
     def calibrate(self, speed=0.3, cycles=3):
-        """
-        Calibrate travel time between bumpers at a fixed speed.
-
-        Before official calibration begins, find the LEFT bumper.
-        This guarantees that every calibration starts from a known
-        position and prevents the first measurement from being a
-        partial trip.
-
-        Returns True if calibration succeeds.
-        Returns False if calibration fails.
-        """
 
         s = abs(float(speed))
 
@@ -59,10 +33,6 @@ class TrolleyController:
 
         self.base_speed = s
 
-        # --------------------------------------------------
-        # FIND STARTING BUMPER
-        # --------------------------------------------------
-
         print("Finding LEFT bumper before calibration")
 
         t_home = self._leg_constant(-1, s)
@@ -72,26 +42,16 @@ class TrolleyController:
             self.train.throttle = 0.0
             return False
 
-        # Move away from the left bumper to establish the
-        # exact same starting condition used during calibration.
         self._back_off(-1)
 
         print("LEFT bumper found")
         print("Starting official calibration")
-
-        # --------------------------------------------------
-        # OFFICIAL CALIBRATION
-        # --------------------------------------------------
 
         f_times = []
         r_times = []
 
         for cycle in range(cycles):
             print("Calibration cycle:", cycle + 1)
-
-            # --------------------------------------------------
-            # LEFT -> RIGHT
-            # --------------------------------------------------
 
             t_f = self._leg_constant(+1, s)
 
@@ -103,10 +63,6 @@ class TrolleyController:
             f_times.append(t_f)
 
             self._back_off(+1)
-
-            # --------------------------------------------------
-            # RIGHT -> LEFT
-            # --------------------------------------------------
 
             t_r = self._leg_constant(-1, s)
 
@@ -136,20 +92,6 @@ class TrolleyController:
 
 
     def shuttle(self, start_direction, cycles=None):
-        """
-        Run back and forth between bumpers.
-
-        start_direction:
-            +1 = move toward RIGHT bumper
-            -1 = move toward LEFT bumper
-
-        cycles:
-            Number of one-way trips.
-            None = continue indefinitely.
-
-        Returns True if completed normally.
-        Returns False if a problem occurs.
-        """
 
         if start_direction > 0:
             direction = +1
@@ -219,19 +161,11 @@ class TrolleyController:
 
         return True
 
-    # --------------------------------------------------
-    # SWITCH HELPERS
-    # --------------------------------------------------
-
     def _left_hit(self):
         return bool(self.l_sw_io.value)
 
     def _right_hit(self):
         return bool(self.r_sw_io.value)
-
-    # --------------------------------------------------
-    # MOVEMENT HELPERS
-    # --------------------------------------------------
 
     def _back_off(self, direction, mag=None):
         """
@@ -257,24 +191,14 @@ class TrolleyController:
 
         self.train.throttle = 0.0
 
-    # --------------------------------------------------
-    # CALIBRATION LEG
-    # --------------------------------------------------
-
     def _leg_constant(self, direction, speed):
-        """
-        Run at constant speed until target bumper is reached.
-
-        Returns elapsed travel time on success.
-        Returns None on timeout.
-        """
 
         speed = min(abs(speed), 1.0)
 
         self.train.throttle = direction * speed
 
         t0 = time.monotonic()
-        timeout = 60.0
+        timeout = 300.0 
 
         while True:
             now = time.monotonic()
@@ -300,18 +224,7 @@ class TrolleyController:
 
             time.sleep(0.01)
 
-    # --------------------------------------------------
-    # SHUTTLE LEG
-    # --------------------------------------------------
-
     def _leg_ramped(self, direction, speed, est_time):
-        """
-        Run one shuttle leg using the estimated travel time
-        to slow the trolley as it approaches the bumper.
-
-        Returns elapsed travel time on success.
-        Returns None on timeout.
-        """
 
         speed = min(abs(speed), 1.0)
         est_time = max(est_time, 0.2)
@@ -332,10 +245,6 @@ class TrolleyController:
 
             progress = elapsed / est_time
 
-            # --------------------------------------------------
-            # BUMPER CHECK
-            # --------------------------------------------------
-
             if direction > 0 and self._right_hit():
                 self.train.throttle = 0.0
                 return elapsed
@@ -343,10 +252,6 @@ class TrolleyController:
             if direction < 0 and self._left_hit():
                 self.train.throttle = 0.0
                 return elapsed
-
-            # --------------------------------------------------
-            # SAFETY TIMEOUT
-            # --------------------------------------------------
 
             if elapsed > timeout:
                 self.train.throttle = 0.0
@@ -358,10 +263,6 @@ class TrolleyController:
 
                 return None
 
-            # --------------------------------------------------
-            # RAMP
-            # --------------------------------------------------
-
             new_throttle = self._ramped_throttle(direction, speed, progress)
 
             if new_throttle != current_throttle:
@@ -371,10 +272,7 @@ class TrolleyController:
             time.sleep(0.01)
 
     def _ramped_throttle(self, direction, base_speed, progress):
-        """
-        Multi-step slowdown from base speed to min_throttle.
-        """
-
+        
         base = max(abs(base_speed), self.min_throttle)
 
         progress = max(0.0, min(1.0, progress))
