@@ -76,7 +76,7 @@ gc_col("Imports gc, files")
 # Globals
 
 animations_folder = "/sd/snds/"
-mvc_folder = "/sd/mvc/"
+mvc_folder = "mvc/"
 
 elves_folder = "elves/"
 bells_folder = "bells/"
@@ -379,7 +379,7 @@ def ch_vol(action):
     cfg["volume"] = str(v)
     if not mix.voice[0].playing:
         files.write_json_file("/sd/cfg.json", cfg)
-        ply_a_0(mvc_folder + "volume.mp3")
+        ply_a_1(mvc_folder + "volume.mp3")
         spk_str(cfg["volume"], False)
 
 
@@ -408,6 +408,30 @@ def ply_a_0(file_name, wait=True, repeat=False):
     if wait:
         while mix.voice[0].playing:
             upd_vol(0)
+            time.sleep(.01)
+
+def ply_a_1(file_name, wait=True):
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+
+        while mix.voice[1].playing:
+            time.sleep(.01)
+
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    mix.voice[1].level = int(cfg["volume"]) / 100
+
+    mix.voice[1].play(w1, loop=False)
+
+    if wait:
+        while mix.voice[1].playing:
             time.sleep(.01)
 
 
@@ -445,40 +469,40 @@ def spk_str(str_to_speak, addLocal):
                 character = "dash"
             if character == ".":
                 character = "dot"
-            ply_a_0(mvc_folder + character + ".mp3")
+            ply_a_1(mvc_folder + character + ".mp3")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        ply_a_0(mvc_folder + "dot.mp3")
-        ply_a_0(mvc_folder + "local.mp3")
+        ply_a_1(mvc_folder + "dot.mp3")
+        ply_a_1(mvc_folder + "local.mp3")
 
 
 def l_r_but():
-    ply_a_0(mvc_folder + "press_left_button_right_button.mp3")
+    ply_a_1(mvc_folder + "press_left_button_right_button.mp3")
 
 
 def sel_web():
-    ply_a_0(mvc_folder + "web_menu.mp3")
+    ply_a_1(mvc_folder + "web_menu.mp3")
     l_r_but()
 
 
 def sel_bumper():
-    ply_a_0(mvc_folder + "bumper_settings_menu.mp3")
+    ply_a_1(mvc_folder + "bumper_settings_menu.mp3")
     l_r_but()
 
 
 def opt_sel():
-    ply_a_0(mvc_folder + "option_selected.mp3")
+    ply_a_1(mvc_folder + "option_selected.mp3")
 
 
 def spk_sng_num(song_number):
-    ply_a_0(mvc_folder + "song.mp3")
+    ply_a_1(mvc_folder + "song.mp3")
     spk_str(song_number, False)
 
 
 async def no_trk():
-    ply_a_0(mvc_folder + "no_user_soundtrack_found.mp3")
+    ply_a_1(mvc_folder + "no_user_soundtrack_found.mp3")
     while True:
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
@@ -487,21 +511,21 @@ async def no_trk():
         if sw == "left":
             break
         if sw == "right":
-            ply_a_0(mvc_folder + "create_sound_track_files.mp3")
+            ply_a_1(mvc_folder + "create_sound_track_files.mp3")
             break
         await asyncio.sleep(.1)
 
 
 def spk_web():
-    ply_a_0(mvc_folder + "animator_available_on_network.mp3")
-    ply_a_0(mvc_folder + "to_access_type.mp3")
+    ply_a_1(mvc_folder + "animator_available_on_network.mp3")
+    ply_a_1(mvc_folder + "to_access_type.mp3")
     if cfg["HOST_NAME"] == "animator-trolley":
-        ply_a_0(mvc_folder + "animator_trolley.mp3")
-        ply_a_0(mvc_folder + "dot.mp3")
-        ply_a_0(mvc_folder + "local.mp3")
+        ply_a_1(mvc_folder + "animator_trolley.mp3")
+        ply_a_1(mvc_folder + "dot.mp3")
+        ply_a_1(mvc_folder + "local.mp3")
     else:
         spk_str(cfg["HOST_NAME"], True)
-    ply_a_0(mvc_folder + "in_your_browser.mp3")
+    ply_a_1(mvc_folder + "in_your_browser.mp3")
 
 
 def get_snds(dir, typ):
@@ -580,7 +604,7 @@ def calibrate_bumper():
 
     print("Calibrating...")
 
-    ply_a_0(mvc_folder + "bumper_cal_starting.mp3")
+    ply_a_1(mvc_folder + "bumper_cal_starting.mp3")
 
     bumper_calibrated = controller.calibrate(speed=0.2, cycles=3)
 
@@ -597,7 +621,7 @@ def calibrate_bumper():
         print("Reverse time:", controller.time_reverse)
         print("Starting position:", int(bumper_progress * 100), "%")
 
-        ply_a_0(mvc_folder + "the_calibration_was_successful.mp3")
+        ply_a_1(mvc_folder + "the_calibration_was_successful.mp3")
 
     else:
         print("Bumper calibration failed")
@@ -939,7 +963,7 @@ if (web):
                 if rq_d["an"] == "reset_to_defaults":
                     rst_def()
                     files.write_json_file("/sd/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                    ply_a_1(mvc_folder + "all_changes_complete.mp3")
                     st_mch.go_to('base_state')
                 return Response(request, "Utility: " + rq_d["an"])
 
@@ -961,23 +985,23 @@ if (web):
                     ovrde_sw_st["switch_value"] = "four"
                 elif rq_d["an"] == "cont_mode_on":
                     api_call_stop_animation()
-                    ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
+                    ply_a_1(mvc_folder + "continuous_mode_activated.mp3")
                     cfg["cont_mode"] = True
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "cont_mode_off":
                     api_call_stop_animation()
-                    ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                    ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3")
                     cfg["cont_mode"] = False
                     files.write_json_file("/sd/cfg.json", cfg)
                 elif rq_d["an"] == "timestamp_mode_on":
                     api_call_stop_animation()
                     ts_mode = True
-                    ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
-                    ply_a_0(mvc_folder + "timestamp_instructions.mp3")
+                    ply_a_1(mvc_folder + "timestamp_mode_on.mp3")
+                    ply_a_1(mvc_folder + "timestamp_instructions.mp3")
                 elif rq_d["an"] == "timestamp_mode_off":
                     api_call_stop_animation()
                     ts_mode = False
-                    ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+                    ply_a_1(mvc_folder + "timestamp_mode_off.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/speaker", [POST])
@@ -985,7 +1009,7 @@ if (web):
                 api_call_stop_animation()
                 rq_d = request.json()
                 if rq_d["an"] == "speaker_test":
-                    ply_a_0(mvc_folder + "left_speaker_right_speaker.mp3")
+                    ply_a_1(mvc_folder + "left_speaker_right_speaker.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/lights", [POST])
@@ -1281,7 +1305,6 @@ async def animation_wait(wait_time):
             if ovrde_sw_st["switch_value"] == "left_held":
                 sw = "left_held"
                 ovrde_sw_st["switch_value"] = ""
-
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
 
@@ -1307,10 +1330,10 @@ async def animation_wait(wait_time):
             an_running = False
 
             if result == True:
-                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3")
                 files.write_json_file("/sd/cfg.json", cfg)
             else:
-                ply_a_0(mvc_folder + "animation_canceled.mp3")
+                ply_a_1(mvc_folder + "animation_canceled.mp3")
 
             return True
 
@@ -1569,9 +1592,9 @@ async def an_ts(f_nm):
 
     ts_mode = False
 
-    ply_a_0(mvc_folder + "timestamp_saved.mp3")
-    ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
-    ply_a_0(mvc_folder + "animations_are_now_active.mp3")
+    ply_a_1(mvc_folder + "timestamp_saved.mp3")
+    ply_a_1(mvc_folder + "timestamp_mode_off.mp3")
+    ply_a_1(mvc_folder + "animations_are_now_active.mp3")
 
 
 ##############################
@@ -2073,7 +2096,7 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        ply_a_0(mvc_folder + "animations_are_now_active.mp3")
+        ply_a_1(mvc_folder + "animations_are_now_active.mp3")
         files.log_item("Entered base state")
 
         l_sw.update()
@@ -2108,7 +2131,7 @@ class BseSt(Ste):
         elif sw == "left_held":
             if not cfg["cont_mode"]:
                 cfg["cont_mode"] = True
-                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
+                ply_a_1(mvc_folder + "continuous_mode_activated.mp3")
                 files.write_json_file("/sd/cfg.json", cfg)
 
         elif sw == "right":
@@ -2131,7 +2154,7 @@ class Main(Ste):
 
     def enter(self, mch):
         files.log_item('Main menu')
-        ply_a_0(mvc_folder + "main_menu.mp3")
+        ply_a_1(mvc_folder + "main_menu.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -2142,7 +2165,7 @@ class Main(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_0(mvc_folder + main_m[self.i] + ".mp3")
+            ply_a_1(mvc_folder + main_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
@@ -2153,7 +2176,7 @@ class Main(Ste):
                 mch.go_to('choose_sounds')
             elif sel_mnu == "volume_level_adjustment":
                 vol_adj_mode = True
-                ply_a_0(mvc_folder + "volume_adjustment_menu.mp3")
+                ply_a_1(mvc_folder + "volume_adjustment_menu.mp3")
                 while vol_adj_mode:
                     sw = utilities.switch_state(
                         l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
@@ -2163,7 +2186,7 @@ class Main(Ste):
                         ch_vol("raise")
                     elif sw == "right_held" and vol_adj_mode:
                         files.write_json_file("/sd/cfg.json", cfg)
-                        ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                        ply_a_1(mvc_folder + "all_changes_complete.mp3")
                         vol_adj_mode = False
                         mch.go_to('base_state')
                         upd_vol(0.1)
@@ -2174,7 +2197,7 @@ class Main(Ste):
             elif sel_mnu == "bumper_settings":
                 mch.go_to('bumper_settings')
             else:
-                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                ply_a_1(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -2190,7 +2213,7 @@ class Snds(Ste):
 
     def enter(self, mch):
         files.log_item('Choose sounds menu')
-        ply_a_0(mvc_folder + "sound_selection_menu.mp3")
+        ply_a_1(mvc_folder + "sound_selection_menu.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -2247,7 +2270,7 @@ class AddSnds(Ste):
 
     def enter(self, mch):
         files.log_item('Add sounds animate')
-        ply_a_0(mvc_folder + "add_sounds_animate.mp3")
+        ply_a_1(mvc_folder + "add_sounds_animate.mp3")
         l_r_but()
         Ste.enter(self, mch)
 
@@ -2259,7 +2282,7 @@ class AddSnds(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_0(
+            ply_a_1(
                 mvc_folder + add_snd[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
@@ -2268,17 +2291,17 @@ class AddSnds(Ste):
         if sw == "right":
             sel_mnu = add_snd[self.sel_i]
             if sel_mnu == "hear_instructions":
-                ply_a_0(mvc_folder + "create_sound_track_files.mp3")
+                ply_a_1(mvc_folder + "create_sound_track_files.mp3")
             elif sel_mnu == "timestamp_mode_on":
                 ts_mode = True
-                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
-                ply_a_0(mvc_folder + "timestamp_instructions.mp3")
+                ply_a_1(mvc_folder + "timestamp_mode_on.mp3")
+                ply_a_1(mvc_folder + "timestamp_instructions.mp3")
                 mch.go_to('base_state')
             elif sel_mnu == "timestamp_mode_off":
                 ts_mode = False
-                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+                ply_a_1(mvc_folder + "timestamp_mode_off.mp3")
             else:
-                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                ply_a_1(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -2303,7 +2326,7 @@ class WebOpt(Ste):
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_0(mvc_folder + web_m[self.i] + ".mp3")
+            ply_a_1(mvc_folder + web_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(web_m)-1:
@@ -2323,7 +2346,7 @@ class WebOpt(Ste):
                 sel_web()
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                ply_a_1(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 
@@ -2351,7 +2374,7 @@ class BumperOpt(Ste):
         sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
 
         if sw == "left":
-            ply_a_0(mvc_folder + bump_set[self.i] + ".mp3")
+            ply_a_1(mvc_folder + bump_set[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
 
@@ -2364,7 +2387,7 @@ class BumperOpt(Ste):
             if selected_menu_item == "bumper_mode_on":
                 cfg["bumper_mode"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0(mvc_folder + "bumper_instructions.mp3")
+                ply_a_1(mvc_folder + "bumper_instructions.mp3")
                 mch.go_to('base_state')
 
             elif selected_menu_item == "bumper_mode_off":
@@ -2379,12 +2402,12 @@ class BumperOpt(Ste):
                 current_throttle = 0
 
                 files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                ply_a_1(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
-                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                ply_a_1(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 async def bumper_tsk():
