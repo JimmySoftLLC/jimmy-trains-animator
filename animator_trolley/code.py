@@ -587,6 +587,8 @@ VIRTUAL_FULL_TRAVEL_MAX = 12.0
 VIRTUAL_REFERENCE_SPEED = 20.0
 VIRTUAL_ACCELERATION = 2
 
+MIN_VOLTS = 9.0
+
 
 def calibrate_bumper():
     global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_calibrated
@@ -889,8 +891,8 @@ def get_track_power_switch(sw):
 
     track_voltage = get_track_voltage()
 
-    if track_voltage >= 9.0:
-        return sw
+    if track_voltage >= MIN_VOLTS:
+        return sw, False
 
     bumper_requested_throttle = 0.0
     train.throttle = 0
@@ -901,15 +903,21 @@ def get_track_power_switch(sw):
         track_voltage = get_track_voltage()
         power_off_time = time.monotonic() - power_off_start
 
-        if track_voltage >= 9.0:
+        if track_voltage >= MIN_VOLTS:
             if power_off_time < 1.0:
-                return "left"
-            if power_off_time < 3.0:
-                return "left_held"
-            return sw
+                ply_a_1(mvc_folder + "animation_canceled.mp3", False)
+                return "left", True
+            if power_off_time < 2.0:
+                if cfg["cont_mode"]:
+                    ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3", False)
+                    return "left_held", True
+                else:
+                    ply_a_1(mvc_folder + "animation_canceled.mp3", False)
+                    return "left", True
+            return sw, False
         
         if power_off_time >= 6.0:
-            return sw
+            return sw, False
 
         time.sleep(.01)
 
@@ -1331,24 +1339,25 @@ async def animation_wait(wait_time):
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
+        v1_started = False
         if cfg["bumper_mode"]:
             sw = ovrde_sw_st["switch_value"]
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
 
         if time.monotonic() - srt_t > 2.0:
-            sw = get_track_power_switch(sw)
+            sw, v1_started = get_track_power_switch(sw)
 
         if sw == "left":
             bumper_requested_throttle = 0.0
             train.throttle = 0
             current_throttle = 0
             stop_all_cmds(False)
-            
-            ply_a_1(mvc_folder + "animation_canceled.mp3")
-
+            if not v1_started:
+                ply_a_1(mvc_folder + "animation_canceled.mp3", False)
+            while mix.voice[1].playing:
+                time.sleep(.01)
             an_running = False
-
             return True
 
         elif sw == "left_held":
@@ -1358,21 +1367,23 @@ async def animation_wait(wait_time):
             stop_all_cmds(False)
             if cfg["cont_mode"]:
                 cfg["cont_mode"] = False
-                ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3", False)
+                if not v1_started:
+                    ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3", False)
                 while mix.voice[1].playing:
                     _ = get_track_voltage()
                     time.sleep(.01)
                 track_voltage = get_track_voltage()
-                if track_voltage >= 9.0:
+                if track_voltage >= MIN_VOLTS:
                     files.write_json_file("/sd/cfg.json", cfg)
             else:
                 cfg["cont_mode"] = True
-                ply_a_1(mvc_folder + "continuous_mode_activated.mp3", False)
+                if not v1_started:
+                    ply_a_1(mvc_folder + "continuous_mode_activated.mp3", False)
                 while mix.voice[1].playing:
                     _ = get_track_voltage()
                     time.sleep(.01)
                 track_voltage = get_track_voltage()
-                if track_voltage >= 9.0:
+                if track_voltage >= MIN_VOLTS:
                     files.write_json_file("/sd/cfg.json", cfg)
             an_running = False
             return True
@@ -1397,7 +1408,7 @@ def get_track_voltage(samples = 20):
     total = 0.0
 
     for _ in range(samples):
-        total += track_a_in.value / 65536 * 3.3 * 15.684
+        total += track_a_in.value / 65536 * 3.3 * 15.684 * 1.5
         time.sleep(.0017)
 
     return total / samples
@@ -2147,7 +2158,8 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global an_just_added
+        global an_just_added, an_running, MIN_VOLTS
+        v1_started = False
 
         if an_running:
             return
@@ -2157,33 +2169,40 @@ class BseSt(Ste):
 
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
 
-        sw = get_track_power_switch(sw)
-
-        if get_track_voltage() < 9.0:
+        sw, v1_started = get_track_power_switch(sw)
+    
+        if get_track_voltage() < MIN_VOLTS:
             return
 
         if sw == "left":
-            if not mix.voice[0].playing and not an_running and not an_just_added:
-                add_cmd("AN_" + cfg["option_selected"])
-                an_just_added = True
-
+            if not v1_started:
+                ply_a_1(mvc_folder + "animation_canceled.mp3", False)
+            while mix.voice[1].playing:
+                time.sleep(.01)
+            an_running = False
+            return True
         elif sw == "left_held":
             if cfg["cont_mode"]:
                 cfg["cont_mode"] = False
-                ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3", False)
+                if not v1_started:
+                    ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3", False)
                 while mix.voice[1].playing:
                     _ = get_track_voltage()
                     time.sleep(.01)
-                if get_track_voltage() >= 9.0:
+                track_voltage = get_track_voltage()
+                if track_voltage >= MIN_VOLTS:
                     files.write_json_file("/sd/cfg.json", cfg)
             else:
                 cfg["cont_mode"] = True
-                ply_a_1(mvc_folder + "continuous_mode_activated.mp3", False)
+                if not v1_started:
+                    ply_a_1(mvc_folder + "continuous_mode_activated.mp3", False)
                 while mix.voice[1].playing:
                     _ = get_track_voltage()
                     time.sleep(.01)
-                if get_track_voltage() >= 9.0:
+                track_voltage = get_track_voltage()
+                if track_voltage >= MIN_VOLTS:
                     files.write_json_file("/sd/cfg.json", cfg)
+            an_running = False
             return True
 
         elif sw == "right":
