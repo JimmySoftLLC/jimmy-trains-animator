@@ -245,7 +245,7 @@ flsh_t = []
 
 t_s = []
 t_elsp = 0.0
-animation_start_time = 0.0
+srt_t = 0.0
 
 an_running = False
 an_just_added = False
@@ -882,6 +882,36 @@ def api_call_stop_animation():
     train.throttle = 0
     current_throttle = 0
 
+def get_track_power_switch():
+    global an_running, bumper_requested_throttle, current_throttle
+
+    power_off_start = time.monotonic()
+
+    track_voltage = get_track_voltage()
+
+    if track_voltage >= 9.0:
+        return ""
+
+    bumper_requested_throttle = 0.0
+    train.throttle = 0
+    current_throttle = 0
+    stop_all_cmds(False)
+
+    while True:
+        track_voltage = get_track_voltage()
+        power_off_time = time.monotonic() - power_off_start
+
+        if track_voltage >= 9.0:
+            if power_off_time < 1.0:
+                return "left"
+            if power_off_time < 2.0:
+                return "left_held"
+            return ""
+        
+        if power_off_time >= 6.0:
+            return ""
+
+        time.sleep(.01)
 
 ################################################################################
 # Setup wifi and web server
@@ -1272,69 +1302,82 @@ def clr_cmd_queue():
     print("Command queue cleared.")
 
 
-def stop_all_cmds():
+def stop_all_cmds(stop_cont_mode=True):
     global exit_set_hdw_async, flsh_i, flsh_t
+
     flsh_i = len(flsh_t)-1
-    if cfg["cont_mode"] == True:
-        result = True
-        cfg["cont_mode"] = False
-    else:
-        result = False
+
+    led.fill((0, 0, 0))
+    led.show()
+
     mix.voice[0].stop()
     mix.voice[1].stop()
-    clr_cmd_queue()
-    exit_set_hdw_async = True
-    print("Processing stopped and command queue cleared.")
-    return result
 
+    clr_cmd_queue()
+
+    exit_set_hdw_async = True
+
+    if stop_cont_mode:
+        cfg["cont_mode"] = False
+
+    print("Processing stopped and command queue cleared.")
+
+    return
 
 async def animation_wait(wait_time):
     global an_running, bumper_requested_throttle, current_throttle, flsh_i, t_elsp
-    global animation_start_time
+    global srt_t
 
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
-
-        # When bumper mode is active, the physical left/right switches
-        # are bumpers. They must NOT cancel the animation.
         if cfg["bumper_mode"]:
-            sw = ""
-
-            # Still allow a web override left-hold to stop the animation.
-            if ovrde_sw_st["switch_value"] == "left_held":
-                sw = "left_held"
-                ovrde_sw_st["switch_value"] = ""
+            sw = ovrde_sw_st["switch_value"]
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
 
-        if animation_start_time > 0:
-            animation_elapsed = time.monotonic() - animation_start_time
+        if sw == "":
+            if srt_t > 0:
+                animation_elapsed = time.monotonic() - srt_t
+                if animation_elapsed > 2.0:
+                    sw = get_track_power_switch()
 
-            if animation_elapsed > 2:
-                track_voltage = get_track_voltage()
-
-                if track_voltage < 9.0:
-                    print("TRACK VOLTAGE LOW:", track_voltage)
-                    sw = "left_held"
-
-        if sw == "left_held":
-            print("STOP ANIMATION")
-
+        if sw == "left":
             bumper_requested_throttle = 0.0
             train.throttle = 0
             current_throttle = 0
-
-            result = stop_all_cmds()
+            stop_all_cmds(False)
+            
+            ply_a_1(mvc_folder + "animation_canceled.mp3")
 
             an_running = False
 
-            if result == True:
-                ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3")
-                files.write_json_file("/sd/cfg.json", cfg)
-            else:
-                ply_a_1(mvc_folder + "animation_canceled.mp3")
+            return True
 
+        elif sw == "left_held":
+            bumper_requested_throttle = 0.0
+            train.throttle = 0
+            current_throttle = 0
+            stop_all_cmds(False)
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
+                ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3", False)
+                while mix.voice[1].playing:
+                    _ = get_track_voltage()
+                    time.sleep(.01)
+                track_voltage = get_track_voltage()
+                if track_voltage >= 9.0:
+                    files.write_json_file("/sd/cfg.json", cfg)
+            else:
+                cfg["cont_mode"] = True
+                ply_a_1(mvc_folder + "continuous_mode_activated.mp3", False)
+                while mix.voice[1].playing:
+                    _ = get_track_voltage()
+                    time.sleep(.01)
+                track_voltage = get_track_voltage()
+                if track_voltage >= 9.0:
+                    files.write_json_file("/sd/cfg.json", cfg)
+            an_running = False
             return True
 
         await asyncio.sleep(0)
@@ -1402,11 +1445,10 @@ async def an_async(f_nm):
     gc_col("Animation complete.")
 
 async def an_light_async(f_nm):
-    global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp
-    global animation_start_time
+    global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp, srt_t
+    global srt_t
 
     an_running = True
-    animation_start_time = 0.0
 
     stp_a_0()
 
@@ -1446,7 +1488,7 @@ async def an_light_async(f_nm):
                 return
 
             srt_t = time.monotonic()
-            animation_start_time = srt_t
+            srt_t = srt_t
 
             ft1 = []
             ft2 = []
@@ -1506,7 +1548,7 @@ async def an_light_async(f_nm):
             result = await set_hdw_async("VR100", 0)
 
             an_running = False
-            animation_start_time = 0.0
+            srt_t = 0.0
 
             return
 
@@ -1515,7 +1557,7 @@ async def an_light_async(f_nm):
         if await animation_wait(.1):
             result = await set_hdw_async("TA_0_2", 0)
             result = await set_hdw_async("VR100", 0)
-            animation_start_time = 0.0
+            srt_t = 0.0
             return
         
 def add_command_to_ts(command):
@@ -2118,10 +2160,11 @@ class BseSt(Ste):
 
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
 
-        track_voltage = get_track_voltage()
+        if sw == "":
+            sw = get_track_power_switch()
 
-        if track_voltage < 9.0:
-            sw = "left"
+        if get_track_voltage() < 9.0:
+            return
 
         if sw == "left":
             if not mix.voice[0].playing and not an_running and not an_just_added:
@@ -2129,10 +2172,23 @@ class BseSt(Ste):
                 an_just_added = True
 
         elif sw == "left_held":
-            if not cfg["cont_mode"]:
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
+                ply_a_1(mvc_folder + "continuous_mode_deactivated.mp3", False)
+                while mix.voice[1].playing:
+                    _ = get_track_voltage()
+                    time.sleep(.01)
+                if get_track_voltage() >= 9.0:
+                    files.write_json_file("/sd/cfg.json", cfg)
+            else:
                 cfg["cont_mode"] = True
-                ply_a_1(mvc_folder + "continuous_mode_activated.mp3")
-                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_1(mvc_folder + "continuous_mode_activated.mp3", False)
+                while mix.voice[1].playing:
+                    _ = get_track_voltage()
+                    time.sleep(.01)
+                if get_track_voltage() >= 9.0:
+                    files.write_json_file("/sd/cfg.json", cfg)
+            return True
 
         elif sw == "right":
             if not mix.voice[0].playing:
@@ -2141,6 +2197,7 @@ class BseSt(Ste):
         if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
+
 
 class Main(Ste):
 
