@@ -882,7 +882,7 @@ def api_call_stop_animation():
     train.throttle = 0
     current_throttle = 0
 
-def get_track_power_switch():
+def get_track_power_switch(sw):
     global an_running, bumper_requested_throttle, current_throttle
 
     power_off_start = time.monotonic()
@@ -890,7 +890,7 @@ def get_track_power_switch():
     track_voltage = get_track_voltage()
 
     if track_voltage >= 9.0:
-        return ""
+        return sw
 
     bumper_requested_throttle = 0.0
     train.throttle = 0
@@ -904,12 +904,12 @@ def get_track_power_switch():
         if track_voltage >= 9.0:
             if power_off_time < 1.0:
                 return "left"
-            if power_off_time < 2.0:
+            if power_off_time < 3.0:
                 return "left_held"
-            return ""
+            return sw
         
         if power_off_time >= 6.0:
-            return ""
+            return sw
 
         time.sleep(.01)
 
@@ -1336,11 +1336,8 @@ async def animation_wait(wait_time):
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
 
-        if sw == "":
-            if srt_t > 0:
-                animation_elapsed = time.monotonic() - srt_t
-                if animation_elapsed > 2.0:
-                    sw = get_track_power_switch()
+        if time.monotonic() - srt_t > 2.0:
+            sw = get_track_power_switch(sw)
 
         if sw == "left":
             bumper_requested_throttle = 0.0
@@ -2160,8 +2157,7 @@ class BseSt(Ste):
 
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
 
-        if sw == "":
-            sw = get_track_power_switch()
+        sw = get_track_power_switch(sw)
 
         if get_track_voltage() < 9.0:
             return
