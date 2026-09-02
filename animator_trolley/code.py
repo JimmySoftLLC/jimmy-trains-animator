@@ -1283,9 +1283,9 @@ async def animation_wait(wait_time):
                     sw = "none"
 
         if sw == "none" and time.monotonic() - srt_t  > 2:
-            if get_track_voltage() < MIN_TRACK_VOLTAGE:
+            while get_track_voltage() < MIN_TRACK_VOLTAGE:
                 sw = "left"
-
+                
         if sw == "left":
             bumper_requested_throttle = 0.0
             train.throttle = 0
@@ -2093,7 +2093,8 @@ class BseSt(Ste):
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
 
         while get_track_voltage() < MIN_TRACK_VOLTAGE:
-            led[0] = (1, 1, 1)
+            led.fill((1, 1, 1)) 
+            led.show()
             sw = "left"
 
         if sw == "left":
