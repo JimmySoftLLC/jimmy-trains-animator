@@ -422,7 +422,6 @@ def ply_a_1(file_name, wait=True):
 
     elif file_name.lower().endswith(".wav"):
         w1 = audiocore.WaveFile(open(file_name, "rb"))
-
     else:
         raise ValueError("Unsupported audio format: " + file_name)
 
@@ -887,6 +886,9 @@ def api_call_stop_animation():
 def get_track_power_switch(sw):
     global an_running, bumper_requested_throttle, current_throttle
 
+    if sw != "none":
+        return sw, False
+
     power_off_start = time.monotonic()
 
     if get_track_voltage() >= MIN_VOLTS:
@@ -1306,7 +1308,7 @@ def clr_cmd_queue():
     print("Command queue cleared.")
 
 
-def stop_all_cmds(stop_cont_mode=True):
+def stop_all_cmds(stop_cont_mode=True, stop_v1=True):
     global exit_set_hdw_async, flsh_i, flsh_t
 
     flsh_i = len(flsh_t)-1
@@ -1315,7 +1317,8 @@ def stop_all_cmds(stop_cont_mode=True):
     led.show()
 
     mix.voice[0].stop()
-    mix.voice[1].stop()
+    if stop_v1:
+        mix.voice[1].stop()
 
     clr_cmd_queue()
 
@@ -1348,7 +1351,7 @@ async def animation_wait(wait_time):
             bumper_requested_throttle = 0.0
             train.throttle = 0
             current_throttle = 0
-            stop_all_cmds(False)
+            stop_all_cmds(stop_cont_mode=False,stop_v1=False)
             if not v1_started:
                 ply_a_1(mvc_folder + "animation_canceled.mp3", False)
             while mix.voice[1].playing:
@@ -1360,7 +1363,7 @@ async def animation_wait(wait_time):
             bumper_requested_throttle = 0.0
             train.throttle = 0
             current_throttle = 0
-            stop_all_cmds(False)
+            stop_all_cmds(stop_cont_mode=False,stop_v1=False)
             if cfg["cont_mode"]:
                 cfg["cont_mode"] = False
                 if not v1_started:
@@ -1368,8 +1371,7 @@ async def animation_wait(wait_time):
                 while mix.voice[1].playing:
                     _ = get_track_voltage()
                     time.sleep(.01)
-                track_voltage = get_track_voltage()
-                if track_voltage >= MIN_VOLTS:
+                if get_track_voltage() >= MIN_VOLTS:
                     files.write_json_file("/sd/cfg.json", cfg)
             else:
                 cfg["cont_mode"] = True
@@ -1378,8 +1380,7 @@ async def animation_wait(wait_time):
                 while mix.voice[1].playing:
                     _ = get_track_voltage()
                     time.sleep(.01)
-                track_voltage = get_track_voltage()
-                if track_voltage >= MIN_VOLTS:
+                if get_track_voltage() >= MIN_VOLTS:
                     files.write_json_file("/sd/cfg.json", cfg)
             an_running = False
             return True
@@ -2170,14 +2171,7 @@ class BseSt(Ste):
         if get_track_voltage() < MIN_VOLTS:
             return
 
-        if sw == "left":
-            if not v1_started:
-                ply_a_1(mvc_folder + "animation_canceled.mp3", False)
-            while mix.voice[1].playing:
-                time.sleep(.01)
-            an_running = False
-            return True
-        elif sw == "left_held":
+        if sw == "left_held":
             if cfg["cont_mode"]:
                 cfg["cont_mode"] = False
                 if not v1_started:
@@ -2204,8 +2198,7 @@ class BseSt(Ste):
         elif sw == "right":
             if not mix.voice[0].playing:
                 mch.go_to("main_menu")
-
-        if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
+        if (sw == "left" or cfg["cont_mode"]) and not mix.voice[0].playing and not an_running:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
 
