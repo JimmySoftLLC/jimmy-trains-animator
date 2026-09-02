@@ -1274,11 +1274,13 @@ async def animation_wait(wait_time):
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
-        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
-
-        if cfg["bumper_mode"]:
-            if sw == "left" or sw == "right":
-                sw = "none"
+        if ovrde_sw_st["switch_value"] == "left":
+            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+        else:
+            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+            if cfg["bumper_mode"]:
+                if sw == "left" or sw == "right":
+                    sw = "none"
 
         if sw == "none" and time.monotonic() - srt_t  > 2:
             if get_track_voltage() < MIN_TRACK_VOLTAGE:
@@ -2088,9 +2090,8 @@ class BseSt(Ste):
 
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
 
-        track_voltage = get_track_voltage()
-
-        if track_voltage < MIN_TRACK_VOLTAGE:
+        while get_track_voltage() < MIN_TRACK_VOLTAGE:
+            led[0] = (1, 1, 1)
             sw = "left"
 
         if sw == "left":
@@ -2389,7 +2390,6 @@ async def bumper_tsk():
     global bumper_target_position
     global bumper_positioning
     global bumper_position_success
-    global bckgrnd_track_throttle
 
     bumper_last_time = time.monotonic()
 
