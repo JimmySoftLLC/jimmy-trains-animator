@@ -889,9 +889,7 @@ def get_track_power_switch(sw):
 
     power_off_start = time.monotonic()
 
-    track_voltage = get_track_voltage()
-
-    if track_voltage >= MIN_VOLTS:
+    if get_track_voltage() >= MIN_VOLTS:
         return sw, False
 
     bumper_requested_throttle = 0.0
@@ -900,10 +898,8 @@ def get_track_power_switch(sw):
     stop_all_cmds(False)
 
     while True:
-        track_voltage = get_track_voltage()
         power_off_time = time.monotonic() - power_off_start
-
-        if track_voltage >= MIN_VOLTS:
+        if get_track_voltage() >= MIN_VOLTS:
             if power_off_time < 1.0:
                 ply_a_1(mvc_folder + "animation_canceled.mp3", False)
                 return "left", True
@@ -1408,7 +1404,7 @@ def get_track_voltage(samples = 20):
     total = 0.0
 
     for _ in range(samples):
-        total += track_a_in.value / 65536 * 3.3 * 15.684 * 1.5
+        total += track_a_in.value / 65536 * 3.3 * 15.684
         time.sleep(.0017)
 
     return total / samples
