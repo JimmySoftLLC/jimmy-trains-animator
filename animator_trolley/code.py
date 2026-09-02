@@ -1274,15 +1274,17 @@ async def animation_wait(wait_time):
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
-        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
+        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
 
-        if time.monotonic() - srt_t  > 2:
+        if cfg["bumper_mode"]:
+            if sw == "left" or sw == "right":
+                sw = "none"
+
+        if sw == "none" and time.monotonic() - srt_t  > 2:
             if get_track_voltage() < MIN_TRACK_VOLTAGE:
                 sw = "left"
 
         if sw == "left":
-            print("LEFT HELD - STOP ANIMATION")
-
             bumper_requested_throttle = 0.0
             train.throttle = 0
             current_throttle = 0
@@ -1290,13 +1292,12 @@ async def animation_wait(wait_time):
             stop_all_cmds(False)
 
             asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+            await asyncio.sleep(2)
 
             an_running = False
             return True
 
         if sw == "left_held":
-            print("LEFT HELD - STOP ANIMATION")
-
             bumper_requested_throttle = 0.0
             train.throttle = 0
             current_throttle = 0
@@ -1305,11 +1306,13 @@ async def animation_wait(wait_time):
 
             if cfg["cont_mode"] == True:
                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                await asyncio.sleep(2)
                 if get_track_voltage() >= MIN_TRACK_VOLTAGE:
                     cfg["cont_mode"] = False
                     files.write_json_file("/sd/cfg.json", cfg)
             else:
                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                await asyncio.sleep(2)
 
             an_running = False
             return True
