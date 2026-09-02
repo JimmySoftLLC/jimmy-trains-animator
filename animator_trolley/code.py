@@ -77,6 +77,7 @@ gc_col("Imports gc, files")
 
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
+mvc_folder_local = "mvc/"
 
 elves_folder = "elves/"
 bells_folder = "bells/"
@@ -245,6 +246,7 @@ flsh_t = []
 
 t_s = []
 t_elsp = 0.0
+srt_t = 0.0
 
 an_running = False
 an_just_added = False
@@ -403,8 +405,30 @@ def ply_a_0(file_name, wait=True, repeat=False):
     # Wait until playback completes
     if wait:
         while mix.voice[0].playing:
-            exit_early()
+            upd_vol(0.1)
             pass
+
+async def ply_a_1_async(file_name, repeat=False):
+    # Stop if voice is currently playing
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            await asyncio.sleep(0)
+
+    # Choose decoder based on file extension
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    # Play the selected file
+    mix.voice[1].play(w1, loop=repeat)
+
+    # Wait until playback completes
+    while mix.voice[1].playing:
+        await asyncio.sleep(0)
 
 
 def wait_snd():
@@ -431,22 +455,6 @@ def stp_a_0():
 async def stp_a_1():
     mix.voice[1].stop()
     await wait_snd_1()
-
-
-def exit_early():
-    upd_vol(0)
-
-    if an_running:
-        animation_wait(.1)
-        return
-
-    time.sleep(.1)
-
-    l_sw.update()
-
-    if l_sw.fell:
-        mix.voice[0].stop()
-
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -574,6 +582,8 @@ VIRTUAL_FULL_TRAVEL_MIN = 8.0
 VIRTUAL_FULL_TRAVEL_MAX = 12.0
 VIRTUAL_REFERENCE_SPEED = 20.0
 VIRTUAL_ACCELERATION = 2
+
+MIN_TRACK_VOLTAGE = 9.0
 
 
 def calibrate_bumper():
@@ -1244,34 +1254,45 @@ def clr_cmd_queue():
     print("Command queue cleared.")
 
 
-def stop_all_cmds():
+def stop_all_cmds(cont_mode_off=True):
     global exit_set_hdw_async, flsh_i, flsh_t
     flsh_i = len(flsh_t)-1
-    if cfg["cont_mode"] == True:
-        result = True
+    if cont_mode_off:
         cfg["cont_mode"] = False
-    else:
-        result = False
     mix.voice[0].stop()
     mix.voice[1].stop()
+    led.fill((0, 0, 0))
+    led.show()
     clr_cmd_queue()
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
-    return result
 
 
 async def animation_wait(wait_time):
-    global an_running, bumper_requested_throttle, current_throttle, flsh_i, t_elsp
+    global an_running, bumper_requested_throttle, current_throttle, flsh_i, srt_t
 
     start_time = time.monotonic()
 
     while time.monotonic() - start_time < wait_time:
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, False)
 
-        if t_elsp > 2:
-            track_voltage = get_track_voltage()
-            if track_voltage < 9.0:
-                sw = "left_held"
+        if time.monotonic() - srt_t  > 2:
+            if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                sw = "left"
+
+        if sw == "left":
+            print("LEFT HELD - STOP ANIMATION")
+
+            bumper_requested_throttle = 0.0
+            train.throttle = 0
+            current_throttle = 0
+
+            stop_all_cmds(False)
+
+            asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+
+            an_running = False
+            return True
 
         if sw == "left_held":
             print("LEFT HELD - STOP ANIMATION")
@@ -1280,13 +1301,15 @@ async def animation_wait(wait_time):
             train.throttle = 0
             current_throttle = 0
 
-            result = stop_all_cmds()
+            stop_all_cmds(False)
 
-            if result == True:
-                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-                files.write_json_file("/sd/cfg.json", cfg)
+            if cfg["cont_mode"] == True:
+                asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                if get_track_voltage() >= MIN_TRACK_VOLTAGE:
+                    cfg["cont_mode"] = False
+                    files.write_json_file("/sd/cfg.json", cfg)
             else:
-                ply_a_0(mvc_folder + "animation_canceled.mp3")
+                asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
 
             an_running = False
             return True
@@ -1357,7 +1380,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp
+    global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp, srt_t
 
     an_running = True
 
@@ -2052,7 +2075,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global an_just_added
+        global an_just_added, MIN_TRACK_VOLTAGE
 
         if an_running:
             return
@@ -2064,7 +2087,7 @@ class BseSt(Ste):
 
         track_voltage = get_track_voltage()
 
-        if track_voltage < 9.0:
+        if track_voltage < MIN_TRACK_VOLTAGE:
             sw = "left"
 
         if sw == "left":
