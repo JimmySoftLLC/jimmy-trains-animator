@@ -1282,10 +1282,29 @@ async def animation_wait(wait_time):
                 if sw == "left" or sw == "right":
                     sw = "none"
 
-        if sw == "none" and time.monotonic() - srt_t  > 2:
-            while get_track_voltage() < MIN_TRACK_VOLTAGE:
-                sw = "left"
-                
+        if sw == "none" and time.monotonic() - srt_t > 2:
+            if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                bumper_requested_throttle = 0.0
+                train.throttle = 0
+                current_throttle = 0
+                stop_all_cmds(False)
+
+                power_off_start = time.monotonic()
+
+                while get_track_voltage() < MIN_TRACK_VOLTAGE:
+                    await asyncio.sleep(0)
+
+                power_off_time = time.monotonic() - power_off_start
+
+                if power_off_time < 1:
+                    sw = "left"
+                elif power_off_time < 2:
+                    sw = "left_held"
+                else:
+                    led.fill((1, 1, 1)) 
+                    led.show()
+                    await asyncio.sleep(0)
+
         if sw == "left":
             bumper_requested_throttle = 0.0
             train.throttle = 0
@@ -2092,10 +2111,24 @@ class BseSt(Ste):
 
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
 
-        while get_track_voltage() < MIN_TRACK_VOLTAGE:
-            led.fill((1, 1, 1)) 
-            led.show()
-            sw = "left"
+
+        if sw == "none":
+            if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                power_off_start = time.monotonic()
+
+                while get_track_voltage() < MIN_TRACK_VOLTAGE:
+                    time.sleep(.1)
+
+                power_off_time = time.monotonic() - power_off_start
+
+                if power_off_time < 1:
+                    sw = "left"
+                elif power_off_time < 2:
+                    sw = "left_held"
+                else:
+                    led.fill((1, 1, 1)) 
+                    led.show()
+                    time.sleep(.1)
 
         if sw == "left":
             if not mix.voice[0].playing and not an_running and not an_just_added:
