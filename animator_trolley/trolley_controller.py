@@ -198,7 +198,7 @@ class TrolleyController:
         self.train.throttle = direction * speed
 
         t0 = time.monotonic()
-        timeout = 300.0 
+        timeout = 120.0 
 
         while True:
             now = time.monotonic()

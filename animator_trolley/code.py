@@ -655,7 +655,10 @@ def calibrate_bumper():
         ply_a_0(mvc_folder + "the_calibration_was_successful.mp3")
 
     else:
-        print("Bumper calibration failed")
+        ply_a_0(mvc_folder + "bumper_calibration_failed.mp3")
+        print("Bumper calibration failed, bumper mode turned off")
+        cfg["bumper_mode"] = False
+        files.write_json_file("/sd/cfg.json", cfg)
 
 
 async def set_bumper_speed(target_throttle, acceleration=None):
@@ -1318,29 +1321,41 @@ async def animation_wait(wait_time):
                     sw = "none"
             if sw == "none" and time.monotonic() - srt_t > 2:
                 if get_track_voltage() < MIN_TRACK_VOLTAGE:
-                    stop_all_cmds(False)
+                    if cfg["museum_mode"]:
+                        aud_en.value = False
+                        led.brightness = 0
+                        led.show()
+                    else:
+                        stop_all_cmds(False)
                     power_off_start = time.monotonic()
                     while get_track_voltage() < MIN_TRACK_VOLTAGE:
                         power_off_time = time.monotonic() - power_off_start
                         if cfg["cont_mode"]:
-                            if power_off_time > 1 and power_off_time < 3 and not spoken:
+                            if not cfg["museum_mode"] and power_off_time > 1 and power_off_time < 3 and not spoken:
                                 spoken = True
-                                if not cfg["museum_mode"]:
-                                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                                asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
                         else:
-                            if power_off_time <= 1 and not spoken:
+                            if not cfg["museum_mode"] and power_off_time <= 1 and not spoken:
                                 spoken = True
-                                if not cfg["museum_mode"]:
-                                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                                asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
                         await asyncio.sleep(0)
                     power_off_time = time.monotonic() - power_off_start
                     if power_off_time <= 1:
-                        sw = "left"
-                    elif power_off_time < 3:
                         if cfg["museum_mode"]:
-                            sw = "left"
-                        else:
-                            sw = "left_held"
+                            aud_en.value = True
+                            led.brightness = 1
+                            led.show()
+                            return False
+                        sw = "left"
+                    elif power_off_time > 1 and power_off_time < 3:
+                        if cfg["museum_mode"]:
+                            stop_all_cmds(False)
+                            aud_en.value = True
+                            led.brightness = 1
+                            led.show()
+                            an_running = False
+                            return True
+                        sw = "left_held"
                     else:
                         led.fill((1, 1, 1))
                         led.show()
@@ -2164,18 +2179,15 @@ class BseSt(Ste):
                 power_off_start = time.monotonic()
                 while get_track_voltage() < MIN_TRACK_VOLTAGE:
                     power_off_time = time.monotonic() - power_off_start
-                    if not cfg["cont_mode"]:
+                    if not cfg["cont_mode"] and not cfg["museum_mode"]:
                         if power_off_time > 1 and power_off_time < 3 and not spoken:
                             spoken = True
-                            if not cfg["museum_mode"]:
-                                ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
+                            ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
                 power_off_time = time.monotonic() - power_off_start
                 if power_off_time <= 1:
                     sw = "left"
-                elif power_off_time < 3:
-                    if cfg["museum_mode"]:
-                        sw = "left"
-                    else:
+                elif power_off_time > 1 and power_off_time < 3:
+                    if not cfg["museum_mode"]:
                         sw = "left_held"
                 else:
                     led.fill((1, 1, 1))
