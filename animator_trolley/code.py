@@ -77,7 +77,7 @@ gc_col("Imports gc, files")
 
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
-mvc_folder_local = "mvc/"
+mvc_folder_local = "mvc_local/"
 
 elves_folder = "elves/"
 bells_folder = "bells/"
@@ -230,6 +230,10 @@ add_snd = cfg_add_song["add_sounds_animate"]
 cfg_bump_set = files.read_json_file(mvc_folder +
                                     "bumper_settings.json")
 bump_set = cfg_bump_set["bumper_settings"]
+
+cfg_muse_set = files.read_json_file(mvc_folder +
+                                    "museum_settings.json")
+muse_set = cfg_muse_set["museum_settings"]
 
 
 local_ip = ""
@@ -408,6 +412,30 @@ def ply_a_0(file_name, wait=True, repeat=False):
             upd_vol(0.1)
             pass
 
+def ply_a_1(file_name, wait=True, repeat=False):
+    # Stop if voice is currently playing
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+
+    # Choose decoder based on file extension
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+
+    # Play the selected file
+    mix.voice[1].play(w1, loop=repeat)
+
+    # Wait until playback completes
+    if wait:
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+            pass
+
 async def ply_a_1_async(file_name, repeat=False):
     # Stop if voice is currently playing
     if mix.voice[1].playing:
@@ -485,6 +513,11 @@ def sel_web():
 
 def sel_bumper():
     ply_a_0(mvc_folder + "bumper_settings_menu.mp3")
+    l_r_but()
+
+
+def sel_museum():
+    ply_a_0(mvc_folder + "museum_settings_menu.mp3")
     l_r_but()
 
 
@@ -1255,7 +1288,10 @@ def clr_cmd_queue():
 
 
 def stop_all_cmds(cont_mode_off=True):
-    global exit_set_hdw_async, flsh_i, flsh_t
+    global exit_set_hdw_async, flsh_i, flsh_t, bumper_requested_throttle, current_throttle
+    bumper_requested_throttle = 0.0
+    train.throttle = 0
+    current_throttle = 0
     flsh_i = len(flsh_t)-1
     if cont_mode_off:
         cfg["cont_mode"] = False
@@ -1270,76 +1306,87 @@ def stop_all_cmds(cont_mode_off=True):
 
 async def animation_wait(wait_time):
     global an_running, bumper_requested_throttle, current_throttle, flsh_i, srt_t
-
     start_time = time.monotonic()
-
     while time.monotonic() - start_time < wait_time:
         if ovrde_sw_st["switch_value"] == "left":
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+            spoken = False
             if cfg["bumper_mode"]:
                 if sw == "left" or sw == "right":
                     sw = "none"
-
-        if sw == "none" and time.monotonic() - srt_t > 2:
-            if get_track_voltage() < MIN_TRACK_VOLTAGE:
-                bumper_requested_throttle = 0.0
-                train.throttle = 0
-                current_throttle = 0
-                stop_all_cmds(False)
-
-                power_off_start = time.monotonic()
-
-                while get_track_voltage() < MIN_TRACK_VOLTAGE:
-                    await asyncio.sleep(0)
-
-                power_off_time = time.monotonic() - power_off_start
-
-                if power_off_time < 1:
-                    sw = "left"
-                elif power_off_time < 2:
-                    sw = "left_held"
-                else:
-                    led.fill((1, 1, 1)) 
-                    led.show()
-                    await asyncio.sleep(0)
-
+            if sw == "none" and time.monotonic() - srt_t > 2:
+                if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                    stop_all_cmds(False)
+                    power_off_start = time.monotonic()
+                    while get_track_voltage() < MIN_TRACK_VOLTAGE:
+                        power_off_time = time.monotonic() - power_off_start
+                        if cfg["cont_mode"]:
+                            if power_off_time > 1 and power_off_time < 3 and not spoken:
+                                spoken = True
+                                if not cfg["museum_mode"]:
+                                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                        else:
+                            if power_off_time <= 1 and not spoken:
+                                spoken = True
+                                if not cfg["museum_mode"]:
+                                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                        await asyncio.sleep(0)
+                    power_off_time = time.monotonic() - power_off_start
+                    if power_off_time <= 1:
+                        sw = "left"
+                    elif power_off_time < 3:
+                        if cfg["museum_mode"]:
+                            sw = "left"
+                        else:
+                            sw = "left_held"
+                    else:
+                        led.fill((1, 1, 1))
+                        led.show()
+                        await asyncio.sleep(0)
         if sw == "left":
-            bumper_requested_throttle = 0.0
-            train.throttle = 0
-            current_throttle = 0
-
-            stop_all_cmds(False)
-
-            asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
-            await asyncio.sleep(2)
-
+            if spoken:
+                await asyncio.sleep(1)
+                while mix.voice[1].playing:
+                    await asyncio.sleep(0)
+            else:
+                stop_all_cmds(False)     
+                asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                await asyncio.sleep(1)
+                while mix.voice[1].playing:
+                    await asyncio.sleep(0)
             an_running = False
             return True
-
         if sw == "left_held":
-            bumper_requested_throttle = 0.0
-            train.throttle = 0
-            current_throttle = 0
-
-            stop_all_cmds(False)
-
             if cfg["cont_mode"] == True:
-                asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
-                await asyncio.sleep(2)
+                if spoken:
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                else:
+                    stop_all_cmds(False)
+                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
                 if get_track_voltage() >= MIN_TRACK_VOLTAGE:
                     cfg["cont_mode"] = False
                     files.write_json_file("/sd/cfg.json", cfg)
             else:
-                asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
-                await asyncio.sleep(2)
-
+                if spoken:
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                else:
+                    stop_all_cmds(False)
+                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
             an_running = False
             return True
-
         await asyncio.sleep(0)
-
     return False
 
 
@@ -1356,11 +1403,9 @@ def add_command_to_ts(command):
 
 def get_track_voltage(samples = 20):
     total = 0.0
-
     for _ in range(samples):
         total += track_a_in.value / 65536 * 3.3 * 15.684
         time.sleep(.0017)
-
     return total / samples
 
 def rst_def():
@@ -1369,6 +1414,8 @@ def rst_def():
     cfg["volume"] = "50"
     cfg["HOST_NAME"] = "animator-trolley"
     cfg["serve_webpage"] = True
+    cfg["bumper_mode"] = False
+    cfg["museum_mode"] = False
 
 
 ################################################################################
@@ -2102,33 +2149,37 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global an_just_added, MIN_TRACK_VOLTAGE
-
         if an_running:
             return
-
+        
         if cfg["bumper_mode"] and bumper_calibrated and bumper_requested_throttle > 0:
             return
-
+        
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
-
-
+        spoken = False
         if sw == "none":
             if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                led.fill((0, 0, 0))
+                led.show()
                 power_off_start = time.monotonic()
-
                 while get_track_voltage() < MIN_TRACK_VOLTAGE:
-                    time.sleep(.1)
-
+                    power_off_time = time.monotonic() - power_off_start
+                    if not cfg["cont_mode"]:
+                        if power_off_time > 1 and power_off_time < 3 and not spoken:
+                            spoken = True
+                            if not cfg["museum_mode"]:
+                                ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
                 power_off_time = time.monotonic() - power_off_start
-
-                if power_off_time < 1:
+                if power_off_time <= 1:
                     sw = "left"
-                elif power_off_time < 2:
-                    sw = "left_held"
+                elif power_off_time < 3:
+                    if cfg["museum_mode"]:
+                        sw = "left"
+                    else:
+                        sw = "left_held"
                 else:
-                    led.fill((1, 1, 1)) 
+                    led.fill((1, 1, 1))
                     led.show()
-                    time.sleep(.1)
 
         if sw == "left":
             if not mix.voice[0].playing and not an_running and not an_just_added:
@@ -2137,9 +2188,18 @@ class BseSt(Ste):
 
         elif sw == "left_held":
             if not cfg["cont_mode"]:
-                cfg["cont_mode"] = True
-                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-                files.write_json_file("/sd/cfg.json", cfg)
+                if spoken:
+                    time.sleep(1)
+                    while mix.voice[1].playing:
+                        time.sleep(.1)
+                else:
+                    ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
+                    time.sleep(1)
+                    while mix.voice[1].playing:
+                        time.sleep(.1)
+                if get_track_voltage() >= MIN_TRACK_VOLTAGE:
+                    cfg["cont_mode"] = True
+                    files.write_json_file("/sd/cfg.json", cfg)
 
         elif sw == "right":
             if not mix.voice[0].playing:
@@ -2203,6 +2263,8 @@ class Main(Ste):
                 mch.go_to('web_options')
             elif sel_mnu == "bumper_settings":
                 mch.go_to('bumper_settings')
+            elif sel_mnu == "museum_settings":
+                mch.go_to('museum_settings')
             else:
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
@@ -2375,43 +2437,74 @@ class BumperOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global bumper_requested_throttle, bumper_target_position, bumper_positioning, bumper_position_success
-        global current_throttle
+        global bumper_requested_throttle, bumper_target_position, bumper_positioning, bumper_position_success, current_throttle
 
         sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-
         if sw == "left":
             ply_a_0(mvc_folder + bump_set[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
-
             if self.i > len(bump_set)-1:
                 self.i = 0
-
         if sw == "right":
             selected_menu_item = bump_set[self.sel_i]
-
             if selected_menu_item == "bumper_mode_on":
                 cfg["bumper_mode"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0(mvc_folder + "bumper_instructions.mp3")
                 mch.go_to('base_state')
-
             elif selected_menu_item == "bumper_mode_off":
                 cfg["bumper_mode"] = False
-
                 bumper_requested_throttle = 0.0
                 bumper_target_position = None
                 bumper_positioning = False
                 bumper_position_success = False
-
                 train.throttle = 0
                 current_throttle = 0
-
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                mch.go_to('base_state')
+            else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
+class MuseumOpt(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'museum_settings'
+
+    def enter(self, mch):
+        files.log_item('Set museum Options')
+        sel_museum()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0(mvc_folder + bump_set[self.i] + ".mp3")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(bump_set)-1:
+                self.i = 0
+        if sw == "right":
+            selected_menu_item = bump_set[self.sel_i]
+            if selected_menu_item == "museum_mode_on":
+                cfg["museum_mode"] = True
+                files.write_json_file("/sd/cfg.json", cfg)
+                mch.go_to('base_state')
+            elif selected_menu_item == "museum_mode_off":
+                cfg["museum_mode"] = False
+                files.write_json_file("/sd/cfg.json", cfg)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                mch.go_to('base_state')
             else:
                 files.write_json_file("/sd/cfg.json", cfg)
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
@@ -2427,6 +2520,7 @@ st_mch.add(Snds())
 st_mch.add(AddSnds())
 st_mch.add(WebOpt())
 st_mch.add(BumperOpt())
+st_mch.add(MuseumOpt())
 
 aud_en.value = True
 
