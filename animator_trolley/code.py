@@ -2489,13 +2489,13 @@ class MuseumOpt(Ste):
     def upd(self, mch):
         sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            ply_a_0(mvc_folder + bump_set[self.i] + ".mp3")
+            ply_a_0(mvc_folder + muse_set[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(bump_set)-1:
+            if self.i > len(muse_set)-1:
                 self.i = 0
         if sw == "right":
-            selected_menu_item = bump_set[self.sel_i]
+            selected_menu_item = muse_set[self.sel_i]
             if selected_menu_item == "museum_mode_on":
                 cfg["museum_mode"] = True
                 files.write_json_file("/sd/cfg.json", cfg)
