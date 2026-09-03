@@ -75,6 +75,8 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
+debug_voltage_multiplier = 1
+
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
 mvc_folder_local = "mvc_local/"
@@ -120,7 +122,6 @@ r_sw_io = digitalio.DigitalInOut(board.GP7)
 r_sw_io.direction = digitalio.Direction.INPUT
 r_sw_io.pull = digitalio.Pull.UP
 r_sw = Debouncer(lambda: not r_sw_io.value)
-
 
 # setup i2s audio
 i2s_bclk = board.GP18   # BCLK on MAX98357A
@@ -202,14 +203,11 @@ ts_jsons = []
 
 def upd_media():
     global snd_opt, menu_snd_opt, ts_jsons
-
     snd_opt = files.return_directory("", animations_folder, ".json")
-
     menu_snd_opt = []
     menu_snd_opt.extend(snd_opt)
     rnd_opt = ['random all']
     menu_snd_opt.extend(rnd_opt)
-
     ts_jsons = files.return_directory("", "/sd/t_s_def", ".json")
 
 
@@ -274,16 +272,12 @@ gc_col("Neopixels setup")
 
 def upd_vol(s, bckgrnd_ratio=None):
     global bckgrnd_vol
-
     if bckgrnd_ratio is not None:
         bckgrnd_vol = bckgrnd_ratio
-
     if bckgrnd_vol > 100:
         bckgrnd_vol = 100
-
     if bckgrnd_vol < 0:
         bckgrnd_vol = 0
-
     try:
         volume = int(cfg["volume"]) / 100
         bckgrnd_volume = volume * (bckgrnd_vol / 100)
@@ -291,31 +285,23 @@ def upd_vol(s, bckgrnd_ratio=None):
         files.log_item(e)
         volume = .5
         bckgrnd_volume = .5
-
     if volume < 0 or volume > 1:
         volume = .5
-
     if bckgrnd_volume < 0 or bckgrnd_volume > 1:
         bckgrnd_volume = .5
-
     mix.voice[0].level = bckgrnd_volume
     mix.voice[1].level = volume
-
     time.sleep(s)
 
 
 async def upd_vol_async(s, bckgrnd_ratio=None):
     global bckgrnd_vol
-
     if bckgrnd_ratio is not None:
         bckgrnd_vol = bckgrnd_ratio
-
     if bckgrnd_vol > 100:
         bckgrnd_vol = 100
-
     if bckgrnd_vol < 0:
         bckgrnd_vol = 0
-
     try:
         volume = int(cfg["volume"]) / 100
         bckgrnd_volume = volume * (bckgrnd_vol / 100)
@@ -323,38 +309,28 @@ async def upd_vol_async(s, bckgrnd_ratio=None):
         files.log_item(e)
         volume = .5
         bckgrnd_volume = .5
-
     if volume < 0 or volume > 1:
         volume = .5
-
     if bckgrnd_volume < 0 or bckgrnd_volume > 1:
         bckgrnd_volume = .5
-
     mix.voice[0].level = bckgrnd_volume
     mix.voice[1].level = volume
-
     await asyncio.sleep(s)
 
 
 async def upd_bckgrnd_throttle_async(actual_throttle, requested_throttle):
     if not bckgrnd_vol_track_throttle:
         return
-
     actual_throttle = abs(actual_throttle)
     requested_throttle = abs(requested_throttle)
-
     if requested_throttle <= 0:
         await upd_vol_async(0, 0)
         return
-
     bckgrnd_ratio = actual_throttle / requested_throttle * 100
-
     if bckgrnd_ratio > 100:
         bckgrnd_ratio = 100
-
     if bckgrnd_ratio < 0:
         bckgrnd_ratio = 0
-
     await upd_vol_async(0, bckgrnd_ratio)
 
 
@@ -367,6 +343,10 @@ def ch_vol(action):
         v -= 1
     elif action == "raise1":
         v += 1
+    if action == "lower5":
+        v -= 5
+    elif action == "raise5":
+        v += 5
     elif action == "lower":
         if v <= 10:
             v -= 1
@@ -383,78 +363,59 @@ def ch_vol(action):
         v = 1
     cfg["volume"] = str(v)
     if not mix.voice[0].playing:
-        files.write_json_file("/sd/cfg.json", cfg)
+        save_cfg_safely()
         ply_a_0(mvc_folder + "volume.mp3")
         spk_str(cfg["volume"], False)
 
 
 def ply_a_0(file_name, wait=True, repeat=False):
-    # Stop if voice is currently playing
     if mix.voice[0].playing:
         mix.voice[0].stop()
         while mix.voice[0].playing:
             upd_vol(0.1)
-
-    # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
     elif file_name.lower().endswith(".wav"):
         w0 = audiocore.WaveFile(open(file_name, "rb"))
     else:
         raise ValueError("Unsupported audio format: " + file_name)
-
-    # Play the selected file
     mix.voice[0].play(w0, loop=repeat)
-
-    # Wait until playback completes
     if wait:
         while mix.voice[0].playing:
             upd_vol(0.1)
             pass
 
+
 def ply_a_1(file_name, wait=True, repeat=False):
-    # Stop if voice is currently playing
     if mix.voice[1].playing:
         mix.voice[1].stop()
         while mix.voice[1].playing:
             upd_vol(0.1)
-
-    # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
     elif file_name.lower().endswith(".wav"):
         w1 = audiocore.WaveFile(open(file_name, "rb"))
     else:
         raise ValueError("Unsupported audio format: " + file_name)
-
-    # Play the selected file
     mix.voice[1].play(w1, loop=repeat)
-
-    # Wait until playback completes
     if wait:
         while mix.voice[1].playing:
             upd_vol(0.1)
             pass
 
+
 async def ply_a_1_async(file_name, repeat=False):
-    # Stop if voice is currently playing
     if mix.voice[1].playing:
         mix.voice[1].stop()
         while mix.voice[1].playing:
             await asyncio.sleep(0)
-
-    # Choose decoder based on file extension
     if file_name.lower().endswith(".mp3"):
         w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
     elif file_name.lower().endswith(".wav"):
         w1 = audiocore.WaveFile(open(file_name, "rb"))
     else:
         raise ValueError("Unsupported audio format: " + file_name)
-
-    # Play the selected file
     mix.voice[1].play(w1, loop=repeat)
-
-    # Wait until playback completes
     while mix.voice[1].playing:
         await asyncio.sleep(0)
 
@@ -471,7 +432,6 @@ async def wait_snd_1():
                 return True
         else:
             await asyncio.sleep(0)
-
     return False
 
 
@@ -483,6 +443,7 @@ def stp_a_0():
 async def stp_a_1():
     mix.voice[1].stop()
     await wait_snd_1()
+
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -583,7 +544,6 @@ train.decay_mode = d_mde
 train.throttle = 0
 current_throttle = 0
 
-
 controller = TrolleyController(
     train,
     l_sw_io,
@@ -622,61 +582,46 @@ MIN_TRACK_VOLTAGE = 9.0
 def calibrate_bumper():
     global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_calibrated
     global bumper_target_position, bumper_positioning, bumper_position_success
-
     bumper_direction = 1
     bumper_requested_throttle = 0.0
     bumper_progress = 0.0
     bumper_last_time = time.monotonic()
     bumper_calibrated = False
-
     bumper_target_position = None
     bumper_positioning = False
     bumper_position_success = False
-
     print("Calibrating...")
-
     ply_a_0(mvc_folder + "bumper_cal_starting.mp3")
-
     bumper_calibrated = controller.calibrate(speed=0.2, cycles=3)
-
     if bumper_calibrated:
         bumper_direction = 1
-
         if controller.time_forward:
             bumper_progress = controller.off_bumper_time / controller.time_forward
         else:
             bumper_progress = 0.0
-
         print("Bumper calibration complete")
         print("Forward time:", controller.time_forward)
         print("Reverse time:", controller.time_reverse)
         print("Starting position:", int(bumper_progress * 100), "%")
-
         ply_a_0(mvc_folder + "the_calibration_was_successful.mp3")
-
     else:
         ply_a_0(mvc_folder + "bumper_calibration_failed.mp3")
         print("Bumper calibration failed, bumper mode turned off")
         cfg["bumper_mode"] = False
-        files.write_json_file("/sd/cfg.json", cfg)
+        save_cfg_safely()
 
 
 async def set_bumper_speed(target_throttle, acceleration=None):
     global bumper_requested_throttle
-
     target_throttle = abs(target_throttle)
-
     if target_throttle > 100:
         target_throttle = 100
-
     if acceleration is None or acceleration <= 0:
         bumper_requested_throttle = target_throttle / 100
         await asyncio.sleep(0)
         return False
-
     target = target_throttle / 100
     step = acceleration / 100
-
     while bumper_requested_throttle != target:
         if bumper_requested_throttle < target:
             bumper_requested_throttle = min(
@@ -684,131 +629,95 @@ async def set_bumper_speed(target_throttle, acceleration=None):
         else:
             bumper_requested_throttle = max(
                 bumper_requested_throttle - step, target)
-
         if an_running:
             if await animation_wait(.02):
                 return True
         else:
             await asyncio.sleep(.02)
-
     return False
 
 
 async def back_off_bumper(hit_direction):
     global current_throttle
-
     backoff_speed = BUMPER_BACKOFF_SPEED
-
     if backoff_speed <= 0:
         backoff_speed = 0.12
-
     train.throttle = -hit_direction * backoff_speed
     current_throttle = int(train.throttle * 100)
-
     backoff_start = time.monotonic()
     clear_start = None
-
     while True:
         now = time.monotonic()
-
         if hit_direction > 0:
             bumper_active = r_sw_io.value
         else:
             bumper_active = l_sw_io.value
-
         if bumper_active:
             clear_start = None
         else:
             if clear_start is None:
                 clear_start = now
-
             elif now - clear_start >= BUMPER_RELEASE_TIME:
                 break
-
         if now - backoff_start >= BUMPER_BACKOFF_TIMEOUT:
             print("Bumper backoff timeout")
             break
-
         await asyncio.sleep(0)
-
     elapsed = time.monotonic() - backoff_start
-
     return elapsed, backoff_speed
 
 
 async def position_trolley_virtual(speed, percentage):
     global virtual_position, current_throttle
-
     speed = abs(speed)
-
     if speed > 100:
         speed = 100
-
     if speed <= 0:
         print("Virtual POS speed must be greater than 0")
         return False
-
     if percentage < 0 or percentage > 100:
         print("Virtual POS position must be between 0 and 100")
         return False
-
     distance = abs(percentage - virtual_position)
-
     print("Virtual POS command")
     print("Speed:", speed)
     print("Virtual current position:", int(virtual_position))
     print("Virtual target position:", percentage)
     print("Virtual distance:", int(distance), "%")
-
     if distance <= 1:
         await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
         virtual_position = float(percentage)
         print("Already at virtual position")
         return True
-
     if percentage > virtual_position:
         direction = 1
         print("Virtual POS traveling FORWARD")
     else:
         direction = -1
         print("Virtual POS traveling REVERSE")
-
     full_travel_time = random.uniform(VIRTUAL_FULL_TRAVEL_MIN, VIRTUAL_FULL_TRAVEL_MAX)
-
     speed_ratio = VIRTUAL_REFERENCE_SPEED / speed
     distance_ratio = distance / 100.0
-
     travel_time = full_travel_time * distance_ratio * speed_ratio
-
     if travel_time < 0.25:
         travel_time = 0.25
-
     print("Virtual full travel time:", full_travel_time)
     print("Virtual travel time:", travel_time)
-
     target_throttle = int(speed) * direction
-
     result = await set_hdw_async("TA_" + str(target_throttle) + "_" + str(VIRTUAL_ACCELERATION), 0)
-
     if result == "STOP":
         return False
-
     if an_running:
         if await animation_wait(travel_time):
             await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
             return False
     else:
         await asyncio.sleep(travel_time)
-
     result = await set_hdw_async("TA_0_" + str(VIRTUAL_ACCELERATION), 0)
-
     if result == "STOP":
         return False
-
     virtual_position = float(percentage)
-
     print("Virtual POS complete:", percentage, "%")
-
     return True
 
 
@@ -816,30 +725,22 @@ async def position_trolley(speed, percentage):
     global bumper_direction, bumper_requested_throttle
     global bumper_target_position, bumper_positioning, bumper_position_success
     global current_throttle
-
     speed = abs(speed)
-
     if speed > 100:
         speed = 100
-
     if speed <= 0:
         print("POS speed must be greater than 0")
         return False
-
     if percentage < 0 or percentage > 100:
         print("POS position must be between 0 and 100")
         return False
-
     if not cfg["bumper_mode"] or not bumper_calibrated:
         return await position_trolley_virtual(speed, percentage)
-
     target = percentage / 100
-
     print("POS command")
     print("Speed:", speed)
     print("Current position:", int(bumper_progress * 100))
     print("Target position:", percentage)
-
     if percentage == 0:
         bumper_direction = -1
         bumper_target_position = 0.0
@@ -847,7 +748,6 @@ async def position_trolley(speed, percentage):
         bumper_position_success = False
         bumper_requested_throttle = speed / 100
         print("POS homing LEFT")
-
     elif percentage == 100:
         bumper_direction = 1
         bumper_target_position = 1.0
@@ -855,7 +755,6 @@ async def position_trolley(speed, percentage):
         bumper_position_success = False
         bumper_requested_throttle = speed / 100
         print("POS homing RIGHT")
-
     else:
         if abs(bumper_progress - target) <= 0.01:
             train.throttle = 0
@@ -863,14 +762,12 @@ async def position_trolley(speed, percentage):
             bumper_requested_throttle = 0.0
             print("Already at requested position")
             return True
-
         if target > bumper_progress:
             bumper_direction = 1
             print("POS traveling RIGHT")
         else:
             bumper_direction = -1
             print("POS traveling LEFT")
-
         bumper_target_position = target
         bumper_positioning = True
         bumper_position_success = False
@@ -883,21 +780,15 @@ async def position_trolley(speed, percentage):
                 bumper_positioning = False
                 bumper_position_success = False
                 bumper_requested_throttle = 0.0
-
                 train.throttle = 0
                 current_throttle = 0
-
                 return False
-
         else:
             await asyncio.sleep(0)
-
     if bumper_position_success:
         print("POS complete:", percentage, "%")
         return True
-
     print("POS did not reach destination")
-
     return False
 
 
@@ -910,13 +801,10 @@ if (web):
     import wifi
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
     gc_col("config wifi imports")
-
     files.log_item("Connecting to WiFi")
-
     # default for manufacturing and shows
     WIFI_SSID = "jimmytrainsguest"
     WIFI_PASSWORD = ""
-
     try:
         env = files.read_json_file("/sd/env.json")
         WIFI_SSID = env["WIFI_SSID"]
@@ -925,7 +813,6 @@ if (web):
         print("Using env ssid and password")
     except:
         print("Using default ssid and password")
-
     for i in range(3):
         web = True
         led[0] = (0, 0, 255)
@@ -933,21 +820,16 @@ if (web):
         try:
             wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
             gc_col("wifi connect")
-
             mdns = mdns.Server(wifi.radio)
             mdns.hostname = cfg["HOST_NAME"]
             mdns.advertise_service(
                 service_type="_http", protocol="_tcp", port=80)
-
             local_ip = str(wifi.radio.ipv4_address)
-
             files.log_item("IP is " + local_ip)
             files.log_item("Connected")
-
             pool = socketpool.SocketPool(wifi.radio)
             server = Server(pool, "/static", debug=True)
             server.port = 80  # Explicitly set port to 80
-
             gc_col("wifi server")
 
             ################################################################################
@@ -971,7 +853,7 @@ if (web):
                 cfg["option_selected"] = rq_d["an"]
                 add_cmd("AN_" + cfg["option_selected"])
                 if not mix.voice[0].playing:
-                    files.write_json_file("/sd/cfg.json", cfg)
+                    save_cfg_safely()
                 return Response(request, "Animation " + cfg["option_selected"] + " started.")
 
             @server.route("/defaults", [POST])
@@ -980,7 +862,7 @@ if (web):
                 rq_d = request.json()
                 if rq_d["an"] == "reset_to_defaults":
                     rst_def()
-                    files.write_json_file("/sd/cfg.json", cfg)
+                    save_cfg_safely()
                     ply_a_0(mvc_folder + "all_changes_complete.mp3")
                     st_mch.go_to('base_state')
                 return Response(request, "Utility: " + rq_d["an"])
@@ -1005,12 +887,12 @@ if (web):
                     stop_all_cmds()
                     ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
                     cfg["cont_mode"] = True
-                    files.write_json_file("/sd/cfg.json", cfg)
+                    save_cfg_safely()
                 elif rq_d["an"] == "cont_mode_off":
                     stop_all_cmds()
                     ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
                     cfg["cont_mode"] = False
-                    files.write_json_file("/sd/cfg.json", cfg)
+                    save_cfg_safely()
                 elif rq_d["an"] == "timestamp_mode_on":
                     stop_all_cmds()
                     ts_mode = True
@@ -1020,6 +902,25 @@ if (web):
                     stop_all_cmds()
                     ts_mode = False
                     ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+                elif rq_d["an"] == "bumper_mode_on":
+                    stop_all_cmds()
+                    cfg["bumper_mode"] = True
+                    save_cfg_safely()
+                    ply_a_0(mvc_folder + "bumper_mode_on.mp3")
+                elif rq_d["an"] == "bumper_mode_off":
+                    stop_all_cmds()
+                    cfg["bumper_mode"] = False
+                    save_cfg_safely()
+                    ply_a_0(mvc_folder + "bumper_mode_off.mp3")
+                elif rq_d["an"] == "museum_mode_on":
+                    stop_all_cmds()
+                    cfg["museum_mode"] = True
+                    save_cfg_safely()
+                    ply_a_0(mvc_folder + "museum_mode_on.mp3")
+                elif rq_d["an"] == "museum_mode_off":
+                    stop_all_cmds()
+                    cfg["museum_mode"] = False
+                    ply_a_0(mvc_folder + "museum_mode_off.mp3")
                 return Response(request, "Utility: " + rq_d["an"])
 
             @server.route("/speaker", [POST])
@@ -1035,7 +936,7 @@ if (web):
                 rq_d = request.json()
                 command = rq_d["an"]
                 add_command_to_ts(command)
-                set_hdw_lights(command)
+                set_hdw_not_async(command)
                 return Response(request, "Utility: " + "Utility: set lights")
 
             @server.route("/set-item-lights", [POST])
@@ -1044,7 +945,7 @@ if (web):
                 command = "LN0_" + str(rq_d["r"]) + "_" + \
                     str(rq_d["g"]) + "_" + str(rq_d["b"])
                 add_command_to_ts(command)
-                set_hdw_lights(command)
+                set_hdw_not_async(command)
                 return Response(request, "Utility: " + "Utility: set lights")
 
             @server.route("/get-wifi-signal", [POST])
@@ -1062,7 +963,7 @@ if (web):
                 stop_all_cmds()
                 rq_d = request.json()
                 cfg["HOST_NAME"] = rq_d["an"]
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 mdns.hostname = cfg["HOST_NAME"]
                 spk_web()
                 return Response(request, cfg["HOST_NAME"])
@@ -1080,7 +981,7 @@ if (web):
                 stop_all_cmds()
                 rq_d = request.json()
                 ch_vol(rq_d["action"])
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 return Response(request, cfg["volume"])
 
             @server.route("/get-volume", [POST])
@@ -1208,14 +1109,11 @@ def measure_signal_strength(MY_SSID, cycles):
         return 0
     print("Monitoring signal for:", MY_SSID)
     print("Showing current RSSI + running average (simple sum + count)\n")
-
     total_sum = 0.0
     count = 0
-
     while True:
         current_rssi = None
         found = False
-
         try:
             for network in wifi.radio.start_scanning_networks():
                 if network.ssid == MY_SSID:
@@ -1224,13 +1122,10 @@ def measure_signal_strength(MY_SSID, cycles):
                         f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
                     found = True
                     break
-
             wifi.radio.stop_scanning_networks()
-
             if found and current_rssi is not None:
                 total_sum += current_rssi
                 count += 1
-
                 if count > 0:
                     avg_rssi = total_sum / count
                     print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
@@ -1239,11 +1134,9 @@ def measure_signal_strength(MY_SSID, cycles):
             else:
                 print(
                     "   |   Could not see your SSID (hidden, out of range, or scan miss)")
-
         except Exception as e:
             print(f"Scan error: {e}")
             wifi.radio.stop_scanning_networks()  # cleanup on error
-
         time.sleep(0.1)
         if count > cycles:
             return avg_rssi
@@ -1310,12 +1203,15 @@ def stop_all_cmds(cont_mode_off=True):
 async def animation_wait(wait_time):
     global an_running, bumper_requested_throttle, current_throttle, flsh_i, srt_t
     start_time = time.monotonic()
+    spoken = False
+    power_off_time = 0
+    sw = ""
     while time.monotonic() - start_time < wait_time:
         if ovrde_sw_st["switch_value"] == "left":
-            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+            sw = utilities.switch_state(
+                l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
-            spoken = False
             if cfg["bumper_mode"]:
                 if sw == "left" or sw == "right":
                     sw = "none"
@@ -1366,7 +1262,7 @@ async def animation_wait(wait_time):
                 while mix.voice[1].playing:
                     await asyncio.sleep(0)
             else:
-                stop_all_cmds(False)     
+                stop_all_cmds(False)
                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
                 await asyncio.sleep(1)
                 while mix.voice[1].playing:
@@ -1385,9 +1281,8 @@ async def animation_wait(wait_time):
                     await asyncio.sleep(1)
                     while mix.voice[1].playing:
                         await asyncio.sleep(0)
-                if get_track_voltage() >= MIN_TRACK_VOLTAGE:
-                    cfg["cont_mode"] = False
-                    files.write_json_file("/sd/cfg.json", cfg)
+                cfg["cont_mode"] = False
+                save_cfg_safely()
             else:
                 if spoken:
                     await asyncio.sleep(1)
@@ -1405,6 +1300,11 @@ async def animation_wait(wait_time):
     return False
 
 
+def save_cfg_safely():
+    if get_track_voltage() >= MIN_TRACK_VOLTAGE:
+        files.write_json_file("/sd/cfg.json", cfg)
+
+
 def add_command_to_ts(command):
     global ts_mode, t_s, t_elsp
     if not ts_mode:
@@ -1416,12 +1316,14 @@ def add_command_to_ts(command):
 ################################################################################
 # Misc Methods
 
-def get_track_voltage(samples = 20):
+
+def get_track_voltage(samples=20):
     total = 0.0
     for _ in range(samples):
-        total += track_a_in.value / 65536 * 3.3 * 15.684
+        total += track_a_in.value / 65536 * 3.3 * 15.684 * debug_voltage_multiplier
         time.sleep(.0017)
     return total / samples
+
 
 def rst_def():
     cfg["option_selected"] = "random all"
@@ -1437,6 +1339,7 @@ def rst_def():
 # Animations
 
 lst_opt = ""
+
 
 async def an_async(f_nm):
     global lst_opt, ts_mode
@@ -1467,99 +1370,70 @@ async def an_async(f_nm):
 
 async def an_light_async(f_nm):
     global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp, srt_t, bckgrnd_vol, bckgrnd_vol_track_throttle
-
     an_running = True
     bckgrnd_vol = 100
     bckgrnd_vol_track_throttle = False
-
     stp_a_0()
-
     flsh_t = []
-
     if f_exists(animations_folder + f_nm + ".json") == True:
         flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
-
     flsh_i = 0
-
     if flsh_i < len(flsh_t)-1:
         ft1 = flsh_t[flsh_i].split("|")
         result = await set_hdw_async(ft1[1])
         print("Result is: ", result)
-
         if result == "STOP":
             an_running = False
             return
-
         result = result.split("_")
-
         if result and len(result) > 1:
             w0_exists = f_exists(animations_folder + result[1])
-
             if w0_exists:
                 if result[0] == "1":
                     repeat = True
                 else:
                     repeat = False
-
                 ply_a_0(animations_folder + result[1], False, repeat)
-
             else:
                 an_running = False
                 return
-
             srt_t = time.monotonic()
-
             ft1 = []
             ft2 = []
-
             ft_last = flsh_t[len(flsh_t)-1].split("|")
             tm_last = float(ft_last[0]) + .1
             flsh_t.append(str(tm_last) + "|")
-
         else:
             an_running = False
             return
-
         flsh_i += 1
-
     else:
         an_running = False
         return
-
     while True:
         t_elsp = time.monotonic()-srt_t
-
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
             dur = float(ft2[0]) - float(ft1[0]) - 0.25
-
         else:
             dur = 0.25
-
         if dur < 0:
             dur = 0
-
         if t_elsp > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
             files.log_item("time elapsed: " + str(t_elsp) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
-
             if len(ft1) == 1 or ft1[1] == "":
                 result = await set_hdw_async("", dur)
-
                 if result == "STOP":
                     an_running = False
                     return
-
             else:
                 result = await set_hdw_async(ft1[1], dur)
-
                 if result == "STOP":
                     an_running = False
                     return
-
             flsh_i += 1
-
         if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
@@ -1567,9 +1441,7 @@ async def an_light_async(f_nm):
             result = await set_hdw_async("VR100", 0)
             an_running = False
             return
-
         upd_vol(0)
-
         if await animation_wait(.1):
             result = await set_hdw_async("TA_0_2", 0)
             result = await set_hdw_async("VR100", 0)
@@ -1588,16 +1460,13 @@ def add_command_to_ts(command):
 async def an_ts(f_nm):
     print("time stamp mode")
     global t_s, t_elsp, ts_mode, ovrde_sw_st
-
     t_elsp = 0
     t_s = [""]
-
     if (f_exists(animations_folder + f_nm + ".json") == True):
         t_s_from_file = files.read_json_file(
             animations_folder + f_nm + ".json")
     else:
         return
-
     if len(t_s) > 0:
         t_s[0] = t_s_from_file[0]
         ft1 = t_s[0].split("|")
@@ -1629,10 +1498,8 @@ async def an_ts(f_nm):
             return
     else:
         return
-
     startTime = time.monotonic()
     upd_vol(.1)
-
     while True:
         t_elsp = round(time.monotonic()-startTime, 1)
         r_sw.update()
@@ -1647,9 +1514,7 @@ async def an_ts(f_nm):
                 animations_folder + f_nm + ".json", t_s)
             break
         await asyncio.sleep(.1)
-
     ts_mode = False
-
     ply_a_0(mvc_folder + "timestamp_saved.mp3")
     ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
     ply_a_0(mvc_folder + "animations_are_now_active.mp3")
@@ -1669,7 +1534,7 @@ s_media_file_index = 0
 h_media_file_index = 0
 
 
-def set_hdw_lights(seg):
+def set_hdw_not_async(seg):
     global brightness
 
     # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
@@ -1685,17 +1550,15 @@ def set_hdw_lights(seg):
     elif seg[0] == 'B':
         brightness = int(seg[1:])
         led.brightness = float(brightness / 100)
+        led.show()
 
 
 async def set_hdw_async(cmd, dur=3):
     global brightness, current_throttle, media_index, exit_set_hdw_async, bumper_requested_throttle
     global bckgrnd_vol, bckgrnd_vol_track_throttle
-
     if cmd == "":
         return "NOCMDS"
-
     segs = cmd.split(",")
-
     for seg in segs:
         if exit_set_hdw_async:
             return "STOP"
@@ -1706,39 +1569,31 @@ async def set_hdw_async(cmd, dur=3):
                 seg_split = seg.split("_")
                 target_throttle = int(seg_split[1])
                 acceleration = int(seg_split[2])
-
                 if cfg["bumper_mode"]:
                     if await set_bumper_speed(target_throttle, acceleration):
                         return "STOP"
-
                 else:
                     starting_throttle = abs(current_throttle)
                     requested_throttle = abs(target_throttle)
-
                     if requested_throttle <= 0:
                         requested_throttle = starting_throttle
-
                     diff = target_throttle - current_throttle
-
                     while diff != 0:
                         if diff > 0:
-                            new_throttle = min(current_throttle + acceleration, target_throttle)
+                            new_throttle = min(
+                                current_throttle + acceleration, target_throttle)
                         else:
-                            new_throttle = max(current_throttle - acceleration, target_throttle)
-
+                            new_throttle = max(
+                                current_throttle - acceleration, target_throttle)
                         train.throttle = new_throttle / 100
                         current_throttle = new_throttle
-
                         await upd_bckgrnd_throttle_async(current_throttle, requested_throttle)
-
                         diff = target_throttle - current_throttle
-
                         if an_running:
                             if await animation_wait(.02):
                                 return "STOP"
                         else:
                             await asyncio.sleep(.02)
-
             except Exception as e:
                 print(e)
 
@@ -1746,23 +1601,18 @@ async def set_hdw_async(cmd, dur=3):
         elif seg[:3] == 'POS':
             try:
                 seg_split = seg.split("_")
-
                 if len(seg_split) != 3:
                     print("Invalid POS command:", seg)
                     continue
-
                 speed = int(seg_split[1])
                 percentage = int(seg_split[2])
-
                 await position_trolley(speed, percentage)
-
             except Exception as e:
                 print("POS error:", e)
 
         # ZRAND = Random rainbow, fire, or color change
         elif seg[0:] == 'ZRAND':
             await random_effect(1, 3, dur)
-
             if exit_set_hdw_async:
                 return "STOP"
 
@@ -1770,14 +1620,12 @@ async def set_hdw_async(cmd, dur=3):
         elif seg[:2] == 'ZR':
             v = float(seg[2:])
             await rbow(v, dur)
-
             if exit_set_hdw_async:
                 return "STOP"
 
         # ZFIRE = Fire
         elif seg[0:] == 'ZFIRE':
             await fire(dur)
-
             if exit_set_hdw_async:
                 return "STOP"
 
@@ -1811,27 +1659,21 @@ async def set_hdw_async(cmd, dur=3):
             try:
                 bckgrnd_vol_track_throttle = False
                 target_vol = int(seg[3:])
-
                 if target_vol > 100:
                     target_vol = 100
-
                 if target_vol < 0:
                     target_vol = 0
-
                 while bckgrnd_vol != target_vol:
                     if bckgrnd_vol < target_vol:
                         new_vol = min(bckgrnd_vol + 2, target_vol)
                     else:
                         new_vol = max(bckgrnd_vol - 2, target_vol)
-
                     await upd_vol_async(0, new_vol)
-
                     if an_running:
                         if await animation_wait(.03):
                             return "STOP"
                     else:
                         await asyncio.sleep(.03)
-
             except Exception as e:
                 print("VRF error:", e)
 
@@ -1840,15 +1682,11 @@ async def set_hdw_async(cmd, dur=3):
             try:
                 bckgrnd_vol_track_throttle = False
                 target_vol = int(seg[2:])
-
                 if target_vol > 100:
                     target_vol = 100
-
                 if target_vol < 0:
                     target_vol = 0
-
                 await upd_vol_async(0, target_vol)
-
             except Exception as e:
                 print("VR error:", e)
 
@@ -1862,65 +1700,52 @@ async def set_hdw_async(cmd, dur=3):
         elif seg[0] == 'M':
             if seg[1] == "S":
                 stp_a_0()
-
             elif seg[1] == "W" or seg[1] == "P":
                 if seg[2] in FOLDER_MAP:
                     folder = FOLDER_MAP[seg[2]]
                     code = seg[3:]
-
                     if code == "SEQN":
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
-
                     elif code == "SEQF":
                         filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
-
                     elif code == "RAND":
                         filename = get_random_media_file(folder)
-
                     else:
                         filename = code
-
                     w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
-
                 if seg[1] == "W" or seg[1] == "P":
                     await stp_a_1()
                     mix.voice[1].play(w1, loop=False)
-
                 if seg[1] == "W":
                     if await wait_snd_1():
                         return "STOP"
-
+        # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX file name
         elif seg[0] == 'H':
             await stp_a_1()
-
             if seg[1] == "B":
                 fn = get_snds("bells/", "bell")
                 w1 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[1].play(w1, loop=False)
-
             elif seg[1] == "H":
                 fn = get_snds("horns/", "horn")
                 w1 = audiomp3.MP3Decoder(open(fn, "rb"))
                 mix.voice[1].play(w1, loop=False)
 
+        # some commands need non async access so split those out in another method
         elif seg[:2] == 'LN' or seg[0] == 'B':
-            set_hdw_lights(seg)
+            set_hdw_not_async(seg)
 
         # FXXX = Fade NeoPixel brightness to XXX
         elif seg[0] == 'F':
             target_brightness = int(seg[1:])
-
             while brightness != target_brightness:
                 if brightness < target_brightness:
                     brightness += 1
                     led.brightness = float(brightness / 100)
-
                 else:
                     brightness -= 1
                     led.brightness = float(brightness / 100)
-
                 led.show()
-
                 if an_running:
                     if await animation_wait(.01):
                         return "STOP"
@@ -1929,7 +1754,6 @@ async def set_hdw_async(cmd, dur=3):
 
         elif seg[0] == 'W':
             s = float(seg[1:])
-
             if an_running:
                 if await animation_wait(s):
                     return "STOP"
@@ -1949,21 +1773,16 @@ def set_neo_to(light_n, r, g, b):
 async def random_effect(il, ih, d):
     if exit_set_hdw_async:
         return
-
     i = random.randint(il, ih)
-
     if i == 1:
         await rbow(0.012, d)
-
     elif i == 2:
         multi_color()
-
         if an_running:
             if await animation_wait(d):
                 return
         else:
             await asyncio.sleep(d)
-
     elif i == 3:
         await fire(d)
 
@@ -1976,21 +1795,16 @@ async def rbow(spd, dur):
         for j in range(0, 255, 1):
             if exit_set_hdw_async:
                 return
-            
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
-
             led.show()
-
             if an_running:
                 if await animation_wait(spd):
                     return
             else:
                 time.sleep(spd)
-
             te = time.monotonic()-st
-
             if te > dur:
                 return
 
@@ -2001,61 +1815,45 @@ def multi_color():
         g = random.randint(128, 255)
         b = random.randint(128, 255)
         c = random.randint(0, 2)
-
         if c == 0:
             r1 = r
             g1 = 0
             b1 = 0
-
         elif c == 1:
             r1 = 0
             g1 = g
             b1 = 0
-
         elif c == 2:
             r1 = 0
             g1 = 0
             b1 = b
-
         led[i] = (r1, g1, b1)
-
     led.show()
-
     return False
 
 
 async def fire(dur):
     st = time.monotonic()
-
     r = random.randint(0, 255)
     g = random.randint(0, 255)
     b = random.randint(0, 255)
-
     while True:
         if exit_set_hdw_async:
             return
-
         for i in range(n_px):
             f = random.randint(0, 110)
-
             r1 = bnd(r-f, 0, 255)
             g1 = bnd(g-f, 0, 255)
             b1 = bnd(b-f, 0, 255)
-
             led[i] = (r1, g1, b1)
-
         led.show()
-
         upd_vol(0)
-
         if an_running:
             if await animation_wait(random.uniform(0.05, 0.1)):
                 return
         else:
             time.sleep(random.uniform(0.05, 0.1))
-
         te = time.monotonic()-st
-
         if te > dur:
             return
 
@@ -2077,19 +1875,13 @@ def get_indexed_media_file(folder_to_search, file_ext, index):
     if not file_ext.startswith('.'):
         file_ext = '.' + file_ext
     file_ext = file_ext.lower()
-
     myfiles = files.return_directory("", folder_to_search, file_ext)
-
     if not myfiles:
         return None, 0
-
     index = index % len(myfiles)
-
     selected_file = myfiles[index]
     new_index = (index + 1) % len(myfiles)
-
     print(f"playing: {selected_file}  ({index}/{len(myfiles)})")
-
     return selected_file, new_index
 
 
@@ -2153,10 +1945,8 @@ class BseSt(Ste):
     def enter(self, mch):
         ply_a_0(mvc_folder + "animations_are_now_active.mp3")
         files.log_item("Entered base state")
-
         l_sw.update()
         r_sw.update()
-
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -2166,10 +1956,8 @@ class BseSt(Ste):
         global an_just_added, MIN_TRACK_VOLTAGE
         if an_running:
             return
-        
         if cfg["bumper_mode"] and bumper_calibrated and bumper_requested_throttle > 0:
             return
-        
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
         spoken = False
         if sw == "none":
@@ -2192,12 +1980,10 @@ class BseSt(Ste):
                 else:
                     led.fill((1, 1, 1))
                     led.show()
-
         if sw == "left":
             if not mix.voice[0].playing and not an_running and not an_just_added:
                 add_cmd("AN_" + cfg["option_selected"])
                 an_just_added = True
-
         elif sw == "left_held":
             if not cfg["cont_mode"]:
                 if spoken:
@@ -2209,17 +1995,15 @@ class BseSt(Ste):
                     time.sleep(1)
                     while mix.voice[1].playing:
                         time.sleep(.1)
-                if get_track_voltage() >= MIN_TRACK_VOLTAGE:
-                    cfg["cont_mode"] = True
-                    files.write_json_file("/sd/cfg.json", cfg)
-
+                cfg["cont_mode"] = True
+                save_cfg_safely()
         elif sw == "right":
             if not mix.voice[0].playing:
                 mch.go_to("main_menu")
-
         if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
+
 
 class Main(Ste):
 
@@ -2264,7 +2048,7 @@ class Main(Ste):
                     elif sw == "right" and vol_adj_mode:
                         ch_vol("raise")
                     elif sw == "right_held" and vol_adj_mode:
-                        files.write_json_file("/sd/cfg.json", cfg)
+                        save_cfg_safely()
                         ply_a_0(mvc_folder + "all_changes_complete.mp3")
                         vol_adj_mode = False
                         mch.go_to('base_state')
@@ -2330,7 +2114,7 @@ class Snds(Ste):
                     pass
             else:
                 cfg["option_selected"] = menu_snd_opt[self.sel_i]
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 w0 = audiomp3.MP3Decoder(
                     open(mvc_folder + "option_selected.mp3", "rb"))
                 mix.voice[0].play(w0, loop=False)
@@ -2426,7 +2210,7 @@ class WebOpt(Ste):
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()
             else:
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
@@ -2462,7 +2246,7 @@ class BumperOpt(Ste):
             selected_menu_item = bump_set[self.sel_i]
             if selected_menu_item == "bumper_mode_on":
                 cfg["bumper_mode"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 ply_a_0(mvc_folder + "bumper_instructions.mp3")
                 mch.go_to('base_state')
             elif selected_menu_item == "bumper_mode_off":
@@ -2473,13 +2257,14 @@ class BumperOpt(Ste):
                 bumper_position_success = False
                 train.throttle = 0
                 current_throttle = 0
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
             else:
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
+
 
 class MuseumOpt(Ste):
     def __init__(self):
@@ -2510,20 +2295,21 @@ class MuseumOpt(Ste):
             selected_menu_item = muse_set[self.sel_i]
             if selected_menu_item == "museum_mode_on":
                 cfg["museum_mode"] = True
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 mch.go_to('base_state')
             elif selected_menu_item == "museum_mode_off":
                 cfg["museum_mode"] = False
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
             else:
-                files.write_json_file("/sd/cfg.json", cfg)
+                save_cfg_safely()
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
 ###############################################################################
 # Create the state machine
+
 
 st_mch = StMch()
 st_mch.add(BseSt())
@@ -2572,6 +2358,7 @@ gc_col("animations started.")
 ###############################################################################
 # Main task handling
 
+
 async def bumper_tsk():
     global bumper_direction
     global bumper_requested_throttle
@@ -2586,213 +2373,150 @@ async def bumper_tsk():
     bumper_last_time = time.monotonic()
 
     while True:
-
         if not cfg["bumper_mode"]:
             bumper_last_time = time.monotonic()
             await asyncio.sleep(0)
             continue
-
         if not bumper_calibrated:
             bumper_last_time = time.monotonic()
             await asyncio.sleep(0)
             continue
-
         now = time.monotonic()
         dt = now - bumper_last_time
         bumper_last_time = now
-
         if bumper_requested_throttle <= 0:
             train.throttle = 0
             current_throttle = 0
 
             await asyncio.sleep(0)
             continue
-
         bumper_hit = False
         hit_direction = bumper_direction
-
         if bumper_direction > 0 and r_sw_io.value:
             print("RIGHT bumper")
             bumper_hit = True
-
         elif bumper_direction < 0 and l_sw_io.value:
             print("LEFT bumper")
             bumper_hit = True
-
         if bumper_hit:
-
             homing_to_bumper = False
-
             if bumper_positioning and bumper_target_position is not None:
                 if hit_direction < 0 and bumper_target_position == 0.0:
                     homing_to_bumper = True
 
                 elif hit_direction > 0 and bumper_target_position == 1.0:
                     homing_to_bumper = True
-
             backoff_time, backoff_speed = await back_off_bumper(hit_direction)
-
             bumper_direction = -hit_direction
-
             if hit_direction < 0:
-
                 if controller.time_forward and controller.base_speed:
-                    bumper_progress = backoff_time * (backoff_speed / controller.base_speed) / controller.time_forward
+                    bumper_progress = backoff_time * \
+                        (backoff_speed / controller.base_speed) / \
+                        controller.time_forward
                 else:
                     bumper_progress = 0.0
-
                 if bumper_progress < 0.0:
                     bumper_progress = 0.0
-
                 if bumper_progress > 1.0:
                     bumper_progress = 1.0
-
                 print("Position reset from LEFT bumper:", int(bumper_progress * 100), "%")
-
             else:
-
                 if controller.time_reverse and controller.base_speed:
                     bumper_progress = 1.0 - (backoff_time * (backoff_speed / controller.base_speed) / controller.time_reverse)
                 else:
                     bumper_progress = 1.0
-
                 if bumper_progress < 0.0:
                     bumper_progress = 0.0
-
                 if bumper_progress > 1.0:
                     bumper_progress = 1.0
-
                 print("Position reset from RIGHT bumper:", int(bumper_progress * 100), "%")
-
             if bumper_positioning:
-
                 train.throttle = 0
                 current_throttle = 0
-
                 await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
-
                 bumper_requested_throttle = 0.0
                 bumper_target_position = None
                 bumper_positioning = False
-
                 if homing_to_bumper:
                     bumper_position_success = True
                     print("POS homing complete")
-
                 else:
                     bumper_position_success = False
                     print("POS aborted - unexpected bumper reached")
-
                 bumper_last_time = time.monotonic()
-
                 await asyncio.sleep(0)
                 continue
 
             if bumper_direction > 0:
                 print("Now traveling RIGHT")
-
             else:
                 print("Now traveling LEFT")
-
             bumper_last_time = time.monotonic()
-
             await asyncio.sleep(0)
             continue
-
         if bumper_direction > 0:
             est_time = controller.time_forward
         else:
             est_time = controller.time_reverse
-
         if est_time is None or est_time <= 0:
             train.throttle = 0
             current_throttle = 0
-
             await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
-
             await asyncio.sleep(0)
             continue
-
         requested_speed = abs(bumper_requested_throttle)
-
         commanded_speed = requested_speed
-
         if bumper_direction > 0:
             travel_progress = bumper_progress
         else:
             travel_progress = 1.0 - bumper_progress
-
         if bumper_positioning and bumper_target_position is not None:
             if bumper_target_position > 0.0 and bumper_target_position < 1.0:
-                distance_remaining = abs(bumper_target_position - bumper_progress)
-
+                distance_remaining = abs(
+                    bumper_target_position - bumper_progress)
                 if distance_remaining < POS_RAMP_DISTANCE:
                     ramp_ratio = distance_remaining / POS_RAMP_DISTANCE
                     min_speed = POS_MIN_SPEED
-
                     if commanded_speed < min_speed:
                         min_speed = commanded_speed
-
                     commanded_speed = min_speed + ((commanded_speed - min_speed) * ramp_ratio)
-
         ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, travel_progress)
-
         train.throttle = ramped_throttle
         current_throttle = int(ramped_throttle * 100)
-
         await upd_bckgrnd_throttle_async(ramped_throttle, requested_speed)
-
         base_speed = controller.base_speed
-
         if base_speed is None or base_speed <= 0:
             base_speed = commanded_speed
-
         actual_speed = abs(ramped_throttle)
-
         if base_speed > 0:
             position_change = dt * (actual_speed / base_speed) / est_time
-
             if bumper_direction > 0:
                 bumper_progress += position_change
             else:
                 bumper_progress -= position_change
-
         if bumper_progress > 1.0:
             bumper_progress = 1.0
-
         if bumper_progress < 0.0:
             bumper_progress = 0.0
-
         if bumper_positioning and bumper_target_position is not None:
-
             if bumper_target_position > 0.0 and bumper_target_position < 1.0:
-
                 target_reached = False
-
                 if bumper_direction > 0 and bumper_progress >= bumper_target_position:
                     target_reached = True
-
                 elif bumper_direction < 0 and bumper_progress <= bumper_target_position:
                     target_reached = True
-
                 if target_reached:
                     bumper_progress = bumper_target_position
-
                     train.throttle = 0
                     current_throttle = 0
-
                     await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
-
                     bumper_requested_throttle = 0.0
-
                     print("POS destination reached:", int(bumper_progress * 100), "%")
-
                     bumper_target_position = None
                     bumper_positioning = False
                     bumper_position_success = True
-
         await asyncio.sleep(0)
-        
+
 
 async def process_cmd_tsk():
     """Task to continuously process commands."""
@@ -2836,12 +2560,9 @@ async def main():
         state_mach_upd_task(st_mch),
         bumper_tsk()
     ]
-
     if web:
         tasks.append(server_poll_tsk(server))
-
     await asyncio.gather(*tasks)
-
 try:
     asyncio.run(main())
 except KeyboardInterrupt:

@@ -272,6 +272,14 @@
                     data-action="raise1">
                     Raise Volume by 1
                 </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="lower5">
+                    Lower Volume by 5
+                </button>
+                <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
+                    data-action="raise5">
+                    Raise Volume by 5
+                </button>
             </div>
 
             <p>
@@ -301,7 +309,26 @@
                 appended with .local. So your website url will be something like
                 "website-name.local and the ip address will be xx.xx.xx.xx."
             </p>
-
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="bumper_mode_on" data-url="/mode"
+                    type="button">
+                    Bumper Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="bumper_mode_off"
+                    data-url="/mode" type="button">
+                    Bumper Mode Off
+                </button>
+            </div>
+            <div>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="museum_mode_on" data-url="/mode"
+                    type="button">
+                    Museum Mode On
+                </button>
+                <button class="mui-btn mui-btn--primary animator-action" data-value="museum_mode_off"
+                    data-url="/mode" type="button">
+                    Museum Mode Off
+                </button>
+            </div>
             <h2>Utilities:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
                 type="button">
