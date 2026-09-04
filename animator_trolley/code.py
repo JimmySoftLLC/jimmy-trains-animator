@@ -906,7 +906,7 @@ if (web):
                     stop_all_cmds()
                     cfg["bumper_mode"] = True
                     save_cfg_safely()
-                    ply_a_0(mvc_folder + "bumper_mode_on.mp3")
+                    ply_a_0(mvc_folder + "bumper_instructions.mp3")
                 elif rq_d["an"] == "bumper_mode_off":
                     stop_all_cmds()
                     cfg["bumper_mode"] = False
@@ -1746,11 +1746,7 @@ async def set_hdw_async(cmd, dur=3):
                     brightness -= 1
                     led.brightness = float(brightness / 100)
                 led.show()
-                if an_running:
-                    if await animation_wait(.01):
-                        return "STOP"
-                else:
-                    time.sleep(.01)
+                time.sleep(.01)
 
         elif seg[0] == 'W':
             s = float(seg[1:])
