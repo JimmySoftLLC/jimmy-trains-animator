@@ -67,6 +67,11 @@ r_sw.direction = digitalio.Direction.INPUT
 r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
 
+t_sw = digitalio.DigitalInOut(board.GP1)
+t_sw.direction = digitalio.Direction.INPUT
+t_sw.pull = digitalio.Pull.UP
+t_sw = Debouncer(t_sw)
+
 # Define the pins connected to the stepper motor driver
 coil_A_1 = digitalio.DigitalInOut(board.GP4)
 coil_A_2 = digitalio.DigitalInOut(board.GP5)
@@ -512,7 +517,7 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global rand_timer
-        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
+        sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0)
         if sw == "left_held":
             if cfg["timer"] == True:
                 cfg["timer"] = False
@@ -537,7 +542,7 @@ class BseSt(Ste):
             else:
                 upd_vol(1)
                 rand_timer -= 1
-        elif sw == "left":
+        elif sw == "left" or sw == "trigger":
             an()
             print("an done")
         elif sw == "right":
