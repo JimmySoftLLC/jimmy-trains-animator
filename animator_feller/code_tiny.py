@@ -82,6 +82,12 @@ r_sw.direction = digitalio.Direction.INPUT
 r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
 
+# Added additional input SW-3 - Trigger Feller only - KJB 6-22-2026
+t_sw = digitalio.DigitalInOut(board.GP8)
+t_sw.direction = digitalio.Direction.INPUT
+t_sw.pull = digitalio.Pull.UP
+t_sw = Debouncer(t_sw)
+
 # setup i2s audio
 i2s_bclk = board.GP18   # BCLK on MAX98357A
 i2s_lrc = board.GP19  # LRC on MAX98357A
@@ -828,7 +834,7 @@ def f_tlk_mov():
     spk_cad = 0.2
     while mix.voice[0].playing:
         sw_st = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 0.5)
+            l_sw, r_sw, t_sw, upd_vol, 0.5)
         if sw_st == "left_held":
             mix.voice[0].stop()
             while mix.voice[0].playing:
@@ -847,7 +853,7 @@ def t_tlk_mov():
     spk_cad = 0.2
     while mix.voice[0].playing:
         sw_st = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 0.5)
+            l_sw, r_sw, t_sw, upd_vol, 0.5)
         if sw_st == "left_held":
             mix.voice[0].stop()
             while mix.voice[0].playing:
@@ -872,7 +878,7 @@ def ply_snd(sound_files, folder):
     while mix.voice[0].playing:
         upd_vol(0.1)
         sw_st = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 0.5)
+            l_sw, r_sw, t_sw, upd_vol, 0.5)
         if sw_st == "left_held":
             mix.voice[0].stop()
             while mix.voice[0].playing:
@@ -986,7 +992,7 @@ async def an(command):
         while mix.voice[0].playing:
             await upd_vol_async(0)
             sw_st = utilities.switch_state(
-                l_sw, r_sw, upd_vol, 0.5)
+                l_sw, r_sw, t_sw, upd_vol, 0.5)
             if sw_st == "left_held":
                 stp_all_cmds()
                 cont_run = False
@@ -1005,7 +1011,7 @@ async def an(command):
             mix.voice[0].play(w0, loop=False)
             t_tlk_mov()
             sw_st = utilities.switch_state(
-                l_sw, r_sw, upd_vol, 0.5)
+                l_sw, r_sw, t_sw, upd_vol, 0.5)
             if sw_st == "left_held":
                 stp_all_cmds()
                 cont_run = False
@@ -1015,7 +1021,7 @@ async def an(command):
         while mix.voice[0].playing:
             await upd_vol_async(0)
             sw_st = utilities.switch_state(
-                l_sw, r_sw, upd_vol, 0.5)
+                l_sw, r_sw, t_sw, upd_vol, 0.5)
             if sw_st == "left_held":
                 stp_all_cmds()
                 cont_run = False
@@ -1096,10 +1102,11 @@ class BseSt(Ste):
     def exit(self, mch):
         Ste.exit(self, mch)
 
+# Added Trigger question - KJB 6-24-2026
     def upd(self, mch):
         global cont_run
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left_held":
             if cont_run:
                 cont_run = False
@@ -1109,6 +1116,8 @@ class BseSt(Ste):
                 cont_run = True
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
         elif sw_st == "left" or cont_run:
+            add_cmd(cfg["option_selected"])
+        elif sw_st == "trigger":
             add_cmd(cfg["option_selected"])
         elif sw_st == "right":
             mch.go_to('main_menu')
@@ -1135,7 +1144,7 @@ class Main(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
@@ -1182,7 +1191,7 @@ class Snds(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -1225,7 +1234,7 @@ class MovFellTree(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" + mov_f_t[self.i] + ".wav")
             self.sel_i = self.i
@@ -1275,7 +1284,7 @@ class AdjFellTree(Ste):
     def upd(self, mch):
         global f_lst_p, t_lst_p
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left" and not self.cal_active:
             ply_a_0("/sd/mvc/" +
                     adj_f_t[self.i] + ".wav")
@@ -1356,7 +1365,7 @@ class DiaOpt(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" +
                     dlg_m[self.i] + ".wav")
@@ -1408,7 +1417,7 @@ class WebOpt(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -1465,7 +1474,7 @@ class VolSet(Ste):
 
     def upd(s, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
