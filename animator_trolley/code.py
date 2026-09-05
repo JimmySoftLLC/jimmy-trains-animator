@@ -75,7 +75,7 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 1
+debug_voltage_multiplier = 3
 
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
@@ -1719,6 +1719,7 @@ async def set_hdw_async(cmd, dur=3):
                 if seg[1] == "W":
                     if await wait_snd_1():
                         return "STOP"
+                    
         # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX file name
         elif seg[0] == 'H':
             await stp_a_1()
@@ -1805,30 +1806,31 @@ async def rbow(spd, dur):
                 return
 
 
-def multi_color():
+def multi_color(r = random.randint(128, 255), g = random.randint(128, 255), b = random.randint(128, 255), c = 1):
     for i in range(n_px):
-        r = random.randint(128, 255)
-        g = random.randint(128, 255)
-        b = random.randint(128, 255)
-        c = random.randint(0, 2)
+        print("pixel: ",i)
         if c == 0:
-            r1 = r
-            g1 = 0
-            b1 = 0
-        elif c == 1:
-            r1 = 0
-            g1 = g
-            b1 = 0
-        elif c == 2:
-            r1 = 0
-            g1 = 0
-            b1 = b
-        led[i] = (r1, g1, b1)
+            led[i] = (r, g, b)
+        else:
+            c = random.randint(1, 3)
+            if c == 1:
+                r = r
+                g = 0
+                b = 0
+            elif c == 2:
+                r = 0
+                g = g
+                b = 0
+            elif c == 3:
+                r = 0
+                g = 0
+                b = b
+        led[i] = (r, g, b)
     led.show()
     return False
 
 
-async def fire(dur):
+async def fire(dur, r = random.randint(0, 255), g = random.randint(0, 255), b = random.randint(0, 255)):
     st = time.monotonic()
     r = random.randint(0, 255)
     g = random.randint(0, 255)
