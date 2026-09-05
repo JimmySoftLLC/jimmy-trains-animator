@@ -1806,26 +1806,39 @@ async def rbow(spd, dur):
                 return
 
 
-def multi_color(r = random.randint(128, 255), g = random.randint(128, 255), b = random.randint(128, 255), c = 1):
+def multi_color(r=None, g=None, b=None, set_one_color=True):
+    if r is None:
+        r = random.randint(128, 255)
+    else:
+        r = 255
+    if g is None:
+        g = random.randint(128, 255)
+    else:
+        g = 255
+    if b is None:
+        b = random.randint(128, 255)
+    else:
+        b = 255
     for i in range(n_px):
-        print("pixel: ",i)
-        if c == 0:
-            led[i] = (r, g, b)
+        if set_one_color:
+            c = random.randint(0, 2)
+            if c == 0:
+                r1 = r
+                g1 = 0
+                b1 = 0
+            elif c == 1:
+                r1 = 0
+                g1 = g
+                b1 = 0
+            else:
+                r1 = 0
+                g1 = 0
+                b1 = b
+            led[i] = (r1, g1, b1)
+            print("pixel: ", i, "r: ", r1, "g: ", g1, "b: ", b1)
         else:
-            c = random.randint(1, 3)
-            if c == 1:
-                r = r
-                g = 0
-                b = 0
-            elif c == 2:
-                r = 0
-                g = g
-                b = 0
-            elif c == 3:
-                r = 0
-                g = 0
-                b = b
-        led[i] = (r, g, b)
+            led[i] = (r, g, b)
+            print("pixel: ", i, "r: ", r, "g: ", g, "b: ", b)
     led.show()
     return False
 
