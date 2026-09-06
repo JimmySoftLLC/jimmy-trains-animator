@@ -1623,15 +1623,52 @@ async def set_hdw_async(cmd, dur=3):
             if exit_set_hdw_async:
                 return "STOP"
 
-        # ZFIRE = Fire
-        elif seg[0:] == 'ZFIRE':
-            await fire(dur)
+        # ZFIRE_R_G_B = Fire effect R, G, B, (0-255 or None)
+        elif seg.startswith("ZFIRE"):
+            parts = seg.split("_")
+
+            r = None
+            g = None
+            b = None
+
+            if len(parts) > 1 and parts[1] != "None":
+                r = int(parts[1])
+
+            if len(parts) > 2 and parts[2] != "None":
+                g = int(parts[2])
+
+            if len(parts) > 3 and parts[3] != "None":
+                b = int(parts[3])
+
+            await fire(dur, r, g, b)
+
             if exit_set_hdw_async:
                 return "STOP"
 
-        # ZCOLCH = Color change
-        elif seg[0:] == 'ZCOLCH':
-            if multi_color():
+        # ZCOLCH_R_G_B_C = Color change R, G, B, (0-255 or None), C one color (True or False)
+        elif seg.startswith("ZCOLCH"):
+            parts = seg.split("_")
+
+            r = None
+            g = None
+            b = None
+            set_one_color = True
+
+            if len(parts) > 1 and parts[1] != "None":
+                r = int(parts[1])
+
+            if len(parts) > 2 and parts[2] != "None":
+                g = int(parts[2])
+
+            if len(parts) > 3 and parts[3] != "None":
+                b = int(parts[3])
+
+            if len(parts) > 4:
+                set_one_color = parts[4].lower() == "true"
+
+            print("cmd", r, g, b, set_one_color)
+
+            if multi_color(r, g, b, set_one_color):
                 return "STOP"
 
         # TXXX = Train throttle -100 to 100
@@ -1809,16 +1846,10 @@ async def rbow(spd, dur):
 def multi_color(r=None, g=None, b=None, set_one_color=True):
     if r is None:
         r = random.randint(128, 255)
-    else:
-        r = 255
     if g is None:
         g = random.randint(128, 255)
-    else:
-        g = 255
     if b is None:
         b = random.randint(128, 255)
-    else:
-        b = 255
     for i in range(n_px):
         if set_one_color:
             c = random.randint(0, 2)
@@ -1835,19 +1866,20 @@ def multi_color(r=None, g=None, b=None, set_one_color=True):
                 g1 = 0
                 b1 = b
             led[i] = (r1, g1, b1)
-            print("pixel: ", i, "r: ", r1, "g: ", g1, "b: ", b1)
         else:
             led[i] = (r, g, b)
-            print("pixel: ", i, "r: ", r, "g: ", g, "b: ", b)
     led.show()
     return False
 
 
-async def fire(dur, r = random.randint(0, 255), g = random.randint(0, 255), b = random.randint(0, 255)):
+async def fire(dur, r=None, g=None, b=None):
     st = time.monotonic()
-    r = random.randint(0, 255)
-    g = random.randint(0, 255)
-    b = random.randint(0, 255)
+    if r is None:
+        r = random.randint(128, 255)
+    if g is None:
+        g = random.randint(128, 255)
+    if b is None:
+        b = random.randint(128, 255)
     while True:
         if exit_set_hdw_async:
             return
