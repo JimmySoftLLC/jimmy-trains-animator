@@ -828,7 +828,7 @@ if (web):
             files.log_item("IP is " + local_ip)
             files.log_item("Connected")
             pool = socketpool.SocketPool(wifi.radio)
-            server = Server(pool, "/static", debug=True)
+            server = Server(pool, "/static", debug=False)
             server.port = 80  # Explicitly set port to 80
             gc_col("wifi server")
 
@@ -957,6 +957,26 @@ if (web):
             def btn(request: Request):
                 track_voltage = get_track_voltage()
                 return Response(request, str(track_voltage))
+
+            @server.route("/get-options", [POST])
+            def btn(request: Request):
+                rq_d = {
+                    "queuing": cfg["queuing"],
+                    "reset_lights": cfg["reset_lights"]
+                }
+                my_string = files.json_stringify(rq_d)
+                return Response(request, my_string)
+
+            @server.route("/update-options", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                cfg["queuing"] = rq_d["queuing"]
+                cfg["reset_lights"] = rq_d["reset_lights"]
+                if not mix.voice[0].playing and not mix.voice[1].playing:
+                    files.write_json_file("/sd/cfg.json", cfg)
+                my_string = files.json_stringify(cfg)
+                return Response(request, my_string)
 
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
@@ -1094,6 +1114,7 @@ if (web):
                     data = []
                     return Response(request, "out of memory")
                 return Response(request, "success")
+            
             break
         except Exception as e:
             web = False
@@ -1375,38 +1396,21 @@ async def an_light_async(f_nm):
     bckgrnd_vol_track_throttle = False
     stp_a_0()
     flsh_t = []
+    w0_exists = False
     if f_exists(animations_folder + f_nm + ".json") == True:
         flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
     flsh_i = 0
-    if flsh_i < len(flsh_t)-1:
+    if len(flsh_t) > 0:
         ft1 = flsh_t[flsh_i].split("|")
-        result = await set_hdw_async(ft1[1])
-        print("Result is: ", result)
-        if result == "STOP":
-            an_running = False
-            return
-        result = result.split("_")
-        if result and len(result) > 1:
-            w0_exists = f_exists(animations_folder + result[1])
-            if w0_exists:
-                if result[0] == "1":
-                    repeat = True
-                else:
-                    repeat = False
-                ply_a_0(animations_folder + result[1], False, repeat)
-            else:
-                an_running = False
-                return
-            srt_t = time.monotonic()
-            ft1 = []
-            ft2 = []
-            ft_last = flsh_t[len(flsh_t)-1].split("|")
-            tm_last = float(ft_last[0]) + .1
-            flsh_t.append(str(tm_last) + "|")
-        else:
-            an_running = False
-            return
-        flsh_i += 1
+        w0_exists = await set_hdw_async(ft1[1])
+        srt_t = time.monotonic()
+        ft1 = []
+        ft2 = []
+        ft_last = flsh_t[len(flsh_t)-1].split("|")
+        tm_last = float(ft_last[0]) + .1
+        flsh_t.append(str(tm_last) + "|")
+        if w0_exists:
+            flsh_i += 1
     else:
         an_running = False
         return
@@ -1434,7 +1438,7 @@ async def an_light_async(f_nm):
                     an_running = False
                     return
             flsh_i += 1
-        if (not mix.voice[0].playing and w0_exists) or not flsh_i < len(flsh_t)-1:
+        if (not mix.voice[0].playing and w0_exists == "w0_true") or not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
             mix.voice[1].stop()
             result = await set_hdw_async("TA_0_2", 0)
@@ -1626,49 +1630,36 @@ async def set_hdw_async(cmd, dur=3):
         # ZFIRE_R_G_B = Fire effect R, G, B, (0-255 or None)
         elif seg.startswith("ZFIRE"):
             parts = seg.split("_")
-
             r = None
             g = None
             b = None
-
             if len(parts) > 1 and parts[1] != "None":
                 r = int(parts[1])
-
             if len(parts) > 2 and parts[2] != "None":
                 g = int(parts[2])
-
             if len(parts) > 3 and parts[3] != "None":
                 b = int(parts[3])
-
             await fire(dur, r, g, b)
-
             if exit_set_hdw_async:
                 return "STOP"
 
         # ZCOLCH_R_G_B_C = Color change R, G, B, (0-255 or None), C one color (True or False)
         elif seg.startswith("ZCOLCH"):
             parts = seg.split("_")
-
             r = None
             g = None
             b = None
             set_one_color = True
-
             if len(parts) > 1 and parts[1] != "None":
                 r = int(parts[1])
-
             if len(parts) > 2 and parts[2] != "None":
                 g = int(parts[2])
-
             if len(parts) > 3 and parts[3] != "None":
                 b = int(parts[3])
-
             if len(parts) > 4:
                 set_one_color = parts[4].lower() == "true"
-
-            print("cmd", r, g, b, set_one_color)
-
-            if multi_color(r, g, b, set_one_color):
+            multi_color(r, g, b, set_one_color)
+            if exit_set_hdw_async:
                 return "STOP"
 
         # TXXX = Train throttle -100 to 100
@@ -1731,7 +1722,16 @@ async def set_hdw_async(cmd, dur=3):
         elif seg[:2] == 'MB':
             repeat = seg[2]
             file_nm = seg[3:]
-            return repeat + "_" + file_nm
+            w0_exists = f_exists(animations_folder + file_nm)
+            if w0_exists:
+                if repeat == "1":
+                    repeat = True
+                else:
+                    repeat = False
+                ply_a_0(animations_folder + file_nm, False, repeat)
+                return "w0_true"
+            else:
+                return "w0_false"
 
         # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX file name
         elif seg[0] == 'M':
@@ -1793,6 +1793,11 @@ async def set_hdw_async(cmd, dur=3):
                     return "STOP"
             else:
                 await asyncio.sleep(s)
+
+        # QXXXX = Add command XXXX any command ie AN_filename to add new animation not run if queuing is turned off
+        elif seg[0] == 'Q':
+            if cfg["queuing"] == True:
+                add_cmd(seg[1:])
 
 
 def set_neo_to(light_n, r, g, b):
@@ -2572,17 +2577,18 @@ async def process_cmd_tsk():
 
 
 async def server_poll_tsk(server):
-    """Poll the web server."""
     while True:
         try:
             server.poll()
         except OSError as e:
-            if e.errno == 116:
-                files.log_item("Client timeout (Errno 116)")
+            if e.errno == 5:
+                files.log_item("HTTP client connection closed (Errno 5)")
+            elif e.errno == 116:
+                files.log_item("HTTP client timeout (Errno 116)")
             else:
-                files.log_item(f"OSError: {e}")
+                files.log_item("HTTP OSError: " + str(e))
         except Exception as e:
-            files.log_item(f"Poll Exception: {e}")
+            files.log_item("HTTP poll exception: " + str(e))
         await asyncio.sleep(0)
 
 
