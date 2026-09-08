@@ -1463,7 +1463,11 @@ def add_command_to_ts(command):
 
 async def an_ts(f_nm):
     print("time stamp mode")
-    global t_s, t_elsp, ts_mode, ovrde_sw_st
+    global t_s, t_elsp, ts_mode, ovrde_sw_st, an_running, bckgrnd_vol, bckgrnd_vol_track_throttle
+    an_running = True
+    bckgrnd_vol = 100
+    bckgrnd_vol_track_throttle = False
+    stp_a_0()
     t_elsp = 0
     t_s = [""]
     if (f_exists(animations_folder + f_nm + ".json") == True):
@@ -1474,31 +1478,8 @@ async def an_ts(f_nm):
     if len(t_s) > 0:
         t_s[0] = t_s_from_file[0]
         ft1 = t_s[0].split("|")
-        result = await set_hdw_async(ft1[1])
-        print("Result is: ", result)
-        result = result.split("_")
-        if result and len(result) > 1:
-            w0_exists = f_exists(animations_folder + result[1])
-            if w0_exists:
-                if result[0] == "1":
-                    repeat = True
-                else:
-                    repeat = False
-            else:
-                return
-            if w0_exists:
-                file_name = animations_folder + result[1]
-                if file_name.lower().endswith(".mp3"):
-                    w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
-                elif file_name.lower().endswith(".wav"):
-                    w0 = audiocore.WaveFile(open(file_name, "rb"))
-                else:
-                    raise ValueError("Unsupported audio format: " + file_name)
-                add_command_to_ts("B0,ZCOLCH,F100,TA_30_1")
-                mix.voice[0].play(w0, loop=repeat)
-            else:
-                return
-        else:
+        w0_exists = await set_hdw_async(ft1[1])
+        if not w0_exists:
             return
     else:
         return
