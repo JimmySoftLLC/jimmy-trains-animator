@@ -958,26 +958,6 @@ if (web):
                 track_voltage = get_track_voltage()
                 return Response(request, str(track_voltage))
 
-            @server.route("/get-options", [POST])
-            def btn(request: Request):
-                rq_d = {
-                    "queuing": cfg["queuing"],
-                    "reset_lights": cfg["reset_lights"]
-                }
-                my_string = files.json_stringify(rq_d)
-                return Response(request, my_string)
-
-            @server.route("/update-options", [POST])
-            def btn(request: Request):
-                global cfg
-                rq_d = request.json()
-                cfg["queuing"] = rq_d["queuing"]
-                cfg["reset_lights"] = rq_d["reset_lights"]
-                if not mix.voice[0].playing and not mix.voice[1].playing:
-                    files.write_json_file("/sd/cfg.json", cfg)
-                my_string = files.json_stringify(cfg)
-                return Response(request, my_string)
-
             @server.route("/update-host-name", [POST])
             def btn(request: Request):
                 stop_all_cmds()
@@ -1003,6 +983,23 @@ if (web):
                 ch_vol(rq_d["action"])
                 save_cfg_safely()
                 return Response(request, cfg["volume"])
+
+            @server.route("/get-options", [POST])
+            def btn(request: Request):
+                rq_d = {
+                    "queuing": cfg["queuing"]
+                }
+                my_string = files.json_stringify(rq_d)
+                return Response(request, my_string)
+
+            @server.route("/update-options", [POST])
+            def btn(request: Request):
+                global cfg
+                rq_d = request.json()
+                cfg["queuing"] = rq_d["queuing"]
+                save_cfg_safely()
+                my_string = files.json_stringify(cfg)
+                return Response(request, my_string)
 
             @server.route("/get-volume", [POST])
             def btn(request: Request):
