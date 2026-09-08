@@ -329,6 +329,15 @@
                     Museum Mode Off
                 </button>
             </div>
+            <div class="column" style="flex: 1; min-width: 180px;">
+                <h2>Options</h2>
+                <div class="mui-checkbox">
+                    <label>
+                        <input type="checkbox" id="queuingCheckbox" data-url="/update-options">
+                        Queuing
+                    </label>
+                </div>
+            </div>
             <h2>Utilities:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
                 type="button">
@@ -491,6 +500,7 @@
         getVolume()
         getAnimations()
         getTrackVoltage()
+        getOptions()
     });
 
     function getWebSiteUrl() {
@@ -550,6 +560,25 @@
             });
     }
 
+    function getOptions() {
+        fetch('/get-options', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.text(); // assuming the response is plain text
+            })
+            .then(function (data) {
+                console.log(data)
+                my_data = JSON.parse(data)
+                queuingCheckbox.checked = my_data.queuing;
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
 
     function getVolume() {
         fetch('/get-volume', {
@@ -1242,6 +1271,46 @@
             testAnimation(target)
         }
     });
+
+    // Get both checkboxes once
+    const queuingCheckbox = document.getElementById('queuingCheckbox');
+    const queuingUrl = queuingCheckbox.getAttribute('data-url'); // or read from the other one — same value
+
+    // Function to send current state of both checkboxes
+    function sendCheckboxState() {
+        // Disable both while request is in flight
+        queuingCheckbox.disabled = true;
+
+        const data = {
+            queuing: queuingCheckbox.checked
+        };
+
+        fetch(queuingUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Server responded with error');
+                return response.text();
+            })
+            .then(text => {
+                console.log('Success:', text);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Optional: alert user, revert checkbox, etc.
+            })
+            .finally(() => {
+                // Always re-enable
+                queuingCheckbox.disabled = false;
+            });
+    }
+
+    // Attach the same handler to BOTH checkboxes
+    queuingCheckbox.addEventListener('change', sendCheckboxState);
 
     function testAnimation(target) {
         const rowElement = target.parentNode.parentNode;
