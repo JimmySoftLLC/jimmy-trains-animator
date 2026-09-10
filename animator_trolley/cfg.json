@@ -1,0 +1,10 @@
+{
+  "option_selected": "random all",
+  "serve_webpage": true,
+  "museum_mode": false,
+  "bumper_mode": false,
+  "HOST_NAME": "animator-trolley",
+  "volume": "50",
+  "cont_mode": false,
+  "queuing": false
+}
