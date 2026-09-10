@@ -1598,6 +1598,11 @@ async def set_hdw_async(cmd, dur=3):
             if exit_set_hdw_async:
                 return "STOP"
 
+        # ZRGBTTT = 250th trolley red, white, blue wheel, TTT cycle speed in decimal seconds
+        elif seg[:4] == 'ZRGB':
+            v = float(seg[4:])
+            await rwb_bow(v, dur)
+
         # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
         elif seg[:2] == 'ZR':
             v = float(seg[2:])
@@ -1815,6 +1820,47 @@ async def rbow(spd, dur):
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
+            led.show()
+            if an_running:
+                if await animation_wait(spd):
+                    return
+            else:
+                time.sleep(spd)
+            te = time.monotonic()-st
+            if te > dur:
+                return
+
+def red_white_blue_wheel(pos):
+    pos &= 255
+
+    if pos < 64:
+        v = pos << 2
+        return (255 << 16) | (v << 8) | v
+
+    if pos < 128:
+        v = (pos - 64) << 2
+        x = 255 - v
+        return (x << 16) | (x << 8) | 255
+
+    if pos < 192:
+        v = (pos - 128) << 2
+        return (v << 16) | (v << 8) | 255
+
+    v = (pos - 192) << 2
+    x = 255 - v
+    return (255 << 16) | (x << 8) | x
+
+async def rwb_bow(spd, dur):
+    st = time.monotonic()
+    te = time.monotonic()-st
+
+    while te < dur:
+        for j in range(0, 255, 1):
+            if exit_set_hdw_async:
+                return
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = red_white_blue_wheel(pixel_index & 255)
             led.show()
             if an_running:
                 if await animation_wait(spd):
