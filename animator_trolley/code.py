@@ -1598,8 +1598,8 @@ async def set_hdw_async(cmd, dur=3):
             if exit_set_hdw_async:
                 return "STOP"
 
-        # ZRGBTTT = 250th trolley red, white, blue wheel, TTT cycle speed in decimal seconds
-        elif seg[:4] == 'ZRGB':
+        # ZRWBTTT = 250th trolley red, white, blue wheel, TTT cycle speed in decimal seconds
+        elif seg[:4] == 'ZRWB':
             v = float(seg[4:])
             await rwb_bow(v, dur)
 
