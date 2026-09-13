@@ -1011,91 +1011,102 @@ if web:
                 print("Delete sound file error:", e)
                 return Response(request, "error")
 
-
         @server.route("/upload-sound", [POST])
         def upload_sound(request: Request):
             try:
                 filename = request.query_params.get("filename")
+                location = request.query_params.get("location", "")
                 offset = int(request.query_params.get("offset", "0"))
 
                 if not filename:
                     return Response(request, "missing filename")
 
                 filename = url_decode(filename)
+                location = url_decode(location)
+
                 filename = filename.replace("\\", "/")
                 filename = filename.split("/")[-1]
+
+                location = location.replace("\\", "/")
 
                 if not filename:
                     return Response(request, "invalid filename")
 
-                lower_name = filename.lower()
+                if location == "":
+                    location = "/"
 
-                if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
-                    return Response(request, "invalid file type")
+                if location != "/" and not location.endswith("/"):
+                    location += "/"
 
-                file_path = animations_folder + filename
+                file_path = location + filename
                 chunk_size = len(request.body)
 
                 if offset == 0:
                     with open(file_path, "wb") as f:
                         f.write(request.body)
 
-                    print("Uploaded:", filename, "offset:", offset, "bytes:", chunk_size)
+                else:
+                    if not f_exists(file_path):
+                        return Response(request, "file not found")
 
-                    return Response(request, "success")
-
-                if not f_exists(file_path):
-                    return Response(request, "file not found")
-
-                current_size = os.stat(file_path)[6]
-
-                if current_size == offset:
-                    with open(file_path, "ab") as f:
+                    with open(file_path, "r+b") as f:
+                        f.seek(offset)
                         f.write(request.body)
 
-                    print("Uploaded:", filename, "offset:", offset, "bytes:", chunk_size)
+                print("Uploaded:", file_path, "offset:", offset, "bytes:", chunk_size)
 
-                    return Response(request, "success")
-
-                if current_size == offset + chunk_size:
-                    print("Chunk already received:", filename, "offset:", offset)
-
-                    return Response(request, "success")
-
-                print("Upload offset mismatch:", filename)
-                print("Expected offset:", offset)
-                print("Current file size:", current_size)
-
-                return Response(request, "offset mismatch")
+                return Response(request, "success")
 
             except Exception as e:
                 print("Upload error:", e)
                 return Response(request, "error")
 
+
         @server.route("/upload-sound-complete", [POST])
         def upload_sound_complete(request: Request):
             try:
                 rq_d = request.json()
+
                 filename = rq_d["filename"]
+                location = rq_d.get("location", "")
                 expected_size = int(rq_d["size"])
+
                 filename = filename.replace("\\", "/")
                 filename = filename.split("/")[-1]
+
+                location = location.replace("\\", "/")
+
                 if not filename:
                     return Response(request, "invalid filename")
-                file_path = animations_folder + filename
+
+                if location == "":
+                    location = "/"
+
+                if location != "/" and not location.endswith("/"):
+                    location += "/"
+
+                file_path = location + filename
+
                 if not f_exists(file_path):
                     return Response(request, "file not found")
+
                 actual_size = os.stat(file_path)[6]
-                print("Upload complete:", filename)
+
+                print("Upload complete:", file_path)
                 print("Expected size:", expected_size)
                 print("Actual size:", actual_size)
+
                 if actual_size != expected_size:
                     return Response(request, "size mismatch")
+
                 return Response(request, "success")
+
             except Exception as e:
                 print("Upload complete error:", e)
                 return Response(request, "error")
-        
+
+
+         
 gc_col("web server")
 
 def measure_signal_strength(MY_SSID, cycles):
