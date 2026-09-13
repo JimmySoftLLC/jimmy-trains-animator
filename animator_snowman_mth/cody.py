@@ -953,6 +953,153 @@ if web:
                 data = []
                 return Response(request, "out of memory")
             return Response(request, "success")
+
+        @server.route("/get-sound-files", [POST])
+        def get_sound_files(request: Request):
+            try:
+                sound_files = []
+
+                for filename in os.listdir(animations_folder):
+                    lower_name = filename.lower()
+
+                    if lower_name.endswith(".mp3") or lower_name.endswith(".wav"):
+                        sound_files.append(filename)
+
+                sound_files.sort()
+
+                return Response(request, files.json_stringify(sound_files))
+
+            except Exception as e:
+                print("Get sound files error:", e)
+                return Response(request, "[]")
+
+
+        @server.route("/delete-sound-file", [POST])
+        def delete_sound_file(request: Request):
+            try:
+                rq_d = request.json()
+                filename = rq_d["filename"]
+
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+
+                if not filename:
+                    return Response(request, "invalid filename")
+
+                lower_name = filename.lower()
+
+                if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
+                    return Response(request, "invalid file type")
+
+                file_path = animations_folder + filename
+
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+
+                os.remove(file_path)
+
+                print("Deleted sound file:", filename)
+
+                return Response(request, "success")
+
+            except Exception as e:
+                print("Delete sound file error:", e)
+                return Response(request, "error")
+
+
+        @server.route("/upload-sound", [POST])
+        def upload_sound(request: Request):
+            try:
+                filename = request.query_params.get("filename")
+                offset = int(request.query_params.get("offset", "0"))
+
+                if not filename:
+                    return Response(request, "missing filename")
+
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+
+                if not filename:
+                    return Response(request, "invalid filename")
+
+                lower_name = filename.lower()
+
+                if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
+                    return Response(request, "invalid file type")
+
+                file_path = animations_folder + filename
+                chunk_size = len(request.body)
+
+                if offset == 0:
+                    with open(file_path, "wb") as f:
+                        f.write(request.body)
+
+                    print("Uploaded:", filename, "offset:", offset, "bytes:", chunk_size)
+
+                    return Response(request, "success")
+
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+
+                current_size = os.stat(file_path)[6]
+
+                if current_size == offset:
+                    with open(file_path, "ab") as f:
+                        f.write(request.body)
+
+                    print("Uploaded:", filename, "offset:", offset, "bytes:", chunk_size)
+
+                    return Response(request, "success")
+
+                if current_size == offset + chunk_size:
+                    print("Chunk already received:", filename, "offset:", offset)
+
+                    return Response(request, "success")
+
+                print("Upload offset mismatch:", filename)
+                print("Expected offset:", offset)
+                print("Current file size:", current_size)
+
+                return Response(request, "offset mismatch")
+
+            except Exception as e:
+                print("Upload error:", e)
+                return Response(request, "error")
+
+
+        @server.route("/upload-sound-complete", [POST])
+        def upload_sound_complete(request: Request):
+            try:
+                rq_d = request.json()
+
+                filename = rq_d["filename"]
+                expected_size = int(rq_d["size"])
+
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+
+                if not filename:
+                    return Response(request, "invalid filename")
+
+                file_path = animations_folder + filename
+
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+
+                actual_size = os.stat(file_path)[6]
+
+                print("Upload complete:", filename)
+                print("Expected size:", expected_size)
+                print("Actual size:", actual_size)
+
+                if actual_size != expected_size:
+                    return Response(request, "size mismatch")
+
+                return Response(request, "success")
+
+            except Exception as e:
+                print("Upload complete error:", e)
+                return Response(request, "error")
         
 gc_col("web server")
 

@@ -145,6 +145,20 @@
             </button>
         </div>
         <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
+            <h2>My sound tracks:</h2>
+            <div id="myTracksContainer"></div>
+            <h2>Sound file manager:</h2>
+            <div>
+                <input type="file" id="soundFile" accept=".mp3,.wav">
+
+                <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button" onclick="uploadSound()">
+                    Upload Sound
+                </button>
+            </div>
+            <div id="uploadStatus" style="padding-top:0.5rem;"></div>
+            <h3>Sound files:</h3>
+            <div id="soundFilesContainer"></div>
+            <h3>Sound files:</h3>
             <button class="mui-btn mui-btn--primary animator-action" data-value="random all" data-url="/animation"
                 type="button">
                 Random all animations
@@ -314,8 +328,8 @@
                     type="button">
                     Museum Mode On
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="museum_mode_off"
-                    data-url="/mode" type="button">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="museum_mode_off" data-url="/mode"
+                    type="button">
                     Museum Mode Off
                 </button>
             </div>
@@ -396,7 +410,9 @@
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>HA = Blow horn or bell, A (H Horn, B Bell)</div>
-            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)</div>
+            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (E elves, B
+                bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN
+                play next in sequence, SEQF play first in sequence)</div>
             <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
                 ignored</div>
             <div>TXXX = Train XXX throttle -100 to 100</div>
@@ -481,7 +497,191 @@
         getVolume()
         getAnimations()
         getTrackVoltage()
+        refreshSoundFiles()
     });
+
+    async function refreshSoundFiles() {
+        const container = document.getElementById("soundFilesContainer");
+
+        container.innerHTML = "Loading...";
+
+        try {
+            const response = await fetch("/get-sound-files", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const data = await response.text();
+            const soundFiles = JSON.parse(data);
+
+            container.innerHTML = "";
+
+            if (soundFiles.length == 0) {
+                container.innerHTML = "No sound files.";
+                return;
+            }
+
+            soundFiles.forEach(function (filename) {
+                const row = document.createElement("div");
+                row.style.padding = "3px 0";
+
+                const name = document.createElement("span");
+                name.textContent = filename;
+                name.style.display = "inline-block";
+                name.style.minWidth = "300px";
+
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.className = "mui-btn mui-btn--primary";
+                deleteButton.textContent = "Delete";
+
+                deleteButton.addEventListener("click", function () {
+                    deleteSoundFile(filename);
+                });
+
+                row.appendChild(name);
+                row.appendChild(deleteButton);
+
+                container.appendChild(row);
+            });
+
+        } catch (error) {
+            console.log(error);
+            container.innerHTML = "Unable to load sound files.";
+        }
+    }
+
+
+    async function deleteSoundFile(filename) {
+        const status = document.getElementById("uploadStatus");
+
+        if (!confirm("Delete " + filename + "?")) {
+            return;
+        }
+
+        status.innerText = "Deleting " + filename + "...";
+
+        try {
+            const response = await fetch("/delete-sound-file", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    filename: filename
+                })
+            });
+
+            const result = await response.text();
+
+            if (result == "success") {
+                status.innerText = "Deleted: " + filename;
+                refreshSoundFiles();
+            } else {
+                status.innerText = "Delete failed: " + result;
+            }
+
+        } catch (error) {
+            console.log(error);
+            status.innerText = "Delete failed.";
+        }
+    }
+
+
+    async function uploadSound() {
+        const input = document.getElementById("soundFile");
+        const status = document.getElementById("uploadStatus");
+        const uploadButton = document.getElementById("uploadSoundButton");
+
+        if (!input.files.length) {
+            status.innerText = "Select a sound file first.";
+            return;
+        }
+
+        const file = input.files[0];
+        const chunkSize = 8192;
+
+        let offset = 0;
+
+        uploadButton.disabled = true;
+
+        status.innerText = "Starting upload...";
+
+        while (offset < file.size) {
+            const chunk = file.slice(offset, offset + chunkSize);
+
+            const url = "/upload-sound?filename=" + encodeURIComponent(file.name) + "&offset=" + offset;
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/octet-stream"
+                    },
+                    body: chunk
+                });
+
+                const result = await response.text();
+
+                if (result != "success") {
+                    status.innerText = "Upload failed: " + result;
+                    uploadButton.disabled = false;
+                    return;
+                }
+
+            } catch (error) {
+                console.log(error);
+                status.innerText = "Upload failed at byte " + offset;
+                uploadButton.disabled = false;
+                return;
+            }
+
+            offset += chunk.size;
+
+            let percent = Math.floor((offset / file.size) * 100);
+
+            if (percent > 100) {
+                percent = 100;
+            }
+
+            status.innerText = "Uploading " + file.name + ": " + percent + "%";
+        }
+
+        status.innerText = "Verifying upload...";
+
+        try {
+            const response = await fetch("/upload-sound-complete", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    filename: file.name,
+                    size: file.size
+                })
+            });
+
+            const result = await response.text();
+
+            if (result == "success") {
+                status.innerText = "Upload complete: " + file.name;
+
+                input.value = "";
+
+                refreshSoundFiles();
+            } else {
+                status.innerText = "Upload verification failed: " + result;
+            }
+
+        } catch (error) {
+            console.log(error);
+            status.innerText = "Unable to verify upload.";
+        }
+
+        uploadButton.disabled = false;
+    }
 
     function getWebSiteUrl() {
         // get website url
