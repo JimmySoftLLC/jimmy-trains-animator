@@ -149,9 +149,9 @@
             <div id="myTracksContainer"></div>
             <h2>Sound file manager:</h2>
             <div>
-                <input type="file" id="soundFile" accept=".mp3,.wav">
-
-                <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button" onclick="uploadSound()">
+                <input type="file" id="soundFile" accept=".mp3,.wav" style="display:none;" onchange="uploadSound()">
+                <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button"
+                    onclick="document.getElementById('soundFile').click()">
                     Upload Sound
                 </button>
             </div>

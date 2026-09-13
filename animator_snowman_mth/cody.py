@@ -88,6 +88,7 @@ santa_folder = "santa/"
 story_folder = "story/"
 
 FOLDER_MAP = {
+    'A': animations_folder,
     'E': elves_folder,
     'B': bells_folder,
     'H': horns_folder,
@@ -96,7 +97,7 @@ FOLDER_MAP = {
     'C': story_folder
 }
 
-media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
+media_index = {'A': 0, 'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
 
 ################################################################################
 # Flash data
@@ -530,6 +531,24 @@ MIN_TRACK_VOLTAGE = 9.0
 # These are deliberately top-level so they can be called later from the
 # physical buttons or from one of the menu states.
 
+def url_decode(value):
+    result = ""
+    i = 0
+    while i < len(value):
+        if value[i] == "%" and i + 2 < len(value):
+            try:
+                result += chr(int(value[i + 1:i + 3], 16))
+                i += 3
+                continue
+            except:
+                pass
+        if value[i] == "+":
+            result += " "
+        else:
+            result += value[i]
+        i += 1
+    return result
+
 def scan_wifi_networks():
     import wifi
     networks = []
@@ -958,15 +977,11 @@ if web:
         def get_sound_files(request: Request):
             try:
                 sound_files = []
-
                 for filename in os.listdir(animations_folder):
                     lower_name = filename.lower()
-
                     if lower_name.endswith(".mp3") or lower_name.endswith(".wav"):
                         sound_files.append(filename)
-
                 sound_files.sort()
-
                 return Response(request, files.json_stringify(sound_files))
 
             except Exception as e:
@@ -979,29 +994,19 @@ if web:
             try:
                 rq_d = request.json()
                 filename = rq_d["filename"]
-
                 filename = filename.replace("\\", "/")
                 filename = filename.split("/")[-1]
-
                 if not filename:
                     return Response(request, "invalid filename")
-
                 lower_name = filename.lower()
-
                 if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
                     return Response(request, "invalid file type")
-
                 file_path = animations_folder + filename
-
                 if not f_exists(file_path):
                     return Response(request, "file not found")
-
                 os.remove(file_path)
-
                 print("Deleted sound file:", filename)
-
                 return Response(request, "success")
-
             except Exception as e:
                 print("Delete sound file error:", e)
                 return Response(request, "error")
@@ -1016,6 +1021,7 @@ if web:
                 if not filename:
                     return Response(request, "missing filename")
 
+                filename = url_decode(filename)
                 filename = filename.replace("\\", "/")
                 filename = filename.split("/")[-1]
 
@@ -1066,37 +1072,26 @@ if web:
                 print("Upload error:", e)
                 return Response(request, "error")
 
-
         @server.route("/upload-sound-complete", [POST])
         def upload_sound_complete(request: Request):
             try:
                 rq_d = request.json()
-
                 filename = rq_d["filename"]
                 expected_size = int(rq_d["size"])
-
                 filename = filename.replace("\\", "/")
                 filename = filename.split("/")[-1]
-
                 if not filename:
                     return Response(request, "invalid filename")
-
                 file_path = animations_folder + filename
-
                 if not f_exists(file_path):
                     return Response(request, "file not found")
-
                 actual_size = os.stat(file_path)[6]
-
                 print("Upload complete:", filename)
                 print("Expected size:", expected_size)
                 print("Actual size:", actual_size)
-
                 if actual_size != expected_size:
                     return Response(request, "size mismatch")
-
                 return Response(request, "success")
-
             except Exception as e:
                 print("Upload complete error:", e)
                 return Response(request, "error")
