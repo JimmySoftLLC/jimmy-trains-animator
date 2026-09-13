@@ -157,9 +157,9 @@ an_just_added = False
 # Setup hardware
 
 # Setup pin for v
-a_in = AnalogIn(board.A0)
+a_in = AnalogIn(board.A2)
 
-track_a_in = AnalogIn(board.A2)
+track_a_in = AnalogIn(board.A0)
 
 aud_en = digitalio.DigitalInOut(board.GP21)
 aud_en.direction = digitalio.Direction.OUTPUT
