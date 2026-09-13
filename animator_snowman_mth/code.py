@@ -28,7 +28,6 @@ import neopixel
 from rainbowio import colorwheel
 from analogio import AnalogIn
 import asyncio
-from adafruit_motor import motor
 import pwmio
 import microcontroller
 import rtc
@@ -46,11 +45,12 @@ import os
 import audiocore
 import sdcardio
 import storage
+from adafruit_motor import servo
 
 
 def gc_col(collection_point):
     gc.collect()
-    start_mem = gc.mem_free()
+    start_mem = gc.mem_free() 
     files.log_item("Point " + collection_point +
                    " Available memory: {} bytes".format(start_mem))
 
@@ -154,6 +154,54 @@ an_running = False
 an_just_added = False
 
 ################################################################################
+# Setup the servos
+s_1_pin = board.GP22
+s_2_pin = board.GP17
+s_3_pin = board.GP16
+
+s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
+s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+
+s_2 = pwmio.PWMOut(s_2_pin, duty_cycle=2 ** 15, frequency=50)
+s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
+
+s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
+s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
+
+p_arr = [90, 90, 90]
+
+s_arr = [s_1, s_2, s_3]
+
+async def cyc_servo(n, s, p_up, p_dwn):
+    global p_arr
+    while mix.voice[0].playing:
+        n_p = p_up
+        sign = 1
+        if p_arr[n] > n_p:
+            sign = - 1
+        for a in range(p_arr[n], n_p, sign):
+            m_servo(a)
+            await asyncio.sleep(s)
+        n_p = p_dwn
+        sign = 1
+        if p_arr[n] > n_p:
+            sign = - 1
+        for a in range(p_arr[n], n_p, sign):
+            m_servo(a)
+            await asyncio.sleep(s)
+
+
+def m_servo(n, p):
+    global p_arr
+    if p < 0:
+        p = 0
+    if p > 180:
+        p = 180
+    s_arr[n].angle = p
+    p_arr[n][n] = p
+
+
+################################################################################
 # Setup hardware
 
 # Setup pin for v
@@ -231,9 +279,9 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 n_px = 3
 
-led1 = neopixel.NeoPixel(board.GP14, 1, auto_write=False)
-led2 = neopixel.NeoPixel(board.GP13, 1, auto_write=False)
-led3 = neopixel.NeoPixel(board.GP12, 1, auto_write=False)
+led1 = neopixel.NeoPixel(board.GP0, 1, auto_write=False)
+led2 = neopixel.NeoPixel(board.GP1, 1, auto_write=False)
+led3 = neopixel.NeoPixel(board.GP6, 1, auto_write=False)
 
 led_channels = [led1, led2, led3]
 
@@ -1522,6 +1570,16 @@ async def set_hdw_async(cmd, dur=3):
     for seg in segs:
         if exit_set_hdw_async:
             return "STOP"
+
+        # SNXXX = Servo N (0 All, 1-3) XXX 0 to 180 
+        elif seg[0] == 'S':  # servos
+            num = int(seg[1])
+            v = int(seg[2:])
+            if num == 0:
+                for i in range(3):
+                    s_arr[i].angle = v
+            else:
+                s_arr[num-1].angle = int(v)
 
         # ZRAND = Random rainbow, fire, or color change
         elif seg[0:] == 'ZRAND':
