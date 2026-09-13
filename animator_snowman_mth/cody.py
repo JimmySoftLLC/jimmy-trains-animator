@@ -532,87 +532,58 @@ MIN_TRACK_VOLTAGE = 9.0
 
 def scan_wifi_networks():
     import wifi
-
     networks = []
-
     try:
         print("Scanning for WiFi networks...")
-
         for network in wifi.radio.start_scanning_networks():
             ssid = network.ssid
-
             if not ssid:
                 continue
-
             found = False
-
             for item in networks:
                 if item["ssid"] == ssid:
                     found = True
-
                     if network.rssi > item["rssi"]:
                         item["rssi"] = network.rssi
-
                     break
-
             if not found:
                 networks.append({
                     "ssid": ssid,
                     "rssi": network.rssi
                 })
-
         wifi.radio.stop_scanning_networks()
-
     except Exception as e:
         print("WiFi scan error:", e)
-
         try:
             wifi.radio.stop_scanning_networks()
         except:
             pass
-
     networks.sort(key=lambda item: item["rssi"], reverse=True)
-
     return networks
 
 
 def start_wifi_setup():
     global wifi_setup_restart, web
-
     import socketpool
     import wifi
     import ipaddress
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
-
     wifi_setup_restart = False
     web = False
-
-    print("")
-    print("======================================")
-    print("Jimmy Trains WiFi Setup")
-    print("======================================")
-
     networks = scan_wifi_networks()
-
     try:
         wifi.radio.stop_station()
     except Exception as e:
         print("Stop station:", e)
-
     print("Starting setup access point...")
-
     wifi.radio.start_ap("JimmyTrainsAnimator", "")
-
     wifi.radio.set_ipv4_address_ap(
         ipv4=ipaddress.IPv4Address("10.10.10.10"),
         netmask=ipaddress.IPv4Address("255.255.255.0"),
         gateway=ipaddress.IPv4Address("10.10.10.10")
     )
-
     wifi.radio.start_dhcp_ap()
-
     setup_ip = "10.10.10.10"
-
     print("")
     print("======================================")
     print("WiFi setup access point is running")
@@ -622,9 +593,11 @@ def start_wifi_setup():
     print("Use: http://10.10.10.10")
     print("======================================")
     print("")
-
     setup_pool = socketpool.SocketPool(wifi.radio)
     setup_server = Server(setup_pool, "/", debug=False)
+
+    ply_a_0(mvc_folder + "enter_ssid_password.mp3")
+
 
     @setup_server.route("/")
     def setup_home(request: Request):
@@ -637,49 +610,35 @@ def start_wifi_setup():
     @setup_server.route("/save-wifi", [POST])
     def setup_save_wifi(request: Request):
         global wifi_setup_restart
-
         try:
             rq_d = request.json()
-
             ssid = rq_d["ssid"].strip()
             password = rq_d["password"]
-
             if ssid == "":
                 return Response(request, "Please select a WiFi network.")
-
             env = {
                 "WIFI_SSID": ssid,
                 "WIFI_PASSWORD": password
             }
-
             files.write_json_file("env.json", env)
-
             print("WiFi settings saved for:", ssid)
-
             wifi_setup_restart = True
-
             return Response(request, "WiFi saved. Animator restarting...")
-
+        
         except Exception as e:
             print("WiFi setup save error:", e)
             return Response(request, "Unable to save WiFi settings.")
-
     setup_server.start(setup_ip, port=80)
-
     while True:
         try:
             setup_server.poll()
-
         except OSError as e:
             print("Setup HTTP error:", e)
-
         except Exception as e:
             print("Setup server error:", e)
-
         if wifi_setup_restart:
             time.sleep(2)
             microcontroller.reset()
-
         time.sleep(.01)
 
 
@@ -691,60 +650,44 @@ if web:
     import mdns
     import wifi
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
-
     gc_col("config wifi imports")
-
     files.log_item("Connecting to WiFi")
-
     WIFI_SSID = "jimmytrainsguest"
     WIFI_PASSWORD = ""
-
     try:
         env = files.read_json_file("env.json")
         WIFI_SSID = env["WIFI_SSID"]
         WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
         print("Using env ssid and password")
-
     except Exception:
         print("Using default ssid and password")
-
     wifi_connected = False
-
     for i in range(3):
         led[0] = (0, 0, 255)
         led.show()
-
         try:
             wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
             wifi_connected = True
             break
-
         except Exception as e:
             files.log_item(e)
             time.sleep(1)
-
     if not wifi_connected:
         print("Unable to connect to configured WiFi")
         print("WiFi setup access point is available from the physical/menu command")
         web = False
-
     else:
         gc_col("wifi connect")
-
         mdns = mdns.Server(wifi.radio)
         mdns.hostname = cfg["HOST_NAME"]
         mdns.advertise_service(service_type="_http", protocol="_tcp", port=80)
-
         local_ip = str(wifi.radio.ipv4_address)
-
         files.log_item("IP is " + local_ip)
         files.log_item("Connected")
-
         pool = socketpool.SocketPool(wifi.radio)
         server = Server(pool, "/static", debug=False)
         server.port = 80
-
         gc_col("wifi server")
 
         ################################################################################
@@ -1011,9 +954,7 @@ if web:
                 return Response(request, "out of memory")
             return Response(request, "success")
         
-
 gc_col("web server")
-
 
 def measure_signal_strength(MY_SSID, cycles):
     if not web:
@@ -1051,7 +992,6 @@ def measure_signal_strength(MY_SSID, cycles):
         time.sleep(0.1)
         if count > cycles:
             return avg_rssi
-
 
 cycles = 10
 
@@ -1886,10 +1826,6 @@ class BseSt(Ste):
         elif sw == "right":
             if not mix.voice[0].playing:
                 mch.go_to("main_menu")
-        elif sw == "right_held":
-            if not mix.voice[0].playing:
-                print("Right button held - starting WiFi setup")
-                start_wifi_setup()
         if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
             add_cmd("AN_" + cfg["option_selected"])
             an_just_added = True
@@ -2094,6 +2030,10 @@ class WebOpt(Ste):
                 cfg["serve_webpage"] = False
                 opt_sel()
                 sel_web()
+            elif selected_menu_item == "enter_web_credentials":
+                if not mix.voice[0].playing:
+                    print("Right button held - starting WiFi setup")
+                    start_wifi_setup()
             elif selected_menu_item == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
                 sel_web()

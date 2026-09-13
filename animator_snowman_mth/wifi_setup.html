@@ -3,7 +3,7 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Jimmy Trains WiFi Setup</title>
+    <title>Jimmy Trains Animator</title>
 
     <style>
         body {
@@ -55,133 +55,77 @@
 </head>
 
 <body>
-
     <div class="card">
-
-        <h1>Jimmy Trains</h1>
-
+        <h1>Jimmy Trains Animator</h1>
         <h2>WiFi Setup</h2>
-
         <label>WiFi Network</label>
-
         <select id="ssid">
             <option>Searching...</option>
         </select>
-
         <label>Password</label>
-
         <input id="password" type="password">
-
         <button onclick="saveWifi()">Save and Connect</button>
-
         <div id="status"></div>
-
     </div>
 
     <script>
-
         async function loadNetworks() {
-
             const select = document.getElementById("ssid");
-
             try {
-
                 const response = await fetch("/scan-wifi");
-
                 const networks = await response.json();
-
                 select.innerHTML = "";
-
                 for (const network of networks) {
-
                     const option = document.createElement("option");
-
                     option.value = network.ssid;
-
-                    option.textContent =
-                        network.ssid +
-                        " (" +
-                        network.rssi +
-                        " dBm)";
-
+                    option.textContent = network.ssid + " (" + network.rssi + " dBm)";
                     select.appendChild(option);
                 }
-
                 if (networks.length === 0) {
-
                     const option = document.createElement("option");
-
                     option.value = "";
-
                     option.textContent = "No networks found";
-
                     select.appendChild(option);
                 }
 
             } catch (error) {
-
                 select.innerHTML = "";
-
                 const option = document.createElement("option");
-
                 option.value = "";
-
                 option.textContent = "Unable to load networks";
-
                 select.appendChild(option);
             }
         }
 
 
         async function saveWifi() {
-
             const ssid = document.getElementById("ssid").value;
-
             const password = document.getElementById("password").value;
-
             const status = document.getElementById("status");
-
             if (ssid === "") {
-
                 status.innerHTML = "Please select a WiFi network.";
-
                 return;
             }
-
             status.innerHTML = "Saving WiFi settings...";
-
             try {
-
                 const response = await fetch("/save-wifi", {
-
                     method: "POST",
-
                     headers: {
                         "Content-Type": "application/json"
                     },
-
                     body: JSON.stringify({
                         ssid: ssid,
                         password: password
                     })
                 });
-
                 const result = await response.text();
-
                 status.innerHTML = result;
-
             } catch (error) {
-
                 status.innerHTML =
                     "Settings saved. The Animator may already be restarting.";
             }
         }
-
-
         loadNetworks();
-
     </script>
-
 </body>
-
 </html>
