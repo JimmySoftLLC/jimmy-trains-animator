@@ -521,22 +521,7 @@ def get_snds(dir, typ):
     fn = dir + "/" + sds[i] + ".mp3"
     return fn
 
-
-################################################################################
-# Setup motor controller
-p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
-d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
-
-# DC motor setup; Set pins to custom PWM frequency, 17 16 on incline, 0 1 on demo
-pwm_a = pwmio.PWMOut(board.GP17, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP16, frequency=p_frq)
-train = motor.DCMotor(pwm_a, pwm_b)
-train.decay_mode = d_mde
-train.throttle = 0
-current_throttle = 0
-
 MIN_TRACK_VOLTAGE = 9.0
-
 
 ################################################################################
 # Setup wifi and web server
@@ -741,12 +726,6 @@ if (web):
             def btn(request: Request):
                 return Response(request, cfg["volume"])
 
-            @server.route("/get-throttle", [POST])
-            def btn(request: Request):
-                cur_throttle_str = str(current_throttle)
-                print("sending current throttle: ", cur_throttle_str)
-                return Response(request, cur_throttle_str)
-
             @server.route("/get-animations", [POST])
             def btn(request: Request):
                 stop_all_cmds()
@@ -938,10 +917,7 @@ def clr_cmd_queue():
 
 
 def stop_all_cmds(cont_mode_off=True):
-    global exit_set_hdw_async, flsh_i, flsh_t, current_throttle
-    train.throttle = 0
-    current_throttle = 0
-    flsh_i = len(flsh_t)-1
+    global exit_set_hdw_async
     if cont_mode_off:
         cfg["cont_mode"] = False
     mix.voice[0].stop()
@@ -952,9 +928,8 @@ def stop_all_cmds(cont_mode_off=True):
     exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
 
-
 async def animation_wait(wait_time):
-    global an_running, current_throttle, flsh_i, srt_t
+    global an_running, flsh_i, srt_t
     start_time = time.monotonic()
     spoken = False
     power_off_time = 0
@@ -1151,7 +1126,7 @@ async def an_light_async(f_nm):
             dur = 0.25
         if dur < 0:
             dur = 0
-        if t_elsp > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
+        if flsh_i < len(flsh_t)-1 and t_elsp > float(ft1[0]) - 0.25:
             files.log_item("time elapsed: " + str(t_elsp) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
             if len(ft1) == 1 or ft1[1] == "":
@@ -1326,7 +1301,7 @@ async def set_hdw_async(cmd, dur=3):
             if exit_set_hdw_async:
                 return "STOP"
 
-        # VRFXXX = Fade background volume to XXX, 0 to 100, turns off volume tracking to throttle
+        # VRFXXX = Fade background volume to XXX, 0 to 100
         elif seg[:3] == 'VRF':
             try:
                 target_vol = int(seg[3:])
@@ -1348,7 +1323,7 @@ async def set_hdw_async(cmd, dur=3):
             except Exception as e:
                 print("VRF error:", e)
 
-        # VRXXX = Set background volume to XXX, 0 to 100, turns off volume tracking to throttle
+        # VRXXX = Set background volume to XXX, 0 to 100
         elif seg[:2] == 'VR':
             try:
                 target_vol = int(seg[2:])
