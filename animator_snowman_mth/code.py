@@ -74,7 +74,7 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 3
+debug_voltage_multiplier = 1
 
 animations_folder = "snds/"
 mvc_folder = "mvc/"
