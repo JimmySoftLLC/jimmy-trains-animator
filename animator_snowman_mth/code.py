@@ -169,36 +169,58 @@ s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
 s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
 
 p_arr = [90, 90, 90]
-
 s_arr = [s_1, s_2, s_3]
 
-async def cyc_servo(n, s, p_up, p_dwn):
-    global p_arr
-    while mix.voice[0].playing:
-        n_p = p_up
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
-        n_p = p_dwn
-        sign = 1
-        if p_arr[n] > n_p:
-            sign = - 1
-        for a in range(p_arr[n], n_p, sign):
-            m_servo(a)
-            await asyncio.sleep(s)
+# Allowed dance target ranges for each snowman
+dance_min = [55, 65, 45]
+dance_max = [125, 135, 115]
+
+# Starting targets
+dance_target = [110, 75, 105]
+
+# Time between one-degree servo movements
+dance_interval = .02
 
 
 def m_servo(n, p):
     global p_arr
+
     if p < 0:
         p = 0
+
     if p > 180:
         p = 180
+
     s_arr[n].angle = p
-    p_arr[n][n] = p
+    p_arr[n] = p
+
+
+async def dance(st, dur):
+    next_move = st
+
+    while True:
+        if exit_set_hdw_async:
+            return
+
+        now = time.monotonic()
+
+        if now - st >= dur:
+            return
+
+        if now >= next_move:
+            next_move += dance_interval
+
+            for n in range(3):
+                if p_arr[n] == dance_target[n]:
+                    dance_target[n] = random.randint(dance_min[n], dance_max[n])
+
+                if p_arr[n] < dance_target[n]:
+                    m_servo(n, p_arr[n] + 1)
+
+                elif p_arr[n] > dance_target[n]:
+                    m_servo(n, p_arr[n] - 1)
+
+        await asyncio.sleep(0)
 
 
 ################################################################################
@@ -757,6 +779,30 @@ if web:
         server.port = 80
         gc_col("wifi server")
 
+        def create_directory_if_needed(path):
+            if path == "" or path == "/":
+                return
+
+            path = path.replace("\\", "/")
+
+            if not path.startswith("/"):
+                path = "/" + path
+
+            parts = path.strip("/").split("/")
+            current_path = ""
+
+            for part in parts:
+                if part == "":
+                    continue
+
+                current_path += "/" + part
+
+                try:
+                    os.stat(current_path)
+                except OSError:
+                    print("Creating directory:", current_path)
+                    os.mkdir(current_path)
+
         ################################################################################
         # Setup routes
 
@@ -1059,6 +1105,7 @@ if web:
                 print("Delete sound file error:", e)
                 return Response(request, "error")
 
+
         @server.route("/upload-sound", [POST])
         def upload_sound(request: Request):
             try:
@@ -1083,6 +1130,9 @@ if web:
                 if location == "":
                     location = "/"
 
+                if not location.startswith("/"):
+                    location = "/" + location
+
                 if location != "/" and not location.endswith("/"):
                     location += "/"
 
@@ -1090,6 +1140,8 @@ if web:
                 chunk_size = len(request.body)
 
                 if offset == 0:
+                    create_directory_if_needed(location)
+
                     with open(file_path, "wb") as f:
                         f.write(request.body)
 
@@ -1109,7 +1161,7 @@ if web:
                 print("Upload error:", e)
                 return Response(request, "error")
 
-
+ 
         @server.route("/upload-sound-complete", [POST])
         def upload_sound_complete(request: Request):
             try:
@@ -1564,40 +1616,42 @@ def set_hdw_not_async(seg):
 async def set_hdw_async(cmd, dur=3):
     global brightness, current_throttle, media_index, exit_set_hdw_async
     global bckgrnd_vol
+
     if cmd == "":
         return "NOCMDS"
+    st = time.monotonic()
     segs = cmd.split(",")
     for seg in segs:
         if exit_set_hdw_async:
             return "STOP"
 
-        # SNXXX = Servo N (0 All, 1-3) XXX 0 to 180 
-        elif seg[0] == 'S':  # servos
+        # SNXXX = Servo N (0 All, 1-3) XXX 0 to 180
+        elif seg[0] == 'S':
             num = int(seg[1])
             v = int(seg[2:])
             if num == 0:
                 for i in range(3):
-                    s_arr[i].angle = v
+                    m_servo(i, v)
             else:
-                s_arr[num-1].angle = int(v)
+                m_servo(num-1, v)
+
+        # ZDANCE = Dance snowmen for duration of timestamp segment
+        elif seg == "ZDANCE":
+            asyncio.create_task(dance(st, dur))
 
         # ZRAND = Random rainbow, fire, or color change
-        elif seg[0:] == 'ZRAND':
-            await random_effect(1, 3, dur)
-            if exit_set_hdw_async:
-                return "STOP"
+        elif seg == 'ZRAND':
+            random_effect(st, 1, 3, dur)
 
         # ZRWBTTT = red, white, blue wheel, TTT cycle speed in decimal seconds
         elif seg[:4] == 'ZRWB':
             v = float(seg[4:])
-            await rwb_bow(v, dur)
+            asyncio.create_task(rwb_bow(st, v, dur))
 
         # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
         elif seg[:2] == 'ZR':
             v = float(seg[2:])
-            await rbow(v, dur)
-            if exit_set_hdw_async:
-                return "STOP"
+            asyncio.create_task(rbow(st, v, dur))
 
         # ZFIRE_R_G_B = Fire effect R, G, B, (0-255 or None)
         elif seg.startswith("ZFIRE"):
@@ -1611,9 +1665,7 @@ async def set_hdw_async(cmd, dur=3):
                 g = int(parts[2])
             if len(parts) > 3 and parts[3] != "None":
                 b = int(parts[3])
-            await fire(dur, r, g, b)
-            if exit_set_hdw_async:
-                return "STOP"
+            asyncio.create_task(fire(st, dur, r, g, b))
 
         # ZCOLCH_R_G_B_C = Color change R, G, B, (0-255 or None), C one color (True or False)
         elif seg.startswith("ZCOLCH"):
@@ -1683,7 +1735,7 @@ async def set_hdw_async(cmd, dur=3):
             else:
                 return "w0_false"
 
-        # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX file name
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A animations, E elves, B bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
         elif seg[0] == 'M':
             if seg[1] == "S":
                 stp_a_0()
@@ -1759,84 +1811,67 @@ def set_neo_to(light_n, r, g, b):
     led.show()
 
 
-async def random_effect(il, ih, d):
-    if exit_set_hdw_async:
-        return
+def random_effect(st, il, ih, dur):
     i = random.randint(il, ih)
     if i == 1:
-        await rbow(0.012, d)
+        asyncio.create_task(rbow(st, 0.012, dur))
     elif i == 2:
         multi_color()
-        if an_running:
-            if await animation_wait(d):
-                return
-        else:
-            await asyncio.sleep(d)
     elif i == 3:
-        await fire(d)
+        asyncio.create_task(fire(st, dur))
 
 
-async def rbow(spd, dur):
-    st = time.monotonic()
-    te = time.monotonic()-st
-
-    while te < dur:
-        for j in range(0, 255, 1):
-            if exit_set_hdw_async:
-                return
+async def rbow(st, spd, dur):
+    last_j = -1
+    while True:
+        if exit_set_hdw_async:
+            return
+        now = time.monotonic()
+        elapsed = now - st
+        if elapsed >= dur:
+            return
+        j = int(elapsed / spd) & 255
+        if j != last_j:
+            last_j = j
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
-            if an_running:
-                if await animation_wait(spd):
-                    return
-            else:
-                time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
+        await asyncio.sleep(0)
 
 def red_white_blue_wheel(pos):
     pos &= 255
-
     if pos < 64:
         v = pos << 2
         return (255 << 16) | (v << 8) | v
-
     if pos < 128:
         v = (pos - 64) << 2
         x = 255 - v
         return (x << 16) | (x << 8) | 255
-
     if pos < 192:
         v = (pos - 128) << 2
         return (v << 16) | (v << 8) | 255
-
     v = (pos - 192) << 2
     x = 255 - v
     return (255 << 16) | (x << 8) | x
 
-async def rwb_bow(spd, dur):
-    st = time.monotonic()
-    te = time.monotonic()-st
-
-    while te < dur:
-        for j in range(0, 255, 1):
-            if exit_set_hdw_async:
-                return
+async def rwb_bow(st, spd, dur):
+    last_j = -1
+    while True:
+        if exit_set_hdw_async:
+            return
+        now = time.monotonic()
+        elapsed = now - st
+        if elapsed >= dur:
+            return
+        j = int(elapsed / spd) & 255
+        if j != last_j:
+            last_j = j
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = red_white_blue_wheel(pixel_index & 255)
             led.show()
-            if an_running:
-                if await animation_wait(spd):
-                    return
-            else:
-                time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
+        await asyncio.sleep(0)
 
 
 def multi_color(r=None, g=None, b=None, set_one_color=True):
@@ -1868,8 +1903,8 @@ def multi_color(r=None, g=None, b=None, set_one_color=True):
     return False
 
 
-async def fire(dur, r=None, g=None, b=None):
-    st = time.monotonic()
+async def fire(st, dur, r=None, g=None, b=None):
+    next_change = st
     if r is None:
         r = random.randint(128, 255)
     if g is None:
@@ -1879,22 +1914,20 @@ async def fire(dur, r=None, g=None, b=None):
     while True:
         if exit_set_hdw_async:
             return
-        for i in range(n_px):
-            f = random.randint(0, 110)
-            r1 = bnd(r-f, 0, 255)
-            g1 = bnd(g-f, 0, 255)
-            b1 = bnd(b-f, 0, 255)
-            led[i] = (r1, g1, b1)
-        led.show()
-        upd_vol(0)
-        if an_running:
-            if await animation_wait(random.uniform(0.05, 0.1)):
-                return
-        else:
-            time.sleep(random.uniform(0.05, 0.1))
-        te = time.monotonic()-st
-        if te > dur:
+        now = time.monotonic()
+        if now - st >= dur:
             return
+        if now >= next_change:
+            next_change = now + random.uniform(0.05, 0.1)
+            for i in range(n_px):
+                f = random.randint(0, 110)
+                r1 = bnd(r-f, 0, 255)
+                g1 = bnd(g-f, 0, 255)
+                b1 = bnd(b-f, 0, 255)
+                led[i] = (r1, g1, b1)
+            led.show()
+            upd_vol(0)
+        await asyncio.sleep(0)
 
 
 def bnd(c, l, u):
