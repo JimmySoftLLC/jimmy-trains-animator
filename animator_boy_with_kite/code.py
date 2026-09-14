@@ -57,10 +57,10 @@ rand_timer = 0
 # setup hardware
 
 # Setup the switches
-l_sw = digitalio.DigitalInOut(board.GP2)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
+l_sw_io = digitalio.DigitalInOut(board.GP2)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw_io)
 
 r_sw = digitalio.DigitalInOut(board.GP3)
 r_sw.direction = digitalio.Direction.INPUT
@@ -240,9 +240,15 @@ def spk_word(str_to_speak):
 def exit_early():
     global kill_process
     l_sw.update()
-    if l_sw.fell:
+    if l_sw.fell or not l_sw_io.value:
         kill_process = True
-        mix.voice[0].stop()
+        if mix.voice[0].playing:
+            mix.voice[0].stop()
+        if len(mix.voice) > 1 and mix.voice[1].playing:
+            mix.voice[1].stop()
+        coils_off()
+        return True
+    return False
 
 
 ################################################################################
@@ -363,13 +369,19 @@ async def deploy_kite(steps, direction, spd=0.005):
     else:
         raise ValueError("Direction must be 'down' or 'up'")
     for _ in range(steps):
-        if kill_process:
-            break
+        if exit_early():
+            async_running = False
+            coils_off()
+            return
         if direction == "down":
             lst_kite_deploy_pos -= 1
-        elif direction == "up":
+        else:
             lst_kite_deploy_pos += 1
         for step in seq:
+            if exit_early():
+                async_running = False
+                coils_off()
+                return
             set_step(step)
             await asyncio.sleep(spd)
         coils_off()
