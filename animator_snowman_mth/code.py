@@ -195,6 +195,41 @@ def m_servo(n, p):
     p_arr[n] = p
 
 
+async def move_servo(n, target, spd):
+    start_pos = p_arr[n]
+    st = time.monotonic()
+
+    if target > start_pos:
+        direction = 1
+    elif target < start_pos:
+        direction = -1
+    else:
+        return
+
+    while True:
+        if exit_set_hdw_async:
+            return
+
+        elapsed = time.monotonic() - st
+        steps = int(elapsed / spd)
+
+        new_pos = start_pos + steps * direction
+
+        if direction > 0:
+            if new_pos >= target:
+                m_servo(n, target)
+                return
+        else:
+            if new_pos <= target:
+                m_servo(n, target)
+                return
+
+        if new_pos != p_arr[n]:
+            m_servo(n, new_pos)
+
+        await asyncio.sleep(0)
+
+
 async def dance(st, dur):
     next_move = st
 
@@ -221,6 +256,7 @@ async def dance(st, dur):
                     m_servo(n, p_arr[n] - 1)
 
         await asyncio.sleep(0)
+
 
 
 ################################################################################
@@ -1626,14 +1662,24 @@ async def set_hdw_async(cmd, dur=3):
             return "STOP"
 
         # SNXXX = Servo N (0 All, 1-3) XXX 0 to 180
+        # SNXXX_SPD = Servo N to XXX at 1 degree every SPD seconds
         elif seg[0] == 'S':
-            num = int(seg[1])
-            v = int(seg[2:])
-            if num == 0:
-                for i in range(3):
-                    m_servo(i, v)
+            parts = seg.split("_")
+            num = int(parts[0][1])
+            v = int(parts[0][2:])
+            if len(parts) > 1:
+                spd = float(parts[1])
+                if num == 0:
+                    for i in range(3):
+                        asyncio.create_task(move_servo(i, v, spd))
+                else:
+                    asyncio.create_task(move_servo(num-1, v, spd))
             else:
-                m_servo(num-1, v)
+                if num == 0:
+                    for i in range(3):
+                        m_servo(i, v)
+                else:
+                    m_servo(num-1, v)
 
         # ZDANCE = Dance snowmen for duration of timestamp segment
         elif seg == "ZDANCE":
