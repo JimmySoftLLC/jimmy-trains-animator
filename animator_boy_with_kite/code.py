@@ -13,6 +13,9 @@ import asyncio
 from analogio import AnalogIn
 import files
 import gc
+import array
+import rp2pio
+import adafruit_pioasm
 
 
 def gc_col(collection_point):
@@ -40,8 +43,6 @@ v_set = cfg_vol["volume_settings"]
 
 cfg_opt = files.read_json_file("options.json")
 mnu_o = cfg_opt["options"]
-
-print(cfg)
 
 ################################################################################
 # globals
@@ -72,17 +73,53 @@ t_sw.direction = digitalio.Direction.INPUT
 t_sw.pull = digitalio.Pull.UP
 t_sw = Debouncer(t_sw)
 
-# Define the pins connected to the stepper motor driver
-coil_A_1 = digitalio.DigitalInOut(board.GP4)
-coil_A_2 = digitalio.DigitalInOut(board.GP5)
-coil_B_1 = digitalio.DigitalInOut(board.GP6)
-coil_B_2 = digitalio.DigitalInOut(board.GP7)
+################################################################################
+# PIO stepper motor
 
-# Set the pins as outputs
-coil_A_1.direction = digitalio.Direction.OUTPUT
-coil_A_2.direction = digitalio.Direction.OUTPUT
-coil_B_1.direction = digitalio.Direction.OUTPUT
-coil_B_2.direction = digitalio.Direction.OUTPUT
+STEPPER_PHASE_TIME = 0.005
+STEPPER_FULL_STEP_TIME = STEPPER_PHASE_TIME * 4
+
+stepper_program = adafruit_pioasm.assemble("""
+.program stepper
+start:
+    pull block
+    out x, 1
+    out y, 31
+    jmp !x down
+up:
+    set pins, 9 [24]
+    set pins, 3 [24]
+    set pins, 6 [24]
+    set pins, 12 [24]
+    jmp y-- up
+    jmp finished
+down:
+    set pins, 12 [24]
+    set pins, 6 [24]
+    set pins, 3 [24]
+    set pins, 9 [24]
+    jmp y-- down
+finished:
+    set pins, 0
+    set x, 1
+    mov isr, x
+    push block
+    jmp start
+""")
+
+stepper_init = adafruit_pioasm.assemble("""
+    set pins, 0
+""")
+
+stepper_coils_off = adafruit_pioasm.assemble("""
+    set pins, 0
+""")
+
+stepper_sm = rp2pio.StateMachine(stepper_program, frequency=5000, init=stepper_init, first_set_pin=board.GP4, set_pin_count=4, initial_set_pin_state=0, initial_set_pin_direction=0x0F, out_shift_right=True, wait_for_txstall=False)
+stepper_done = array.array("I", [0])
+
+################################################################################
+# Audio
 
 # Setup pin for vol on 5v aud board
 a_in = AnalogIn(board.A2)
@@ -129,14 +166,15 @@ def upd_vol(s):
 
 upd_vol(0.01)
 
-# Setup the servos
+################################################################################
+# Servos
 kite_rot = pwmio.PWMOut(board.GP17, duty_cycle=2**15, frequency=50)
 kite_rot = servo.Servo(kite_rot, min_pulse=500, max_pulse=2500)
 kite_rot.angle = lst_kite_rot_pos
 
 
 ################################################################################
-# sound
+# Sound helpers
 
 
 def ply_a_0(file_name):
@@ -253,42 +291,28 @@ def animation_stop():
         kill_process = True
         if mix.voice[0].playing:
             mix.voice[0].stop()
-        coils_off()
+        stop_stepper()
         return True
     return False
 
+
 ################################################################################
-# motors
+# stepper motor
 
-
-step_down = [
-    [0, 0, 1, 1],  # Step 1
-    [0, 1, 1, 0],  # Step 2
-    [1, 1, 0, 0],  # Step 3
-    [1, 0, 0, 1],  # Step 4
-]
-
-step_up = [
-    [1, 0, 0, 1],  # Step 4
-    [1, 1, 0, 0],  # Step 3
-    [0, 1, 1, 0],  # Step 2
-    [0, 0, 1, 1],  # Step 1
-]
-
-
-def set_step(step):
-    coil_A_1.value = step[0]
-    coil_A_2.value = step[1]
-    coil_B_1.value = step[2]
-    coil_B_2.value = step[3]
-
+def clear_stepper_done():
+    while stepper_sm.in_waiting:
+        stepper_sm.readinto(stepper_done)
 
 def coils_off():
-    coil_A_1.value = 0
-    coil_A_2.value = 0
-    coil_B_1.value = 0
-    coil_B_2.value = 0
+    stepper_sm.run(stepper_coils_off)
 
+def stop_stepper():
+    stepper_sm.stop()
+    stepper_sm.restart()
+    clear_stepper_done()
+
+################################################################################
+# servo motor
 
 def servo_m(servo_pos):
     global lst_kite_rot_pos
@@ -374,24 +398,36 @@ async def rotate_kite_async():
 
 async def deploy_kite(steps, direction, spd=0.005):
     global async_running, lst_kite_deploy_pos
-    if direction == "down": seq = step_down
-    elif direction == "up": seq = step_up
-    else: raise ValueError("Direction must be 'down' or 'up'")
-    for _ in range(steps):
+    if steps <= 0:
+        async_running = False
+        return
+    if direction != "up" and direction != "down":
+        raise ValueError("Direction must be 'down' or 'up'")
+    clear_stepper_done()
+    direction_bit = 1 if direction == "up" else 0
+    command = ((steps - 1) << 1) | direction_bit
+    command_data = array.array("I", [command])
+    start_pos = lst_kite_deploy_pos
+    start_time = time.monotonic()
+    stepper_sm.write(command_data)
+    while not stepper_sm.in_waiting:
+        elapsed = time.monotonic() - start_time
+        completed_steps = int(elapsed / STEPPER_FULL_STEP_TIME)
+        if completed_steps > steps:
+            completed_steps = steps
+        if direction == "up":
+            lst_kite_deploy_pos = start_pos + completed_steps
+        else:
+            lst_kite_deploy_pos = start_pos - completed_steps
         if animation_stop():
             async_running = False
-            coils_off()
             return
-        if direction == "down": lst_kite_deploy_pos -= 1
-        else: lst_kite_deploy_pos += 1
-        for step in seq:
-            if animation_stop():
-                async_running = False
-                coils_off()
-                return
-            set_step(step)
-            await asyncio.sleep(spd)
-        coils_off()
+        await asyncio.sleep(0)
+    stepper_sm.readinto(stepper_done)
+    if direction == "up":
+        lst_kite_deploy_pos = start_pos + steps
+    else:
+        lst_kite_deploy_pos = start_pos - steps
     async_running = False
 
 
