@@ -240,16 +240,22 @@ def spk_word(str_to_speak):
 def exit_early():
     global kill_process
     l_sw.update()
-    if l_sw.fell or not l_sw_io.value:
+    if l_sw.fell:
         kill_process = True
-        if mix.voice[0].playing:
-            mix.voice[0].stop()
-        if len(mix.voice) > 1 and mix.voice[1].playing:
-            mix.voice[1].stop()
+        if mix.voice[0].playing: mix.voice[0].stop()
         coils_off()
         return True
     return False
 
+def animation_stop():
+    global kill_process
+    if not l_sw_io.value:
+        kill_process = True
+        if mix.voice[0].playing:
+            mix.voice[0].stop()
+        coils_off()
+        return True
+    return False
 
 ################################################################################
 # motors
@@ -336,10 +342,13 @@ async def rotate_kite_async():
         if lst_kite_rot_pos > rand_pos_1:
             sign = -1
         total_steps = abs(rand_pos_1 - lst_kite_rot_pos)
-        exit_early()
+        animation_stop()
         if not async_running or kill_process:
             break
         for _ in range(total_steps + 1):
+            if animation_stop():
+                async_running = False
+                return
             spd = rotate_spd()
             kite_ang = lst_kite_rot_pos + 1 * sign
             servo_m(kite_ang)
@@ -349,10 +358,13 @@ async def rotate_kite_async():
         if lst_kite_rot_pos > rand_pos_2:
             sign = -1
         total_steps = abs(rand_pos_2 - lst_kite_rot_pos)
-        exit_early()
+        animation_stop()
         if not async_running or kill_process:
             break
         for _ in range(total_steps + 1):
+            if animation_stop():
+                async_running = False
+                return
             spd = rotate_spd()
             kite_ang = lst_kite_rot_pos + 1 * sign
             servo_m(kite_ang)
@@ -362,23 +374,18 @@ async def rotate_kite_async():
 
 async def deploy_kite(steps, direction, spd=0.005):
     global async_running, lst_kite_deploy_pos
-    if direction == "down":
-        seq = step_down
-    elif direction == "up":
-        seq = step_up
-    else:
-        raise ValueError("Direction must be 'down' or 'up'")
+    if direction == "down": seq = step_down
+    elif direction == "up": seq = step_up
+    else: raise ValueError("Direction must be 'down' or 'up'")
     for _ in range(steps):
-        if exit_early():
+        if animation_stop():
             async_running = False
             coils_off()
             return
-        if direction == "down":
-            lst_kite_deploy_pos -= 1
-        else:
-            lst_kite_deploy_pos += 1
+        if direction == "down": lst_kite_deploy_pos -= 1
+        else: lst_kite_deploy_pos += 1
         for step in seq:
-            if exit_early():
+            if animation_stop():
                 async_running = False
                 coils_off()
                 return
@@ -424,6 +431,7 @@ def an():
     for _ in range(cycles):
         if kill_process:
             coils_off()
+            w0.deinit()
             return
         if rnd_prob(0.2) and not mix.voice[0].playing and cfg["wind"] == True:
             mix.voice[0].play(w0, loop=False)
@@ -435,13 +443,30 @@ def an():
                 direction = "down"
             total_steps = abs(rand_deploy_pos - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, direction))
+            if kill_process:
+                coils_off()
+                w0.deinit()
+                return
         else:
             total_steps = abs(0 - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, "down"))
+            if kill_process:
+                coils_off()
+                w0.deinit()
+                return
             total_steps = abs(cfg["kite_deploy_max"] - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, "up"))
+            if kill_process:
+                coils_off()
+                w0.deinit()
+                return
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
     w0.deinit()
     gc_col("An done clean up sound")
+    if kill_process:
+        coils_off()
+        return
     total_steps = abs(0 - lst_kite_deploy_pos)
     asyncio.run(rn_an(total_steps, "down"))
     coils_off()
@@ -548,6 +573,7 @@ class BseSt(Ste):
         elif cfg["timer"] == True:
             if rand_timer <= 0:
                 an()
+                time.sleep(0.25)
                 coils_off()
                 rand_timer = int(cfg["timer_val"]) * 60
                 print("an done")
@@ -556,6 +582,7 @@ class BseSt(Ste):
                 rand_timer -= 1
         elif sw == "left" or sw == "trigger":
             an()
+            time.sleep(0.25)
             print("an done")
         elif sw == "right":
             mch.go_to("main_menu")
