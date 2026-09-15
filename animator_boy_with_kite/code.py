@@ -579,9 +579,10 @@ def an():
         play_dialog_folder("start_fail")
         return
     play_dialog_folder("start_pass")
-    cycles = 8
-    if cfg["random"] == False:
-        cycles = 4
+    if cfg["random"]:
+        cycles = cfg["cycles_random"]
+    else:
+        cycles = cfg["cycles_non_random"]
     for _ in range(cycles):
         clear_finished_w0()
         if kill_process:

@@ -1,11 +1,13 @@
 {
-  "can_cancel": true,
-  "wind": true,
-  "servo": 90,
-  "volume_pot": false,
+  "servo": "79",
   "timer": false,
   "volume": "70",
+  "volume_pot": false,
   "timer_val": "1",
   "random": true,
-  "kite_deploy_max": 1700
+  "wind": true,
+  "kite_deploy_max": 1700,
+  "cycles_non_random": 4,
+  "cycles_random": 8,
+  "museum_mode": false
 }
