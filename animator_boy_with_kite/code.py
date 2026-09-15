@@ -176,34 +176,37 @@ kite_rot.angle = lst_kite_rot_pos
 ################################################################################
 # Sound helpers
 
-audio_w0 = None
+w0 = None
+START_FAIL_CHANCE = 0.10
+FLIGHT_FAIL_CHANCE = 0.05
+FLIGHT_DIALOG_CHANCE = 0.40
 
-def cleanup_audio():
-    global audio_w0
-    if audio_w0:
+def clear_w0():
+    global w0
+    if w0:
         try:
-            audio_w0.deinit()
+            w0.deinit()
         except:
             pass
-        audio_w0 = None
-    gc.collect()
+        w0 = None
+    gc_col("Clear w0")
 
-def cleanup_finished_audio():
-    if audio_w0 and not mix.voice[0].playing:
-        cleanup_audio()
+def clear_finished_w0():
+    if w0 and not mix.voice[0].playing:
+        clear_w0()
 
 def stop_dialog():
     if mix.voice[0].playing:
         mix.voice[0].stop()
-    cleanup_audio()
+    clear_w0()
 
 def play_dialog_folder(folder, chance=1.0):
-    global audio_w0
+    global w0
     if mix.voice[0].playing:
         return False
     if random.random() > chance:
         return False
-    cleanup_audio()
+    clear_w0()
     path = folder
     try:
         sounds = os.listdir(path)
@@ -229,43 +232,40 @@ def play_dialog_folder(folder, chance=1.0):
     gc.collect()
     print("Dialog: " + folder + "/" + file_name)
     try:
-        audio_w0 = audiomp3.MP3Decoder(open(path + "/" + file_name, "rb"))
-        mix.voice[0].play(audio_w0, loop=False)
+        w0 = audiomp3.MP3Decoder(open(path + "/" + file_name, "rb"))
+        mix.voice[0].play(w0, loop=False)
     except Exception as e:
         files.log_item("Dialog play error: " + str(e))
-        cleanup_audio()
+        clear_w0()
         return False
     return True
 
 def play_wind():
-    global audio_w0
+    global w0
     if mix.voice[0].playing:
         return False
     if not play_dialog_folder("wind"):
         return False
     while mix.voice[0].playing:
         if animation_stop():
-            cleanup_audio()
+            clear_w0()
             return False
         upd_vol(0.01)
-    cleanup_audio()
+    clear_w0()
     if kill_process:
         return False
     try:
-        audio_w0 = audiomp3.MP3Decoder(open("mp3/wind_effect.mp3", "rb"))
-        mix.voice[0].play(audio_w0, loop=False)
+        w0 = audiomp3.MP3Decoder(open("mp3/wind_effect.mp3", "rb"))
+        mix.voice[0].play(w0, loop=False)
     except Exception as e:
         files.log_item("Wind play error: " + str(e))
-        cleanup_audio()
+        clear_w0()
         return False
     return True
 
-START_FAIL_CHANCE = 0.10
-FLIGHT_FAIL_CHANCE = 0.05
-FLIGHT_DIALOG_CHANCE = 0.40
-
 
 def ply_a_0(file_name):
+    global w0
     upd_vol(0.01)
     if mix.voice[0].playing:
         mix.voice[0].stop()
@@ -276,9 +276,7 @@ def ply_a_0(file_name):
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
-    w0.deinit()
-    gc_col("Clear w0")
-    print("done playing")
+    clear_w0()
 
 
 def ch_vol(action):
@@ -509,7 +507,7 @@ async def deploy_kite(steps, direction, spd=0.005):
         else:
             lst_kite_deploy_pos = start_pos - completed_steps
         if direction == "up" and not launch_dialog_played and lst_kite_deploy_pos >= launch_position:
-            cleanup_finished_audio()
+            clear_finished_w0()
             if play_dialog_folder("launch"):
                 launch_dialog_played = True
         if animation_stop():
@@ -554,7 +552,7 @@ def an():
     global kill_process, launch_dialog_played
     kill_process = False
     launch_dialog_played = False
-    cleanup_finished_audio()
+    clear_finished_w0()
     if rnd_prob(START_FAIL_CHANCE):
         play_dialog_folder("start_fail")
         return
@@ -563,7 +561,7 @@ def an():
     if cfg["random"] == False:
         cycles = 4
     for _ in range(cycles):
-        cleanup_finished_audio()
+        clear_finished_w0()
         if kill_process:
             stop_dialog()
             coils_off()
@@ -581,16 +579,16 @@ def an():
             if lst_kite_deploy_pos > rand_deploy_pos:
                 direction = "down"
             if rnd_prob(FLIGHT_FAIL_CHANCE):
-                cleanup_finished_audio()
+                clear_finished_w0()
                 play_dialog_folder("flight_fail")
                 total_steps = abs(0 - lst_kite_deploy_pos)
                 asyncio.run(rn_an(total_steps, "down"))
                 if mix.voice[0].playing:
                     mix.voice[0].stop()
-                cleanup_audio()
+                clear_w0()
                 coils_off()
                 return
-            cleanup_finished_audio()
+            clear_finished_w0()
             if direction == "up" and launch_dialog_played:
                 play_dialog_folder("flight_up", FLIGHT_DIALOG_CHANCE)
             elif direction == "down":
@@ -603,16 +601,16 @@ def an():
                 return
         else:
             if rnd_prob(FLIGHT_FAIL_CHANCE):
-                cleanup_finished_audio()
+                clear_finished_w0()
                 play_dialog_folder("flight_fail")
                 total_steps = abs(0 - lst_kite_deploy_pos)
                 asyncio.run(rn_an(total_steps, "down"))
                 if mix.voice[0].playing:
                     mix.voice[0].stop()
-                cleanup_audio()
+                clear_w0()
                 coils_off()
                 return
-            cleanup_finished_audio()
+            clear_finished_w0()
             play_dialog_folder("flight_down", FLIGHT_DIALOG_CHANCE)
             total_steps = abs(0 - lst_kite_deploy_pos)
             asyncio.run(rn_an(total_steps, "down"))
@@ -620,7 +618,7 @@ def an():
                 stop_dialog()
                 coils_off()
                 return
-            cleanup_finished_audio()
+            clear_finished_w0()
             if launch_dialog_played:
                 play_dialog_folder("flight_up", FLIGHT_DIALOG_CHANCE)
             total_steps = abs(cfg["kite_deploy_max"] - lst_kite_deploy_pos)
@@ -631,7 +629,7 @@ def an():
                 return
     if mix.voice[0].playing:
         mix.voice[0].stop()
-    cleanup_audio()
+    clear_w0()
     gc_col("An done clean up sound")
     if kill_process:
         coils_off()
@@ -640,7 +638,7 @@ def an():
     total_steps = abs(0 - lst_kite_deploy_pos)
     asyncio.run(rn_an(total_steps, "down"))
     coils_off()
-    cleanup_finished_audio()
+    clear_finished_w0()
     if kill_process:
         stop_dialog()
         return
@@ -709,7 +707,6 @@ class Ste(object):
 
 
 class BseSt(Ste):
-    global rand_timer
 
     def __init__(self):
         pass
