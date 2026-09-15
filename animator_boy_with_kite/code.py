@@ -55,6 +55,8 @@ kill_process = False
 async_running = False
 rand_timer = 0
 launch_dialog_played = False
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
 
 ################################################################################
 # setup hardware
@@ -363,8 +365,8 @@ def spk_word(str_to_speak):
 
 def exit_early():
     global kill_process
-    l_sw.update()
-    if l_sw.fell:
+    sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0, wait_at_end = False)
+    if sw == "left":
         kill_process = True
         if mix.voice[0].playing: mix.voice[0].stop()
         coils_off()
@@ -733,6 +735,7 @@ class BseSt(Ste):
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
                 spk_sentence("timer_mode_on")
+                rand_timer = 0
                 return
         elif cfg["timer"] == True:
             if rand_timer <= 0:
@@ -746,7 +749,7 @@ class BseSt(Ste):
                 rand_timer -= 1
         elif sw == "left" or sw == "trigger":
             an()
-            time.sleep(0.25)
+            time.sleep(.25)
             print("an done")
         elif sw == "right":
             mch.go_to("main_menu")

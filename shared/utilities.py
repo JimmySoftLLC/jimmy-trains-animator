@@ -1,4 +1,4 @@
-def switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, h_down_sec, override_switch_state = None):
+def switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, h_down_sec, override_switch_state = None, wait_at_end = True):
     if override_switch_state and override_switch_state["switch_value"]:
         return_parameter = override_switch_state["switch_value"]
         override_switch_state["switch_value"] = ""
@@ -61,7 +61,8 @@ def switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, h_down_sec, override_switch_
                 return "right_held" 
             if r_sw.rose:
                 return "none"
-    upd_vol(0.1)
+    if wait_at_end:
+        upd_vol(0.1)
     return "none"
 
 def switch_state(l_sw, r_sw, upd_vol, h_down_sec, override_switch_state=None, wait_at_end = True):
