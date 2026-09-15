@@ -57,6 +57,7 @@ rand_timer = 0
 launch_dialog_played = False
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
+museum_press_start = None
 
 ################################################################################
 # setup hardware
@@ -366,7 +367,8 @@ def spk_word(str_to_speak):
 def exit_early():
     global kill_process
     sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0, wait_at_end = False)
-    if sw == "left":
+    if (not cfg["museum_mode"] and sw == "left") or (cfg["museum_mode"] and sw == "left_held"):
+        print(cfg["museum_mode"])
         kill_process = True
         if mix.voice[0].playing: mix.voice[0].stop()
         coils_off()
@@ -374,15 +376,30 @@ def exit_early():
     return False
 
 def animation_stop():
-    global kill_process
-    if not l_sw_io.value:
+    global kill_process, museum_press_start
+    if kill_process:
+        return True
+    if cfg["museum_mode"]:
+        if not l_sw_io.value:
+            if museum_press_start is None:
+                museum_press_start = time.monotonic()
+            elif time.monotonic() - museum_press_start > 1.0:
+                kill_process = True
+                museum_press_start = None
+                if mix.voice[0].playing:
+                    mix.voice[0].stop()
+                stop_stepper()
+                time.sleep(2)
+                return True
+        else:
+            museum_press_start = None
+    elif not l_sw_io.value:
         kill_process = True
         if mix.voice[0].playing:
             mix.voice[0].stop()
         stop_stepper()
         return True
     return False
-
 
 ################################################################################
 # stepper motor
@@ -720,39 +737,52 @@ class BseSt(Ste):
 
     def upd(self, mch):
         global rand_timer
-        sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0)
-        if sw == "left_held":
-            if cfg["timer"] == True:
-                cfg["timer"] = False
-                aud_en.value = False
-                files.write_json_file("cfg.json", cfg)
-                aud_en.value = True
-                spk_sentence("timer_mode_off")
-                return
-            else:
-                cfg["timer"] = True
-                aud_en.value = False
-                files.write_json_file("cfg.json", cfg)
-                aud_en.value = True
-                spk_sentence("timer_mode_on")
-                rand_timer = 0
-                return
-        elif cfg["timer"] == True:
-            if rand_timer <= 0:
+
+    def upd(self, mch):
+        global rand_timer
+        if cfg["museum_mode"]:
+            sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 1.0)
+            if sw == "left":
                 an()
-                time.sleep(0.25)
+                time.sleep(.25)
                 coils_off()
-                rand_timer = int(cfg["timer_val"]) * 60
                 print("an done")
-            else:
-                upd_vol(1)
-                rand_timer -= 1
-        elif sw == "left" or sw == "trigger":
-            an()
-            time.sleep(.25)
-            print("an done")
-        elif sw == "right":
-            mch.go_to("main_menu")
+            elif sw == "right":
+                mch.go_to("main_menu")
+        else:
+            sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0)
+            if sw == "left_held":
+                if cfg["timer"] == True:
+                    cfg["timer"] = False
+                    aud_en.value = False
+                    files.write_json_file("cfg.json", cfg)
+                    aud_en.value = True
+                    spk_sentence("timer_mode_off")
+                    return
+                else:
+                    cfg["timer"] = True
+                    aud_en.value = False
+                    files.write_json_file("cfg.json", cfg)
+                    aud_en.value = True
+                    spk_sentence("timer_mode_on")
+                    rand_timer = 0
+                    return
+            elif cfg["timer"] == True:
+                if rand_timer <= 0:
+                    an()
+                    time.sleep(0.25)
+                    coils_off()
+                    rand_timer = int(cfg["timer_val"]) * 60
+                    print("an done")
+                else:
+                    upd_vol(1)
+                    rand_timer -= 1
+            elif sw == "left" or sw == "trigger":
+                an()
+                time.sleep(.25)
+                print("an done")
+            elif sw == "right":
+                mch.go_to("main_menu")
 
 
 class Main(Ste):
