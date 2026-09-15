@@ -177,18 +177,20 @@ kite_rot.angle = lst_kite_rot_pos
 # Sound helpers
 
 w0 = None
+wind_playing = False
 START_FAIL_CHANCE = 0.10
 FLIGHT_FAIL_CHANCE = 0.05
 FLIGHT_DIALOG_CHANCE = 0.40
 
 def clear_w0():
-    global w0
+    global w0, wind_playing
     if w0:
         try:
             w0.deinit()
         except:
             pass
         w0 = None
+    wind_playing = False
     gc_col("Clear w0")
 
 def clear_finished_w0():
@@ -201,7 +203,7 @@ def stop_dialog():
     clear_w0()
 
 def play_dialog_folder(folder, chance=1.0):
-    global w0
+    global w0, wind_playing
     if mix.voice[0].playing:
         return False
     if random.random() > chance:
@@ -232,6 +234,7 @@ def play_dialog_folder(folder, chance=1.0):
     gc.collect()
     print("Dialog: " + folder + "/" + file_name)
     try:
+        wind_playing = False
         w0 = audiomp3.MP3Decoder(open(path + "/" + file_name, "rb"))
         mix.voice[0].play(w0, loop=False)
     except Exception as e:
@@ -241,26 +244,12 @@ def play_dialog_folder(folder, chance=1.0):
     return True
 
 def play_wind():
-    global w0
+    global wind_playing
     if mix.voice[0].playing:
         return False
     if not play_dialog_folder("wind"):
         return False
-    while mix.voice[0].playing:
-        if animation_stop():
-            clear_w0()
-            return False
-        upd_vol(0.01)
-    clear_w0()
-    if kill_process:
-        return False
-    try:
-        w0 = audiomp3.MP3Decoder(open("mp3/wind_effect.mp3", "rb"))
-        mix.voice[0].play(w0, loop=False)
-    except Exception as e:
-        files.log_item("Wind play error: " + str(e))
-        clear_w0()
-        return False
+    wind_playing = "waiting"
     return True
 
 
@@ -436,10 +425,21 @@ loop = asyncio.get_event_loop()
 
 
 def rotate_spd():
-    if mix.voice[0].playing:
+    global w0, wind_playing
+    if wind_playing == "waiting" and not mix.voice[0].playing:
+        clear_w0()
+        try:
+            w0 = audiomp3.MP3Decoder(open("mp3/wind_effect.mp3", "rb"))
+            mix.voice[0].play(w0, loop=False)
+            wind_playing = True
+        except Exception as e:
+            files.log_item("Wind play error: " + str(e))
+            clear_w0()
+    elif wind_playing == True and not mix.voice[0].playing:
+        clear_w0()
+    if wind_playing == True:
         return 0.005
-    else:
-        return 0.02
+    return 0.02
 
 
 async def rotate_kite_async():
@@ -488,7 +488,8 @@ async def deploy_kite(steps, direction, spd=0.005):
         async_running = False
         return
     if direction != "up" and direction != "down":
-        raise ValueError("Direction must be 'down' or 'up'")
+        print("Direction must be 'down' or 'up'")
+        return
     clear_stepper_done()
     direction_bit = 1 if direction == "up" else 0
     command = ((steps - 1) << 1) | direction_bit
