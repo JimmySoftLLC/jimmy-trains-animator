@@ -2,6 +2,9 @@
   "main_menu": [
     "options",
     "volume_settings",
+    "centerfig",
+    "museum_settings",
     "exit_this_menu"
   ]
 }
+

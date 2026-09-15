@@ -45,6 +45,9 @@ v_set = cfg_vol["volume_settings"]
 cfg_opt = files.read_json_file("options.json")
 mnu_o = cfg_opt["options"]
 
+cfg_muse_set = files.read_json_file("museum_settings.json")
+muse_set = cfg_muse_set["museum_settings"]
+
 ################################################################################
 # globals
 lst_kite_rot_pos = 90
@@ -821,6 +824,8 @@ class Main(Ste):
                 mch.go_to("volume_settings")
             elif sel_i == "centerfig":
                 mch.go_to("servo_settings")
+            elif sel_i == "museum_settings":
+                mch.go_to('museum_settings')
             else:
                 ply_a_0("all_changes_complete")
                 mch.go_to("base_state")
@@ -889,6 +894,49 @@ class VolSet(Ste):
                 aud_en.value = True
                 ply_a_0("all_changes_complete")
                 mch.go_to("base_state")
+
+
+class MuseumOpt(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'museum_settings'
+
+    def enter(self, mch):
+        files.log_item('Set museum Options')
+        spk_sentence("museum_settings_menu")
+        spk_sentence("r_l_but")
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            spk_sentence(muse_set[self.i])
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(muse_set) - 1:
+                self.i = 0
+        if sw == "right":
+            selected_menu_item = muse_set[self.sel_i]
+            if selected_menu_item == "museum_mode_on":
+                cfg["museum_mode"] = True
+                files.write_json_file("cfg.json", cfg)
+                ply_a_0("all_changes_complete")
+                mch.go_to('base_state')
+            elif selected_menu_item == "museum_mode_off":
+                cfg["museum_mode"] = False
+                files.write_json_file("cfg.json", cfg)
+                ply_a_0("all_changes_complete")
+                mch.go_to('base_state')
+            else:
+                ply_a_0("all_changes_complete")
+                mch.go_to('base_state')
 
 
 class Opt(Ste):
@@ -996,6 +1044,7 @@ st_mch.add(Main())
 st_mch.add(VolSet())
 st_mch.add(Opt())
 st_mch.add(ServoSet())
+st_mch.add(MuseumOpt())
 
 aud_en.value = True
 
