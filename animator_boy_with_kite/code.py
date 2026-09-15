@@ -60,7 +60,7 @@ rand_timer = 0
 launch_dialog_played = False
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
-museum_press_start = None
+button_press_start = None
 
 ################################################################################
 # setup hardware
@@ -281,7 +281,7 @@ def ply_a_0(file_name):
     w0 = audiomp3.MP3Decoder(open("mp3/" + file_name + ".mp3", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
-        exit_early()
+        upd_vol(0.01)
     clear_w0()
 
 
@@ -369,33 +369,32 @@ def spk_word(str_to_speak):
 
 def exit_early():
     global kill_process
-    sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0, wait_at_end = False)
-    if (not cfg["museum_mode"] and sw == "left") or (cfg["museum_mode"] and sw == "left_held"):
-        print(cfg["museum_mode"])
+    if not cfg["museum_mode"] and not l_sw_io.value:
         kill_process = True
-        if mix.voice[0].playing: mix.voice[0].stop()
+        if mix.voice[0].playing:
+            mix.voice[0].stop()
         coils_off()
         return True
     return False
 
 def animation_stop():
-    global kill_process, museum_press_start
+    global kill_process, button_press_start
     if kill_process:
         return True
     if cfg["museum_mode"]:
         if not l_sw_io.value:
-            if museum_press_start is None:
-                museum_press_start = time.monotonic()
-            elif time.monotonic() - museum_press_start > 1.0:
+            if button_press_start is None:
+                button_press_start = time.monotonic()
+            elif time.monotonic() - button_press_start > 1.0:
                 kill_process = True
-                museum_press_start = None
+                button_press_start = None
                 if mix.voice[0].playing:
                     mix.voice[0].stop()
                 stop_stepper()
                 time.sleep(2)
                 return True
         else:
-            museum_press_start = None
+            button_press_start = None
     elif not l_sw_io.value:
         kill_process = True
         if mix.voice[0].playing:
@@ -416,8 +415,6 @@ def coils_off():
 
 def stop_stepper():
     stepper_sm.stop()
-    stepper_sm.restart()
-    clear_stepper_done()
 
 ################################################################################
 # servo motor
@@ -525,6 +522,7 @@ async def deploy_kite(steps, direction, spd=0.005):
     if direction != "up" and direction != "down":
         print("Direction must be 'down' or 'up'")
         return
+    stepper_sm.restart()
     clear_stepper_done()
     direction_bit = 1 if direction == "up" else 0
     command = ((steps - 1) << 1) | direction_bit
@@ -548,6 +546,8 @@ async def deploy_kite(steps, direction, spd=0.005):
                 launch_dialog_played = True
         if animation_stop():
             async_running = False
+            stop_stepper()
+            coils_off()
             return
         await asyncio.sleep(0)
     stepper_sm.readinto(stepper_done)
@@ -737,9 +737,6 @@ class BseSt(Ste):
 
     def exit(self, mch):
         Ste.exit(self, mch)
-
-    def upd(self, mch):
-        global rand_timer
 
     def upd(self, mch):
         global rand_timer
