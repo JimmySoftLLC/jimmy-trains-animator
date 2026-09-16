@@ -8,5 +8,6 @@
   "sound": "sound_oreveille_oretreat",
   "mode": "raise_wave_lower",
   "volume": "70",
-  "museum_mode": false
+  "museum_mode": false,
+  "dialog": true
 }

@@ -209,11 +209,9 @@ def clear_finished_w0():
         clear_w0()
 
 def stop_dialog():
-    global wind_playing
     if mix.voice[0].playing:
         mix.voice[0].stop()
     clear_w0()
-    wind_playing = False
 
 def play_dialog_folder(folder, chance=1.0):
     global w0
@@ -256,6 +254,15 @@ def play_dialog_folder(folder, chance=1.0):
         clear_w0()
         return False
     return True
+
+def play_flag_sound(direction):
+    clear_finished_w0()
+    if mix.voice[0].playing:
+        return
+    if direction == "up":
+        play_dialog_folder("up")
+    elif direction == "down":
+        play_dialog_folder("down")
 
 def ply_a_0(file_name):
     global w0
@@ -383,7 +390,6 @@ def animation_stop():
                 if mix.voice[0].playing:
                     mix.voice[0].stop()
                 stop_stepper()
-                time.sleep(2)
                 return True
         else:
             button_press_start = None
@@ -462,7 +468,7 @@ def ch_servo(action):
     ply_a_0("wave")
     spk_word(cfg["servo"])
     kill_process = False
-    asyncio.run( rn_an(100, "up", False))  # Flag wave
+    asyncio.run(rn_an(100, "up", False, False))  # Flag wave
 
 
 ################################################################################
@@ -492,12 +498,15 @@ async def wave_flag_async(rand):
         if lst_rot_pos > pos_1:
             sign = -1
         total_steps = abs(pos_1 - lst_rot_pos)
-        exit_early()
-        if not async_running or kill_process:
-            break
+        if animation_stop():
+            async_running = False
+            return
         spd = rotate_spd()
         for _ in range(total_steps + 1):
-            flag_ang = lst_rot_pos + 1 * sign
+            if animation_stop():
+                async_running = False
+                return
+            flag_ang = lst_rot_pos + sign
             servo_m(flag_ang)
             await asyncio.sleep(spd)
         await asyncio.sleep(2 * spd)
@@ -505,18 +514,21 @@ async def wave_flag_async(rand):
         if lst_rot_pos > pos_2:
             sign = -1
         total_steps = abs(pos_2 - lst_rot_pos)
-        exit_early()
-        if not async_running or kill_process:
-            break
+        if animation_stop():
+            async_running = False
+            return
         for _ in range(total_steps + 1):
+            if animation_stop():
+                async_running = False
+                return
             spd = rotate_spd()
-            flag_ang = lst_rot_pos + 1 * sign
+            flag_ang = lst_rot_pos + sign
             servo_m(flag_ang)
             await asyncio.sleep(spd)
         await asyncio.sleep(2 * spd)
 
 
-async def deploy_flag(steps, direction, keep_track=True):
+async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True):
     global async_running, lst_deploy_pos
     steps = int(steps)
     if steps <= 0:
@@ -542,7 +554,7 @@ async def deploy_flag(steps, direction, keep_track=True):
                 lst_deploy_pos = start_pos + completed_steps
             else:
                 lst_deploy_pos = start_pos - completed_steps
-        if animation_stop():
+        if allow_cancel and animation_stop():
             async_running = False
             stop_stepper()
             coils_off()
@@ -556,20 +568,22 @@ async def deploy_flag(steps, direction, keep_track=True):
             lst_deploy_pos = start_pos - steps
 
 
-async def move_flag_to(pos):
+async def move_flag_to(pos, play_sound=True, allow_cancel=True):
     pos = int(pos)
     steps = abs(pos - lst_deploy_pos)
     if steps == 0:
         return
     direction = "up" if pos > lst_deploy_pos else "down"
-    await deploy_flag(steps, direction, True)
+    if play_sound:
+        play_flag_sound(direction)
+    await deploy_flag(steps, direction, True, allow_cancel)
 
 
 async def rn_an(steps, direction, rand, keep_track=True):
     global async_running
     async_running = True
     rot_f = asyncio.create_task(wave_flag_async(rand))
-    deploy_f = asyncio.create_task(deploy_flag(steps, direction, keep_track))
+    deploy_f = asyncio.create_task(deploy_flag(steps, direction, keep_track, True))
     await deploy_f
     async_running = False
     await rot_f
@@ -578,17 +592,37 @@ async def rn_an(steps, direction, rand, keep_track=True):
 async def home_flag():
     global lst_deploy_pos, kill_process
     kill_process = False
-    await deploy_flag(flag_deploy_max + flag_up_extra, "down", False)
+    await deploy_flag(flag_deploy_max + flag_up_extra, "down", False, False)
     lst_deploy_pos = 0
     coils_off()
+
+def museum_stop():
+    global kill_process, async_running, museum_long_press_stop, button_press_start
+    if not museum_long_press_stop:
+        return False
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
+    clear_w0()
+    kill_process = False
+    async_running = False
+    rot.angle = 180
+    asyncio.run(move_flag_to(0, False, False))
+    coils_off()
+    clear_finished_w0()
+    play_dialog_folder("end")
+    museum_long_press_stop = False
+    button_press_start = None
+    return True
 
 
 ################################################################################
 # Animations
 
 def an():
-    global kill_process
+    global kill_process, museum_long_press_stop, button_press_start
     kill_process = False
+    museum_long_press_stop = False
+    button_press_start = None
     cfg_temp = files.read_json_file("cfg.json")
     if cfg_temp["random"] == True:
         pick = random.randint(0, 2)
@@ -601,6 +635,8 @@ def an():
             cfg_temp["sound"] = "sound_oreveille_oretreat"
     if cfg_temp["mode"] == "raise_wave_lower":
         asyncio.run(move_flag_to(half_mast_pos))
+        if museum_stop():
+            return
         if kill_process:
             return
         led.duty_cycle = 65000
@@ -608,17 +644,31 @@ def an():
             coils_off()
             ply_a_0("reveille")
         asyncio.run(move_flag_to(flag_deploy_max))
+        if museum_stop():
+            return
+        if kill_process:
+            return
         asyncio.run(deploy_flag(flag_up_extra, "up", False))
+        if museum_stop():
+            return
         if kill_process:
             return
         asyncio.run(rn_an(wave_motor_steps, "up", False, False))
+        if museum_stop():
+            return
         if kill_process:
             return
         rot.angle = 180
         asyncio.run(deploy_flag(flag_up_extra, "up", False))
+        if museum_stop():
+            return
         if kill_process:
             return
         asyncio.run(move_flag_to(half_mast_pos))
+        if museum_stop():
+            return
+        if kill_process:
+            return
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
             coils_off()
             ply_a_0("retreat")
@@ -626,11 +676,15 @@ def an():
             coils_off()
             ply_a_0("taps")
         led.duty_cycle = 0
-        asyncio.run(move_flag_to(0))
+        asyncio.run(move_flag_to(0, False))
+        if museum_stop():
+            return
         if kill_process:
             return
     elif cfg_temp["mode"] == "raise_lower":
         asyncio.run(move_flag_to(half_mast_pos))
+        if museum_stop():
+            return
         if kill_process:
             return
         led.duty_cycle = 65000
@@ -638,17 +692,29 @@ def an():
             coils_off()
             ply_a_0("reveille")
         asyncio.run(move_flag_to(flag_deploy_max))
+        if museum_stop():
+            return
+        if kill_process:
+            return
         asyncio.run(deploy_flag(flag_up_extra, "up", False))
+        if museum_stop():
+            return
         if kill_process:
             return
         wait_period = random.randint(5, 10)
         time_done = time.monotonic() + wait_period
         while time.monotonic() < time_done:
             time.sleep(0.05)
-            exit_early()
+            animation_stop()
+            if museum_stop():
+                return
             if kill_process:
                 return
         asyncio.run(move_flag_to(half_mast_pos))
+        if museum_stop():
+            return
+        if kill_process:
+            return
         if cfg_temp["sound"] == "sound_oreveille_oretreat":
             coils_off()
             ply_a_0("retreat")
@@ -656,18 +722,28 @@ def an():
             coils_off()
             ply_a_0("taps")
         led.duty_cycle = 0
-        asyncio.run(move_flag_to(0))
+        asyncio.run(move_flag_to(0, False))
+        if museum_stop():
+            return
         if kill_process:
             return
     elif cfg_temp["mode"] == "raise_wave":
         asyncio.run(move_flag_to(flag_deploy_max))
-        asyncio.run(deploy_flag(flag_up_extra, "up", False))
-        led.duty_cycle = 65000
+        if museum_stop():
+            return
         if kill_process:
             return
+        asyncio.run(deploy_flag(flag_up_extra, "up", False))
+        if museum_stop():
+            return
+        if kill_process:
+            return
+        led.duty_cycle = 65000
         while not kill_process:
             steps = random.randint(300, 600)
             asyncio.run(rn_an(steps, "up", False, False))
+            if museum_stop():
+                return
             if kill_process:
                 return
             coils_off()
@@ -675,7 +751,9 @@ def an():
             time_done = time.monotonic() + wait_period
             while time.monotonic() < time_done:
                 time.sleep(0.05)
-                exit_early()
+                animation_stop()
+                if museum_stop():
+                    return
                 if kill_process:
                     return
 
@@ -750,33 +828,51 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global rand_timer, kill_process
-        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
-        if sw == "left_held":
-            if cfg["timer"] == True:
-                cfg["timer"] = False
-                aud_en.value = False
-                files.write_json_file("cfg.json", cfg)
-                aud_en.value = True
-                spk_sentence("timer_mode_off")
-                return
-        elif cfg["timer"] == True:
-            if rand_timer <= 0:
+        global rand_timer
+        if cfg["museum_mode"]:
+            sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 1.0)
+            if sw == "left":
                 an()
-                reset_motors()
-                rand_timer = int(cfg["timer_val"]) * 60
-                print("an time done")
-            else:
-                upd_vol(1)
-                rand_timer -= 1
-        elif sw == "left":
-            an()
-            kill_process = False
-            reset_motors()
-            print("an done")
-        elif sw == "right":
-            mch.go_to("main_menu")
-
+                time.sleep(.25)
+                coils_off()
+                print("an done")
+            elif sw == "right":
+                mch.go_to("main_menu")
+        else:
+            sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0)
+            if sw == "left_held":
+                if cfg["timer"] == True:
+                    cfg["timer"] = False
+                    aud_en.value = False
+                    files.write_json_file("cfg.json", cfg)
+                    aud_en.value = True
+                    spk_sentence("timer_mode_off")
+                    return
+                else:
+                    cfg["timer"] = True
+                    aud_en.value = False
+                    files.write_json_file("cfg.json", cfg)
+                    aud_en.value = True
+                    spk_sentence("timer_mode_on")
+                    rand_timer = 0
+                    return
+            elif cfg["timer"] == True:
+                if rand_timer <= 0:
+                    an()
+                    time.sleep(.25)
+                    coils_off()
+                    rand_timer = int(cfg["timer_val"]) * 60
+                    print("an done")
+                else:
+                    upd_vol(1)
+                    rand_timer -= 1
+            elif sw == "left" or sw == "trigger":
+                an()
+                time.sleep(.25)
+                coils_off()
+                print("an done")
+            elif sw == "right":
+                mch.go_to("main_menu")
 
 class Main(Ste):
 
