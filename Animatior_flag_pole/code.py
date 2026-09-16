@@ -398,6 +398,9 @@ def animation_stop():
         if mix.voice[0].playing:
             mix.voice[0].stop()
         stop_stepper()
+        while not l_sw_io.value:
+            time.sleep(0.01)
+        time.sleep(0.05)
         return True
     return False
 
@@ -527,8 +530,7 @@ async def wave_flag_async(rand):
             await asyncio.sleep(spd)
         await asyncio.sleep(2 * spd)
 
-
-async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True):
+async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True, sound_folder=None, sound_pos=None, light_val=None, light_pos=None):
     global async_running, lst_deploy_pos
     steps = int(steps)
     if steps <= 0:
@@ -543,17 +545,34 @@ async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True):
     command_data = array.array("I", [command])
     start_pos = lst_deploy_pos
     start_time = time.monotonic()
+    sound_played = False
+    light_set = False
     stepper_sm.write(command_data)
     while not stepper_sm.in_waiting:
+        elapsed = time.monotonic() - start_time
+        completed_steps = int(elapsed / STEPPER_FULL_STEP_TIME)
+        if completed_steps > steps:
+            completed_steps = steps
+        if direction == "up":
+            estimated_pos = start_pos + completed_steps
+        else:
+            estimated_pos = start_pos - completed_steps
         if keep_track:
-            elapsed = time.monotonic() - start_time
-            completed_steps = int(elapsed / STEPPER_FULL_STEP_TIME)
-            if completed_steps > steps:
-                completed_steps = steps
-            if direction == "up":
-                lst_deploy_pos = start_pos + completed_steps
-            else:
-                lst_deploy_pos = start_pos - completed_steps
+            lst_deploy_pos = estimated_pos
+        if sound_folder is not None and sound_pos is not None and not sound_played:
+            if direction == "up" and estimated_pos >= sound_pos:
+                play_dialog_folder(sound_folder)
+                sound_played = True
+            elif direction == "down" and estimated_pos <= sound_pos:
+                play_dialog_folder(sound_folder)
+                sound_played = True
+        if light_val is not None and light_pos is not None and not light_set:
+            if direction == "up" and estimated_pos >= light_pos:
+                led.duty_cycle = int(max(0, min(255, light_val)) * 65535 / 255)
+                light_set = True
+            elif direction == "down" and estimated_pos <= light_pos:
+                led.duty_cycle = int(max(0, min(255, light_val)) * 65535 / 255)
+                light_set = True
         if allow_cancel and animation_stop():
             async_running = False
             stop_stepper()
@@ -567,16 +586,13 @@ async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True):
         else:
             lst_deploy_pos = start_pos - steps
 
-
-async def move_flag_to(pos, play_sound=True, allow_cancel=True):
+async def move_flag_to(pos, sound_folder=None, sound_pos=None, light_val=None, light_pos=None, allow_cancel=True):
     pos = int(pos)
     steps = abs(pos - lst_deploy_pos)
     if steps == 0:
         return
     direction = "up" if pos > lst_deploy_pos else "down"
-    if play_sound:
-        play_flag_sound(direction)
-    await deploy_flag(steps, direction, True, allow_cancel)
+    await deploy_flag(steps, direction, True, allow_cancel, sound_folder, sound_pos, light_val, light_pos)
 
 
 async def rn_an(steps, direction, rand, keep_track=True):
@@ -587,6 +603,38 @@ async def rn_an(steps, direction, rand, keep_track=True):
     await deploy_f
     async_running = False
     await rot_f
+
+async def wave_flag(folder=None, duration=None):
+    global async_running
+    if folder is not None:
+        clear_finished_w0()
+        if play_dialog_folder(folder):
+            async_running = True
+            wave_f = asyncio.create_task(wave_flag_async(False))
+            while mix.voice[0].playing:
+                if animation_stop():
+                    async_running = False
+                    await wave_f
+                    return
+                await asyncio.sleep(0.01)
+            async_running = False
+            await wave_f
+            clear_finished_w0()
+            return
+    if duration is not None:
+        async_running = True
+        wave_f = asyncio.create_task(wave_flag_async(False))
+        end_time = time.monotonic() + duration
+        while time.monotonic() < end_time:
+            if animation_stop():
+                async_running = False
+                await wave_f
+                return
+            await asyncio.sleep(0.01)
+        async_running = False
+        await wave_f
+        return
+    await rn_an(wave_motor_steps, "up", False, False)
 
 
 async def home_flag():
@@ -624,26 +672,12 @@ def an():
     museum_long_press_stop = False
     button_press_start = None
     cfg_temp = files.read_json_file("cfg.json")
-    if cfg_temp["random"] == True:
-        pick = random.randint(0, 2)
-        print(pick)
-        if pick == 0:
-            cfg_temp["sound"] = "sound_off"
-        elif pick == 1:
-            cfg_temp["sound"] = "sound_otaps"
-        elif pick == 2:
-            cfg_temp["sound"] = "sound_oreveille_oretreat"
+
+    # Old random sound selection is no longer used.
+    # Taps can later be used for special Memorial sequences.
+
     if cfg_temp["mode"] == "raise_wave_lower":
-        asyncio.run(move_flag_to(half_mast_pos))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        led.duty_cycle = 65000
-        if cfg_temp["sound"] == "sound_oreveille_oretreat":
-            coils_off()
-            ply_a_0("reveille")
-        asyncio.run(move_flag_to(flag_deploy_max))
+        asyncio.run(move_flag_to(flag_deploy_max, "up", half_mast_pos, 255, half_mast_pos))
         if museum_stop():
             return
         if kill_process:
@@ -653,7 +687,7 @@ def an():
             return
         if kill_process:
             return
-        asyncio.run(rn_an(wave_motor_steps, "up", False, False))
+        asyncio.run(wave_flag("patriotic"))
         if museum_stop():
             return
         if kill_process:
@@ -664,34 +698,14 @@ def an():
             return
         if kill_process:
             return
-        asyncio.run(move_flag_to(half_mast_pos))
+        asyncio.run(move_flag_to(0, "down", flag_deploy_max-100, 0, half_mast_pos))
         if museum_stop():
             return
         if kill_process:
             return
-        if cfg_temp["sound"] == "sound_oreveille_oretreat":
-            coils_off()
-            ply_a_0("retreat")
-        if cfg_temp["sound"] == "sound_otaps":
-            coils_off()
-            ply_a_0("taps")
-        led.duty_cycle = 0
-        asyncio.run(move_flag_to(0, False))
-        if museum_stop():
-            return
-        if kill_process:
-            return
+
     elif cfg_temp["mode"] == "raise_lower":
-        asyncio.run(move_flag_to(half_mast_pos))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        led.duty_cycle = 65000
-        if cfg_temp["sound"] == "sound_oreveille_oretreat":
-            coils_off()
-            ply_a_0("reveille")
-        asyncio.run(move_flag_to(flag_deploy_max))
+        asyncio.run(move_flag_to(flag_deploy_max, "up", half_mast_pos, 255, half_mast_pos))
         if museum_stop():
             return
         if kill_process:
@@ -701,34 +715,25 @@ def an():
             return
         if kill_process:
             return
-        wait_period = random.randint(5, 10)
-        time_done = time.monotonic() + wait_period
-        while time.monotonic() < time_done:
-            time.sleep(0.05)
-            animation_stop()
-            if museum_stop():
-                return
-            if kill_process:
-                return
-        asyncio.run(move_flag_to(half_mast_pos))
+        asyncio.run(wave_flag(duration=random.randint(5, 10)))
         if museum_stop():
             return
         if kill_process:
             return
-        if cfg_temp["sound"] == "sound_oreveille_oretreat":
-            coils_off()
-            ply_a_0("retreat")
-        if cfg_temp["sound"] == "sound_otaps":
-            coils_off()
-            ply_a_0("taps")
-        led.duty_cycle = 0
-        asyncio.run(move_flag_to(0, False))
+        rot.angle = 180
+        asyncio.run(deploy_flag(flag_up_extra, "up", False))
         if museum_stop():
             return
         if kill_process:
             return
+        asyncio.run(move_flag_to(0, "down", flag_deploy_max-100, 0, half_mast_pos))
+        if museum_stop():
+            return
+        if kill_process:
+            return
+
     elif cfg_temp["mode"] == "raise_wave":
-        asyncio.run(move_flag_to(flag_deploy_max))
+        asyncio.run(move_flag_to(flag_deploy_max, "up", half_mast_pos, 255, half_mast_pos))
         if museum_stop():
             return
         if kill_process:
@@ -738,7 +743,6 @@ def an():
             return
         if kill_process:
             return
-        led.duty_cycle = 65000
         while not kill_process:
             steps = random.randint(300, 600)
             asyncio.run(rn_an(steps, "up", False, False))
@@ -756,8 +760,7 @@ def an():
                     return
                 if kill_process:
                     return
-
-
+                
 ################################################################################
 # State Machine
 
