@@ -61,6 +61,7 @@ launch_dialog_played = False
 ovrde_sw_st = {}
 ovrde_sw_st["switch_value"] = ""
 button_press_start = None
+museum_long_press_stop = False
 
 ################################################################################
 # setup hardware
@@ -381,7 +382,7 @@ def exit_early():
     return False
 
 def animation_stop():
-    global kill_process, button_press_start
+    global kill_process, button_press_start, museum_long_press_stop
     if kill_process:
         return True
     if cfg["museum_mode"]:
@@ -390,6 +391,7 @@ def animation_stop():
                 button_press_start = time.monotonic()
             elif time.monotonic() - button_press_start > 1.0:
                 kill_process = True
+                museum_long_press_stop = True
                 button_press_start = None
                 if mix.voice[0].playing:
                     mix.voice[0].stop()
@@ -596,8 +598,9 @@ def rnd_prob(c):
     return False
 
 def an():
-    global kill_process, launch_dialog_played
+    global kill_process, launch_dialog_played, museum_long_press_stop
     kill_process = False
+    museum_long_press_stop = False
     launch_dialog_played = False
     clear_finished_w0()
     if rnd_prob(START_FAIL_PROB):
@@ -611,28 +614,20 @@ def an():
     for _ in range(cycles):
         clear_finished_w0()
         if kill_process:
-            stop_dialog()
-            coils_off()
-            return
+            break
         if cfg["random"] == True:
             target_pos = random.randint(0, cfg["kite_deploy_max"])
             files.log_item("Random deploy pos: " + str(target_pos))
             asyncio.run(rn_an(target_pos))
             if kill_process:
-                stop_dialog()
-                coils_off()
-                return
+                break
         else:
             asyncio.run(rn_an(0))
             if kill_process:
-                stop_dialog()
-                coils_off()
-                return
+                break
             asyncio.run(rn_an(cfg["kite_deploy_max"]))
             if kill_process:
-                stop_dialog()
-                coils_off()
-                return
+                break
         clear_finished_w0()
         if launch_dialog_played and rnd_prob(FLIGHT_FAIL_PROB):
             if mix.voice[0].playing:
@@ -650,6 +645,15 @@ def an():
         mix.voice[0].stop()
     clear_w0()
     gc_col("An done clean up sound")
+    if museum_long_press_stop:
+        kill_process = False
+        total_steps = abs(0 - lst_kite_deploy_pos)
+        asyncio.run(rn_home(total_steps, "down"))
+        coils_off()
+        clear_finished_w0()
+        play_dialog_folder("end")
+        museum_long_press_stop = False
+        return
     if kill_process:
         coils_off()
         return
