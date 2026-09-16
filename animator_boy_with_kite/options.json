@@ -2,8 +2,11 @@
   "options": [
     "wind",
     "no_wind",
+    "dialog",
+    "no_dialog",
     "raise_lower",
     "random_raise_lower",
+    "timer_0_minutes",
     "timer_1_minute",
     "timer_2_minutes",
     "timer_5_minutes",

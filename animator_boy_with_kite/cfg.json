@@ -9,5 +9,6 @@
   "kite_deploy_max": 1700,
   "cycles_non_random": 4,
   "cycles_random": 8,
-  "museum_mode": false
+  "museum_mode": false,
+  "dialog": true
 }

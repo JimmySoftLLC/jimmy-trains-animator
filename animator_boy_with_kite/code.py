@@ -212,6 +212,8 @@ def stop_dialog():
 
 def play_dialog_folder(folder, chance=1.0):
     global w0
+    if not cfg["dialog"]:
+        return False
     if mix.voice[0].playing:
         return False
     if random.random() >= chance:
@@ -352,6 +354,7 @@ def spk_word(str_to_speak):
         or str_to_speak == "centerfig"
         or str_to_speak == "alignlrsave"
         or str_to_speak == "wind"
+        or str_to_speak == "dialog"
     ):
         ply_a_0(str_to_speak)
         return
@@ -975,6 +978,10 @@ class Opt(Ste):
                 cfg["wind"] = True
             elif mnu_o[self.sel_i] == "no_wind":
                 cfg["wind"] = False
+            elif mnu_o[self.sel_i] == "dialog":
+                cfg["dialog"] = True
+            elif mnu_o[self.sel_i] == "no_dialog":
+                cfg["dialog"] = False
             elif mnu_o[self.sel_i] == "random_raise_lower":
                 cfg["random"] = True
             elif mnu_o[self.sel_i] == "raise_lower":
