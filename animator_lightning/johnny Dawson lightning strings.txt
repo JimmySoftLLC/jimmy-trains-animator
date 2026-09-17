@@ -1,0 +1,1 @@
+bar-10,bolt-4,bolt-1,bar-10,bolt-4,bolt-2,bolt-1,bar-10,bolt-4,bolt-1,bolt-1
