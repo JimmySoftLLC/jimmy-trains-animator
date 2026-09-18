@@ -172,14 +172,6 @@ def switch_state(l_sw, r_sw, upd_vol, h_down_sec, override_switch_state=None, t_
         upd_vol(.1)
     return "none"
 
-def read_json_file(file_name):
-    with open(file_name, "r") as f:
-        return json.loads(f.read())
-
-def write_json_file(file_name, data):
-    with open(file_name, "w") as f:
-        f.write(json.dumps(data))
-
 try:
     sdcard = sdcardio.SDCard(spi, cs)
     vfs = storage.VfsFat(sdcard)
@@ -220,7 +212,15 @@ f_s = servo.Servo(f_s)
 t_s = servo.Servo(t_s)
 
 ################################################################################
-# Sd card data Variables
+# Config and globals
+
+def read_json_file(file_name):
+    with open(file_name, "r") as f:
+        return json.loads(f.read())
+
+def write_json_file(file_name, data):
+    with open(file_name, "w") as f:
+        f.write(json.dumps(data))
 
 cfg = read_json_file("/sd/cfg.json")
 if "museum_mode" not in cfg:
