@@ -41,6 +41,7 @@ import sdcardio
 import gc
 import files
 import asyncio
+import os
 
 
 def gc_col(collection_point):
@@ -72,10 +73,10 @@ aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = False
 
 # Setup the switches
-l_sw = digitalio.DigitalInOut(board.GP6)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
+l_sw_io = digitalio.DigitalInOut(board.GP6)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw_io)
 
 r_sw = digitalio.DigitalInOut(board.GP7)
 r_sw.direction = digitalio.Direction.INPUT
@@ -152,12 +153,6 @@ t_s = pwmio.PWMOut(board.GP11, duty_cycle=2 ** 15, frequency=50)
 f_s = servo.Servo(f_s)
 t_s = servo.Servo(t_s)
 
-# this code is only for shows comment it out for production units
-f_s_ho = pwmio.PWMOut(board.GP12, duty_cycle=2 ** 15, frequency=50)
-t_s_ho = pwmio.PWMOut(board.GP13, duty_cycle=2 ** 15, frequency=50)
-f_s_ho = servo.Servo(f_s_ho)
-t_s_ho = servo.Servo(t_s_ho)
-
 ################################################################################
 # Global Variables
 
@@ -186,7 +181,8 @@ def bndMaxChp(min_chops, max_chops):
 
 
 cfg = files.read_json_file("/sd/cfg.json")
-t_ho_offset = -15
+if "museum_mode" not in cfg:
+    cfg["museum_mode"] = False
 
 cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
@@ -213,24 +209,6 @@ main_m = cfg_main["main_menu"]
 cfg_snds = files.read_json_file("/sd/mvc/choose_sounds.json")
 snd_opts = cfg_snds["choose_sounds"]
 
-cfg_f_dia = files.read_json_file(
-    "/sd/feller_dialog/feller_dialog.json")
-f_dia = cfg_f_dia["feller_dialog"]
-
-cfg_f_wife = files.read_json_file("/sd/feller_wife/feller_wife.json")
-f_wife = cfg_f_wife["feller_wife"]
-
-cfg_f_poem = files.read_json_file("/sd/feller_poem/feller_poem.json")
-f_poem = cfg_f_poem["feller_poem"]
-
-cfg_f_buddy = files.read_json_file(
-    "/sd/feller_buddy/feller_buddy.json")
-f_buddy = cfg_f_buddy["feller_buddy"]
-
-cfg_f_girl = files.read_json_file(
-    "/sd/feller_girlfriend/feller_girlfriend.json")
-f_girl = cfg_f_girl["feller_girlfriend"]
-
 cfg_adj_f_t = files.read_json_file(
     "/sd/mvc/adjust_feller_and_tree.json")
 adj_f_t = cfg_adj_f_t["adjust_feller_and_tree"]
@@ -252,6 +230,7 @@ f_mov_typ = "feller_rest_pos"
 t_mov_typ = "tree_up_pos"
 
 cont_run = False
+button_press_start = None
 
 local_ip = ""
 
@@ -597,6 +576,7 @@ def reset_to_defaults():
     cfg["volume"] = "20"
     cfg["can_cancel"] = True
     cfg["option_selected"] = "birds_dogs_short_version"
+    cfg["museum_mode"] = False
 
 
 def ch_vol(action):
@@ -692,6 +672,22 @@ def exit_early():
     l_sw.update()
     if l_sw.fell:
         mix.voice[0].stop()
+
+
+def animation_stop():
+    global button_press_start
+    if cfg["museum_mode"]:
+        if not l_sw_io.value:
+            if button_press_start is None:
+                button_press_start = time.monotonic()
+            elif time.monotonic() - button_press_start > 1:
+                button_press_start = None
+                return True
+        else:
+            button_press_start = None
+    elif not l_sw_io.value:
+        return True
+    return False
 
 
 def l_r_but():
@@ -807,7 +803,6 @@ def mov_f(n_pos):
     if n_pos > f_max:
         n_pos = f_max
     f_s.angle = n_pos
-    f_s_ho.angle = n_pos
     global f_lst_p
     f_lst_p = n_pos
 
@@ -818,7 +813,6 @@ def mov_t(n_pos):
     if n_pos > t_max:
         n_pos = t_max
     t_s.angle = n_pos
-    t_s_ho.angle = n_pos + t_ho_offset
     global t_lst_p
     t_lst_p = n_pos
 
@@ -834,17 +828,15 @@ def f_tlk_mov():
     spk_cad = 0.2
     while mix.voice[0].playing:
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, upd_vol, 0.5)
+            l_sw, r_sw, upd_vol, 0.5)
         if sw_st == "left_held":
             mix.voice[0].stop()
             while mix.voice[0].playing:
                 pass
             return
         f_s.angle = spk_rot + cfg["feller_rest_pos"]
-        f_s_ho.angle = spk_rot + cfg["feller_rest_pos"]
         upd_vol(spk_cad)
         f_s.angle = cfg["feller_rest_pos"]
-        f_s_ho.angle = cfg["feller_rest_pos"]
         upd_vol(spk_cad)
 
 
@@ -853,36 +845,32 @@ def t_tlk_mov():
     spk_cad = 0.2
     while mix.voice[0].playing:
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, upd_vol, 0.5)
+            l_sw, r_sw, upd_vol, 0.5)
         if sw_st == "left_held":
             mix.voice[0].stop()
             while mix.voice[0].playing:
                 pass
             return
         t_s.angle = cfg["tree_up_pos"]
-        t_s_ho.angle = cfg["tree_up_pos"] + t_ho_offset
+
         upd_vol(spk_cad)
         t_s.angle = cfg["tree_up_pos"] - spk_rot
-        t_s_ho.angle = cfg["tree_up_pos"] - \
-            spk_rot + t_ho_offset
         upd_vol(spk_cad)
 
 
-def ply_snd(sound_files, folder):
-    h_i = len(sound_files) - 1
-    s_n = random.randint(0, h_i)
-    files.log_item(folder + ": " + str(s_n))
-    w0 = audiocore.WaveFile(
-        open("/sd/" + folder + "/" + sound_files[s_n] + ".wav", "rb"))
+def ply_snd(folder):
+    path = "/sd/" + folder
+    sounds = [f for f in os.listdir(path) if not f.startswith(".")]
+    file_name = random.choice(sounds)
+    sounds = None
+    files.log_item(folder + ": " + file_name)
+    w0 = audiocore.WaveFile(open(path + "/" + file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         upd_vol(0.1)
-        sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, upd_vol, 0.5)
-        if sw_st == "left_held":
+        if animation_stop():
             mix.voice[0].stop()
-            while mix.voice[0].playing:
-                pass
+            break
     w0.deinit()
     gc_col("deinit w0")
 
@@ -896,22 +884,19 @@ async def an(command):
     if cfg["opening_dialog"]:
         s_i = random.randint(0, 3)
         if s_i == 0:
-            ply_snd(f_wife, "feller_wife")
-        if s_i == 1:
-            ply_snd(f_buddy, "feller_buddy")
-        if s_i == 2:
-            ply_snd(f_poem, "feller_poem")
-        if s_i == 3:
-            ply_snd(f_girl, "feller_girlfriend")
+            ply_snd("feller_wife")
+        elif s_i == 1:
+            ply_snd("feller_buddy")
+        elif s_i == 2:
+            ply_snd("feller_poem")
+        else:
+            ply_snd("feller_girlfriend")
     chop_i = 1
     chop_n = random.randint(
         int(cfg["min_chops"]), int(cfg["max_chops"]))
-    h_i = len(f_dia) - 1
-    what_spk = random.randint(0, h_i)
     when_spk = random.randint(1, chop_n)
 
-    files.log_item("Chop total: " + str(chop_n) + " what to speak: " +
-                   str(what_spk) + " when to speak: " + str(when_spk))
+    files.log_item("Chop total: " + str(chop_n) + " when to speak: " + str(when_spk))
     spoken = False
     t_chop_p = cfg["tree_up_pos"] - 3
 
@@ -936,8 +921,10 @@ async def an(command):
         await upd_vol_async(0)
         if when_spk == chop_i and not spoken and cfg["feller_advice"]:
             spoken = True
-            snd_f = "/sd/feller_dialog/" + \
-                f_dia[what_spk] + ".wav"
+            sounds = [f for f in os.listdir("/sd/feller_dialog") if not f.startswith(".")]
+            snd_f = "/sd/feller_dialog/" + random.choice(sounds)
+            sounds = None
+            files.log_item("Feller dialog: " + snd_f)
             w0 = audiocore.WaveFile(open(snd_f, "rb"))
             mix.voice[0].play(w0, loop=False)
             f_tlk_mov()
@@ -992,7 +979,7 @@ async def an(command):
         while mix.voice[0].playing:
             await upd_vol_async(0)
             sw_st = utilities.switch_state(
-                l_sw, r_sw, t_sw, upd_vol, 0.5)
+                l_sw, r_sw, upd_vol, 0.5)
             if sw_st == "left_held":
                 stp_all_cmds()
                 cont_run = False
@@ -1011,7 +998,7 @@ async def an(command):
             mix.voice[0].play(w0, loop=False)
             t_tlk_mov()
             sw_st = utilities.switch_state(
-                l_sw, r_sw, t_sw, upd_vol, 0.5)
+                l_sw, r_sw, upd_vol, 0.5)
             if sw_st == "left_held":
                 stp_all_cmds()
                 cont_run = False
@@ -1021,7 +1008,7 @@ async def an(command):
         while mix.voice[0].playing:
             await upd_vol_async(0)
             sw_st = utilities.switch_state(
-                l_sw, r_sw, t_sw, upd_vol, 0.5)
+                l_sw, r_sw, upd_vol, 0.5)
             if sw_st == "left_held":
                 stp_all_cmds()
                 cont_run = False
@@ -1105,7 +1092,7 @@ class BseSt(Ste):
 # Added Trigger question - KJB 6-24-2026
     def upd(self, mch):
         global cont_run
-        sw_st = utilities.switch_state(
+        sw_st = utilities.switch_state_trigger(
             l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left_held":
             if cont_run:
@@ -1144,7 +1131,7 @@ class Main(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
@@ -1191,7 +1178,7 @@ class Snds(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -1234,7 +1221,7 @@ class MovFellTree(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" + mov_f_t[self.i] + ".wav")
             self.sel_i = self.i
@@ -1284,7 +1271,7 @@ class AdjFellTree(Ste):
     def upd(self, mch):
         global f_lst_p, t_lst_p
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left" and not self.cal_active:
             ply_a_0("/sd/mvc/" +
                     adj_f_t[self.i] + ".wav")
@@ -1365,7 +1352,7 @@ class DiaOpt(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" +
                     dlg_m[self.i] + ".wav")
@@ -1417,7 +1404,7 @@ class WebOpt(Ste):
 
     def upd(self, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -1474,7 +1461,7 @@ class VolSet(Ste):
 
     def upd(s, mch):
         sw_st = utilities.switch_state(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
