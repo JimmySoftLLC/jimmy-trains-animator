@@ -75,6 +75,16 @@ mix.voice[0].level = .2
 gc_col("audio setup")
 
 ################################################################################
+# Setup audio pot and enable pin
+
+a_in = AnalogIn(board.A0)
+
+# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+aud_en = digitalio.DigitalInOut(board.GP22)
+aud_en.direction = digitalio.Direction.OUTPUT
+aud_en.value = False
+
+################################################################################
 # Setup the switches
 
 l_sw_io = digitalio.DigitalInOut(board.GP6)
@@ -91,27 +101,6 @@ t_sw = digitalio.DigitalInOut(board.GP8)
 t_sw.direction = digitalio.Direction.INPUT
 t_sw.pull = digitalio.Pull.UP
 t_sw = Debouncer(t_sw)
-
-################################################################################
-# Setup audio pot and enable pin
-
-a_in = AnalogIn(board.A0)
-
-# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
-aud_en = digitalio.DigitalInOut(board.GP22)
-aud_en.direction = digitalio.Direction.OUTPUT
-aud_en.value = False
-
-################################################################################
-# Setup sdCard
-
-aud_en.value = True
-
-sck = board.GP2
-si = board.GP3
-so = board.GP4
-cs = board.GP5
-spi = busio.SPI(sck, si, so)
 
 def switch_state(l_sw, r_sw, upd_vol, h_down_sec, override_switch_state=None, t_sw=None, wait_at_end=True):
     if override_switch_state and override_switch_state["switch_value"]:
@@ -172,6 +161,17 @@ def switch_state(l_sw, r_sw, upd_vol, h_down_sec, override_switch_state=None, t_
         upd_vol(.1)
     return "none"
 
+################################################################################
+# Setup sdCard
+
+aud_en.value = True
+
+sck = board.GP2
+si = board.GP3
+so = board.GP4
+cs = board.GP5
+spi = busio.SPI(sck, si, so)
+
 try:
     sdcard = sdcardio.SDCard(spi, cs)
     vfs = storage.VfsFat(sdcard)
@@ -223,8 +223,8 @@ def write_json_file(file_name, data):
         f.write(json.dumps(data))
 
 cfg = read_json_file("/sd/cfg.json")
-if "museum_mode" not in cfg:
-    cfg["museum_mode"] = False
+if "cont_mode" not in cfg:
+    cfg["cont_mode"] = False
 
 cfg_vol = read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
@@ -271,8 +271,9 @@ web = cfg["serve_webpage"]
 f_mov_typ = "feller_rest_pos"
 t_mov_typ = "tree_up_pos"
 
-cont_run = False
 button_press_start = None
+an_running = False
+an_just_added = False
 
 local_ip = ""
 
@@ -350,12 +351,12 @@ if (web):
             @server.route("/mui.min.css")
             def base(request: HTTPRequest):
                 stp_all_cmds()
-                return FileResponse(request, "/sd/mui.min.css", "/")
+                return FileResponse(request, "mui.min.css", "/")
 
             @server.route("/mui.min.js")
             def base(request: HTTPRequest):
                 stp_all_cmds()
-                return FileResponse(request, "/sd/mui.min.js", "/")
+                return FileResponse(request, "mui.min.js", "/")
 
             @server.route("/animation", [POST])
             def buttonpress(request: Request):
@@ -429,25 +430,28 @@ if (web):
                     st_mch.go_to('base_state')
                     return Response(request, "Tree " + t_mov_typ + " cal saved.")
 
-            @server.route("/dialog", [POST])
+            @server.route("/settings", [POST])
             def buttonpress(request: Request):
                 global cfg
                 rq_d = request.json()
-                if "opening_dialog_on":
+                if rq_d["an"] == "opening_dialog_on":
                     cfg["opening_dialog"] = True
-
-                elif "opening_dialog_off":
+                elif rq_d["an"] == "opening_dialog_off":
                     cfg["opening_dialog"] = False
-
-                elif "feller_advice_on":
+                elif rq_d["an"] == "feller_advice_on":
                     cfg["feller_advice"] = True
-
-                elif "feller_advice_off":
+                elif rq_d["an"] == "feller_advice_off":
                     cfg["feller_advice"] = False
-
+                elif "cont_mode_on" == rq_d["an"]:
+                    cfg["cont_mode"] = True
+                elif "cont_mode_off" == rq_d["an"]:
+                    cfg["cont_mode"] = False
+                elif rq_d["an"] == "museum_mode_on":
+                    cfg["museum_mode"] = True
+                elif rq_d["an"] == "museum_mode_off":
+                    cfg["museum_mode"] = False
                 write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
-
                 return Response(request, "Dialog option cal saved.")
 
             @server.route("/utilities", [POST])
@@ -504,8 +508,9 @@ if (web):
 
             @server.route("/mode", [POST])
             def buttonpress(req: Request):
-                global cfg, cont_run
+                global cfg
                 rq_d = req.json()
+                stp_all_cmds()
                 if rq_d["an"] == "left":
                     ovrde_sw_st["switch_value"] = "left"
                 elif rq_d["an"] == "right":
@@ -516,13 +521,6 @@ if (web):
                     ovrde_sw_st["switch_value"] = "three"
                 elif rq_d["an"] == "four":
                     ovrde_sw_st["switch_value"] = "four"
-                elif "cont_mode_on" == rq_d["an"]:
-                    cont_run = True
-                    ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-                elif "cont_mode_off" == rq_d["an"]:
-                    stp_all_cmds()
-                    cont_run = False
-                    ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
                 return Response(req, "Mode set")
 
             @server.route("/update-min-chops", [POST])
@@ -646,7 +644,7 @@ def ch_vol(action):
         volume = 1
     cfg["volume"] = str(volume)
     cfg["volume_pot"] = False
-    if not mix.voice[0].playing and not mix.voice[1].playing:
+    if not mix.voice[0].playing:
         write_json_file("/sd/cfg.json", cfg)
         ply_a_0("/sd/mvc/volume.wav")
         spk_str(cfg["volume"], False)
@@ -720,7 +718,7 @@ def animation_stop():
     global button_press_start, exit_set_hdw_async
     if exit_set_hdw_async:
         return True
-    if cfg["museum_mode"]:
+    if cfg["museum_mode"] or cfg["cont_mode"]:
         if not l_sw_io.value:
             if button_press_start is None:
                 button_press_start = time.monotonic()
@@ -745,21 +743,21 @@ def f_cal():
     ply_a_0("/sd/mvc/now_we_can_adjust_the_feller_position.wav")
     ply_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
-
 def t_cal():
     ply_a_0("/sd/mvc/now_we_can_adjust_the_tree_position.wav")
     ply_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
-
 
 def sel_dlg():
     ply_a_0("/sd/mvc/dialog_selection_menu.wav")
     l_r_but()
 
-
 def sel_web():
     ply_a_0("/sd/mvc/web_menu.wav")
     l_r_but()
 
+def sel_museum():
+    ply_a_0("/sd/mvc/museum_settings_menu.mp3")
+    l_r_but()
 
 def chk_lmt(min_servo_pos, max_servo_pos, servo_pos):
     if servo_pos < min_servo_pos:
@@ -909,6 +907,8 @@ def ply_snd(folder):
     gc_col("deinit w0")
 
 async def an(command):
+    global an_running
+    an_running = True
     cfg["option_selected"] = command
     write_json_file("/sd/cfg.json", cfg)
     await upd_vol_async(0.05)
@@ -1059,6 +1059,7 @@ async def an(command):
         await upd_vol_async(0.2)
         f_s.fraction = None
         t_s.fraction = None
+        an_running = False
 
 
 ################################################################################
@@ -1132,30 +1133,36 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
-        sw_st = switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, t_sw)
-        if cfg["museum_mode"]:
-            if sw_st == "left":
-                add_cmd(cfg["option_selected"])
-            elif sw_st == "right":
-                mch.go_to('main_menu')
-            return
-        if sw_st == "left_held":
-            if cont_run:
-                cont_run = False
+        global an_just_added
+        sw = switch_state(l_sw, r_sw, time.sleep, 1.0, ovrde_sw_st, t_sw)
+        if sw == "left_held" and not cfg["museum_mode"]:
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
+                write_json_file("/sd/cfg.json", cfg)
                 clr_cmd_queue()
                 ply_a_0("/sd/mvc/continuous_mode_deactivated.wav")
             else:
-                cont_run = True
+                cfg["cont_mode"] = True
+                write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/continuous_mode_activated.wav")
-        elif sw_st == "left" or cont_run:
+            return
+        if an_running:
+            return
+        if cfg["museum_mode"]:
+            if sw == "left":
+                add_cmd(cfg["option_selected"])
+                an_just_added = True
+            elif sw == "right":
+                mch.go_to('main_menu')
+            return
+        if sw == "left" or cfg["cont_mode"]:
             add_cmd(cfg["option_selected"])
-        elif sw_st == "trigger":
+            an_just_added = True
+        elif sw == "trigger":
             add_cmd(cfg["option_selected"])
-        elif sw_st == "right":
+            an_just_added = True
+        elif sw == "right":
             mch.go_to('main_menu')
-
 
 class Main(Ste):
 
@@ -1177,15 +1184,15 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = switch_state(
+        sw = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(main_m)-1:
                 self.i = 0
-        if sw_st == "right":
+        if sw == "right":
             sel_mnu = main_m[self.sel_i]
             if sel_mnu == "choose_sounds":
                 mch.go_to('choose_sounds')
@@ -1224,9 +1231,9 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = switch_state(
+        sw = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1238,7 +1245,7 @@ class Snds(Ste):
                 self.i += 1
                 if self.i > len(snd_opts)-1:
                     self.i = 0
-        if sw_st == "right":
+        if sw == "right":
             cfg["option_selected"] = snd_opts[self.sel_i]
             print("Selected index: " + str(self.sel_i) +
                            " Saved option: " + cfg["option_selected"])
@@ -1267,15 +1274,15 @@ class MovFellTree(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = switch_state(
+        sw = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             ply_a_0("/sd/mvc/" + mov_f_t[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(mov_f_t)-1:
                 self.i = 0
-        if sw_st == "right":
+        if sw == "right":
             sel_mnu = mov_f_t[self.sel_i]
             if sel_mnu == "move_feller_to_rest_position":
                 m_f_spd(cfg["feller_rest_pos"], 0.01)
@@ -1317,16 +1324,16 @@ class AdjFellTree(Ste):
 
     def upd(self, mch):
         global f_lst_p, t_lst_p
-        sw_st = switch_state(
+        sw = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left" and not self.cal_active:
+        if sw == "left" and not self.cal_active:
             ply_a_0("/sd/mvc/" +
                     adj_f_t[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(adj_f_t)-1:
                 self.i = 0
-        elif sw_st == "right" and not self.cal_active:
+        elif sw == "right" and not self.cal_active:
             selected_menu_item = adj_f_t[self.sel_i]
             if selected_menu_item == "move_feller_to_rest_position":
                 m_f_spd(cfg["feller_rest_pos"], 0.01)
@@ -1364,17 +1371,17 @@ class AdjFellTree(Ste):
                 max_pos = t_max
                 sign = -1
             self.servo.angle = cfg[self.mov_type]
-            if sw_st == "left":
+            if sw == "left":
                 cal_l_but(
                     self.servo, self.mov_type, sign, min_pos, max_pos)
-            if sw_st == "right":
+            if sw == "right":
                 cal_r_but(
                     self.servo, self.mov_type, sign, min_pos, max_pos)
             if self.mov_type == "feller_rest_pos" or self.mov_type == "feller_chop_pos":
                 f_lst_p = cfg[self.mov_type]
             else:
                 t_lst_p = cfg[self.mov_type]
-            if sw_st == "right_held":
+            if sw == "right_held":
                 wrt_cal()
                 mch.go_to('base_state')
 
@@ -1398,16 +1405,16 @@ class DiaOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = switch_state(
+        sw = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             ply_a_0("/sd/mvc/" +
                     dlg_m[self.i] + ".wav")
             self.sel_i = self.i
             self.i += 1
             if self.i > len(dlg_m)-1:
                 self.i = 0
-        if sw_st == "right":
+        if sw == "right":
             sel_mnu = dlg_m[self.sel_i]
             if sel_mnu == "opening_dialog_on":
                 cfg["opening_dialog"] = True
@@ -1450,9 +1457,9 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = switch_state(
+        sw = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left":
+        if sw == "left":
             if mix.voice[0].playing:
                 mix.voice[0].stop()
                 while mix.voice[0].playing:
@@ -1463,7 +1470,7 @@ class WebOpt(Ste):
                 self.menuIndex += 1
                 if self.menuIndex > len(web_m)-1:
                     self.menuIndex = 0
-        if sw_st == "right":
+        if sw == "right":
             sel_menu = web_m[self.selectedMenuIndex]
             if sel_menu == "web_on":
                 cfg["serve_webpage"] = True
@@ -1507,41 +1514,40 @@ class VolSet(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        sw_st = switch_state(
+        sw = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw_st == "left" and not s.vol_adj_mode:
+        if sw == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
             s.sel_i = s.i
             s.i += 1
             if s.i > len(vol_set)-1:
                 s.i = 0
         if vol_set[s.sel_i] == "volume_level_adjustment" and not s.vol_adj_mode:
-            if sw_st == "right":
+            if sw == "right":
                 s.vol_adj_mode = True
                 ply_a_0("/sd/mvc/volume_adjustment_menu.wav")
-        elif sw_st == "left" and s.vol_adj_mode:
+        elif sw == "left" and s.vol_adj_mode:
             ch_vol("lower")
-        elif sw_st == "right" and s.vol_adj_mode:
+        elif sw == "right" and s.vol_adj_mode:
             ch_vol("raise")
-        elif sw_st == "right_held" and s.vol_adj_mode:
+        elif sw == "right_held" and s.vol_adj_mode:
             write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             s.vol_adj_mode = False
             mch.go_to('base_state')
             upd_vol(0.1)
-        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_off":
+        if sw == "right" and vol_set[s.sel_i] == "volume_pot_off":
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
             write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
-        if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_on":
+        if sw == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
             write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
-
 
 gc_col("state mch")
 
@@ -1610,9 +1616,14 @@ async def server_poll_tsk(server):
 
 
 async def state_mach_upd_task(st_mch):
+    global an_just_added
     while True:
         st_mch.upd()
-        await asyncio.sleep(0)
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
 
 
 async def main():
@@ -1633,3 +1644,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
