@@ -220,31 +220,7 @@ f_s = servo.Servo(f_s)
 t_s = servo.Servo(t_s)
 
 ################################################################################
-# Global Variables
-
-
-def bndMinChp(min_chops, max_chops):
-    if min_chops < 1:
-        min_chops = 1
-    if min_chops > 20:
-        min_chops = 20
-    if min_chops > max_chops:
-        min_chops = max_chops
-    return str(min_chops)
-
-
-def bndMaxChp(min_chops, max_chops):
-    if max_chops < 1:
-        max_chops = 1
-    if max_chops > 20:
-        max_chops = 20
-    if max_chops < min_chops:
-        max_chops = min_chops
-    return str(max_chops)
-
-################################################################################
 # Sd card data Variables
-
 
 cfg = read_json_file("/sd/cfg.json")
 if "museum_mode" not in cfg:
@@ -553,8 +529,8 @@ if (web):
             def buttonpress(request: Request):
                 global cfg
                 data_object = request.json()
-                cfg["min_chops"] = bndMinChp(
-                    int(data_object["text"]), int(cfg["max_chops"]))
+                min_chops = min(max(int(data_object["text"]), 1), 20)
+                cfg["min_chops"] = str(min(min_chops, int(cfg["max_chops"])))
                 write_json_file("/sd/cfg.json", cfg)
                 spk_str(cfg["min_chops"], False)
                 return Response(request, cfg["min_chops"])
@@ -568,8 +544,8 @@ if (web):
             def buttonpress(request: Request):
                 global cfg
                 data_object = request.json()
-                cfg["max_chops"] = bndMaxChp(
-                    int(cfg["min_chops"]), int(data_object["text"]))
+                max_chops = min(max(int(data_object["text"]), 1), 20)
+                cfg["max_chops"] = str(max(max_chops, int(cfg["min_chops"])))
                 write_json_file("/sd/cfg.json", cfg)
                 spk_str(cfg["max_chops"], False)
                 return Response(request, cfg["max_chops"])
