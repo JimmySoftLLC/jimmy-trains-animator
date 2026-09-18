@@ -22,7 +22,6 @@
 
 #######################################################
 
-import utilities
 from adafruit_debouncer import Debouncer
 from adafruit_motor import servo
 from analogio import AnalogIn
@@ -39,40 +38,45 @@ import audiocore
 import storage
 import sdcardio
 import gc
-import files
 import asyncio
 import os
+import json
 
 
 def gc_col(collection_point):
     gc.collect()
     start_mem = gc.mem_free()
-    files.log_item("Point " + collection_point +
+    print("Point " + collection_point +
                    " Available memory: {} bytes".format(start_mem))
 
-
 gc_col("Imports gc, files")
-
 
 def rst():
     microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
     microcontroller.reset()
 
-
 gc_col("imports")
 
 ################################################################################
-# Setup hardware
+# Setup audio
 
-# Setup pin for v
-a_in = AnalogIn(board.A0)
+aud = audiobusio.I2SOut(
+    bit_clock=board.GP18,
+    word_select=board.GP19,
+    data=board.GP20)
 
-# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
-aud_en = digitalio.DigitalInOut(board.GP22)
-aud_en.direction = digitalio.Direction.OUTPUT
-aud_en.value = False
+mix = audiomixer.Mixer(
+    voice_count=1, sample_rate=22050, channel_count=2,
+    bits_per_sample=16, samples_signed=True, buffer_size=4096)
 
+aud.play(mix)
+mix.voice[0].level = .2
+
+gc_col("audio setup")
+
+################################################################################
 # Setup the switches
+
 l_sw_io = digitalio.DigitalInOut(board.GP6)
 l_sw_io.direction = digitalio.Direction.INPUT
 l_sw_io.pull = digitalio.Pull.UP
@@ -83,20 +87,24 @@ r_sw.direction = digitalio.Direction.INPUT
 r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
 
-# Added additional input SW-3 - Trigger Feller only - KJB 6-22-2026
 t_sw = digitalio.DigitalInOut(board.GP8)
 t_sw.direction = digitalio.Direction.INPUT
 t_sw.pull = digitalio.Pull.UP
 t_sw = Debouncer(t_sw)
 
-# setup i2s audio
-i2s_bclk = board.GP18   # BCLK on MAX98357A
-i2s_lrc = board.GP19  # LRC on MAX98357A
-i2s_din = board.GP20  # DIN on MAX98357A
+################################################################################
+# Setup audio pot and enable pin
 
-aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
+a_in = AnalogIn(board.A0)
 
+# setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
+aud_en = digitalio.DigitalInOut(board.GP22)
+aud_en.direction = digitalio.Direction.OUTPUT
+aud_en.value = False
+
+################################################################################
 # Setup sdCard
+
 aud_en.value = True
 
 sck = board.GP2
@@ -105,21 +113,79 @@ so = board.GP4
 cs = board.GP5
 spi = busio.SPI(sck, si, so)
 
-# Setup the mixer
-num_voices = 2
-mix = audiomixer.Mixer(voice_count=num_voices, sample_rate=22050, channel_count=2,
-                       bits_per_sample=16, samples_signed=True, buffer_size=4096)
-aud.play(mix)
+def switch_state(l_sw, r_sw, upd_vol, h_down_sec, override_switch_state=None, t_sw=None, wait_at_end=True):
+    if override_switch_state and override_switch_state["switch_value"]:
+        sw = override_switch_state["switch_value"]
+        override_switch_state["switch_value"] = ""
+        return sw
+    l_sw.update()
+    r_sw.update()
+    if t_sw:
+        t_sw.update()
+    if l_sw.fell:
+        cyc = 0
+        while True:
+            upd_vol(.1)
+            l_sw.update()
+            cyc += 1
+            if cyc > h_down_sec * 10:
+                return "left_held"
+            if l_sw.rose:
+                return "left"
+    if r_sw.fell:
+        cyc = 0
+        while True:
+            upd_vol(.1)
+            r_sw.update()
+            cyc += 1
+            if cyc > h_down_sec * 10:
+                return "right_held"
+            if r_sw.rose:
+                return "right"
+    if t_sw and t_sw.fell:
+        while True:
+            upd_vol(.1)
+            t_sw.update()
+            if t_sw.rose:
+                return "trigger"
+    if not l_sw.value:
+        cyc = 0
+        while True:
+            upd_vol(.1)
+            l_sw.update()
+            cyc += 1
+            if cyc > h_down_sec * 10:
+                return "left_held"
+            if l_sw.rose:
+                return "none"
+    if not r_sw.value:
+        cyc = 0
+        while True:
+            upd_vol(.1)
+            r_sw.update()
+            cyc += 1
+            if cyc > h_down_sec * 10:
+                return "right_held"
+            if r_sw.rose:
+                return "none"
+    if wait_at_end:
+        upd_vol(.1)
+    return "none"
 
-mix.voice[0].level = .2
-mix.voice[1].level = .2
+def read_json_file(file_name):
+    with open(file_name, "r") as f:
+        return json.loads(f.read())
+
+def write_json_file(file_name, data):
+    with open(file_name, "w") as f:
+        f.write(json.dumps(data))
 
 try:
     sdcard = sdcardio.SDCard(spi, cs)
     vfs = storage.VfsFat(sdcard)
     storage.mount(vfs, "/sd")
 except Exception as e:
-    files.log_item(e)
+    print(e)
     w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
@@ -139,7 +205,7 @@ except Exception as e:
                 while mix.voice[0].playing:
                     pass
             except Exception as e:
-                files.log_item(e)
+                print(e)
                 w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
@@ -180,11 +246,11 @@ def bndMaxChp(min_chops, max_chops):
 # Sd card data Variables
 
 
-cfg = files.read_json_file("/sd/cfg.json")
+cfg = read_json_file("/sd/cfg.json")
 if "museum_mode" not in cfg:
     cfg["museum_mode"] = False
 
-cfg_vol = files.read_json_file("/sd/mvc/volume_settings.json")
+cfg_vol = read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
 
 t_lst_p = cfg["tree_up_pos"]
@@ -203,25 +269,25 @@ if cfg["feller_rest_pos"] < f_min or cfg["feller_rest_pos"] > f_max:
 if cfg["feller_chop_pos"] > f_max or cfg["feller_chop_pos"] < f_min:
     cfg["feller_chop_pos"] = f_max
 
-cfg_main = files.read_json_file("/sd/mvc/main_menu.json")
+cfg_main = read_json_file("/sd/mvc/main_menu.json")
 main_m = cfg_main["main_menu"]
 
-cfg_snds = files.read_json_file("/sd/mvc/choose_sounds.json")
+cfg_snds = read_json_file("/sd/mvc/choose_sounds.json")
 snd_opts = cfg_snds["choose_sounds"]
 
-cfg_adj_f_t = files.read_json_file(
+cfg_adj_f_t = read_json_file(
     "/sd/mvc/adjust_feller_and_tree.json")
 adj_f_t = cfg_adj_f_t["adjust_feller_and_tree"]
 
-cfg_mov_f_t = files.read_json_file(
+cfg_mov_f_t = read_json_file(
     "/sd/mvc/move_feller_and_tree.json")
 mov_f_t = cfg_mov_f_t["move_feller_and_tree"]
 
-cfg_dlg = files.read_json_file(
+cfg_dlg = read_json_file(
     "/sd/mvc/dialog_selection_menu.json")
 dlg_m = cfg_dlg["dialog_selection_menu"]
 
-cfg_web = files.read_json_file("/sd/mvc/web_menu.json")
+cfg_web = read_json_file("/sd/mvc/web_menu.json")
 web_m = cfg_web["web_menu"]
 
 web = cfg["serve_webpage"]
@@ -251,20 +317,20 @@ if (web):
     from adafruit_httpserver import Server, Request, FileResponse, Response, POST
     gc_col("config wifi imports")
 
-    files.log_item("Connecting to WiFi")
+    print("Connecting to WiFi")
 
     # default for manufacturing and shows
     WIFI_SSID = "jimmytrainsguest"
     WIFI_PASSWORD = ""
 
     try:
-        env = files.read_json_file("/sd/env.json")
+        env = read_json_file("/sd/env.json")
         WIFI_SSID = env["WIFI_SSID"]
         WIFI_PASSWORD = env["WIFI_PASSWORD"]
         gc_col("wifi env")
         print("Using env ssid and password")
     except Exception as e:
-        files.log_item(e)
+        print(e)
         print("Using default ssid and password")
 
     try:
@@ -281,15 +347,15 @@ if (web):
             mdns_server.advertise_service(
                 service_type="_http", protocol="_tcp", port=80)
 
-            # files.log_items MAC address to REPL
+            # prints MAC address to REPL
             mystring = [hex(i) for i in wifi.radio.mac_address]
-            files.log_item("My MAC addr:" + str(mystring))
+            print("My MAC addr:" + str(mystring))
 
             local_ip = str(wifi.radio.ipv4_address)
 
-            # files.log_items IP address to REPL
-            files.log_item("My IP address is" + local_ip)
-            files.log_item("Connected to WiFi")
+            # prints IP address to REPL
+            print("My IP address is" + local_ip)
+            print("Connected to WiFi")
 
             # set up server
             pool = socketpool.SocketPool(wifi.radio)
@@ -403,7 +469,7 @@ if (web):
                 elif "feller_advice_off":
                     cfg["feller_advice"] = False
 
-                files.write_json_file("/sd/cfg.json", cfg)
+                write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
 
                 return Response(request, "Dialog option cal saved.")
@@ -416,15 +482,15 @@ if (web):
                     ply_a_0("/sd/mvc/left_speaker_right_speaker.wav")
                 elif rq_d["an"] == "volume_pot_off":
                     cfg["volume_pot"] = False
-                    files.write_json_file("/sd/cfg.json", cfg)
+                    write_json_file("/sd/cfg.json", cfg)
                     ply_a_0("/sd/mvc/all_changes_complete.wav")
                 elif rq_d["an"] == "volume_pot_on":
                     cfg["volume_pot"] = True
-                    files.write_json_file("/sd/cfg.json", cfg)
+                    write_json_file("/sd/cfg.json", cfg)
                     ply_a_0("/sd/mvc/all_changes_complete.wav")
                 elif rq_d["an"] == "reset_to_defaults":
                     reset_to_defaults()
-                    files.write_json_file("/sd/cfg.json", cfg)
+                    write_json_file("/sd/cfg.json", cfg)
                     ply_a_0("/sd/mvc/all_changes_complete.wav")
                     st_mch.go_to('base_state')
 
@@ -436,7 +502,7 @@ if (web):
                 stp_all_cmds()
                 data_object = request.json()
                 cfg["HOST_NAME"] = data_object["text"]
-                files.write_json_file("/sd/cfg.json", cfg)
+                write_json_file("/sd/cfg.json", cfg)
                 mdns_server.hostname = cfg["HOST_NAME"]
                 speak_webpage()
                 return Response(request, cfg["HOST_NAME"])
@@ -489,7 +555,7 @@ if (web):
                 data_object = request.json()
                 cfg["min_chops"] = bndMinChp(
                     int(data_object["text"]), int(cfg["max_chops"]))
-                files.write_json_file("/sd/cfg.json", cfg)
+                write_json_file("/sd/cfg.json", cfg)
                 spk_str(cfg["min_chops"], False)
                 return Response(request, cfg["min_chops"])
 
@@ -504,7 +570,7 @@ if (web):
                 data_object = request.json()
                 cfg["max_chops"] = bndMaxChp(
                     int(cfg["min_chops"]), int(data_object["text"]))
-                files.write_json_file("/sd/cfg.json", cfg)
+                write_json_file("/sd/cfg.json", cfg)
                 spk_str(cfg["max_chops"], False)
                 return Response(request, cfg["max_chops"])
 
@@ -516,7 +582,7 @@ if (web):
 
     except Exception as e:
         web = False
-        files.log_item(e)
+        print(e)
 
 
 gc_col("web server")
@@ -605,7 +671,7 @@ def ch_vol(action):
     cfg["volume"] = str(volume)
     cfg["volume_pot"] = False
     if not mix.voice[0].playing and not mix.voice[1].playing:
-        files.write_json_file("/sd/cfg.json", cfg)
+        write_json_file("/sd/cfg.json", cfg)
         ply_a_0("/sd/mvc/volume.wav")
         spk_str(cfg["volume"], False)
 
@@ -619,7 +685,7 @@ def upd_vol(s):
         try:
             volume = int(cfg["volume"]) / 100
         except Exception as e:
-            files.log_item(e)
+            print(e)
             volume = .5
         if volume < 0 or volume > 1:
             volume = .5
@@ -636,7 +702,7 @@ async def upd_vol_async(s):
         try:
             v = int(cfg["volume"]) / 100
         except Exception as e:
-            files.log_item(e)
+            print(e)
             v = .5
         if v < 0 or v > 1:
             v = .5
@@ -675,19 +741,20 @@ def exit_early():
 
 
 def animation_stop():
-    global button_press_start
+    global button_press_start, exit_set_hdw_async
+    if exit_set_hdw_async:
+        return True
     if cfg["museum_mode"]:
         if not l_sw_io.value:
             if button_press_start is None:
                 button_press_start = time.monotonic()
             elif time.monotonic() - button_press_start > 1:
-                button_press_start = None
-                return True
+                exit_set_hdw_async = True
         else:
             button_press_start = None
     elif not l_sw_io.value:
-        return True
-    return False
+        exit_set_hdw_async = True
+    return exit_set_hdw_async
 
 
 def l_r_but():
@@ -772,7 +839,7 @@ def cal_r_but(servo, movement_type, sign, min_servo_pos, max_servo_pos):
 def wrt_cal():
     ply_a_0("/sd/mvc/all_changes_complete.wav")
     global cfg
-    files.write_json_file("/sd/cfg.json", cfg)
+    write_json_file("/sd/cfg.json", cfg)
 
 
 def m_f_spd(n_pos, spd):
@@ -827,12 +894,8 @@ def f_tlk_mov():
     spk_rot = 7
     spk_cad = 0.2
     while mix.voice[0].playing:
-        sw_st = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 0.5)
-        if sw_st == "left_held":
+        if animation_stop():
             mix.voice[0].stop()
-            while mix.voice[0].playing:
-                pass
             return
         f_s.angle = spk_rot + cfg["feller_rest_pos"]
         upd_vol(spk_cad)
@@ -844,15 +907,10 @@ def t_tlk_mov():
     spk_rot = 2
     spk_cad = 0.2
     while mix.voice[0].playing:
-        sw_st = utilities.switch_state(
-            l_sw, r_sw, upd_vol, 0.5)
-        if sw_st == "left_held":
+        if animation_stop():
             mix.voice[0].stop()
-            while mix.voice[0].playing:
-                pass
             return
         t_s.angle = cfg["tree_up_pos"]
-
         upd_vol(spk_cad)
         t_s.angle = cfg["tree_up_pos"] - spk_rot
         upd_vol(spk_cad)
@@ -863,7 +921,7 @@ def ply_snd(folder):
     sounds = [f for f in os.listdir(path) if not f.startswith(".")]
     file_name = random.choice(sounds)
     sounds = None
-    files.log_item(folder + ": " + file_name)
+    print(folder + ": " + file_name)
     w0 = audiocore.WaveFile(open(path + "/" + file_name, "rb"))
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
@@ -874,152 +932,158 @@ def ply_snd(folder):
     w0.deinit()
     gc_col("deinit w0")
 
-
 async def an(command):
     cfg["option_selected"] = command
-    files.write_json_file("/sd/cfg.json", cfg)
-
+    write_json_file("/sd/cfg.json", cfg)
     await upd_vol_async(0.05)
-
-    if cfg["opening_dialog"]:
-        s_i = random.randint(0, 3)
-        if s_i == 0:
-            ply_snd("feller_wife")
-        elif s_i == 1:
-            ply_snd("feller_buddy")
-        elif s_i == 2:
-            ply_snd("feller_poem")
+    w0 = None
+    w1 = None
+    try:
+        if cfg["opening_dialog"]:
+            s_i = random.randint(0, 3)
+            if s_i == 0:
+                ply_snd("feller_wife")
+            elif s_i == 1:
+                ply_snd("feller_buddy")
+            elif s_i == 2:
+                ply_snd("feller_poem")
+            else:
+                ply_snd("feller_girlfriend")
+            if animation_stop():
+                return
+        chop_i = 1
+        chop_n = random.randint(int(cfg["min_chops"]), int(cfg["max_chops"]))
+        when_spk = random.randint(1, chop_n)
+        print("Chop total:", chop_n, "when to speak:", when_spk)
+        spoken = False
+        t_chop_p = cfg["tree_up_pos"] - 3
+        cur_opt = cfg["option_selected"]
+        if cur_opt == "random":
+            s_n = random.randint(0, len(snd_opts) - 2)
+            cur_opt = snd_opts[s_n]
+            print("Random sound file:", cur_opt)
+        if cur_opt == "happy_birthday":
+            s_n = random.randint(0, 6)
+            snd_f = "/sd/feller_sounds/sounds_" + cur_opt + str(s_n) + ".wav"
         else:
-            ply_snd("feller_girlfriend")
-    chop_i = 1
-    chop_n = random.randint(
-        int(cfg["min_chops"]), int(cfg["max_chops"]))
-    when_spk = random.randint(1, chop_n)
-
-    files.log_item("Chop total: " + str(chop_n) + " when to speak: " + str(when_spk))
-    spoken = False
-    t_chop_p = cfg["tree_up_pos"] - 3
-
-    cur_opt = cfg["option_selected"]
-    if cur_opt == "random":
-        # subtract -2 to avoid choosing "random" for a file
-        h_i = len(snd_opts) - 2
-        s_n = random.randint(0, h_i)
-        cur_opt = snd_opts[s_n]
-        print("Random sound file: " + snd_opts[s_n])
-    if cur_opt == "happy_birthday":
-        s_n = random.randint(0, 6)
-        snd_f = "/sd/feller_sounds/sounds_" + \
-            cur_opt + str(s_n) + ".wav"
-        print("Sound file: " + cur_opt + str(s_n))
-    else:
-        snd_f = "/sd/feller_sounds/sounds_" + cur_opt + ".wav"
-        print("Sound file: " + cur_opt)
-
-    w1 = audiocore.WaveFile(open(snd_f, "rb"))
-    while chop_i <= chop_n:
-        await upd_vol_async(0)
-        if when_spk == chop_i and not spoken and cfg["feller_advice"]:
-            spoken = True
-            sounds = [f for f in os.listdir("/sd/feller_dialog") if not f.startswith(".")]
-            snd_f = "/sd/feller_dialog/" + random.choice(sounds)
-            sounds = None
-            files.log_item("Feller dialog: " + snd_f)
-            w0 = audiocore.WaveFile(open(snd_f, "rb"))
-            mix.voice[0].play(w0, loop=False)
-            f_tlk_mov()
-            w0.deinit()
-            gc_col("deinit w0")
-
-        chop_s = random.randint(1, 7)
-        print("Chop track: " + str(chop_s))
-
-        w0 = audiocore.WaveFile(
-            open("/sd/feller_chops/chop" + str(chop_s) + ".wav", "rb"))
-        chop_i += 1
-
-        # 0 - 180 degrees, 10 degrees at a time.
-        for f_pos in range(cfg["feller_rest_pos"], cfg["feller_chop_pos"] + 5, 10):
-            mov_f(f_pos)
-            if f_pos >= (cfg["feller_chop_pos"] - 10):
+            snd_f = "/sd/feller_sounds/sounds_" + cur_opt + ".wav"
+        print("Sound file:", snd_f)
+        w1 = audiocore.WaveFile(open(snd_f, "rb"))
+        while chop_i <= chop_n:
+            await upd_vol_async(0)
+            if animation_stop():
+                return
+            if when_spk == chop_i and not spoken and cfg["feller_advice"]:
+                spoken = True
+                sounds = [f for f in os.listdir("/sd/feller_dialog") if not f.startswith(".")]
+                snd_f = "/sd/feller_dialog/" + random.choice(sounds)
+                sounds = None
+                print("Feller dialog:", snd_f)
+                w0 = audiocore.WaveFile(open(snd_f, "rb"))
                 mix.voice[0].play(w0, loop=False)
-                shk = 2
-                upd_vol(0.2)
-                for _ in range(shk):
-                    mov_t(t_chop_p)
-                    upd_vol(0.1)
-                    mov_t(cfg["tree_up_pos"])
-                    upd_vol(0.1)
-                break
-        if chop_i <= chop_n:
-            # 180 - 0 degrees, 5 degrees at a time.
-            for f_pos in range(cfg["feller_chop_pos"], cfg["feller_rest_pos"], -5):
+                f_tlk_mov()
+                w0.deinit()
+                w0 = None
+                gc_col("deinit w0")
+                if animation_stop():
+                    return
+            chop_s = random.randint(1, 7)
+            print("Chop track:", chop_s)
+            w0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chop_s) + ".wav", "rb"))
+            chop_i += 1
+            for f_pos in range(cfg["feller_rest_pos"], cfg["feller_chop_pos"] + 5, 10):
+                if animation_stop():
+                    mix.voice[0].stop()
+                    break
                 mov_f(f_pos)
-                upd_vol(0.02)
-    while mix.voice[0].playing:
-        await upd_vol_async(0.1)
-    mix.voice[0].play(w1, loop=False)
-    # 180 - 0 degrees, 5 degrees at a time.
-    for t_pos in range(cfg["tree_up_pos"], cfg["tree_down_pos"], -5):
-        mov_t(t_pos)
-        upd_vol(0.06)
-    shk = 8
-    for _ in range(shk):
-        mov_t(cfg["tree_down_pos"])
-        upd_vol(0.1)
-        mov_t(7 + cfg["tree_down_pos"])
-        upd_vol(0.1)
-    if cur_opt == "alien":
-        print("Alien sequence starting....")
-        upd_vol(2)
+                if f_pos >= cfg["feller_chop_pos"] - 10:
+                    mix.voice[0].play(w0, loop=False)
+                    upd_vol(0.2)
+                    for _ in range(2):
+                        mov_t(t_chop_p)
+                        upd_vol(0.1)
+                        mov_t(cfg["tree_up_pos"])
+                        upd_vol(0.1)
+                    break
+            if animation_stop():
+                return
+            if chop_i <= chop_n:
+                for f_pos in range(cfg["feller_chop_pos"], cfg["feller_rest_pos"], -5):
+                    if animation_stop():
+                        break
+                    mov_f(f_pos)
+                    upd_vol(0.02)
+            if animation_stop():
+                return
+            w0.deinit()
+            w0 = None
+        while mix.voice[0].playing:
+            await upd_vol_async(0.1)
+            if animation_stop():
+                mix.voice[0].stop()
+                return
+        mix.voice[0].play(w1, loop=False)
+        for t_pos in range(cfg["tree_up_pos"], cfg["tree_down_pos"], -5):
+            mov_t(t_pos)
+            upd_vol(0.06)
+        for _ in range(8):
+            mov_t(cfg["tree_down_pos"])
+            upd_vol(0.1)
+            mov_t(7 + cfg["tree_down_pos"])
+            upd_vol(0.1)
+        if cur_opt == "alien":
+            print("Alien sequence starting....")
+            upd_vol(2)
+            m_f_spd(cfg["feller_rest_pos"], 0.01)
+            m_t_spd(cfg["tree_up_pos"], 0.01)
+            l_pos = cfg["tree_up_pos"]
+            r_pos = cfg["tree_up_pos"] - 8
+            while mix.voice[0].playing:
+                await upd_vol_async(0)
+                if animation_stop():
+                    mix.voice[0].stop()
+                    return
+                m_t_spd(l_pos, 0.1)
+                m_t_spd(r_pos, 0.1)
+            m_t_spd(cfg["tree_up_pos"], 0.04)
+            for alien_n in range(7):
+                if animation_stop():
+                    return
+                snd_f = "/sd/feller_alien/human_" + str(alien_n + 1) + ".wav"
+                w0 = audiocore.WaveFile(open(snd_f, "rb"))
+                mix.voice[0].play(w0, loop=False)
+                f_tlk_mov()
+                w0.deinit()
+                w0 = None
+                if animation_stop():
+                    return
+                snd_f = "/sd/feller_alien/alien_" + str(alien_n + 1) + ".wav"
+                w0 = audiocore.WaveFile(open(snd_f, "rb"))
+                mix.voice[0].play(w0, loop=False)
+                t_tlk_mov()
+                w0.deinit()
+                w0 = None
+                if animation_stop():
+                    return
+        else:
+            while mix.voice[0].playing:
+                await upd_vol_async(0)
+                if animation_stop():
+                    mix.voice[0].stop()
+                    return
+    finally:
+        mix.voice[0].stop()
+        if w0 is not None:
+            w0.deinit()
+        if w1 is not None:
+            w1.deinit()
+        gc_col("deinit w0 w1")
         m_f_spd(cfg["feller_rest_pos"], 0.01)
         m_t_spd(cfg["tree_up_pos"], 0.01)
-        l_pos = cfg["tree_up_pos"]
-        r_pos = cfg["tree_up_pos"] - 8
-        while mix.voice[0].playing:
-            await upd_vol_async(0)
-            sw_st = utilities.switch_state(
-                l_sw, r_sw, upd_vol, 0.5)
-            if sw_st == "left_held":
-                stp_all_cmds()
-                cont_run = False
-                ply_a_0("/sd/mvc/animation_canceled.wav")
-                break
-            m_t_spd(l_pos, 0.1)
-            m_t_spd(r_pos, 0.1)
-        m_t_spd(cfg["tree_up_pos"], 0.04)
-        for alien_n in range(7):
-            snd_f = "/sd/feller_alien/human_" + str(alien_n+1) + ".wav"
-            w0 = audiocore.WaveFile(open(snd_f, "rb"))
-            mix.voice[0].play(w0, loop=False)
-            f_tlk_mov()
-            snd_f = "/sd/feller_alien/alien_" + str(alien_n+1) + ".wav"
-            w0 = audiocore.WaveFile(open(snd_f, "rb"))
-            mix.voice[0].play(w0, loop=False)
-            t_tlk_mov()
-            sw_st = utilities.switch_state(
-                l_sw, r_sw, upd_vol, 0.5)
-            if sw_st == "left_held":
-                stp_all_cmds()
-                cont_run = False
-                ply_a_0("/sd/mvc/animation_canceled.wav")
-                break
-    else:
-        while mix.voice[0].playing:
-            await upd_vol_async(0)
-            sw_st = utilities.switch_state(
-                l_sw, r_sw, upd_vol, 0.5)
-            if sw_st == "left_held":
-                stp_all_cmds()
-                cont_run = False
-                ply_a_0("/sd/mvc/animation_canceled.wav")
-                break
-    w0.deinit()
-    w1.deinit()
-    gc_col("deinit w0 w1")
-    m_f_spd(cfg["feller_rest_pos"], 0.01)
-    await upd_vol_async(0.02)
-    m_t_spd(cfg["tree_up_pos"], 0.01)
+        await upd_vol_async(0.2)
+        f_s.fraction = None
+        t_s.fraction = None
+
 
 ################################################################################
 # State Machine
@@ -1079,21 +1143,28 @@ class BseSt(Ste):
         return 'base_state'
 
     def enter(self, mch):
-        # set servos to starting position
         m_f_spd(cfg["feller_rest_pos"], 0.01)
         m_t_spd(cfg["tree_up_pos"], 0.01)
+        time.sleep(0.2)
+        f_s.fraction = None
+        t_s.fraction = None
         ply_a_0("/sd/mvc/animations_are_now_active.wav")
-        files.log_item("Entered base state")
+        print("Entered base state")
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
-# Added Trigger question - KJB 6-24-2026
     def upd(self, mch):
         global cont_run
-        sw_st = utilities.switch_state_trigger(
-            l_sw, r_sw, t_sw, time.sleep, 3.0, ovrde_sw_st)
+        sw_st = switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st, t_sw)
+        if cfg["museum_mode"]:
+            if sw_st == "left":
+                add_cmd(cfg["option_selected"])
+            elif sw_st == "right":
+                mch.go_to('main_menu')
+            return
         if sw_st == "left_held":
             if cont_run:
                 cont_run = False
@@ -1121,7 +1192,7 @@ class Main(Ste):
         return 'main_menu'
 
     def enter(self, mch):
-        files.log_item('Main menu')
+        print('Main menu')
         ply_a_0("/sd/mvc/main_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
@@ -1130,7 +1201,7 @@ class Main(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw_st = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" + main_m[self.i] + ".wav")
@@ -1168,7 +1239,7 @@ class Snds(Ste):
         return 'choose_sounds'
 
     def enter(self, mch):
-        files.log_item('Choose sounds menu')
+        print('Choose sounds menu')
         ply_a_0("/sd/mvc/sound_selection_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
@@ -1177,7 +1248,7 @@ class Snds(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw_st = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             if mix.voice[0].playing:
@@ -1193,9 +1264,9 @@ class Snds(Ste):
                     self.i = 0
         if sw_st == "right":
             cfg["option_selected"] = snd_opts[self.sel_i]
-            files.log_item("Selected index: " + str(self.sel_i) +
+            print("Selected index: " + str(self.sel_i) +
                            " Saved option: " + cfg["option_selected"])
-            files.write_json_file("/sd/cfg.json", cfg)
+            write_json_file("/sd/cfg.json", cfg)
             opt_sel()
             mch.go_to('base_state')
 
@@ -1211,7 +1282,7 @@ class MovFellTree(Ste):
         return 'move_feller_and_tree'
 
     def enter(self, mch):
-        files.log_item('Move feller and tree menu')
+        print('Move feller and tree menu')
         ply_a_0("/sd/mvc/move_feller_and_tree_menu.wav")
         l_r_but()
         Ste.enter(self, mch)
@@ -1220,7 +1291,7 @@ class MovFellTree(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw_st = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" + mov_f_t[self.i] + ".wav")
@@ -1257,7 +1328,7 @@ class AdjFellTree(Ste):
         return 'adjust_feller_and_tree'
 
     def enter(self, mch):
-        files.log_item('Adjust feller and tree menu')
+        print('Adjust feller and tree menu')
         ply_a_0("/sd/mvc/adjust_feller_and_tree_menu.wav")
         l_r_but()
         self.cal_active = False
@@ -1270,7 +1341,7 @@ class AdjFellTree(Ste):
 
     def upd(self, mch):
         global f_lst_p, t_lst_p
-        sw_st = utilities.switch_state(
+        sw_st = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left" and not self.cal_active:
             ply_a_0("/sd/mvc/" +
@@ -1343,7 +1414,7 @@ class DiaOpt(Ste):
         return 'set_dialog_options'
 
     def enter(self, mch):
-        files.log_item('Set Dialog Options')
+        print('Set Dialog Options')
         sel_dlg()
         Ste.enter(self, mch)
 
@@ -1351,7 +1422,7 @@ class DiaOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw_st = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             ply_a_0("/sd/mvc/" +
@@ -1379,7 +1450,7 @@ class DiaOpt(Ste):
                 opt_sel()
                 sel_dlg()
             else:
-                files.write_json_file("/sd/cfg.json", cfg)
+                write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
@@ -1395,7 +1466,7 @@ class WebOpt(Ste):
         return 'web_options'
 
     def enter(self, mch):
-        files.log_item('Set Web Options')
+        print('Set Web Options')
         sel_web()
         Ste.enter(self, mch)
 
@@ -1403,7 +1474,7 @@ class WebOpt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw_st = utilities.switch_state(
+        sw_st = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left":
             if mix.voice[0].playing:
@@ -1433,7 +1504,7 @@ class WebOpt(Ste):
                 ply_a_0("/sd/mvc/web_instruct.wav")
                 sel_web()
             else:
-                files.write_json_file("/sd/cfg.json", cfg)
+                write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
 
@@ -1450,7 +1521,7 @@ class VolSet(Ste):
         return 'volume_settings'
 
     def enter(s, mch):
-        files.log_item('Set Web Options')
+        print('Set Web Options')
         ply_a_0("/sd/mvc/volume_settings_menu.wav")
         l_r_but()
         s.vol_adj_mode = False
@@ -1460,7 +1531,7 @@ class VolSet(Ste):
         Ste.exit(s, mch)
 
     def upd(s, mch):
-        sw_st = utilities.switch_state(
+        sw_st = switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw_st == "left" and not s.vol_adj_mode:
             ply_a_0("/sd/mvc/" + vol_set[s.i] + ".wav")
@@ -1477,7 +1548,7 @@ class VolSet(Ste):
         elif sw_st == "right" and s.vol_adj_mode:
             ch_vol("raise")
         elif sw_st == "right_held" and s.vol_adj_mode:
-            files.write_json_file("/sd/cfg.json", cfg)
+            write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             s.vol_adj_mode = False
             mch.go_to('base_state')
@@ -1486,12 +1557,12 @@ class VolSet(Ste):
             cfg["volume_pot"] = False
             if cfg["volume"] == 0:
                 cfg["volume"] = 10
-            files.write_json_file("/sd/cfg.json", cfg)
+            write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
         if sw_st == "right" and vol_set[s.sel_i] == "volume_pot_on":
             cfg["volume_pot"] = True
-            files.write_json_file("/sd/cfg.json", cfg)
+            write_json_file("/sd/cfg.json", cfg)
             ply_a_0("/sd/mvc/all_changes_complete.wav")
             mch.go_to('base_state')
 
@@ -1525,18 +1596,18 @@ def speak_webpage():
 
 
 if (web):
-    files.log_item("starting server...")
+    print("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address))
-        files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        print("Listening on http://%s:80" % wifi.radio.ipv4_address)
         speak_webpage()
     except OSError:
         time.sleep(5)
-        files.log_item("restarting...")
+        print("restarting...")
         rst()
 
 st_mch.go_to('base_state')
-files.log_item("animator has started...")
+print("animator has started...")
 gc_col("animations started.")
 
 # Main task handling
@@ -1548,7 +1619,7 @@ async def process_cmd_tsk():
         try:
             await process_cmd()  # Async command processing
         except Exception as e:
-            files.log_item(e)
+            print(e)
         await asyncio.sleep(0)  # Yield control to other tasks
 
 
@@ -1558,7 +1629,7 @@ async def server_poll_tsk(server):
         try:
             server.poll()  # Web server polling
         except Exception as e:
-            files.log_item(e)
+            print(e)
         await asyncio.sleep(0)  # Yield control to other tasks
 
 
