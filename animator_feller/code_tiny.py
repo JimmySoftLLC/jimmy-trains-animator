@@ -222,9 +222,14 @@ def write_json_file(file_name, data):
     with open(file_name, "w") as f:
         f.write(json.dumps(data))
 
-cfg = read_json_file("/sd/cfg.json")
-if "cont_mode" not in cfg:
-    cfg["cont_mode"] = False
+try:
+    cfg = read_json_file("/sd/cfg.json")
+except Exception as e:
+    print("config file corrupt writing out default deep copy")
+    cfg = json.loads(json.dumps("/sd/cfg_default.json"))
+    write_json_file("/sd/cfg.json", cfg)
+
+cfg["cont_mode"] = False
 
 cfg_vol = read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
@@ -260,11 +265,8 @@ cfg_mov_f_t = read_json_file(
 mov_f_t = cfg_mov_f_t["move_feller_and_tree"]
 
 cfg_dlg = read_json_file(
-    "/sd/mvc/dialog_selection_menu.json")
-dlg_m = cfg_dlg["dialog_selection_menu"]
-
-cfg_web = read_json_file("/sd/mvc/web_menu.json")
-web_m = cfg_web["web_menu"]
+    "/sd/mvc/set_options.json")
+dlg_m = cfg_dlg["set_options"]
 
 web = cfg["serve_webpage"]
 
@@ -735,8 +737,12 @@ def l_r_but():
     ply_a_0("/sd/mvc/press_left_button_right_button.wav")
 
 
-def opt_sel():
+def snd_choosen():
     ply_a_0("/sd/mvc/option_selected.wav")
+
+def option_set():
+    ply_a_0("/sd/mvc/option_selected.wav")
+    set_options_menu()
 
 
 def f_cal():
@@ -747,16 +753,8 @@ def t_cal():
     ply_a_0("/sd/mvc/now_we_can_adjust_the_tree_position.wav")
     ply_a_0("/sd/mvc/to_exit_press_and_hold_button_down.wav")
 
-def sel_dlg():
-    ply_a_0("/sd/mvc/dialog_selection_menu.wav")
-    l_r_but()
-
-def sel_web():
-    ply_a_0("/sd/mvc/web_menu.wav")
-    l_r_but()
-
-def sel_museum():
-    ply_a_0("/sd/mvc/museum_settings_menu.mp3")
+def set_options_menu():
+    ply_a_0("/sd/mvc/set_options_menu.wav")
     l_r_but()
 
 def chk_lmt(min_servo_pos, max_servo_pos, servo_pos):
@@ -767,7 +765,6 @@ def chk_lmt(min_servo_pos, max_servo_pos, servo_pos):
         ply_a_0("/sd/mvc/limit_reached.wav")
         return False
     return True
-
 
 def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
@@ -913,7 +910,6 @@ async def an(command):
     write_json_file("/sd/cfg.json", cfg)
     await upd_vol_async(0.05)
     w0 = None
-    w1 = None
     try:
         if cfg["opening_dialog"]:
             s_i = random.randint(0, 3)
@@ -938,13 +934,6 @@ async def an(command):
             s_n = random.randint(0, len(snd_opts) - 2)
             cur_opt = snd_opts[s_n]
             print("Random sound file:", cur_opt)
-        if cur_opt == "happy_birthday":
-            s_n = random.randint(0, 6)
-            snd_f = "/sd/feller_sounds/sounds_" + cur_opt + str(s_n) + ".wav"
-        else:
-            snd_f = "/sd/feller_sounds/sounds_" + cur_opt + ".wav"
-        print("Sound file:", snd_f)
-        w1 = audiocore.WaveFile(open(snd_f, "rb"))
         while chop_i <= chop_n:
             await upd_vol_async(0)
             if animation_stop():
@@ -991,14 +980,19 @@ async def an(command):
                     upd_vol(0.02)
             if animation_stop():
                 return
+            while mix.voice[0].playing:
+                await upd_vol_async(0.01)
+                if animation_stop():
+                    mix.voice[0].stop()
+                    return
             w0.deinit()
             w0 = None
-        while mix.voice[0].playing:
-            await upd_vol_async(0.1)
-            if animation_stop():
-                mix.voice[0].stop()
-                return
-        mix.voice[0].play(w1, loop=False)
+        if cur_opt == "happy_birthday":
+            s_n = random.randint(0, 6)
+            w0 = audiocore.WaveFile(open("/sd/feller_sounds/sounds_" + cur_opt + str(s_n) + ".wav", "rb"))
+        else:
+            w0 = audiocore.WaveFile(open("/sd/feller_sounds/sounds_" + cur_opt + ".wav", "rb"))
+        mix.voice[0].play(w0, loop=False)
         for t_pos in range(cfg["tree_up_pos"], cfg["tree_down_pos"], -5):
             mov_t(t_pos)
             upd_vol(0.06)
@@ -1021,6 +1015,8 @@ async def an(command):
                     return
                 m_t_spd(l_pos, 0.1)
                 m_t_spd(r_pos, 0.1)
+            w0.deinit()
+            w0 = None
             m_t_spd(cfg["tree_up_pos"], 0.04)
             for alien_n in range(7):
                 if animation_stop():
@@ -1047,19 +1043,20 @@ async def an(command):
                 if animation_stop():
                     mix.voice[0].stop()
                     return
+            w0.deinit()
+            w0 = None
     finally:
         mix.voice[0].stop()
         if w0 is not None:
             w0.deinit()
-        if w1 is not None:
-            w1.deinit()
-        gc_col("deinit w0 w1")
+        gc_col("deinit w0")
         m_f_spd(cfg["feller_rest_pos"], 0.01)
         m_t_spd(cfg["tree_up_pos"], 0.01)
         await upd_vol_async(0.2)
         f_s.fraction = None
         t_s.fraction = None
         an_running = False
+
 
 
 ################################################################################
@@ -1202,10 +1199,8 @@ class Main(Ste):
                 mch.go_to('adjust_feller_and_tree')
             elif sel_mnu == "move_feller_and_tree":
                 mch.go_to('move_feller_and_tree')
-            elif sel_mnu == "set_dialog_options":
-                mch.go_to('set_dialog_options')
-            elif sel_mnu == "web_options":
-                mch.go_to('web_options')
+            elif sel_mnu == "set_options":
+                mch.go_to('set_options')
             else:
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
                 mch.go_to('base_state')
@@ -1250,7 +1245,7 @@ class Snds(Ste):
             print("Selected index: " + str(self.sel_i) +
                            " Saved option: " + cfg["option_selected"])
             write_json_file("/sd/cfg.json", cfg)
-            opt_sel()
+            snd_choosen()
             mch.go_to('base_state')
 
 
@@ -1386,7 +1381,7 @@ class AdjFellTree(Ste):
                 mch.go_to('base_state')
 
 
-class DiaOpt(Ste):
+class SetOpt(Ste):
 
     def __init__(self):
         self.i = 0
@@ -1394,11 +1389,11 @@ class DiaOpt(Ste):
 
     @property
     def name(self):
-        return 'set_dialog_options'
+        return 'set_options'
 
     def enter(self, mch):
-        print('Set Dialog Options')
-        sel_dlg()
+        print('Set Options')
+        set_options_menu()
         Ste.enter(self, mch)
 
     def exit(self, mch):
@@ -1418,74 +1413,34 @@ class DiaOpt(Ste):
             sel_mnu = dlg_m[self.sel_i]
             if sel_mnu == "opening_dialog_on":
                 cfg["opening_dialog"] = True
-                opt_sel()
-                sel_dlg()
+                option_set()
             elif sel_mnu == "opening_dialog_off":
                 cfg["opening_dialog"] = False
-                opt_sel()
-                sel_dlg()
+                option_set()
             elif sel_mnu == "lumberjack_advice_on":
                 cfg["feller_advice"] = True
-                opt_sel()
-                sel_dlg()
+                option_set()
             elif sel_mnu == "lumberjack_advice_off":
                 cfg["feller_advice"] = False
-                opt_sel()
-                sel_dlg()
-            else:
-                write_json_file("/sd/cfg.json", cfg)
-                ply_a_0("/sd/mvc/all_changes_complete.wav")
-                mch.go_to('base_state')
-
-
-class WebOpt(Ste):
-
-    def __init__(self):
-        self.menuIndex = 0
-        self.selectedMenuIndex = 0
-
-    @property
-    def name(self):
-        return 'web_options'
-
-    def enter(self, mch):
-        print('Set Web Options')
-        sel_web()
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        sw = switch_state(
-            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
-        if sw == "left":
-            if mix.voice[0].playing:
-                mix.voice[0].stop()
-                while mix.voice[0].playing:
-                    pass
-            else:
-                ply_a_0("/sd/mvc/" + web_m[self.menuIndex] + ".wav")
-                self.selectedMenuIndex = self.menuIndex
-                self.menuIndex += 1
-                if self.menuIndex > len(web_m)-1:
-                    self.menuIndex = 0
-        if sw == "right":
-            sel_menu = web_m[self.selectedMenuIndex]
-            if sel_menu == "web_on":
-                cfg["serve_webpage"] = True
-                opt_sel()
-                sel_web()
-            elif sel_menu == "web_off":
+                option_set()
+            elif sel_mnu == "museum_mode_on":
+                cfg["museum_mode"] = True
+                option_set()
+            elif sel_mnu == "museum_mode_off":
                 cfg["serve_webpage"] = False
-                opt_sel()
-                sel_web()
-            elif sel_menu == "hear_url":
+                option_set()
+            elif sel_mnu == "web_on":
+                cfg["serve_webpage"] = True
+                option_set()
+            elif sel_mnu == "web_off":
+                cfg["serve_webpage"] = False
+                option_set()
+            elif sel_mnu == "hear_url":
                 spk_str(cfg["HOST_NAME"], True)
-                sel_web()
-            elif sel_menu == "hear_instr_web":
+                set_options_menu()
+            elif sel_mnu == "hear_instr_web":
                 ply_a_0("/sd/mvc/web_instruct.wav")
-                sel_web()
+                set_options_menu()
             else:
                 write_json_file("/sd/cfg.json", cfg)
                 ply_a_0("/sd/mvc/all_changes_complete.wav")
@@ -1560,8 +1515,7 @@ st_mch.add(Main())
 st_mch.add(Snds())
 st_mch.add(AdjFellTree())
 st_mch.add(MovFellTree())
-st_mch.add(DiaOpt())
-st_mch.add(WebOpt())
+st_mch.add(SetOpt())
 st_mch.add(VolSet())
 
 aud_en.value = True
