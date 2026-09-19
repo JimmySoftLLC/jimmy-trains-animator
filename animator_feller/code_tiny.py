@@ -72,6 +72,22 @@ mix = audiomixer.Mixer(
 aud.play(mix)
 mix.voice[0].level = .2
 
+# # Deliberately small
+# wav_buffer_0 = bytearray(8)
+# wav_buffer_1 = bytearray(8)
+
+# # Deliberately small
+# wav_buffer_0 = bytearray(256)
+# wav_buffer_1 = bytearray(256)
+
+# # Normal/default equivalent
+# wav_buffer_0 = bytearray(512)
+# wav_buffer_1 = bytearray(512)
+
+# Larger
+wav_buffer_0 = bytearray(1024)
+wav_buffer_1 = bytearray(1024)
+
 gc_col("audio setup")
 
 ################################################################################
@@ -178,7 +194,7 @@ try:
     storage.mount(vfs, "/sd")
 except Exception as e:
     print(e)
-    w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+    w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"), wav_buffer_0)
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         pass
@@ -192,13 +208,13 @@ except Exception as e:
                 storage.mount(vfs, "/sd")
                 cardInserted = True
                 w0 = audiocore.WaveFile(
-                    open("/sd/mvc/micro_sd_card_success.wav", "rb"))
+                    open("/sd/mvc/micro_sd_card_success.wav", "rb"), wav_buffer_0)
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
             except Exception as e:
                 print(e)
-                w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
+                w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"), wav_buffer_0)
                 mix.voice[0].play(w0, loop=False)
                 while mix.voice[0].playing:
                     pass
@@ -219,15 +235,35 @@ def read_json_file(file_name):
         return json.loads(f.read())
 
 def write_json_file(file_name, data):
-    with open(file_name, "w") as f:
+    tmp_name = file_name + ".tmp"
+    bak_name = file_name + ".bak"
+    with open(tmp_name, "w") as f:
         f.write(json.dumps(data))
+    with open(tmp_name, "r") as f:
+        json.loads(f.read())
+    try:
+        os.remove(bak_name)
+    except OSError:
+        pass
+    try:
+        os.rename(file_name, bak_name)
+    except OSError:
+        pass
+    os.rename(tmp_name, file_name)
 
 try:
     cfg = read_json_file("/sd/cfg.json")
 except Exception as e:
-    print("config file corrupt writing out default deep copy")
-    cfg = read_json_file("/sd/cfg_default.json")
-    write_json_file("/sd/cfg.json", cfg)
+    print("cfg.json invalid:", e)
+    try:
+        print("Trying cfg.json.bak")
+        cfg = read_json_file("/sd/cfg.json.bak")
+        write_json_file("/sd/cfg.json", cfg)
+    except Exception as e:
+        print("Backup invalid:", e)
+        print("Loading factory default")
+        cfg = read_json_file("/sd/cfg_default.json")
+        write_json_file("/sd/cfg.json", cfg)
 
 cfg["cont_mode"] = False
 
@@ -697,7 +733,7 @@ def ply_a_0(file_name):
         mix.voice[0].stop()
         while mix.voice[0].playing:
             upd_vol(0.02)
-    w0 = audiocore.WaveFile(open(file_name, "rb"))
+    w0 = audiocore.WaveFile(open(file_name, "rb"), wav_buffer_0)
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
@@ -893,7 +929,7 @@ def ply_snd(folder):
     file_name = random.choice(sounds)
     sounds = None
     print(folder + ": " + file_name)
-    w0 = audiocore.WaveFile(open(path + "/" + file_name, "rb"))
+    w0 = audiocore.WaveFile(open(path + "/" + file_name, "rb"), wav_buffer_0)
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         upd_vol(0.1)
@@ -942,9 +978,9 @@ async def an(command):
         # Open the final sound before chopping.
         if cur_opt == "happy_birthday":
             s_n = random.randint(0, 6)
-            w1 = audiocore.WaveFile(open("/sd/feller_sounds/sounds_" + cur_opt + str(s_n) + ".wav", "rb"))
+            w1 = audiocore.WaveFile(open("/sd/feller_sounds/sounds_" + cur_opt + str(s_n) + ".wav", "rb"), wav_buffer_1)
         else:
-            w1 = audiocore.WaveFile(open("/sd/feller_sounds/sounds_" + cur_opt + ".wav", "rb"))
+            w1 = audiocore.WaveFile(open("/sd/feller_sounds/sounds_" + cur_opt + ".wav", "rb"), wav_buffer_1)
 
         while chop_i <= chop_n:
             await upd_vol_async(0)
@@ -957,18 +993,17 @@ async def an(command):
                 snd_f = "/sd/feller_dialog/" + random.choice(sounds)
                 sounds = None
                 print("Feller dialog:", snd_f)
-                w0 = audiocore.WaveFile(open(snd_f, "rb"))
+                w0 = audiocore.WaveFile(open(snd_f, "rb"), wav_buffer_0)
                 mix.voice[0].play(w0, loop=False)
                 f_tlk_mov()
                 w0.deinit()
                 w0 = None
-                gc_col("deinit w0")
                 if animation_stop():
                     return
 
             chop_s = random.randint(1, 7)
             print("Chop track:", chop_s)
-            w0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chop_s) + ".wav", "rb"))
+            w0 = audiocore.WaveFile(open("/sd/feller_chops/chop" + str(chop_s) + ".wav", "rb"), wav_buffer_0)
             chop_i += 1
 
             for f_pos in range(cfg["feller_rest_pos"], cfg["feller_chop_pos"] + 5, 10):
@@ -1046,7 +1081,7 @@ async def an(command):
                     return
 
                 snd_f = "/sd/feller_alien/human_" + str(alien_n + 1) + ".wav"
-                w0 = audiocore.WaveFile(open(snd_f, "rb"))
+                w0 = audiocore.WaveFile(open(snd_f, "rb"), wav_buffer_0)
                 mix.voice[0].play(w0, loop=False)
                 f_tlk_mov()
                 w0.deinit()
@@ -1056,7 +1091,7 @@ async def an(command):
                     return
 
                 snd_f = "/sd/feller_alien/alien_" + str(alien_n + 1) + ".wav"
-                w0 = audiocore.WaveFile(open(snd_f, "rb"))
+                w0 = audiocore.WaveFile(open(snd_f, "rb"), wav_buffer_0)
                 mix.voice[0].play(w0, loop=False)
                 t_tlk_mov()
                 w0.deinit()
