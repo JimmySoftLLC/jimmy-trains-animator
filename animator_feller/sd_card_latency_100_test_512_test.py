@@ -13,7 +13,7 @@ cs = board.GP5
 
 TEST_FILE = "/sd/feller_sounds/sounds_train.wav"
 BLOCK_SIZE = 512
-PASSES = 100
+PASSES = 5
 
 print("Setting up SD card...")
 
