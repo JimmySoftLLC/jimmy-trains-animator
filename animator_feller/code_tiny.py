@@ -72,21 +72,8 @@ mix = audiomixer.Mixer(
 aud.play(mix)
 mix.voice[0].level = .2
 
-# # Deliberately small
-# wav_buffer_0 = bytearray(8)
-# wav_buffer_1 = bytearray(8)
-
-# # Deliberately small
-# wav_buffer_0 = bytearray(256)
-# wav_buffer_1 = bytearray(256)
-
-# Normal/default equivalent
 wav_buffer_0 = bytearray(512)
 wav_buffer_1 = bytearray(512)
-
-# # Larger
-# wav_buffer_0 = bytearray(1024)
-# wav_buffer_1 = bytearray(1024)
 
 gc_col("audio setup")
 
