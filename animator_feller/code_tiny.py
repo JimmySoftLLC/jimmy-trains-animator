@@ -80,13 +80,13 @@ mix.voice[0].level = .2
 # wav_buffer_0 = bytearray(256)
 # wav_buffer_1 = bytearray(256)
 
-# # Normal/default equivalent
-# wav_buffer_0 = bytearray(512)
-# wav_buffer_1 = bytearray(512)
+# Normal/default equivalent
+wav_buffer_0 = bytearray(512)
+wav_buffer_1 = bytearray(512)
 
-# Larger
-wav_buffer_0 = bytearray(1024)
-wav_buffer_1 = bytearray(1024)
+# # Larger
+# wav_buffer_0 = bytearray(1024)
+# wav_buffer_1 = bytearray(1024)
 
 gc_col("audio setup")
 
@@ -221,9 +221,27 @@ def read_json_file(file_name):
         return json.loads(f.read())
 
 def write_json_file(file_name, data):
-    with open(file_name, "w") as f:
-        f.write(json.dumps(data))
-
+    data_str = json.dumps(data)
+    try:
+        with open(file_name, "r") as f:
+            if f.read() == data_str:
+                print("SD write skipped - no change:", file_name)
+                return True
+    except:
+        pass
+    print("Writing SD:", file_name)
+    time.sleep(0.1)
+    try:
+        with open(file_name, "w") as f:
+            f.write(data_str)
+            f.flush()
+        time.sleep(0.2)
+        print("SD write complete:", file_name)
+        return True
+    except Exception as e:
+        print("SD WRITE ERROR:", file_name, e)
+        time.sleep(0.5)
+        return False
 try:
     cfg = read_json_file("/sd/cfg.json")
 except Exception as e:
@@ -231,8 +249,6 @@ except Exception as e:
     print("Loading factory default")
     cfg = read_json_file("/sd/cfg_default.json")
     write_json_file("/sd/cfg.json", cfg)
-
-cfg["cont_mode"] = False
 
 cfg_vol = read_json_file("/sd/mvc/volume_settings.json")
 vol_set = cfg_vol["volume_settings"]
@@ -707,7 +723,7 @@ def ply_a_0(file_name):
         upd_vol(0.1)
     w0.deinit()
     f0.close()
-    upd_vol(0.5)
+    upd_vol(0.2)
 
 
 def stop_audio_0():
@@ -900,16 +916,18 @@ def ply_snd(folder):
         if animation_stop():
             mix.voice[0].stop()
             break
+    while mix.voice[0].playing:
+        time.sleep(0.1)
     w0.deinit()
     f0.close()
     gc_col("deinit w0")
 
-
 async def an(command):
     global an_running
     an_running = True
-    cfg["option_selected"] = command
-    write_json_file("/sd/cfg.json", cfg)
+    if cfg["option_selected"] != command:
+        cfg["option_selected"] = command
+        write_json_file("/sd/cfg.json", cfg)
     await upd_vol_async(0.05)
     w0 = None
     w1 = None
@@ -1006,7 +1024,7 @@ async def an(command):
                 return
 
             while mix.voice[0].playing:
-                await upd_vol_async(0.01)
+                await upd_vol_async(0.1)
                 if animation_stop():
                     mix.voice[0].stop()
                     return
@@ -1048,6 +1066,7 @@ async def an(command):
             w1 = None
             f1.close()
             f1 = None
+            time.sleep(0.1)
             m_t_spd(cfg["tree_up_pos"], 0.04)
 
             for alien_n in range(7):
@@ -1055,6 +1074,7 @@ async def an(command):
                     return
 
                 snd_f = "/sd/feller_alien/human_" + str(alien_n + 1) + ".wav"
+                print("Playing:", snd_f)
                 f0 = open(snd_f, "rb")
                 w0 = audiocore.WaveFile(f0, wav_buffer_0)
                 mix.voice[0].play(w0, loop=False)
@@ -1063,11 +1083,13 @@ async def an(command):
                 w0 = None
                 f0.close()
                 f0 = None
+                time.sleep(0.1)
 
                 if animation_stop():
                     return
 
                 snd_f = "/sd/feller_alien/alien_" + str(alien_n + 1) + ".wav"
+                print("Playing:", snd_f)
                 f0 = open(snd_f, "rb")
                 w0 = audiocore.WaveFile(f0, wav_buffer_0)
                 mix.voice[0].play(w0, loop=False)
@@ -1076,9 +1098,7 @@ async def an(command):
                 w0 = None
                 f0.close()
                 f0 = None
-
-                if animation_stop():
-                    return
+                time.sleep(0.1)
         else:
             while mix.voice[0].playing:
                 await upd_vol_async(0)
@@ -1094,7 +1114,7 @@ async def an(command):
     finally:
         mix.voice[0].stop()
         while mix.voice[0].playing:
-            time.sleep(0.01)
+            time.sleep(0.1)
         if w0 is not None:
             w0.deinit()
             w0 = None
@@ -1113,6 +1133,8 @@ async def an(command):
         f_s.fraction = None
         t_s.fraction = None
         an_running = False
+
+
 
 
 ################################################################################
@@ -1481,7 +1503,7 @@ class SetOpt(Ste):
                 cfg["museum_mode"] = True
                 option_set()
             elif sel_mnu == "museum_mode_off":
-                cfg["serve_webpage"] = False
+                cfg["museum_mode"] = False
                 option_set()
             elif sel_mnu == "web_on":
                 cfg["serve_webpage"] = True
