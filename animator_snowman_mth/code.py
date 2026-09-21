@@ -312,19 +312,6 @@ mix.voice[1].level = .2
 
 aud_en.value = True
 
-if cfg["use_sd_card"]:
-    spi = busio.SPI(sck, si, so)
-    try:
-        sd = sdcardio.SDCard(spi, cs)
-        vfs = storage.VfsFat(sd)
-        storage.mount(vfs, "/sd")
-    except Exception as e:
-        files.log_item(e)
-        cfg["use_sd_card"] = False
-        w0 = audiocore.WaveFile(open("wav/no_card.wav", "rb"))
-        mix.voice[0].play(w0, loop=False)
-        while mix.voice[0].playing:
-            pass
 
 aud_en.value = False
 
@@ -1438,7 +1425,7 @@ async def animation_wait(wait_time):
 
 def save_cfg_safely():
     if get_track_voltage() >= MIN_TRACK_VOLTAGE:
-        files.write_json_file("/sd/cfg.json", cfg)
+        files.write_json_file("cfg.json", cfg)
 
 
 def add_command_to_ts(command):
@@ -2210,7 +2197,7 @@ class Snds(Ste):
             else:
                 try:
                     w0 = audiomp3.MP3Decoder(open(
-                        "/sd/snd_opt/" + menu_snd_opt[self.i] + ".mp3", "rb"))
+                        "snd_opt/" + menu_snd_opt[self.i] + ".mp3", "rb"))
                     mix.voice[0].play(w0, loop=False)
                 except Exception as e:
                     files.log_item(e)
