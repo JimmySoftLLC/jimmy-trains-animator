@@ -1703,17 +1703,6 @@ async def an_light_async(f_nm):
     flsh_t = []
     w0_exists = False
     
-    await home_stepper()
-    # await find_full_rotation()
-    await go_to_position(0)
-    time.sleep(2)
-    await go_to_position(452)
-    time.sleep(2)
-    await go_to_position(904)
-    time.sleep(2)
-    await go_to_position(0)
-    time.sleep(2)
-
     if f_exists(animations_folder + f_nm + ".json") == True:
         flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
     flsh_i = 0
@@ -2024,6 +2013,21 @@ async def set_hdw_async(cmd, dur=3):
         # some commands need non async access so split those out in another method
         elif seg[:2] == 'LN' or seg[0] == 'B':
             set_hdw_not_async(seg)
+
+        # POS_NNNN = Stepper position (0 = home, all other values = absolute position)
+        elif seg[:3] == 'POS':
+            try:
+                seg_split = seg.split("_")
+                if len(seg_split) != 2:
+                    print("Invalid POS command:", seg)
+                    continue
+                pos = int(seg_split[1])
+                if pos == 0:
+                    await home_stepper()
+                else:
+                    await go_to_position(pos)
+            except Exception as e:
+                print("POS error:", e)
 
         # FXXX = Fade NeoPixel brightness to XXX
         elif seg[0] == 'F':
