@@ -43,9 +43,10 @@ import gc
 import files
 import os
 import audiocore
-import sdcardio
-import storage
 from adafruit_motor import servo
+import array
+import rp2pio
+import adafruit_pioasm
 
 
 def gc_col(collection_point):
@@ -249,6 +250,208 @@ async def dance(st, dur):
 
         await asyncio.sleep(0)
 
+################################################################################
+# PIO stepper motor
+
+STEPPER_PHASE_TIME = 0.005
+STEPPER_FULL_STEP_TIME = STEPPER_PHASE_TIME * 4
+
+stepper_program = adafruit_pioasm.assemble("""
+.program stepper
+start:
+    pull block
+    out x, 1
+    out y, 31
+    jmp !x down
+up:
+    set pins, 9 [24]
+    set pins, 3 [24]
+    set pins, 6 [24]
+    set pins, 12 [24]
+    jmp y-- up
+    jmp finished
+down:
+    set pins, 12 [24]
+    set pins, 6 [24]
+    set pins, 3 [24]
+    set pins, 9 [24]
+    jmp y-- down
+finished:
+    set pins, 0
+    set x, 1
+    mov isr, x
+    push block
+    jmp start
+""")
+
+stepper_init = adafruit_pioasm.assemble("""
+    set pins, 0
+""")
+
+stepper_sm = rp2pio.StateMachine(stepper_program, frequency=5000, init=stepper_init, first_set_pin=board.GP4, set_pin_count=4, initial_set_pin_state=0, initial_set_pin_direction=0x0F, out_shift_right=True, wait_for_txstall=False)
+stepper_done = array.array("I", [0])
+
+
+################################################################################
+# Stepper motor commands
+
+stepper_pos = 0
+HOME_DIRECTION = 0
+HOME_MAX_STEPS = 3000
+
+def clear_stepper_done():
+    while stepper_sm.in_waiting:
+        stepper_sm.readinto(stepper_done)
+
+async def stepper_move(steps, direction):
+    if steps <= 0:
+        return
+    clear_stepper_done()
+    command = ((steps - 1) << 1) | direction
+    stepper_sm.write(array.array("I", [command]))
+    while not stepper_sm.in_waiting:
+        await asyncio.sleep(0)
+    stepper_sm.readinto(stepper_done)
+
+async def home_stepper():
+    global stepper_pos, stepper_busy
+    if stepper_busy:
+        print("Stepper busy - cannot home")
+        return False
+    stepper_busy = True
+    stepper_pos = None
+    forward = HOME_DIRECTION
+    backward = 1 - forward
+    HOME_BACKLASH = 10
+    try:
+        # If already on the magnet, move backward until sensor releases
+        if not hall_sw.value:
+            for i in range(HOME_MAX_STEPS):
+                await stepper_move(1, backward)
+                if hall_sw.value:
+                    break
+            else:
+                print("Hall sensor never released")
+                return False
+        # Move forward to find first edge
+        for i in range(HOME_MAX_STEPS):
+            await stepper_move(1, forward)
+            if not hall_sw.value:
+                print("First Hall edge found")
+                break
+        else:
+            print("First Hall edge not found")
+            return False
+        # Continue forward to find second edge
+        width = 0
+        for i in range(HOME_MAX_STEPS):
+            await stepper_move(1, forward)
+            width += 1
+            if hall_sw.value:
+                print("Second Hall edge found")
+                break
+        else:
+            print("Second Hall edge not found")
+            return False
+        # Overshoot center backward, then approach zero forward
+        center = width // 2
+        await stepper_move(center + HOME_BACKLASH, backward)
+        await stepper_move(HOME_BACKLASH, forward)
+        stepper_pos = 0
+        print("Stepper homed at center")
+        print("Hall detection width:", width, "steps")
+        return True
+    finally:
+        stepper_busy = False
+
+stepper_busy = False
+
+async def go_to_position(pos):
+    global stepper_pos, stepper_busy
+    if stepper_busy:
+        print("Stepper busy - cannot move")
+        return False
+    if stepper_pos is None:
+        print("Stepper must be homed first")
+        return False
+    pos = int(pos)
+    if pos < 0:
+        print("Invalid stepper position")
+        return False
+    steps = pos - stepper_pos
+    if steps == 0:
+        return True
+    stepper_busy = True
+    forward = HOME_DIRECTION
+    backward = 1 - forward
+    HOME_BACKLASH = 10
+    try:
+        if steps > 0:
+            # Increasing position uses the same direction as homing
+            await stepper_move(steps, forward)
+        else:
+            # Move backward past target, then approach forward
+            await stepper_move(abs(steps) + HOME_BACKLASH, backward)
+            await stepper_move(HOME_BACKLASH, forward)
+        stepper_pos = pos
+        print("Stepper position:", stepper_pos)
+        return True
+    finally:
+        stepper_busy = False
+
+async def find_full_rotation():
+    global stepper_pos, stepper_busy
+    if stepper_busy:
+        print("Stepper busy - cannot measure rotation")
+        return False
+    stepper_busy = True
+    stepper_pos = None
+    forward = HOME_DIRECTION
+    backward = 1 - forward
+    BACKUP_STEPS = 50
+    MAX_ROTATION_STEPS = 10000
+    try:
+        # If inside sensor range, back out and provide extra clearance
+        if not hall_sw.value:
+            for i in range(HOME_MAX_STEPS):
+                await stepper_move(1, backward)
+                if hall_sw.value:
+                    break
+            else:
+                print("Hall sensor never released")
+                return False
+            await stepper_move(BACKUP_STEPS, backward)
+        # Find first forward-moving edge
+        for i in range(MAX_ROTATION_STEPS):
+            await stepper_move(1, forward)
+            if not hall_sw.value:
+                print("First rotation edge found")
+                break
+        else:
+            print("First rotation edge not found")
+            return False
+        # Move forward until sensor releases
+        steps = 0
+        for i in range(HOME_MAX_STEPS):
+            await stepper_move(1, forward)
+            steps += 1
+            if hall_sw.value:
+                break
+        else:
+            print("Hall sensor never released")
+            return False
+        # Continue until the same forward edge is detected again
+        for i in range(MAX_ROTATION_STEPS - steps):
+            await stepper_move(1, forward)
+            steps += 1
+            if not hall_sw.value:
+                stepper_pos = 0
+                print("Full rotation:", steps, "steps")
+                return steps
+        print("Full rotation edge not found")
+        return False
+    finally:
+        stepper_busy = False
 
 
 ################################################################################
@@ -273,6 +476,11 @@ r_sw = digitalio.DigitalInOut(board.GP3)
 r_sw.direction = digitalio.Direction.INPUT
 r_sw.pull = digitalio.Pull.UP
 r_sw = Debouncer(r_sw)
+
+# Hall effect home sensor
+hall_sw = digitalio.DigitalInOut(board.GP8)
+hall_sw.direction = digitalio.Direction.INPUT
+hall_sw.pull = digitalio.Pull.UP
 
 # setup i2s audio
 i2s_bclk = board.GP18   # BCLK on MAX98357A
@@ -1494,6 +1702,18 @@ async def an_light_async(f_nm):
     stp_a_0()
     flsh_t = []
     w0_exists = False
+    
+    await home_stepper()
+    # await find_full_rotation()
+    await go_to_position(0)
+    time.sleep(2)
+    await go_to_position(452)
+    time.sleep(2)
+    await go_to_position(904)
+    time.sleep(2)
+    await go_to_position(0)
+    time.sleep(2)
+
     if f_exists(animations_folder + f_nm + ".json") == True:
         flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
     flsh_i = 0
