@@ -155,21 +155,13 @@ an_just_added = False
 
 ################################################################################
 # Setup the servos
-s_1_pin = board.GP22
-s_2_pin = board.GP17
-s_3_pin = board.GP16
+s_1_pin = board.GP16
 
 s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
 s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
 
-s_2 = pwmio.PWMOut(s_2_pin, duty_cycle=2 ** 15, frequency=50)
-s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
-
-s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
-s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
-
-p_arr = [90, 90, 90]
-s_arr = [s_1, s_2, s_3]
+p_arr = [90]
+s_arr = [s_1]
 
 # Allowed dance target ranges for each snowman
 dance_min = [55, 65, 45]
@@ -272,15 +264,15 @@ aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = True
 
 # Setup the switches
-l_sw_io = digitalio.DigitalInOut(board.GP11)
+l_sw_io = digitalio.DigitalInOut(board.GP2)
 l_sw_io.direction = digitalio.Direction.INPUT
 l_sw_io.pull = digitalio.Pull.UP
 l_sw = Debouncer(l_sw_io)
 
-r_sw_io = digitalio.DigitalInOut(board.GP15)
-r_sw_io.direction = digitalio.Direction.INPUT
-r_sw_io.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw_io)
+r_sw = digitalio.DigitalInOut(board.GP3)
+r_sw.direction = digitalio.Direction.INPUT
+r_sw.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw)
 
 # setup i2s audio
 i2s_bclk = board.GP18   # BCLK on MAX98357A
@@ -288,13 +280,6 @@ i2s_lrc = board.GP19  # LRC on MAX98357A
 i2s_din = board.GP20  # DIN on MAX98357A
 
 aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
-
-# Setup sdCard
-sck = board.GP2
-si = board.GP3
-so = board.GP4
-cs = board.GP5
-spi = busio.SPI(sck, si, so)
 
 # Setup the mixer to play mp3 files
 mix = audiomixer.Mixer(
@@ -319,35 +304,48 @@ aud_en.value = False
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
+
 ################################################################################
 # Setup neo pixels
 
-n_px = 3
+n_px1 = 1
+n_px2 = 8
+n_px = n_px1 + n_px2
 
-led1 = neopixel.NeoPixel(board.GP0, 1, auto_write=False)
-led2 = neopixel.NeoPixel(board.GP1, 1, auto_write=False)
-led3 = neopixel.NeoPixel(board.GP6, 1, auto_write=False)
+led1 = neopixel.NeoPixel(board.GP17, n_px1, auto_write=False)
+led2 = neopixel.NeoPixel(board.GP22, n_px2, auto_write=False)
 
-led_channels = [led1, led2, led3]
-
+led_channels = [led1, led2]
 
 class SeparateNeoPixels:
     def __init__(self, channels):
         self.channels = channels
         self._brightness = 1.0
+        self.count = sum(len(channel) for channel in channels)
 
     def __len__(self):
-        return len(self.channels)
+        return self.count
 
     def __setitem__(self, index, color):
-        self.channels[index][0] = color
+        if index < 0 or index >= self.count:
+            raise IndexError("NeoPixel index out of range")
+        for channel in self.channels:
+            if index < len(channel):
+                channel[index] = color
+                return
+            index -= len(channel)
 
     def __getitem__(self, index):
-        return self.channels[index][0]
+        if index < 0 or index >= self.count:
+            raise IndexError("NeoPixel index out of range")
+        for channel in self.channels:
+            if index < len(channel):
+                return channel[index]
+            index -= len(channel)
 
     def fill(self, color):
         for channel in self.channels:
-            channel[0] = color
+            channel.fill(color)
 
     def show(self):
         for channel in self.channels:
@@ -362,7 +360,6 @@ class SeparateNeoPixels:
         self._brightness = value
         for channel in self.channels:
             channel.brightness = value
-
 
 led = SeparateNeoPixels(led_channels)
 
