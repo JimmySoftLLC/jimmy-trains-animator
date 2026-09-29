@@ -17,6 +17,7 @@ import array
 import rp2pio
 import adafruit_pioasm
 import os
+import neopixel
 
 
 def gc_col(collection_point):
@@ -178,14 +179,6 @@ rot = pwmio.PWMOut(board.GP16, duty_cycle=2**15, frequency=50)
 rot = servo.Servo(rot, min_pulse=500, max_pulse=2500)
 rot.angle = lst_rot_pos
 
-################################################################################
-# Led
-
-led1 = pwmio.PWMOut(board.GP8, frequency=5000, duty_cycle=0)
-led2 = pwmio.PWMOut(board.GP9, frequency=5000, duty_cycle=0)
-
-led1.duty_cycle = 65000
-led2.duty_cycle = 65000
 
 ################################################################################
 # Sound helpers
@@ -435,6 +428,27 @@ def stop_stepper():
     stepper_sm.stop()
 
 ################################################################################
+# Setup neo pixels
+
+num_px = 1
+
+led1 = neopixel.NeoPixel(board.GP17, num_px)
+
+led1.fill((0, 0, 0))
+led1.show()
+
+gc_col("Neopixels setup")
+
+num_px2 = 8
+
+led2 = neopixel.NeoPixel(board.GP22, num_px2)
+
+led2.fill((0, 0, 0))
+led2.show()
+
+gc_col("Neopixels setup")
+
+################################################################################
 # servo motor
 
 def servo_m(servo_pos):
@@ -604,6 +618,8 @@ async def rn_home(steps, direction):
 
 def an():
     global kill_process, launch_dialog_played, museum_long_press_stop
+    led2.fill((255, 255, 255))
+    led2.show()
     kill_process = False
     museum_long_press_stop = False
     launch_dialog_played = False
@@ -650,6 +666,8 @@ def an():
         mix.voice[0].stop()
     clear_w0()
     gc_col("An done clean up sound")
+    led2.fill((100, 100, 100))
+    led2.show()
     if museum_long_press_stop:
         kill_process = False
         total_steps = abs(0 - lst_deploy_pos)
@@ -669,6 +687,7 @@ def an():
         stop_dialog()
         return
     play_dialog_folder("end")
+
 
 
 def home_motors():
@@ -1063,6 +1082,26 @@ aud_en.value = True
 
 upd_vol(0.01)
 home_motors()
+
+
+led1.fill((0, 0, 255))
+led1.show()
+
+time.sleep(1)
+
+led1.fill((0, 255, 0))
+led1.show()
+
+time.sleep(1)
+
+led1.fill((100, 100, 100))
+led1.show()
+
+time.sleep(1)
+
+led2.fill((100, 100, 100))
+led2.show()
+
 st_mch.go_to("base_state")
 files.log_item("animator has started...")
 gc_col("animations started")
@@ -1070,6 +1109,4 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
-
-
 
