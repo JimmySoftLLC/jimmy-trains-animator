@@ -1,291 +1,427 @@
+# MIT License
+#
+# Copyright (c) 2024 JimmySoftLLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+#######################################################
+
 import utilities
 from adafruit_debouncer import Debouncer
-import time
+import neopixel
+from rainbowio import colorwheel
+from analogio import AnalogIn
+import asyncio
+import pwmio
+import microcontroller
+import rtc
+import random
 import board
 import digitalio
-from adafruit_motor import servo
-import pwmio
-import random
-import audiobusio
-import audiomixer
+import busio
 import audiomp3
-import asyncio
-from analogio import AnalogIn
-import files
+import audiomixer
+import audiobusio
+import time
 import gc
-import array
-import rp2pio
-import adafruit_pioasm
+import files
 import os
-import neopixel
+import audiocore
+import sdcardio
+import storage
+from adafruit_motor import servo
 
 
 def gc_col(collection_point):
     gc.collect()
-    start_mem = gc.mem_free()
-    files.log_item(
-        "Point " + collection_point + " Available memory: {} bytes".format(start_mem)
-    )
+    start_mem = gc.mem_free() 
+    files.log_item("Point " + collection_point +
+                   " Available memory: {} bytes".format(start_mem))
+
+
+def f_exists(filename):
+    try:
+        status = os.stat(filename)
+        f_exists = True
+    except OSError:
+        f_exists = False
+    return f_exists
+
+
+def rst():
+    microcontroller.on_next_reset(microcontroller.RunMode.NORMAL)
+    microcontroller.reset()
 
 
 gc_col("Imports gc, files")
 
 ################################################################################
-# Config variables
-
-cfg = files.read_json_file("cfg.json")
-
-cfg_main = files.read_json_file("main_menu.json")
-main_m = cfg_main["main_menu"]
-
-cfg_vol = files.read_json_file("volume_settings.json")
-v_set = cfg_vol["volume_settings"]
-
-cfg_opt = files.read_json_file("options.json")
-mnu_o = cfg_opt["options"]
-
-cfg_muse_set = files.read_json_file("museum_settings.json")
-muse_set = cfg_muse_set["museum_settings"]
-
-################################################################################
 # Globals
 
-lst_rot_pos = 90
-lst_deploy_pos = cfg["kite_deploy_max"]
-kite_min = 0
-kite_max = 180
+debug_voltage_multiplier = 1
 
-kill_process = False
-async_running = False
-rand_timer = 0
-launch_dialog_played = False
-button_press_start = None
-museum_long_press_stop = False
+animations_folder = "snds/"
+mvc_folder = "mvc/"
+mvc_folder_local = "mvc/"
 
-################################################################################
-# Switch hardware
+elves_folder = "elves/"
+bells_folder = "bells/"
+horns_folder = "horns/"
+stops_folder = "stops/"
+santa_folder = "santa/"
+story_folder = "story/"
 
-l_sw_io = digitalio.DigitalInOut(board.GP2)
-l_sw_io.direction = digitalio.Direction.INPUT
-l_sw_io.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw_io)
+FOLDER_MAP = {
+    'A': animations_folder,
+    'E': elves_folder,
+    'B': bells_folder,
+    'H': horns_folder,
+    'T': stops_folder,
+    'S': santa_folder,
+    'C': story_folder
+}
 
-r_sw = digitalio.DigitalInOut(board.GP3)
-r_sw.direction = digitalio.Direction.INPUT
-r_sw.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw)
-
-t_sw = digitalio.DigitalInOut(board.GP1)
-t_sw.direction = digitalio.Direction.INPUT
-t_sw.pull = digitalio.Pull.UP
-t_sw = Debouncer(t_sw)
+media_index = {'A': 0, 'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
 
 ################################################################################
-# PIO stepper motor
+# Flash data
 
-STEPPER_PHASE_TIME = 0.005
-STEPPER_FULL_STEP_TIME = STEPPER_PHASE_TIME * 4
+cfg = files.read_json_file("/cfg.json")
 
-stepper_program = adafruit_pioasm.assemble("""
-.program stepper
-start:
-    pull block
-    out x, 1
-    out y, 31
-    jmp !x down
-up:
-    set pins, 9 [24]
-    set pins, 3 [24]
-    set pins, 6 [24]
-    set pins, 12 [24]
-    jmp y-- up
-    jmp finished
-down:
-    set pins, 12 [24]
-    set pins, 6 [24]
-    set pins, 3 [24]
-    set pins, 9 [24]
-    jmp y-- down
-finished:
-    set pins, 0
-    set x, 1
-    mov isr, x
-    push block
-    jmp start
-""")
+snd_opt = []
+menu_snd_opt = []
 
-stepper_init = adafruit_pioasm.assemble("""
-    set pins, 0
-""")
+def upd_media():
+    global snd_opt, menu_snd_opt
+    snd_opt = files.return_directory("", animations_folder, ".json")
+    menu_snd_opt = []
+    menu_snd_opt.extend(snd_opt)
+    rnd_opt = ['random all']
+    menu_snd_opt.extend(rnd_opt)
 
-stepper_coils_off = adafruit_pioasm.assemble("""
-    set pins, 0
-""")
+upd_media()
 
-stepper_sm = rp2pio.StateMachine(stepper_program, frequency=5000, init=stepper_init, first_set_pin=board.GP4, set_pin_count=4, initial_set_pin_state=0, initial_set_pin_direction=0x0F, out_shift_right=True, wait_for_txstall=False)
-stepper_done = array.array("I", [0])
+web = cfg["serve_webpage"]
+
+cfg_main = files.read_json_file(mvc_folder + "main_menu.json")
+main_m = cfg_main["main_menu"]
+
+cfg_web = files.read_json_file(mvc_folder + "web_menu.json")
+web_m = cfg_web["web_menu"]
+
+cfg_add_song = files.read_json_file(mvc_folder +
+                                    "add_sounds_animate.json")
+add_snd = cfg_add_song["add_sounds_animate"]
+
+cfg_muse_set = files.read_json_file(mvc_folder +
+                                    "museum_settings.json")
+muse_set = cfg_muse_set["museum_settings"]
+
+
+local_ip = ""
+
+ovrde_sw_st = {}
+ovrde_sw_st["switch_value"] = ""
+
+gc_col("config setup")
+
+ts_mode = False
+
+flsh_i = 0
+flsh_t = []
+
+t_s = []
+t_elsp = 0.0
+srt_t = 0.0
+
+an_running = False
+an_just_added = False
 
 ################################################################################
-# Audio hardware
+# Setup the servos
+s_1_pin = board.GP22
+s_2_pin = board.GP17
+s_3_pin = board.GP16
 
-# setup pin for vol on 5v aud board
+s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
+s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+
+s_2 = pwmio.PWMOut(s_2_pin, duty_cycle=2 ** 15, frequency=50)
+s_2 = servo.Servo(s_2, min_pulse=500, max_pulse=2500)
+
+s_3 = pwmio.PWMOut(s_3_pin, duty_cycle=2 ** 15, frequency=50)
+s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
+
+p_arr = [90, 90, 90]
+s_arr = [s_1, s_2, s_3]
+
+# Allowed dance target ranges for each snowman
+dance_min = [55, 65, 45]
+dance_max = [125, 135, 115]
+
+# Starting targets
+dance_target = [110, 75, 105]
+
+# Time between one-degree servo movements
+dance_interval = .02
+
+
+def m_servo(n, p):
+    global p_arr
+
+    if p < 0:
+        p = 0
+
+    if p > 180:
+        p = 180
+
+    s_arr[n].angle = p
+    p_arr[n] = p
+
+
+async def move_servo(n, target, spd):
+    start_pos = p_arr[n]
+    st = time.monotonic()
+
+    if target > start_pos:
+        direction = 1
+    elif target < start_pos:
+        direction = -1
+    else:
+        return
+
+    while True:
+        if exit_set_hdw_async:
+            return
+
+        elapsed = time.monotonic() - st
+        steps = int(elapsed / spd)
+
+        new_pos = start_pos + steps * direction
+
+        if direction > 0:
+            if new_pos >= target:
+                m_servo(n, target)
+                return
+        else:
+            if new_pos <= target:
+                m_servo(n, target)
+                return
+
+        if new_pos != p_arr[n]:
+            m_servo(n, new_pos)
+
+        await asyncio.sleep(0)
+
+
+async def dance(st, dur):
+    next_move = st
+
+    while True:
+        if exit_set_hdw_async:
+            return
+
+        now = time.monotonic()
+
+        if now - st >= dur:
+            return
+
+        if now >= next_move:
+            next_move += dance_interval
+
+            for n in range(3):
+                if p_arr[n] == dance_target[n]:
+                    dance_target[n] = random.randint(dance_min[n], dance_max[n])
+
+                if p_arr[n] < dance_target[n]:
+                    m_servo(n, p_arr[n] + 1)
+
+                elif p_arr[n] > dance_target[n]:
+                    m_servo(n, p_arr[n] - 1)
+
+        await asyncio.sleep(0)
+
+
+
+################################################################################
+# Setup hardware
+
+# Setup pin for v
 a_in = AnalogIn(board.A2)
 
-# setup pin for audio enable 21 on 5v aud board
+track_a_in = AnalogIn(board.A0)
+
 aud_en = digitalio.DigitalInOut(board.GP21)
 aud_en.direction = digitalio.Direction.OUTPUT
 aud_en.value = True
 
+# Setup the switches
+l_sw_io = digitalio.DigitalInOut(board.GP11)
+l_sw_io.direction = digitalio.Direction.INPUT
+l_sw_io.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw_io)
+
+r_sw_io = digitalio.DigitalInOut(board.GP15)
+r_sw_io.direction = digitalio.Direction.INPUT
+r_sw_io.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw_io)
+
 # setup i2s audio
-bclk = board.GP18  # BCLK on MAX98357A
-lrc = board.GP19  # LRC on MAX98357A
-din = board.GP20  # DIN on MAX98357A
+i2s_bclk = board.GP18   # BCLK on MAX98357A
+i2s_lrc = board.GP19  # LRC on MAX98357A
+i2s_din = board.GP20  # DIN on MAX98357A
 
-aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
+aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
 
-# setup the mixer to play mp3 files
+# Setup sdCard
+sck = board.GP2
+si = board.GP3
+so = board.GP4
+cs = board.GP5
+spi = busio.SPI(sck, si, so)
+
+# Setup the mixer to play mp3 files
 mix = audiomixer.Mixer(
-    voice_count=1,
+    voice_count=2,
     sample_rate=22050,
     channel_count=2,
     bits_per_sample=16,
     samples_signed=True,
     buffer_size=16384,
 )
-
 aud.play(mix)
 
+mix.voice[0].level = .2
+mix.voice[1].level = .2
 
-def upd_vol(s):
-    if cfg["volume_pot"]:
-        v = a_in.value / 65536
-    else:
-        try:
-            v = int(cfg["volume"]) / 100
-        except:
-            v = 0.5
-        if v < 0 or v > 1:
-            v = 0.5
-    mix.voice[0].level = v
+aud_en.value = True
+
+
+aud_en.value = False
+
+# Setup time
+r = rtc.RTC()
+r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
+
+################################################################################
+# Setup neo pixels
+
+n_px = 3
+
+led1 = neopixel.NeoPixel(board.GP0, 1, auto_write=False)
+led2 = neopixel.NeoPixel(board.GP1, 1, auto_write=False)
+led3 = neopixel.NeoPixel(board.GP6, 1, auto_write=False)
+
+led_channels = [led1, led2, led3]
+
+
+class SeparateNeoPixels:
+    def __init__(self, channels):
+        self.channels = channels
+        self._brightness = 1.0
+
+    def __len__(self):
+        return len(self.channels)
+
+    def __setitem__(self, index, color):
+        self.channels[index][0] = color
+
+    def __getitem__(self, index):
+        return self.channels[index][0]
+
+    def fill(self, color):
+        for channel in self.channels:
+            channel[0] = color
+
+    def show(self):
+        for channel in self.channels:
+            channel.show()
+
+    @property
+    def brightness(self):
+        return self._brightness
+
+    @brightness.setter
+    def brightness(self, value):
+        self._brightness = value
+        for channel in self.channels:
+            channel.brightness = value
+
+
+led = SeparateNeoPixels(led_channels)
+
+led.fill((255, 255, 255))
+led.show()
+
+gc_col("Neopixels setup")
+
+
+################################################################################
+# Dialog and sound play methods
+
+
+def upd_vol(s, bckgrnd_ratio=None):
+    global bckgrnd_vol
+    if bckgrnd_ratio is not None:
+        bckgrnd_vol = bckgrnd_ratio
+    if bckgrnd_vol > 100:
+        bckgrnd_vol = 100
+    if bckgrnd_vol < 0:
+        bckgrnd_vol = 0
+    try:
+        volume = int(cfg["volume"]) / 100
+        bckgrnd_volume = volume * (bckgrnd_vol / 100)
+    except Exception as e:
+        files.log_item(e)
+        volume = .5
+        bckgrnd_volume = .5
+    if volume < 0 or volume > 1:
+        volume = .5
+    if bckgrnd_volume < 0 or bckgrnd_volume > 1:
+        bckgrnd_volume = .5
+    mix.voice[0].level = bckgrnd_volume
+    mix.voice[1].level = volume
     time.sleep(s)
 
 
-upd_vol(0.01)
-
-################################################################################
-# Servos
-
-rot = pwmio.PWMOut(board.GP16, duty_cycle=2**15, frequency=50)
-rot = servo.Servo(rot, min_pulse=500, max_pulse=2500)
-rot.angle = lst_rot_pos
-
-
-################################################################################
-# Sound helpers
-
-w0 = None
-wind_playing = False
-START_FAIL_PROB = 0.10
-FLIGHT_FAIL_PROB = 0.05
-FLIGHT_DIALOG_PROB = 0.40
-WIND_PROB = 0.20
-
-def clear_w0():
-    global w0
-    if w0:
-        try:
-            w0.deinit()
-        except:
-            pass
-        w0 = None
-    gc_col("Clear w0")
-
-def clear_finished_w0():
-    if w0 and not mix.voice[0].playing:
-        clear_w0()
-
-def stop_dialog():
-    global wind_playing
-    if mix.voice[0].playing:
-        mix.voice[0].stop()
-    clear_w0()
-    wind_playing = False
-
-def play_dialog_folder(folder, chance=1.0):
-    global w0
-    if not cfg["dialog"]:
-        return False
-    if mix.voice[0].playing:
-        return False
-    if random.random() >= chance:
-        return False
-    clear_w0()
-    path = folder
+async def upd_vol_async(s, bckgrnd_ratio=None):
+    global bckgrnd_vol
+    if bckgrnd_ratio is not None:
+        bckgrnd_vol = bckgrnd_ratio
+    if bckgrnd_vol > 100:
+        bckgrnd_vol = 100
+    if bckgrnd_vol < 0:
+        bckgrnd_vol = 0
     try:
-        sounds = os.listdir(path)
+        volume = int(cfg["volume"]) / 100
+        bckgrnd_volume = volume * (bckgrnd_vol / 100)
     except Exception as e:
-        files.log_item("Dialog folder error " + folder + ": " + str(e))
-        gc.collect()
-        return False
-    if len(sounds) == 0:
-        sounds = None
-        gc.collect()
-        return False
-    attempts = len(sounds)
-    while attempts > 0:
-        file_name = random.choice(sounds)
-        if file_name.lower().endswith(".mp3"):
-            break
-        attempts -= 1
-    else:
-        sounds = None
-        gc.collect()
-        return False
-    sounds = None
-    gc.collect()
-    print("Dialog: " + folder + "/" + file_name)
-    try:
-        w0 = audiomp3.MP3Decoder(open(path + "/" + file_name, "rb"))
-        mix.voice[0].play(w0, loop=False)
-    except Exception as e:
-        files.log_item("Dialog play error: " + str(e))
-        clear_w0()
-        return False
-    return True
-
-def play_wind():
-    global wind_playing
-    if mix.voice[0].playing:
-        return False
-    if not play_dialog_folder("wind"):
-        return False
-    wind_playing = "waiting"
-    return True
-
-def play_flight_sound(target_pos):
-    if launch_dialog_played and cfg["wind"] and not mix.voice[0].playing and rnd_prob(WIND_PROB):
-        if play_wind():
-            return
-    if target_pos > lst_deploy_pos:
-        if launch_dialog_played:
-            play_dialog_folder("flight_up", FLIGHT_DIALOG_PROB)
-    elif target_pos < lst_deploy_pos:
-        play_dialog_folder("flight_down", FLIGHT_DIALOG_PROB)
-
-
-def ply_a_0(file_name):
-    global w0
-    upd_vol(0.01)
-    if mix.voice[0].playing:
-        mix.voice[0].stop()
-        while mix.voice[0].playing:
-            upd_vol(0.01)
-    print("playing " + file_name)
-    w0 = audiomp3.MP3Decoder(open("mp3/" + file_name + ".mp3", "rb"))
-    mix.voice[0].play(w0, loop=False)
-    while mix.voice[0].playing:
-        upd_vol(0.01)
-    clear_w0()
+        files.log_item(e)
+        volume = .5
+        bckgrnd_volume = .5
+    if volume < 0 or volume > 1:
+        volume = .5
+    if bckgrnd_volume < 0 or bckgrnd_volume > 1:
+        bckgrnd_volume = .5
+    mix.voice[0].level = bckgrnd_volume
+    mix.voice[1].level = volume
+    await asyncio.sleep(s)
 
 
 def ch_vol(action):
@@ -297,6 +433,10 @@ def ch_vol(action):
         v -= 1
     elif action == "raise1":
         v += 1
+    if action == "lower5":
+        v -= 5
+    elif action == "raise5":
+        v += 5
     elif action == "lower":
         if v <= 10:
             v -= 1
@@ -312,419 +452,1566 @@ def ch_vol(action):
     if v < 1:
         v = 1
     cfg["volume"] = str(v)
-    cfg["volume_pot"] = False
-    ply_a_0("volume")
-    spk_word(cfg["volume"])
+    if not mix.voice[0].playing:
+        save_cfg_safely()
+        ply_a_0(mvc_folder + "volume.mp3")
+        spk_str(cfg["volume"], False)
 
 
-def spk_sentence(snd):
-    print(snd)
-    try:
-        ply_a_0(snd)
-    except:
-        snd_split = snd.split("_")
-        for snd in snd_split:
-            spk_word(snd)
+def ply_a_0(file_name, wait=True, repeat=False):
+    if mix.voice[0].playing:
+        mix.voice[0].stop()
+        while mix.voice[0].playing:
+            upd_vol(0.1)
+    if file_name.lower().endswith(".mp3"):
+        w0 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w0 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+    mix.voice[0].play(w0, loop=repeat)
+    if wait:
+        while mix.voice[0].playing:
+            upd_vol(0.1)
+            pass
 
 
-def spk_word(str_to_speak):
-    print(str_to_speak)
-    if (
-        str_to_speak == "minute"
-        or str_to_speak == "minutes"
-        or str_to_speak == "timer"
-        or str_to_speak == "lower"
-        or str_to_speak == "raise"
-        or str_to_speak == "no"
-        or str_to_speak == "continuous"
-        or str_to_speak == "options"
-        or str_to_speak == "this"
-        or str_to_speak == "exit"
-        or str_to_speak == "settings"
-        or str_to_speak == "main"
-        or str_to_speak == "menu"
-        or str_to_speak == "adjustment"
-        or str_to_speak == "volume"
-        or str_to_speak == "pot"
-        or str_to_speak == "off"
-        or str_to_speak == "on"
-        or str_to_speak == "random"
-        or str_to_speak == "to"
-        or str_to_speak == "lowerraisesavevol"
-        or str_to_speak == "mode"
-        or str_to_speak == "centerfig"
-        or str_to_speak == "alignlrsave"
-        or str_to_speak == "wind"
-        or str_to_speak == "dialog"
-    ):
-        ply_a_0(str_to_speak)
-        return
+def ply_a_1(file_name, wait=True, repeat=False):
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+    mix.voice[1].play(w1, loop=repeat)
+    if wait:
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+            pass
+
+
+async def ply_a_1_async(file_name, repeat=False):
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            await asyncio.sleep(0)
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+    mix.voice[1].play(w1, loop=repeat)
+    while mix.voice[1].playing:
+        await asyncio.sleep(0)
+
+
+def wait_snd():
+    while mix.voice[0].playing:
+        pass
+
+
+async def wait_snd_1():
+    while mix.voice[1].playing:
+        if an_running:
+            if await animation_wait(.01):
+                return True
+        else:
+            await asyncio.sleep(0)
+    return False
+
+
+def stp_a_0():
+    mix.voice[0].stop()
+    wait_snd()
+
+
+async def stp_a_1():
+    mix.voice[1].stop()
+    await wait_snd_1()
+
+
+def spk_str(str_to_speak, addLocal):
     for character in str_to_speak:
         try:
-            ply_a_0(character)
+            if character == " ":
+                character = "space"
+            if character == "-":
+                character = "dash"
+            if character == ".":
+                character = "dot"
+            ply_a_0(mvc_folder + character + ".mp3")
         except Exception as e:
             files.log_item(e)
             print("Invalid character in string to speak")
+    if addLocal:
+        ply_a_0(mvc_folder + "dot.mp3")
+        ply_a_0(mvc_folder + "local.mp3")
 
 
-################################################################################
-# Misc
+def l_r_but():
+    ply_a_0(mvc_folder + "press_left_button_right_button.mp3")
 
 
-def exit_early():
-    global kill_process
-    if not cfg["museum_mode"] and not l_sw_io.value:
-        kill_process = True
-        if mix.voice[0].playing:
-            mix.voice[0].stop()
-        coils_off()
-        return True
-    return False
-
-def animation_stop():
-    global kill_process, button_press_start, museum_long_press_stop
-    if kill_process:
-        return True
-    if cfg["museum_mode"]:
-        if not l_sw_io.value:
-            if button_press_start is None:
-                button_press_start = time.monotonic()
-            elif time.monotonic() - button_press_start > 1.0:
-                kill_process = True
-                museum_long_press_stop = True
-                button_press_start = None
-                if mix.voice[0].playing:
-                    mix.voice[0].stop()
-                stop_stepper()
-                time.sleep(2)
-                return True
-        else:
-            button_press_start = None
-    elif not l_sw_io.value:
-        kill_process = True
-        if mix.voice[0].playing:
-            mix.voice[0].stop()
-        stop_stepper()
-        return True
-    return False
-
-def rnd_prob(c):
-    y = random.random()
-    if y < c:
-        return True
-    return False
-
-################################################################################
-# stepper motor
-
-def clear_stepper_done():
-    while stepper_sm.in_waiting:
-        stepper_sm.readinto(stepper_done)
-
-def coils_off():
-    stepper_sm.run(stepper_coils_off)
-
-def stop_stepper():
-    stepper_sm.stop()
-
-################################################################################
-# Setup neo pixels
-
-num_px = 1
-
-led1 = neopixel.NeoPixel(board.GP17, num_px)
-
-led1.fill((0, 0, 0))
-led1.show()
-
-gc_col("Neopixels setup")
-
-num_px2 = 8
-
-led2 = neopixel.NeoPixel(board.GP22, num_px2)
-
-led2.fill((0, 0, 0))
-led2.show()
-
-gc_col("Neopixels setup")
-
-################################################################################
-# servo motor
-
-def servo_m(servo_pos):
-    global lst_rot_pos
-    if servo_pos < kite_min:
-        servo_pos = kite_min
-    if servo_pos > kite_max:
-        servo_pos = kite_max
-    rot.angle = servo_pos
-    lst_rot_pos = servo_pos
+def sel_web():
+    ply_a_0(mvc_folder + "web_menu.mp3")
+    l_r_but()
 
 
-def ch_servo(action):
-    s = int(cfg["servo"])
-    if "servo" in action:
-        s = action.split("servo")
-        s = int(s[1])
-    if action == "left":
-        s -= 1
-    elif action == "right":
-        s += 1
-    if s > 180:
-        s = 180
-    if s < 0:
-        s = 0
-    cfg["servo"] = str(s)
-    servo_m(int(cfg["servo"]))
-    spk_word(cfg["servo"])
+def sel_museum():
+    ply_a_0(mvc_folder + "museum_settings_menu.mp3")
+    l_r_but()
 
 
-################################################################################
-# async methods
-
-loop = asyncio.get_event_loop()
+def opt_sel():
+    ply_a_0(mvc_folder + "option_selected.mp3")
 
 
-def rotate_spd():
-    global w0, wind_playing
-    if wind_playing == "waiting" and not mix.voice[0].playing:
-        clear_w0()
-        try:
-            w0 = audiomp3.MP3Decoder(open("mp3/wind_effect.mp3", "rb"))
-            mix.voice[0].play(w0, loop=False)
-            wind_playing = True
-        except Exception as e:
-            files.log_item("Wind play error: " + str(e))
-            wind_playing = False
-            clear_w0()
-    elif wind_playing == True and not mix.voice[0].playing:
-        wind_playing = False
-        clear_w0()
-    if wind_playing == True:
-        return 0.005
-    return 0.02
+def spk_sng_num(song_number):
+    ply_a_0(mvc_folder + "song.mp3")
+    spk_str(song_number, False)
 
 
-async def rotate_kite_async():
-    global lst_rot_pos, async_running
-    while async_running:
-        center_servo_pos = int(cfg["servo"])
-        rand_pos_1 = random.randint(center_servo_pos - 70, center_servo_pos - 70)
-        rand_pos_2 = random.randint(center_servo_pos + 70, center_servo_pos + 70)
-        sign = 1
-        if lst_rot_pos > rand_pos_1:
-            sign = -1
-        total_steps = abs(rand_pos_1 - lst_rot_pos)
-        animation_stop()
-        if not async_running or kill_process:
+async def no_trk():
+    ply_a_0(mvc_folder + "no_user_soundtrack_found.mp3")
+    while True:
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        l_sw.update()
+        r_sw.update()
+        if sw == "left":
             break
-        for _ in range(total_steps + 1):
-            if animation_stop():
-                async_running = False
-                return
-            spd = rotate_spd()
-            kite_ang = lst_rot_pos + 1 * sign
-            servo_m(kite_ang)
-            await asyncio.sleep(spd)
-        await asyncio.sleep(2 * spd)
-        sign = 1
-        if lst_rot_pos > rand_pos_2:
-            sign = -1
-        total_steps = abs(rand_pos_2 - lst_rot_pos)
-        animation_stop()
-        if not async_running or kill_process:
+        if sw == "right":
+            ply_a_0(mvc_folder + "create_sound_track_files.mp3")
             break
-        for _ in range(total_steps + 1):
-            if animation_stop():
-                async_running = False
-                return
-            spd = rotate_spd()
-            kite_ang = lst_rot_pos + 1 * sign
-            servo_m(kite_ang)
-            await asyncio.sleep(spd)
-        await asyncio.sleep(2 * spd)
+        await asyncio.sleep(.1)
 
 
-async def deploy_kite(steps, direction):
-    global async_running, lst_deploy_pos, launch_dialog_played
-    if steps <= 0:
-        async_running = False
-        return
-    if direction != "up" and direction != "down":
-        print("Direction must be 'down' or 'up'")
-        return
-    stepper_sm.restart()
-    clear_stepper_done()
-    direction_bit = 1 if direction == "up" else 0
-    command = ((steps - 1) << 1) | direction_bit
-    command_data = array.array("I", [command])
-    start_pos = lst_deploy_pos
-    start_time = time.monotonic()
-    launch_position = int(cfg["kite_deploy_max"] * 0.15)
-    stepper_sm.write(command_data)
-    while not stepper_sm.in_waiting:
-        elapsed = time.monotonic() - start_time
-        completed_steps = int(elapsed / STEPPER_FULL_STEP_TIME)
-        if completed_steps > steps:
-            completed_steps = steps
-        if direction == "up":
-            lst_deploy_pos = start_pos + completed_steps
-        else:
-            lst_deploy_pos = start_pos - completed_steps
-        if direction == "up" and not launch_dialog_played and lst_deploy_pos >= launch_position:
-            clear_finished_w0()
-            if play_dialog_folder("launch"):
-                launch_dialog_played = True
-        if animation_stop():
-            async_running = False
-            stop_stepper()
-            coils_off()
-            return
-        await asyncio.sleep(0)
-    stepper_sm.readinto(stepper_done)
-    if direction == "up":
-        lst_deploy_pos = start_pos + steps
+def spk_web():
+    ply_a_0(mvc_folder + "animator_available_on_network.mp3")
+    ply_a_0(mvc_folder + "to_access_type.mp3")
+    if cfg["HOST_NAME"] == "animator-trolley":
+        ply_a_0(mvc_folder + "animator_trolley.mp3")
+        ply_a_0(mvc_folder + "dot.mp3")
+        ply_a_0(mvc_folder + "local.mp3")
     else:
-        lst_deploy_pos = start_pos - steps
-    async_running = False
+        spk_str(cfg["HOST_NAME"], True)
+    ply_a_0(mvc_folder + "in_your_browser.mp3")
 
 
-async def rn_an(target_pos, play_sound=True):
-    global async_running
-    if target_pos == lst_deploy_pos:
+def get_snds(dir, typ):
+    sds = []
+    s = files.return_directory("", dir, ".mp3")
+    for el in s:
+        p = el.split('_')
+        if p[0] == typ:
+            sds.append(el)
+    mx = len(sds) - 1
+    i = random.randint(0, mx)
+    fn = dir + "/" + sds[i] + ".mp3"
+    return fn
+
+MIN_TRACK_VOLTAGE = 9.0
+
+
+################################################################################
+# WiFi setup access point methods
+#
+# These are deliberately top-level so they can be called later from the
+# physical buttons or from one of the menu states.
+
+def url_decode(value):
+    result = ""
+    i = 0
+    while i < len(value):
+        if value[i] == "%" and i + 2 < len(value):
+            try:
+                result += chr(int(value[i + 1:i + 3], 16))
+                i += 3
+                continue
+            except:
+                pass
+        if value[i] == "+":
+            result += " "
+        else:
+            result += value[i]
+        i += 1
+    return result
+
+def scan_wifi_networks():
+    import wifi
+    networks = []
+    try:
+        print("Scanning for WiFi networks...")
+        for network in wifi.radio.start_scanning_networks():
+            ssid = network.ssid
+            if not ssid:
+                continue
+            found = False
+            for item in networks:
+                if item["ssid"] == ssid:
+                    found = True
+                    if network.rssi > item["rssi"]:
+                        item["rssi"] = network.rssi
+                    break
+            if not found:
+                networks.append({
+                    "ssid": ssid,
+                    "rssi": network.rssi
+                })
+        wifi.radio.stop_scanning_networks()
+    except Exception as e:
+        print("WiFi scan error:", e)
+        try:
+            wifi.radio.stop_scanning_networks()
+        except:
+            pass
+    networks.sort(key=lambda item: item["rssi"], reverse=True)
+    return networks
+
+
+def start_wifi_setup():
+    global wifi_setup_restart, web
+    import socketpool
+    import wifi
+    import ipaddress
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
+    wifi_setup_restart = False
+    web = False
+    networks = scan_wifi_networks()
+    try:
+        wifi.radio.stop_station()
+    except Exception as e:
+        print("Stop station:", e)
+    print("Starting setup access point...")
+    wifi.radio.start_ap("JimmyTrainsAnimator", "")
+    wifi.radio.set_ipv4_address_ap(
+        ipv4=ipaddress.IPv4Address("10.10.10.10"),
+        netmask=ipaddress.IPv4Address("255.255.255.0"),
+        gateway=ipaddress.IPv4Address("10.10.10.10")
+    )
+    wifi.radio.start_dhcp_ap()
+    setup_ip = "10.10.10.10"
+    print("")
+    print("======================================")
+    print("WiFi setup access point is running")
+    print("SSID: JimmyTrainsAnimator")
+    print("Password:")
+    print("Connect your computer or phone to that WiFi network")
+    print("Use: http://10.10.10.10")
+    print("======================================")
+    print("")
+    setup_pool = socketpool.SocketPool(wifi.radio)
+    setup_server = Server(setup_pool, "/", debug=False)
+
+    ply_a_0(mvc_folder + "enter_ssid_password.mp3")
+
+
+    @setup_server.route("/")
+    def setup_home(request: Request):
+        return FileResponse(request, "wifi_setup.html", "/")
+
+    @setup_server.route("/scan-wifi")
+    def setup_scan_wifi(request: Request):
+        return JSONResponse(request, networks)
+
+    @setup_server.route("/save-wifi", [POST])
+    def setup_save_wifi(request: Request):
+        global wifi_setup_restart
+        try:
+            rq_d = request.json()
+            ssid = rq_d["ssid"].strip()
+            password = rq_d["password"]
+            if ssid == "":
+                return Response(request, "Please select a WiFi network.")
+            env = {
+                "WIFI_SSID": ssid,
+                "WIFI_PASSWORD": password
+            }
+            files.write_json_file("env.json", env)
+            print("WiFi settings saved for:", ssid)
+            wifi_setup_restart = True
+            return Response(request, "WiFi saved. Animator restarting...")
+        
+        except Exception as e:
+            print("WiFi setup save error:", e)
+            return Response(request, "Unable to save WiFi settings.")
+    setup_server.start(setup_ip, port=80)
+    while True:
+        try:
+            setup_server.poll()
+        except OSError as e:
+            print("Setup HTTP error:", e)
+        except Exception as e:
+            print("Setup server error:", e)
+        if wifi_setup_restart:
+            time.sleep(2)
+            microcontroller.reset()
+        time.sleep(.01)
+
+
+################################################################################
+# Normal WiFi connection and web server
+
+if web:
+    import socketpool
+    import mdns
+    import wifi
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
+    gc_col("config wifi imports")
+    files.log_item("Connecting to WiFi")
+    WIFI_SSID = "jimmytrainsguest"
+    WIFI_PASSWORD = ""
+    try:
+        env = files.read_json_file("env.json")
+        WIFI_SSID = env["WIFI_SSID"]
+        WIFI_PASSWORD = env["WIFI_PASSWORD"]
+        gc_col("wifi env")
+        print("Using env ssid and password")
+    except Exception:
+        print("Using default ssid and password")
+    wifi_connected = False
+    for i in range(3):
+        led[0] = (0, 0, 255)
+        led.show()
+        try:
+            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+            wifi_connected = True
+            break
+        except Exception as e:
+            files.log_item(e)
+            time.sleep(1)
+    if not wifi_connected:
+        print("Unable to connect to configured WiFi")
+        print("WiFi setup access point is available from the physical/menu command")
+        web = False
+    else:
+        gc_col("wifi connect")
+        mdns = mdns.Server(wifi.radio)
+        mdns.hostname = cfg["HOST_NAME"]
+        mdns.advertise_service(service_type="_http", protocol="_tcp", port=80)
+        local_ip = str(wifi.radio.ipv4_address)
+        files.log_item("IP is " + local_ip)
+        files.log_item("Connected")
+        pool = socketpool.SocketPool(wifi.radio)
+        server = Server(pool, "/static", debug=False)
+        server.port = 80
+        gc_col("wifi server")
+
+        def create_directory_if_needed(path):
+            if path == "" or path == "/":
+                return
+
+            path = path.replace("\\", "/")
+
+            if not path.startswith("/"):
+                path = "/" + path
+
+            parts = path.strip("/").split("/")
+            current_path = ""
+
+            for part in parts:
+                if part == "":
+                    continue
+
+                current_path += "/" + part
+
+                try:
+                    os.stat(current_path)
+                except OSError:
+                    print("Creating directory:", current_path)
+                    os.mkdir(current_path)
+
+        ################################################################################
+        # Setup routes
+
+        @server.route("/")
+        def base(req: Request):
+            return FileResponse(req, "index.html", "/")
+
+        @server.route("/mui.min.css")
+        def base(req: Request):
+            return FileResponse(req, "mui.min.css", "/")
+
+        @server.route("/mui.min.js")
+        def base(req: Request):
+            return FileResponse(req, "mui.min.js", "/")
+
+        @server.route("/animation", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            cfg["option_selected"] = rq_d["an"]
+            add_cmd("AN_" + cfg["option_selected"])
+            if not mix.voice[0].playing:
+                save_cfg_safely()
+            return Response(request, "Animation " + cfg["option_selected"] + " started.")
+
+        @server.route("/defaults", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            if rq_d["an"] == "reset_to_defaults":
+                rst_def()
+                save_cfg_safely()
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                st_mch.go_to('base_state')
+            return Response(request, "Utility: " + rq_d["an"])
+
+        @server.route("/mode", [POST])
+        def btn(request: Request):
+            global ts_mode
+            rq_d = request.json()
+            if rq_d["an"] == "left":
+                ovrde_sw_st["switch_value"] = "left"
+            elif rq_d["an"] == "left_held":
+                ovrde_sw_st["switch_value"] = "left_held"
+            elif rq_d["an"] == "right":
+                ovrde_sw_st["switch_value"] = "right"
+            elif rq_d["an"] == "right_held":
+                ovrde_sw_st["switch_value"] = "right_held"
+            elif rq_d["an"] == "three":
+                ovrde_sw_st["switch_value"] = "three"
+            elif rq_d["an"] == "four":
+                ovrde_sw_st["switch_value"] = "four"
+            elif rq_d["an"] == "cont_mode_on":
+                stop_all_cmds()
+                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
+                cfg["cont_mode"] = True
+                save_cfg_safely()
+            elif rq_d["an"] == "cont_mode_off":
+                stop_all_cmds()
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                cfg["cont_mode"] = False
+                save_cfg_safely()
+            elif rq_d["an"] == "timestamp_mode_on":
+                stop_all_cmds()
+                ts_mode = True
+                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
+                ply_a_0(mvc_folder + "timestamp_instructions.mp3")
+            elif rq_d["an"] == "timestamp_mode_off":
+                stop_all_cmds()
+                ts_mode = False
+                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+            elif rq_d["an"] == "museum_mode_on":
+                stop_all_cmds()
+                cfg["museum_mode"] = True
+                save_cfg_safely()
+                ply_a_0(mvc_folder + "museum_mode_on.mp3")
+            elif rq_d["an"] == "museum_mode_off":
+                stop_all_cmds()
+                cfg["museum_mode"] = False
+                ply_a_0(mvc_folder + "museum_mode_off.mp3")
+            return Response(request, "Utility: " + rq_d["an"])
+
+        @server.route("/speaker", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            if rq_d["an"] == "speaker_test":
+                ply_a_0(mvc_folder + "left_speaker_right_speaker.mp3")
+            return Response(request, "Utility: " + rq_d["an"])
+
+        @server.route("/lights", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            command = rq_d["an"]
+            add_command_to_ts(command)
+            set_hdw_not_async(command)
+            return Response(request, "Utility: " + "Utility: set lights")
+
+        @server.route("/set-item-lights", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            command = "LN0_" + str(rq_d["r"]) + "_" + \
+                str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw_not_async(command)
+            return Response(request, "Utility: " + "Utility: set lights")
+
+        @server.route("/get-wifi-signal", [POST])
+        def get_local_ip(request: Request):
+            avg_rssi = measure_signal_strength(WIFI_SSID, 10)
+            return Response(request, str(avg_rssi))
+
+        @server.route("/get-track-voltage", [POST])
+        def btn(request: Request):
+            track_voltage = get_track_voltage()
+            return Response(request, str(track_voltage))
+
+        @server.route("/update-host-name", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            cfg["HOST_NAME"] = rq_d["an"]
+            save_cfg_safely()
+            mdns.hostname = cfg["HOST_NAME"]
+            spk_web()
+            return Response(request, cfg["HOST_NAME"])
+
+        @server.route("/get-host-name", [POST])
+        def btn(request: Request):
+            return Response(request, cfg["HOST_NAME"])
+
+        @server.route("/get-local-ip", [POST])
+        def buttonpress(req: Request):
+            return Response(req, local_ip)
+
+        @server.route("/update-volume", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            ch_vol(rq_d["action"])
+            save_cfg_safely()
+            return Response(request, cfg["volume"])
+
+        @server.route("/get-options", [POST])
+        def btn(request: Request):
+            rq_d = {
+                "queuing": cfg["queuing"]
+            }
+            my_string = files.json_stringify(rq_d)
+            return Response(request, my_string)
+
+        @server.route("/update-options", [POST])
+        def btn(request: Request):
+            global cfg
+            rq_d = request.json()
+            cfg["queuing"] = rq_d["queuing"]
+            save_cfg_safely()
+            my_string = files.json_stringify(cfg)
+            return Response(request, my_string)
+
+        @server.route("/get-volume", [POST])
+        def btn(request: Request):
+            return Response(request, cfg["volume"])
+
+        @server.route("/get-animations", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            sounds = []
+            sounds.extend(snd_opt)
+            my_string = files.json_stringify(sounds)
+            return Response(request, my_string)
+
+        @server.route("/create-animation", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                print(rq_d)
+                f_n = animations_folder + rq_d["fn"] + ".json"
+                print(f_n)
+                an_data = ["0.0|MB0name of your track.wav", "1.0|"]
+                files.write_json_file(f_n, an_data)
+                upd_media()
+                return Response(request, "Created animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error creating animation.")
+
+        @server.route("/rename-animation", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                fo = animations_folder + rq_d["fo"] + ".json"
+                fn = animations_folder + rq_d["fn"] + ".json"
+                os.rename(fo, fn)
+                upd_media()
+                return Response(request, "Renamed animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.")
+
+        @server.route("/delete-animation", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                print(rq_d)
+                f_n = animations_folder + rq_d["fn"] + ".json"
+                print(f_n)
+                os.remove(f_n)
+                upd_media()
+                return Response(request, "Delete animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.")
+
+        @server.route("/test-animation", [POST])
+        def btn(request: Request):
+            try:
+                rq_d = request.json()
+                add_cmd(rq_d["an"])
+                return Response(request, "success")
+            except Exception as e:
+                print(e)
+                return Response(request, "error")
+
+        @server.route("/get-animation", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            snd_f = rq_d["an"]
+            if (f_exists(animations_folder + snd_f + ".json") == True):
+                f_n = animations_folder + snd_f + ".json"
+                return FileResponse(request, f_n, "/")
+            else:
+                f_n = "/t_s_def/timestamp mode.json"
+                return FileResponse(request, f_n, "/")
+
+        data = []
+
+        @server.route("/save-data", [POST])
+        def btn(request: Request):
+            global data
+            stop_all_cmds()
+            rq_d = request.json()
+            try:
+                if rq_d[0] == 0:
+                    data = []
+                data.extend(rq_d[2])
+                if rq_d[0] == rq_d[1]:
+                    f_n = animations_folder + \
+                        rq_d[3] + ".json"
+                    files.write_json_file(f_n, data)
+                    data = []
+                upd_media()
+            except Exception as e:
+                files.log_item(e)
+                data = []
+                return Response(request, "out of memory")
+            return Response(request, "success")
+
+        @server.route("/get-sound-files", [POST])
+        def get_sound_files(request: Request):
+            try:
+                sound_files = []
+                for filename in os.listdir(animations_folder):
+                    lower_name = filename.lower()
+                    if lower_name.endswith(".mp3") or lower_name.endswith(".wav"):
+                        sound_files.append(filename)
+                sound_files.sort()
+                return Response(request, files.json_stringify(sound_files))
+
+            except Exception as e:
+                print("Get sound files error:", e)
+                return Response(request, "[]")
+
+
+        @server.route("/delete-sound-file", [POST])
+        def delete_sound_file(request: Request):
+            try:
+                rq_d = request.json()
+                filename = rq_d["filename"]
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+                if not filename:
+                    return Response(request, "invalid filename")
+                lower_name = filename.lower()
+                if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
+                    return Response(request, "invalid file type")
+                file_path = animations_folder + filename
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+                os.remove(file_path)
+                print("Deleted sound file:", filename)
+                return Response(request, "success")
+            except Exception as e:
+                print("Delete sound file error:", e)
+                return Response(request, "error")
+
+
+        @server.route("/upload-sound", [POST])
+        def upload_sound(request: Request):
+            try:
+                filename = request.query_params.get("filename")
+                location = request.query_params.get("location", "")
+                offset = int(request.query_params.get("offset", "0"))
+
+                if not filename:
+                    return Response(request, "missing filename")
+
+                filename = url_decode(filename)
+                location = url_decode(location)
+
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+
+                location = location.replace("\\", "/")
+
+                if not filename:
+                    return Response(request, "invalid filename")
+
+                if location == "":
+                    location = "/"
+
+                if not location.startswith("/"):
+                    location = "/" + location
+
+                if location != "/" and not location.endswith("/"):
+                    location += "/"
+
+                file_path = location + filename
+                chunk_size = len(request.body)
+
+                if offset == 0:
+                    create_directory_if_needed(location)
+
+                    with open(file_path, "wb") as f:
+                        f.write(request.body)
+
+                else:
+                    if not f_exists(file_path):
+                        return Response(request, "file not found")
+
+                    with open(file_path, "r+b") as f:
+                        f.seek(offset)
+                        f.write(request.body)
+
+                print("Uploaded:", file_path, "offset:", offset, "bytes:", chunk_size)
+
+                return Response(request, "success")
+
+            except Exception as e:
+                print("Upload error:", e)
+                return Response(request, "error")
+
+ 
+        @server.route("/upload-sound-complete", [POST])
+        def upload_sound_complete(request: Request):
+            try:
+                rq_d = request.json()
+
+                filename = rq_d["filename"]
+                location = rq_d.get("location", "")
+                expected_size = int(rq_d["size"])
+
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+
+                location = location.replace("\\", "/")
+
+                if not filename:
+                    return Response(request, "invalid filename")
+
+                if location == "":
+                    location = "/"
+
+                if location != "/" and not location.endswith("/"):
+                    location += "/"
+
+                file_path = location + filename
+
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+
+                actual_size = os.stat(file_path)[6]
+
+                print("Upload complete:", file_path)
+                print("Expected size:", expected_size)
+                print("Actual size:", actual_size)
+
+                if actual_size != expected_size:
+                    return Response(request, "size mismatch")
+
+                return Response(request, "success")
+
+            except Exception as e:
+                print("Upload complete error:", e)
+                return Response(request, "error")
+
+
+         
+gc_col("web server")
+
+def measure_signal_strength(MY_SSID, cycles):
+    if not web:
+        return 0
+    print("Monitoring signal for:", MY_SSID)
+    print("Showing current RSSI + running average (simple sum + count)\n")
+    total_sum = 0.0
+    count = 0
+    while True:
+        current_rssi = None
+        found = False
+        try:
+            for network in wifi.radio.start_scanning_networks():
+                if network.ssid == MY_SSID:
+                    current_rssi = network.rssi
+                    print(
+                        f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
+                    found = True
+                    break
+            wifi.radio.stop_scanning_networks()
+            if found and current_rssi is not None:
+                total_sum += current_rssi
+                count += 1
+                if count > 0:
+                    avg_rssi = total_sum / count
+                    print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
+                else:
+                    print("   |   Avg: waiting...")
+            else:
+                print(
+                    "   |   Could not see your SSID (hidden, out of range, or scan miss)")
+        except Exception as e:
+            print(f"Scan error: {e}")
+            wifi.radio.stop_scanning_networks()  # cleanup on error
+        time.sleep(0.1)
+        if count > cycles:
+            return avg_rssi
+
+cycles = 10
+
+if web:
+    avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+else:
+    avg_rssi = 0
+
+################################################################################
+# Command queue
+command_queue = []
+
+
+def add_cmd(command, to_start=False):
+    global exit_set_hdw_async
+    exit_set_hdw_async = False
+    if to_start:
+        command_queue.insert(0, command)  # Add to the front
+        print("Command added to the start:", command)
+    else:
+        command_queue.append(command)  # Add to the end
+        print("Command added to the end:", command)
+
+
+async def process_cmd():
+    while command_queue:
+        cmd = command_queue.pop(0)
+        print("Processing command:", cmd)
+        if cmd[:2] == 'AN':
+            cmd_split = cmd.split("_")
+            clr_cmd_queue()
+            if cmd_split[1] == "customers":
+                await an_async(cmd_split[1]+"_"+cmd_split[2]+"_"+cmd_split[3]+"_"+cmd_split[4])
+            else:
+                await an_async(cmd_split[1])
+        else:
+            await set_hdw_async(cmd)
+        await asyncio.sleep(0)
+
+
+def clr_cmd_queue():
+    command_queue.clear()
+    print("Command queue cleared.")
+
+
+def stop_all_cmds(cont_mode_off=True):
+    global exit_set_hdw_async
+    if cont_mode_off:
+        cfg["cont_mode"] = False
+    mix.voice[0].stop()
+    mix.voice[1].stop()
+    led.fill((0, 0, 0))
+    led.show()
+    clr_cmd_queue()
+    exit_set_hdw_async = True
+    print("Processing stopped and command queue cleared.")
+
+async def animation_wait(wait_time):
+    global an_running, flsh_i, srt_t
+    start_time = time.monotonic()
+    spoken = False
+    power_off_time = 0
+    sw = ""
+    while time.monotonic() - start_time < wait_time:
+        if ovrde_sw_st["switch_value"] == "left":
+            sw = utilities.switch_state(
+                l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+        else:
+            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+            if sw == "none" and time.monotonic() - srt_t > 2:
+                if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                    if cfg["museum_mode"]:
+                        aud_en.value = False
+                        led.brightness = 0
+                        led.show()
+                    else:
+                        stop_all_cmds(False)
+                    power_off_start = time.monotonic()
+                    while get_track_voltage() < MIN_TRACK_VOLTAGE:
+                        power_off_time = time.monotonic() - power_off_start
+                        if cfg["cont_mode"]:
+                            if not cfg["museum_mode"] and power_off_time > 1 and power_off_time < 3 and not spoken:
+                                spoken = True
+                                asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                        else:
+                            if not cfg["museum_mode"] and power_off_time <= 1 and not spoken:
+                                spoken = True
+                                asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                        await asyncio.sleep(0)
+                    power_off_time = time.monotonic() - power_off_start
+                    if power_off_time <= 1:
+                        if cfg["museum_mode"]:
+                            aud_en.value = True
+                            led.brightness = 1
+                            led.show()
+                            return False
+                        sw = "left"
+                    elif power_off_time > 1 and power_off_time < 3:
+                        if cfg["museum_mode"]:
+                            stop_all_cmds(False)
+                            aud_en.value = True
+                            led.brightness = 1
+                            led.show()
+                            an_running = False
+                            return True
+                        sw = "left_held"
+                    else:
+                        led.fill((1, 1, 1))
+                        led.show()
+                        await asyncio.sleep(0)
+        if sw == "left":
+            if spoken:
+                await asyncio.sleep(1)
+                while mix.voice[1].playing:
+                    await asyncio.sleep(0)
+            else:
+                stop_all_cmds(False)
+                asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                await asyncio.sleep(1)
+                while mix.voice[1].playing:
+                    await asyncio.sleep(0)
+            an_running = False
+            return True
+        if sw == "left_held":
+            if cfg["cont_mode"] == True:
+                if spoken:
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                else:
+                    stop_all_cmds(False)
+                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                cfg["cont_mode"] = False
+                save_cfg_safely()
+            else:
+                if spoken:
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                else:
+                    stop_all_cmds(False)
+                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+            an_running = False
+            return True
+        await asyncio.sleep(0)
+    return False
+
+
+def save_cfg_safely():
+    if get_track_voltage() >= MIN_TRACK_VOLTAGE:
+        files.write_json_file("cfg.json", cfg)
+
+
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
         return
-    direction = "up"
-    if target_pos < lst_deploy_pos:
-        direction = "down"
-    steps = abs(target_pos - lst_deploy_pos)
-    clear_finished_w0()
-    if play_sound:
-        play_flight_sound(target_pos)
-    async_running = True
-    rot_k = asyncio.create_task(rotate_kite_async())
-    deploy_g = asyncio.create_task(deploy_kite(steps, direction))
-    await asyncio.gather(deploy_g, rot_k)
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
+
+################################################################################
+# Misc Methods
 
 
-async def rn_home(steps, direction):
-    global async_running
-    async_running = True
-    deploy_g = asyncio.create_task(deploy_kite(steps, direction))
-    await asyncio.gather(deploy_g)
+def get_track_voltage(samples=20):
+    total = 0.0
+    for _ in range(samples):
+        total += track_a_in.value / 65536 * 3.3 * 15.684 * debug_voltage_multiplier
+        time.sleep(.0017)
+    return total / samples
+
+
+def rst_def():
+    cfg["option_selected"] = "random all"
+    cfg["cont_mode"] = False
+    cfg["volume"] = "50"
+    cfg["HOST_NAME"] = "animator-trolley"
+    cfg["serve_webpage"] = True
+    cfg["museum_mode"] = False
 
 
 ################################################################################
 # Animations
 
-def an():
-    global kill_process, launch_dialog_played, museum_long_press_stop
-    led2.fill((255, 255, 255))
-    led2.show()
-    kill_process = False
-    museum_long_press_stop = False
-    launch_dialog_played = False
-    clear_finished_w0()
-    if rnd_prob(START_FAIL_PROB):
-        play_dialog_folder("start_fail")
-        return
-    play_dialog_folder("start_pass")
-    if cfg["random"]:
-        cycles = cfg["cycles_random"]
-    else:
-        cycles = cfg["cycles_non_random"]
-    for _ in range(cycles):
-        clear_finished_w0()
-        if kill_process:
-            break
-        if cfg["random"] == True:
-            target_pos = random.randint(0, cfg["kite_deploy_max"])
-            files.log_item("Random deploy pos: " + str(target_pos))
-            asyncio.run(rn_an(target_pos))
-            if kill_process:
-                break
+lst_opt = ""
+
+
+async def an_async(f_nm):
+    global lst_opt, ts_mode
+    print("Filename: " + f_nm)
+    cur_opt = f_nm
+    try:
+        if f_nm == "random all":
+            h_i = len(snd_opt) - 1
+            cur_opt = snd_opt[random.randint(
+                0, h_i)]
+            while lst_opt == cur_opt and len(snd_opt) > 1:
+                cur_opt = snd_opt[random.randint(
+                    0, h_i)]
+            lst_opt = cur_opt
+            print("Random sound option: " + f_nm)
+            print("Sound file: " + cur_opt)
+        if ts_mode:
+            await an_ts(cur_opt)
         else:
-            asyncio.run(rn_an(0))
-            if kill_process:
-                break
-            asyncio.run(rn_an(cfg["kite_deploy_max"]))
-            if kill_process:
-                break
-        clear_finished_w0()
-        if launch_dialog_played and rnd_prob(FLIGHT_FAIL_PROB):
-            if mix.voice[0].playing:
-                mix.voice[0].stop()
-            clear_w0()
-            play_dialog_folder("flight_fail")
-            total_steps = abs(0 - lst_deploy_pos)
-            asyncio.run(rn_home(total_steps, "down"))
-            if mix.voice[0].playing:
-                mix.voice[0].stop()
-            clear_w0()
-            coils_off()
+            await an_light_async(cur_opt)
+    except Exception as e:
+        files.log_item(e)
+        await no_trk()
+        cfg["option_selected"] = "random all"
+        return
+    gc_col("Animation complete.")
+
+
+async def an_light_async(f_nm):
+    global flsh_i, flsh_t, an_running, exit_set_hdw_async, t_elsp, srt_t, bckgrnd_vol
+    an_running = True
+    bckgrnd_vol = 100
+    stp_a_0()
+    flsh_t = []
+    w0_exists = False
+    if f_exists(animations_folder + f_nm + ".json") == True:
+        flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
+    flsh_i = 0
+    if len(flsh_t) > 0:
+        ft1 = flsh_t[flsh_i].split("|")
+        w0_exists = await set_hdw_async(ft1[1])
+        srt_t = time.monotonic()
+        ft1 = []
+        ft2 = []
+        ft_last = flsh_t[len(flsh_t)-1].split("|")
+        tm_last = float(ft_last[0]) + .1
+        flsh_t.append(str(tm_last) + "|")
+        if w0_exists:
+            flsh_i += 1
+    else:
+        an_running = False
+        return
+    while True:
+        t_elsp = time.monotonic()-srt_t
+        if flsh_i < len(flsh_t)-1:
+            ft1 = flsh_t[flsh_i].split("|")
+            ft2 = flsh_t[flsh_i+1].split("|")
+            dur = float(ft2[0]) - float(ft1[0]) - 0.25
+        else:
+            dur = 0.25
+        if dur < 0:
+            dur = 0
+        if flsh_i < len(flsh_t)-1 and t_elsp > float(ft1[0]) - 0.25:
+            files.log_item("time elapsed: " + str(t_elsp) +
+                           " Timestamp: " + ft1[0] + " Command: " + ft1[1])
+            if len(ft1) == 1 or ft1[1] == "":
+                result = await set_hdw_async("", dur)
+                if result == "STOP":
+                    an_running = False
+                    return
+            else:
+                result = await set_hdw_async(ft1[1], dur)
+                if result == "STOP":
+                    an_running = False
+                    return
+            flsh_i += 1
+        if (not mix.voice[0].playing and w0_exists == "w0_true") or not flsh_i < len(flsh_t)-1:
+            mix.voice[0].stop()
+            mix.voice[1].stop()
+            result = await set_hdw_async("TA_0_2", 0)
+            result = await set_hdw_async("VR100", 0)
+            an_running = False
             return
-    if mix.voice[0].playing:
-        mix.voice[0].stop()
-    clear_w0()
-    gc_col("An done clean up sound")
-    led2.fill((100, 100, 100))
-    led2.show()
-    if museum_long_press_stop:
-        kill_process = False
-        total_steps = abs(0 - lst_deploy_pos)
-        asyncio.run(rn_home(total_steps, "down"))
-        coils_off()
-        clear_finished_w0()
-        play_dialog_folder("end")
-        museum_long_press_stop = False
-        return
-    if kill_process:
-        coils_off()
-        return
-    asyncio.run(rn_an(0, False))
-    coils_off()
-    clear_finished_w0()
-    if kill_process:
-        stop_dialog()
-        return
-    play_dialog_folder("end")
+        upd_vol(0)
+        if await animation_wait(.1):
+            result = await set_hdw_async("TA_0_2", 0)
+            result = await set_hdw_async("VR100", 0)
+            return
 
 
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
 
-def home_motors():
-    direction = "up"
-    kite_ang = int(cfg["servo"] )
-    servo_m(kite_ang)
-    if lst_deploy_pos > 0:
-        direction = "down"
-    ply_a_0("homing")
-    total_steps = abs(0 - lst_deploy_pos)
-    asyncio.run(rn_home(total_steps, direction))
+
+async def an_ts(f_nm):
+    print("time stamp mode")
+    global t_s, t_elsp, ts_mode, ovrde_sw_st, an_running, bckgrnd_vol
+    an_running = True
+    bckgrnd_vol = 100
+    stp_a_0()
+    t_elsp = 0
+    t_s = [""]
+    if (f_exists(animations_folder + f_nm + ".json") == True):
+        t_s_from_file = files.read_json_file(
+            animations_folder + f_nm + ".json")
+    else:
+        return
+    if len(t_s) > 0:
+        t_s[0] = t_s_from_file[0]
+        ft1 = t_s[0].split("|")
+        w0_exists = await set_hdw_async(ft1[1])
+        if not w0_exists:
+            return
+    else:
+        return
+    startTime = time.monotonic()
+    upd_vol(.1)
+    while True:
+        t_elsp = round(time.monotonic()-startTime, 1)
+        r_sw.update()
+        if r_sw.fell or ovrde_sw_st["switch_value"]:
+            add_command_to_ts("ZRAND")
+            ovrde_sw_st["switch_value"] = ""
+        if not mix.voice[0].playing:
+            add_command_to_ts("B100,TA_0_1,F0,LN0_0_0_0,B100")
+            led.fill((0, 0, 0))
+            led.show()
+            files.write_json_file(
+                animations_folder + f_nm + ".json", t_s)
+            break
+        await asyncio.sleep(.1)
+    ts_mode = False
+    ply_a_0(mvc_folder + "timestamp_saved.mp3")
+    ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+    ply_a_0(mvc_folder + "animations_are_now_active.mp3")
+
+
+##############################
+# animation effects
+
+brightness = 0
+bckgrnd_vol = 100
+
+e_media_file_index = 0
+t_media_file_index = 0
+c_media_file_index = 0
+s_media_file_index = 0
+h_media_file_index = 0
+
+
+def set_hdw_not_async(seg):
+    global brightness
+
+    # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+    if seg[:2] == 'LN':
+        seg_split = seg.split("_")
+        light_n = int(seg_split[0][2:])-1
+        r = int(seg_split[1])
+        g = int(seg_split[2])
+        b = int(seg_split[3])
+        set_neo_to(light_n, r, g, b)
+
+    # BXXX = Brightness XXX 0 to 100
+    elif seg[0] == 'B':
+        brightness = int(seg[1:])
+        led.brightness = float(brightness / 100)
+        led.show()
+
+
+async def set_hdw_async(cmd, dur=3):
+    global brightness, current_throttle, media_index, exit_set_hdw_async
+    global bckgrnd_vol
+
+    if cmd == "":
+        return "NOCMDS"
+    st = time.monotonic()
+    segs = cmd.split(",")
+    for seg in segs:
+        if exit_set_hdw_async:
+            return "STOP"
+
+        # SNXXX = Servo N (0 All, 1-3) XXX 0 to 180
+        # SNXXX_SPD = Servo N to XXX at 1 degree every SPD seconds
+        elif seg[0] == 'S':
+            parts = seg.split("_")
+            num = int(parts[0][1])
+            v = int(parts[0][2:])
+            if len(parts) > 1:
+                spd = float(parts[1])
+                if num == 0:
+                    for i in range(3):
+                        asyncio.create_task(move_servo(i, v, spd))
+                else:
+                    asyncio.create_task(move_servo(num-1, v, spd))
+            else:
+                if num == 0:
+                    for i in range(3):
+                        m_servo(i, v)
+                else:
+                    m_servo(num-1, v)
+
+        # ZDANCE = Dance snowmen for duration of timestamp segment
+        elif seg == "ZDANCE":
+            asyncio.create_task(dance(st, dur))
+
+        # ZRAND = Random rainbow, fire, or color change
+        elif seg == 'ZRAND':
+            random_effect(st, 1, 3, dur)
+
+        # ZRWBTTT = red, white, blue wheel, TTT cycle speed in decimal seconds
+        elif seg[:4] == 'ZRWB':
+            v = float(seg[4:])
+            asyncio.create_task(rwb_bow(st, v, dur))
+
+        # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
+        elif seg[:2] == 'ZR':
+            v = float(seg[2:])
+            asyncio.create_task(rbow(st, v, dur))
+
+        # ZFIRE_R_G_B = Fire effect R, G, B, (0-255 or None)
+        elif seg.startswith("ZFIRE"):
+            parts = seg.split("_")
+            r = None
+            g = None
+            b = None
+            if len(parts) > 1 and parts[1] != "None":
+                r = int(parts[1])
+            if len(parts) > 2 and parts[2] != "None":
+                g = int(parts[2])
+            if len(parts) > 3 and parts[3] != "None":
+                b = int(parts[3])
+            asyncio.create_task(fire(st, dur, r, g, b))
+
+        # ZCOLCH_R_G_B_C = Color change R, G, B, (0-255 or None), C one color (True or False)
+        elif seg.startswith("ZCOLCH"):
+            parts = seg.split("_")
+            r = None
+            g = None
+            b = None
+            set_one_color = True
+            if len(parts) > 1 and parts[1] != "None":
+                r = int(parts[1])
+            if len(parts) > 2 and parts[2] != "None":
+                g = int(parts[2])
+            if len(parts) > 3 and parts[3] != "None":
+                b = int(parts[3])
+            if len(parts) > 4:
+                set_one_color = parts[4].lower() == "true"
+            multi_color(r, g, b, set_one_color)
+            if exit_set_hdw_async:
+                return "STOP"
+
+        # VRFXXX = Fade background volume to XXX, 0 to 100
+        elif seg[:3] == 'VRF':
+            try:
+                target_vol = int(seg[3:])
+                if target_vol > 100:
+                    target_vol = 100
+                if target_vol < 0:
+                    target_vol = 0
+                while bckgrnd_vol != target_vol:
+                    if bckgrnd_vol < target_vol:
+                        new_vol = min(bckgrnd_vol + 2, target_vol)
+                    else:
+                        new_vol = max(bckgrnd_vol - 2, target_vol)
+                    await upd_vol_async(0, new_vol)
+                    if an_running:
+                        if await animation_wait(.03):
+                            return "STOP"
+                    else:
+                        await asyncio.sleep(.03)
+            except Exception as e:
+                print("VRF error:", e)
+
+        # VRXXX = Set background volume to XXX, 0 to 100
+        elif seg[:2] == 'VR':
+            try:
+                target_vol = int(seg[2:])
+                if target_vol > 100:
+                    target_vol = 100
+                if target_vol < 0:
+                    target_vol = 0
+                await upd_vol_async(0, target_vol)
+            except Exception as e:
+                print("VR error:", e)
+
+        # MBXfilename = Background media
+        elif seg[:2] == 'MB':
+            repeat = seg[2]
+            file_nm = seg[3:]
+            w0_exists = f_exists(animations_folder + file_nm)
+            if w0_exists:
+                if repeat == "1":
+                    repeat = True
+                else:
+                    repeat = False
+                ply_a_0(animations_folder + file_nm, False, repeat)
+                return "w0_true"
+            else:
+                return "w0_false"
+
+        # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A animations, E elves, B bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
+        elif seg[0] == 'M':
+            if seg[1] == "S":
+                stp_a_0()
+            elif seg[1] == "W" or seg[1] == "P":
+                if seg[2] in FOLDER_MAP:
+                    folder = FOLDER_MAP[seg[2]]
+                    code = seg[3:]
+                    if code == "SEQN":
+                        filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", media_index[seg[2]])
+                    elif code == "SEQF":
+                        filename, media_index[seg[2]] = get_indexed_media_file(folder, "mp3", 0)
+                    elif code == "RAND":
+                        filename = get_random_media_file(folder)
+                    else:
+                        filename = code
+                    w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
+                if seg[1] == "W" or seg[1] == "P":
+                    await stp_a_1()
+                    mix.voice[1].play(w1, loop=False)
+                if seg[1] == "W":
+                    if await wait_snd_1():
+                        return "STOP"
+                    
+        # MBRXXX = Music background, R repeat (0 no, 1 yes), XXX file name
+        elif seg[0] == 'H':
+            await stp_a_1()
+            if seg[1] == "B":
+                fn = get_snds("bells/", "bell")
+                w1 = audiomp3.MP3Decoder(open(fn, "rb"))
+                mix.voice[1].play(w1, loop=False)
+            elif seg[1] == "H":
+                fn = get_snds("horns/", "horn")
+                w1 = audiomp3.MP3Decoder(open(fn, "rb"))
+                mix.voice[1].play(w1, loop=False)
+
+        # some commands need non async access so split those out in another method
+        elif seg[:2] == 'LN' or seg[0] == 'B':
+            set_hdw_not_async(seg)
+
+        # FXXX = Fade NeoPixel brightness to XXX
+        elif seg[0] == 'F':
+            target_brightness = int(seg[1:])
+            while brightness != target_brightness:
+                if brightness < target_brightness:
+                    brightness += 1
+                    led.brightness = float(brightness / 100)
+                else:
+                    brightness -= 1
+                    led.brightness = float(brightness / 100)
+                led.show()
+                time.sleep(.01)
+
+        elif seg[0] == 'W':
+            s = float(seg[1:])
+            if an_running:
+                if await animation_wait(s):
+                    return "STOP"
+            else:
+                await asyncio.sleep(s)
+
+        # QXXXX = Add command XXXX any command ie AN_filename to add new animation not run if queuing is turned off
+        elif seg[0] == 'Q':
+            if cfg["queuing"] == True:
+                add_cmd(seg[1:])
+
+
+def set_neo_to(light_n, r, g, b):
+    if light_n == -1:
+        for i in range(n_px):
+            led[i] = (r, g, b)
+    else:
+        led[light_n] = (r, g, b)
+    led.show()
+
+
+def random_effect(st, il, ih, dur):
+    i = random.randint(il, ih)
+    if i == 1:
+        asyncio.create_task(rbow(st, 0.012, dur))
+    elif i == 2:
+        multi_color()
+    elif i == 3:
+        asyncio.create_task(fire(st, dur))
+
+
+async def rbow(st, spd, dur):
+    last_j = -1
+    while True:
+        if exit_set_hdw_async:
+            return
+        now = time.monotonic()
+        elapsed = now - st
+        if elapsed >= dur:
+            return
+        j = int(elapsed / spd) & 255
+        if j != last_j:
+            last_j = j
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = colorwheel(pixel_index & 255)
+            led.show()
+        await asyncio.sleep(0)
+
+def red_white_blue_wheel(pos):
+    pos &= 255
+    if pos < 64:
+        v = pos << 2
+        return (255 << 16) | (v << 8) | v
+    if pos < 128:
+        v = (pos - 64) << 2
+        x = 255 - v
+        return (x << 16) | (x << 8) | 255
+    if pos < 192:
+        v = (pos - 128) << 2
+        return (v << 16) | (v << 8) | 255
+    v = (pos - 192) << 2
+    x = 255 - v
+    return (255 << 16) | (x << 8) | x
+
+async def rwb_bow(st, spd, dur):
+    last_j = -1
+    while True:
+        if exit_set_hdw_async:
+            return
+        now = time.monotonic()
+        elapsed = now - st
+        if elapsed >= dur:
+            return
+        j = int(elapsed / spd) & 255
+        if j != last_j:
+            last_j = j
+            for i in range(n_px):
+                pixel_index = (i * 256 // n_px) + j
+                led[i] = red_white_blue_wheel(pixel_index & 255)
+            led.show()
+        await asyncio.sleep(0)
+
+
+def multi_color(r=None, g=None, b=None, set_one_color=True):
+    if r is None:
+        r = random.randint(128, 255)
+    if g is None:
+        g = random.randint(128, 255)
+    if b is None:
+        b = random.randint(128, 255)
+    for i in range(n_px):
+        if set_one_color:
+            c = random.randint(0, 2)
+            if c == 0:
+                r1 = r
+                g1 = 0
+                b1 = 0
+            elif c == 1:
+                r1 = 0
+                g1 = g
+                b1 = 0
+            else:
+                r1 = 0
+                g1 = 0
+                b1 = b
+            led[i] = (r1, g1, b1)
+        else:
+            led[i] = (r, g, b)
+    led.show()
+    return False
+
+
+async def fire(st, dur, r=None, g=None, b=None):
+    next_change = st
+    if r is None:
+        r = random.randint(128, 255)
+    if g is None:
+        g = random.randint(128, 255)
+    if b is None:
+        b = random.randint(128, 255)
+    while True:
+        if exit_set_hdw_async:
+            return
+        now = time.monotonic()
+        if now - st >= dur:
+            return
+        if now >= next_change:
+            next_change = now + random.uniform(0.05, 0.1)
+            for i in range(n_px):
+                f = random.randint(0, 110)
+                r1 = bnd(r-f, 0, 255)
+                g1 = bnd(g-f, 0, 255)
+                b1 = bnd(b-f, 0, 255)
+                led[i] = (r1, g1, b1)
+            led.show()
+            upd_vol(0)
+        await asyncio.sleep(0)
+
+
+def bnd(c, l, u):
+    if (c < l):
+        c = l
+    if (c > u):
+        c = u
+    return c
+
+
+def get_random_media_file(folder_to_search):
+    myfiles = files.return_directory("", folder_to_search, ".mp3")
+    return random.choice(myfiles) if myfiles else None
+
+
+def get_indexed_media_file(folder_to_search, file_ext, index):
+    if not file_ext.startswith('.'):
+        file_ext = '.' + file_ext
+    file_ext = file_ext.lower()
+    myfiles = files.return_directory("", folder_to_search, file_ext)
+    if not myfiles:
+        return None, 0
+    index = index % len(myfiles)
+    selected_file = myfiles[index]
+    new_index = (index + 1) % len(myfiles)
+    print(f"playing: {selected_file}  ({index}/{len(myfiles)})")
+    return selected_file, new_index
 
 
 ################################################################################
 # State Machine
 
-
 class StMch(object):
 
-    def __init__(s):
-        s.ste = None
-        s.stes = {}
-        s.paused_state = None
+    def __init__(self):
+        self.state = None
+        self.states = {}
+        self.paused_state = None
 
-    def add(s, ste):
-        s.stes[ste.name] = ste
+    def add(self, state):
+        self.states[state.name] = state
 
-    def go_to(s, ste):
-        if s.ste:
-            s.ste.exit(s)
-        s.ste = s.stes[ste]
-        s.ste.enter(s)
+    def go_to(self, state_name):
+        if self.state:
+            self.state.exit(self)
+        self.state = self.states[state_name]
+        self.state.enter(self)
 
-    def upd(s):
-        if s.ste:
-            s.ste.upd(s)
-
+    def upd(self):
+        if self.state:
+            self.state.upd(self)
 
 ################################################################################
 # States
@@ -734,20 +2021,20 @@ class StMch(object):
 
 class Ste(object):
 
-    def __init__(s):
+    def __init__(self):
         pass
 
     @property
-    def name(s):
-        return ""
+    def name(self):
+        return ''
 
-    def enter(s, mch):
+    def enter(self, mch):
         pass
 
-    def exit(s, mch):
+    def exit(self, mch):
         pass
 
-    def upd(s, mch):
+    def upd(self, mch):
         pass
 
 
@@ -758,62 +2045,67 @@ class BseSt(Ste):
 
     @property
     def name(self):
-        return "base_state"
+        return 'base_state'
 
     def enter(self, mch):
-        # set servos to starting position
-        ply_a_0("active")
-        files.log_item("Entered base Ste")
+        ply_a_0(mvc_folder + "animations_are_now_active.mp3")
+        files.log_item("Entered base state")
+        l_sw.update()
+        r_sw.update()
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global rand_timer
-        if cfg["museum_mode"]:
-            sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 1.0)
-            if sw == "left":
-                an()
-                time.sleep(.25)
-                coils_off()
-                print("an done")
-            elif sw == "right":
-                mch.go_to("main_menu")
-        else:
-            sw = utilities.switch_state_trigger(l_sw, r_sw, t_sw, upd_vol, 3.0)
-            if sw == "left_held":
-                if cfg["timer"] == True:
-                    cfg["timer"] = False
-                    aud_en.value = False
-                    files.write_json_file("cfg.json", cfg)
-                    aud_en.value = True
-                    spk_sentence("timer_mode_off")
-                    return
+        global an_just_added, MIN_TRACK_VOLTAGE
+        if an_running:
+            return
+        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
+        spoken = False
+        if sw == "none":
+            if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                led.fill((0, 0, 0))
+                led.show()
+                power_off_start = time.monotonic()
+                while get_track_voltage() < MIN_TRACK_VOLTAGE:
+                    power_off_time = time.monotonic() - power_off_start
+                    if not cfg["cont_mode"] and not cfg["museum_mode"]:
+                        if power_off_time > 1 and power_off_time < 3 and not spoken:
+                            spoken = True
+                            ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
+                power_off_time = time.monotonic() - power_off_start
+                if power_off_time <= 1:
+                    sw = "left"
+                elif power_off_time > 1 and power_off_time < 3:
+                    if not cfg["museum_mode"]:
+                        sw = "left_held"
                 else:
-                    cfg["timer"] = True
-                    aud_en.value = False
-                    files.write_json_file("cfg.json", cfg)
-                    aud_en.value = True
-                    spk_sentence("timer_mode_on")
-                    rand_timer = 0
-                    return
-            elif cfg["timer"] == True:
-                if rand_timer <= 0:
-                    an()
-                    time.sleep(0.25)
-                    coils_off()
-                    rand_timer = int(cfg["timer_val"]) * 60
-                    print("an done")
+                    led.fill((1, 1, 1))
+                    led.show()
+        if sw == "left":
+            if not mix.voice[0].playing and not an_running and not an_just_added:
+                add_cmd("AN_" + cfg["option_selected"])
+                an_just_added = True
+        elif sw == "left_held":
+            if not cfg["cont_mode"]:
+                if spoken:
+                    time.sleep(1)
+                    while mix.voice[1].playing:
+                        time.sleep(.1)
                 else:
-                    upd_vol(1)
-                    rand_timer -= 1
-            elif sw == "left" or sw == "trigger":
-                an()
-                time.sleep(.25)
-                print("an done")
-            elif sw == "right":
+                    ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
+                    time.sleep(1)
+                    while mix.voice[1].playing:
+                        time.sleep(.1)
+                cfg["cont_mode"] = True
+                save_cfg_safely()
+        elif sw == "right":
+            if not mix.voice[0].playing:
                 mch.go_to("main_menu")
+        if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
+            add_cmd("AN_" + cfg["option_selected"])
+            an_just_added = True
 
 
 class Main(Ste):
@@ -824,42 +2116,58 @@ class Main(Ste):
 
     @property
     def name(self):
-        return "main_menu"
+        return 'main_menu'
 
     def enter(self, mch):
-        files.log_item("Main menu")
-        spk_sentence("main_menu")
-        spk_sentence("r_l_but")
+        files.log_item('Main menu')
+        ply_a_0(mvc_folder + "main_menu.mp3")
+        l_r_but()
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            spk_sentence(main_m[self.i])
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0(mvc_folder + main_m[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(main_m) - 1:
+            if self.i > len(main_m)-1:
                 self.i = 0
-        if r_sw.fell:
-            sel_i = main_m[self.sel_i]
-            if sel_i == "options":
-                mch.go_to("options")
-            elif sel_i == "volume_settings":
-                mch.go_to("volume_settings")
-            elif sel_i == "centerfig":
-                mch.go_to("servo_settings")
-            elif sel_i == "museum_settings":
+        if sw == "right":
+            sel_mnu = main_m[self.sel_i]
+            if sel_mnu == "choose_sounds":
+                mch.go_to('choose_sounds')
+            elif sel_mnu == "volume_level_adjustment":
+                vol_adj_mode = True
+                ply_a_0(mvc_folder + "volume_adjustment_menu.mp3")
+                while vol_adj_mode:
+                    sw = utilities.switch_state(
+                        l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+                    if sw == "left" and vol_adj_mode:
+                        ch_vol("lower")
+                    elif sw == "right" and vol_adj_mode:
+                        ch_vol("raise")
+                    elif sw == "right_held" and vol_adj_mode:
+                        save_cfg_safely()
+                        ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                        vol_adj_mode = False
+                        mch.go_to('base_state')
+                        upd_vol(0.1)
+            elif sel_mnu == "add_sounds_animate":
+                mch.go_to('add_sounds_animate')
+            elif sel_mnu == "web_options":
+                mch.go_to('web_options')
+            elif sel_mnu == "museum_settings":
                 mch.go_to('museum_settings')
             else:
-                ply_a_0("all_changes_complete")
-                mch.go_to("base_state")
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                mch.go_to('base_state')
 
 
-class VolSet(Ste):
+class Snds(Ste):
 
     def __init__(self):
         self.i = 0
@@ -867,62 +2175,149 @@ class VolSet(Ste):
 
     @property
     def name(self):
-        return "volume_settings"
+        return 'choose_sounds'
 
     def enter(self, mch):
-        files.log_item("Set Web Options")
-        spk_sentence("volume_settings_menu")
-        spk_sentence("r_l_but")
+        files.log_item('Choose sounds menu')
+        ply_a_0(mvc_folder + "sound_selection_menu.mp3")
+        l_r_but()
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            spk_sentence(v_set[self.i])
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            if mix.voice[0].playing:
+                mix.voice[0].stop()
+                while mix.voice[0].playing:
+                    pass
+            else:
+                try:
+                    w0 = audiomp3.MP3Decoder(open(
+                        "snd_opt/" + menu_snd_opt[self.i] + ".mp3", "rb"))
+                    mix.voice[0].play(w0, loop=False)
+                except Exception as e:
+                    files.log_item(e)
+                    spk_sng_num(str(self.i+1))
+                self.sel_i = self.i
+                self.i += 1
+                if self.i > len(menu_snd_opt)-1:
+                    self.i = 0
+                while mix.voice[0].playing:
+                    pass
+        if sw == "right":
+            if mix.voice[0].playing:
+                mix.voice[0].stop()
+                while mix.voice[0].playing:
+                    pass
+            else:
+                cfg["option_selected"] = menu_snd_opt[self.sel_i]
+                save_cfg_safely()
+                w0 = audiomp3.MP3Decoder(
+                    open(mvc_folder + "option_selected.mp3", "rb"))
+                mix.voice[0].play(w0, loop=False)
+                while mix.voice[0].playing:
+                    pass
+            mch.go_to('base_state')
+
+
+class AddSnds(Ste):
+
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'add_sounds_animate'
+
+    def enter(self, mch):
+        files.log_item('Add sounds animate')
+        ply_a_0(mvc_folder + "add_sounds_animate.mp3")
+        l_r_but()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        global ts_mode
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0(
+                mvc_folder + add_snd[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(v_set) - 1:
+            if self.i > len(add_snd)-1:
                 self.i = 0
-        if r_sw.fell:
-            sel_mnu = v_set[self.sel_i]
-            if sel_mnu == "volume_adjustment":
-                spk_sentence("volume_adjustment_menu_lowerraisesavevol")
-                done = False
-                while not done:
-                    sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
-                    if sw == "left":
-                        ch_vol("lower")
-                    elif sw == "right":
-                        ch_vol("raise")
-                    elif sw == "right_held":
-                        aud_en.value = False
-                        files.write_json_file("cfg.json", cfg)
-                        aud_en.value = True
-                        ply_a_0("all_changes_complete")
-                        done = True
-                        mch.go_to("base_state")
-                    pass
-            elif sel_mnu == "volume_pot_off":
-                cfg["volume_pot"] = False
-                if cfg["volume"] == 0:
-                    cfg["volume"] = 10
-                aud_en.value = False
-                files.write_json_file("cfg.json", cfg)
-                aud_en.value = True
-                ply_a_0("all_changes_complete")
-                mch.go_to("base_state")
-            elif sel_mnu == "volume_pot_on":
-                cfg["volume_pot"] = True
-                aud_en.value = False
-                files.write_json_file("cfg.json", cfg)
-                aud_en.value = True
-                ply_a_0("all_changes_complete")
-                mch.go_to("base_state")
+        if sw == "right":
+            sel_mnu = add_snd[self.sel_i]
+            if sel_mnu == "hear_instructions":
+                ply_a_0(mvc_folder + "create_sound_track_files.mp3")
+            elif sel_mnu == "timestamp_mode_on":
+                ts_mode = True
+                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
+                ply_a_0(mvc_folder + "timestamp_instructions.mp3")
+                mch.go_to('base_state')
+            elif sel_mnu == "timestamp_mode_off":
+                ts_mode = False
+                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+            else:
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                mch.go_to('base_state')
 
+
+class WebOpt(Ste):
+    def __init__(self):
+        self.i = 0
+        self.sel_i = 0
+
+    @property
+    def name(self):
+        return 'web_options'
+
+    def enter(self, mch):
+        files.log_item('Set Web Options')
+        sel_web()
+        Ste.enter(self, mch)
+
+    def exit(self, mch):
+        Ste.exit(self, mch)
+
+    def upd(self, mch):
+        sw = utilities.switch_state(
+            l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
+        if sw == "left":
+            ply_a_0(mvc_folder + web_m[self.i] + ".mp3")
+            self.sel_i = self.i
+            self.i += 1
+            if self.i > len(web_m)-1:
+                self.i = 0
+        if sw == "right":
+            selected_menu_item = web_m[self.sel_i]
+            if selected_menu_item == "web_on":
+                cfg["serve_webpage"] = True
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "web_off":
+                cfg["serve_webpage"] = False
+                opt_sel()
+                sel_web()
+            elif selected_menu_item == "enter_web_credentials":
+                if not mix.voice[0].playing:
+                    print("Right button held - starting WiFi setup")
+                    start_wifi_setup()
+            elif selected_menu_item == "hear_url":
+                spk_str(cfg["HOST_NAME"], True)
+                sel_web()
+            else:
+                save_cfg_safely()
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                mch.go_to('base_state')
 
 class MuseumOpt(Ste):
     def __init__(self):
@@ -935,178 +2330,131 @@ class MuseumOpt(Ste):
 
     def enter(self, mch):
         files.log_item('Set museum Options')
-        spk_sentence("museum_settings_menu")
-        spk_sentence("r_l_but")
+        sel_museum()
         Ste.enter(self, mch)
 
     def exit(self, mch):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0)
+        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left":
-            spk_sentence(muse_set[self.i])
+            ply_a_0(mvc_folder + muse_set[self.i] + ".mp3")
             self.sel_i = self.i
             self.i += 1
-            if self.i > len(muse_set) - 1:
+            if self.i > len(muse_set)-1:
                 self.i = 0
         if sw == "right":
             selected_menu_item = muse_set[self.sel_i]
             if selected_menu_item == "museum_mode_on":
                 cfg["museum_mode"] = True
-                files.write_json_file("cfg.json", cfg)
-                ply_a_0("all_changes_complete")
+                save_cfg_safely()
                 mch.go_to('base_state')
             elif selected_menu_item == "museum_mode_off":
                 cfg["museum_mode"] = False
-                files.write_json_file("cfg.json", cfg)
-                ply_a_0("all_changes_complete")
+                save_cfg_safely()
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
             else:
-                ply_a_0("all_changes_complete")
+                save_cfg_safely()
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 mch.go_to('base_state')
 
-
-class Opt(Ste):
-
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
-
-    @property
-    def name(self):
-        return "options"
-
-    def enter(self, mch):
-        files.log_item("Choose sounds menu")
-        spk_sentence("options_menu")
-        spk_sentence("r_l_but")
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        global rand_timer
-        l_sw.update()
-        r_sw.update()
-        if l_sw.fell:
-            spk_sentence(mnu_o[self.i])
-            self.sel_i = self.i
-            self.i += 1
-            if self.i > len(mnu_o) - 1:
-                self.i = 0
-        if r_sw.fell:
-            options = mnu_o[self.sel_i].split("_")
-            if options[0] == "timer":
-                cfg["timer"] = True
-                cfg["timer_val"] = str(options[1])
-                rand_timer = 0
-            elif mnu_o[self.sel_i] == "wind":
-                cfg["wind"] = True
-            elif mnu_o[self.sel_i] == "no_wind":
-                cfg["wind"] = False
-            elif mnu_o[self.sel_i] == "dialog":
-                cfg["dialog"] = True
-            elif mnu_o[self.sel_i] == "no_dialog":
-                cfg["dialog"] = False
-            elif mnu_o[self.sel_i] == "random_raise_lower":
-                cfg["random"] = True
-            elif mnu_o[self.sel_i] == "raise_lower":
-                cfg["random"] = False
-            elif mnu_o[self.sel_i] == "exit_this_menu":
-                aud_en.value = False
-                files.write_json_file("cfg.json", cfg)
-                aud_en.value = True
-                ply_a_0("all_changes_complete")
-                mch.go_to("base_state")
-                return
-            ply_a_0("option_set")
-
-
-class ServoSet(Ste):
-
-    def __init__(self):
-        self.i = 0
-        self.sel_i = 0
-
-    @property
-    def name(self):
-        return "servo_settings"
-
-    def enter(self, mch):
-        global kill_process
-        files.log_item("Set Web Options")
-        spk_sentence("centerfig_menu")
-        spk_sentence("alignlrsave")
-        cfg["servo"] = 90
-        kill_process = False
-        servo_m(int(cfg["servo"]))
-        Ste.enter(self, mch)
-
-    def exit(self, mch):
-        Ste.exit(self, mch)
-
-    def upd(self, mch):
-        l_sw.update()
-        r_sw.update()
-        done = False
-        while not done:
-            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0)
-            if sw == "left":
-                ch_servo("left")
-            elif sw == "right":
-                ch_servo("right")
-            elif sw == "right_held":
-                aud_en.value = False
-                files.write_json_file("cfg.json", cfg)
-                aud_en.value = True
-                ply_a_0("all_changes_complete")
-                done = True
-                mch.go_to("base_state")
-            pass
-
-
 ###############################################################################
-# Create the Ste mch
+# Create the state machine
+
 
 st_mch = StMch()
 st_mch.add(BseSt())
 st_mch.add(Main())
-st_mch.add(VolSet())
-st_mch.add(Opt())
-st_mch.add(ServoSet())
+st_mch.add(Snds())
+st_mch.add(AddSnds())
+st_mch.add(WebOpt())
 st_mch.add(MuseumOpt())
 
 aud_en.value = True
 
-upd_vol(0.01)
-home_motors()
+upd_vol(.1)
 
 
-led1.fill((0, 0, 255))
-led1.show()
+if (web):
+    files.log_item("starting server...")
+    try:
+        server.start(str(wifi.radio.ipv4_address), port=80)
+        led2[0] = (0, 255, 0)
+        led.show()
+        files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
+        dbm_string = str(-int(avg_rssi))+"dbm"
+        spk_str(dbm_string, False)
+        spk_web()
+    except Exception as e:
+        files.log_item(e)
+        # time.sleep(5)
+        files.log_item("restarting...")
+        web = False
+        # rst()
+else:
+    led2[0] = (255, 0, 0)
+    led.show()
+    time.sleep(3)
 
-time.sleep(1)
+# initialize items
+upd_vol(.5)
 
-led1.fill((0, 255, 0))
-led1.show()
-
-time.sleep(1)
-
-led1.fill((100, 100, 100))
-led1.show()
-
-time.sleep(1)
-
-led2.fill((100, 100, 100))
-led2.show()
-
-st_mch.go_to("base_state")
+st_mch.go_to('base_state')
 files.log_item("animator has started...")
-gc_col("animations started")
+gc_col("animations started.")
 
-while True:
-    st_mch.upd()
-    upd_vol(0.01)
+###############################################################################
+# Main task handling
+
+async def process_cmd_tsk():
+    """Task to continuously process commands."""
+    while True:
+        try:
+            await process_cmd()
+        except Exception as e:
+            files.log_item(e)
+        await asyncio.sleep(0)
+
+
+async def server_poll_tsk(server):
+    while True:
+        try:
+            server.poll()
+        except OSError as e:
+            if e.errno == 5:
+                files.log_item("HTTP client connection closed (Errno 5)")
+            elif e.errno == 116:
+                files.log_item("HTTP client timeout (Errno 116)")
+            else:
+                files.log_item("HTTP OSError: " + str(e))
+        except Exception as e:
+            files.log_item("HTTP poll exception: " + str(e))
+        await asyncio.sleep(0)
+
+
+async def state_mach_upd_task(st_mch):
+    global an_just_added
+    while True:
+        st_mch.upd()
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
+
+
+async def main():
+    tasks = [
+        process_cmd_tsk(),
+        state_mach_upd_task(st_mch),
+    ]
+    if web:
+        tasks.append(server_poll_tsk(server))
+    await asyncio.gather(*tasks)
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    pass
 
