@@ -103,8 +103,7 @@ media_index = {'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
 # Setup hardware
 
 # Setup pin for v
-a_in = AnalogIn(board.A0)
-
+ir_sensor_a_in = AnalogIn(board.A0)
 track_a_in = AnalogIn(board.A2)
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -1339,6 +1338,13 @@ def get_track_voltage(samples=20):
     total = 0.0
     for _ in range(samples):
         total += track_a_in.value / 65536 * 3.3 * 15.684 * debug_voltage_multiplier
+        time.sleep(.0017)
+    return total / samples
+
+def get_ir_sensor_voltage(samples=20):
+    total = 0.0
+    for _ in range(samples):
+        total += ir_sensor_a_in.value / 65536 * 3.3
         time.sleep(.0017)
     return total / samples
 
@@ -2625,6 +2631,11 @@ async def state_mach_upd_task(st_mch):
             an_just_added = False
         else:
             await asyncio.sleep(0)
+
+
+# while True:
+#     ir_sensor = get_ir_sensor_voltage()
+#     print(ir_sensor)
 
 
 async def main():
