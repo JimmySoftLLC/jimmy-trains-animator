@@ -76,6 +76,7 @@ gc_col("Imports gc, files")
 # Globals
 
 debug_voltage_multiplier = 1
+debug_ir_sensor = False
 
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
@@ -577,9 +578,9 @@ VIRTUAL_ACCELERATION = 2
 
 MIN_TRACK_VOLTAGE = 9.0
 
-IR_SENSOR_THRESHOLD = 0.25
+IR_SENSOR_THRESHOLD = 0.5
 LOOP_CAL_SPEED = 0.25
-LOOP_CAL_CYCLES = 4
+LOOP_CAL_CYCLES = 2
 LOOP_SENSOR_TIMEOUT = 60.0
 
 loop_ir_active = False
@@ -696,7 +697,7 @@ def calibrate_loop():
     bumper_progress = 0.0
     bumper_last_time = time.monotonic()
     bumper_calibrated = True
-    cal_seconds = int(((forward_time + reverse_time) / 2) + .5)
+    cal_seconds = round((forward_time + reverse_time) / 2, 1)
     print("Loop calibration complete")
     print("Clockwise time:", forward_time)
     print("Counter-clockwise time:", reverse_time)
@@ -888,25 +889,23 @@ async def position_trolley_loop(speed, percentage):
         bumper_direction = direction
         bumper_requested_throttle = 0.0
         current_throttle = int(direction * LOOP_CAL_SPEED * 100)
-        if ir_sensor_active():
-            train.throttle = direction * LOOP_CAL_SPEED
-            while ir_sensor_active():
-                if an_running:
-                    if await animation_wait(.01):
-                        train.throttle = 0
-                        current_throttle = 0
-                        return False
-                else:
-                    await asyncio.sleep(.01)
         train.throttle = direction * LOOP_CAL_SPEED
+        if ir_sensor_active():
+            print("Starting on IR sensor")
+            while ir_sensor_active():
+                led[0] = (0, 255, 0)
+                led.show()
+                await asyncio.sleep(0)
+            print("Left IR sensor")
+        led[0] = (0, 0, 0)
+        led.show()
+        print("Searching for IR home")
         while not ir_sensor_active():
-            if an_running:
-                if await animation_wait(.01):
-                    train.throttle = 0
-                    current_throttle = 0
-                    return False
-            else:
-                await asyncio.sleep(.01)
+            led[0] = (0, 0, 0)
+            led.show()
+            await asyncio.sleep(0)
+        led[0] = (0, 255, 0)
+        led.show()
         train.throttle = 0
         current_throttle = 0
         bumper_progress = 0.0
@@ -942,7 +941,7 @@ async def position_trolley_loop(speed, percentage):
         lap_time = controller.time_reverse
         print("Loop POS traveling counter-clockwise")
     travel_time = lap_time * (distance / 100)
-    travel_seconds = int(travel_time + .5)
+    travel_seconds = round(travel_time, 1)
     print("Calibration lap time:", lap_time)
     print("Travel distance:", distance, "%")
     print("Travel time:", travel_time)
@@ -966,7 +965,6 @@ async def position_trolley_loop(speed, percentage):
     bumper_progress = target_position / 100
     print("Loop POS complete:", percentage, "%")
     return True
-
 
 ################################################################################
 # Setup wifi and web server
@@ -1518,7 +1516,7 @@ def get_track_voltage(samples=20):
         time.sleep(.0017)
     return total / samples
 
-def get_ir_sensor_voltage(samples=10):
+def get_ir_sensor_voltage(samples=20):
     total = 0.0
     for _ in range(samples):
         total += ir_sensor_a_in.value / 65536 * 3.3
@@ -2615,9 +2613,10 @@ else:
 # initialize items
 upd_vol(.5)
 
-if cfg["bumper_mode"] == "bumper":
+
+if cfg["bumper_mode"] == "bumper" and not debug_ir_sensor:
     calibrate_bumper()
-elif cfg["bumper_mode"] == "loop":
+elif cfg["bumper_mode"] == "loop" and not debug_ir_sensor:
     calibrate_loop()
 
 st_mch.go_to('base_state')
@@ -2808,10 +2807,12 @@ async def state_mach_upd_task(st_mch):
         else:
             await asyncio.sleep(.02)
 
-
-# while True:
-#     print(get_ir_sensor_voltage(), ir_sensor_active())
-#     time.sleep(.1)
+if debug_ir_sensor:
+    while True:
+        print(get_ir_sensor_voltage(), ir_sensor_active())
+        travel_seconds = round(get_ir_sensor_voltage(), 1)
+        spk_str("v" + str(travel_seconds), False)
+        time.sleep(.4)
 
 
 async def main():
