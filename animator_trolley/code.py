@@ -75,8 +75,9 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 1
-debug_ir_sensor = False
+debug_track_voltage_multiplier = 1
+debug_ir_sensor_voltage = False
+debug_travel_times = False
 
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
@@ -582,6 +583,7 @@ IR_SENSOR_THRESHOLD = 0.5
 LOOP_CAL_SPEED = 0.25
 LOOP_CAL_CYCLES = 2
 LOOP_SENSOR_TIMEOUT = 60.0
+FINAL_HOME_SPEED = 10
 
 loop_ir_active = False
 
@@ -704,8 +706,8 @@ def calibrate_loop():
     print("Counter-clockwise time:", reverse_time)
     print("Calibration seconds:", cal_seconds)
     ply_a_0(mvc_folder + "the_calibration_was_successful.mp3")
-    spk_str(str(cal_seconds), False)
-    # ply_a_0(mvc_folder + "seconds.mp3")
+    if debug_travel_times:
+        spk_str(str(cal_seconds), False)
 
 
 
@@ -880,57 +882,125 @@ async def position_trolley_loop(speed, percentage):
     if not bumper_calibrated:
         print("Loop is not calibrated")
         return False
-    if percentage == 0 or percentage == 100:
-        if percentage == 0:
-            direction = -1
-            print("Loop POS homing counter-clockwise")
-        else:
-            direction = 1
-            print("Loop POS homing clockwise")
-        bumper_direction = direction
-        bumper_requested_throttle = 0.0
-        current_throttle = int(direction * LOOP_CAL_SPEED * 100)
-        train.throttle = direction * LOOP_CAL_SPEED
-        if ir_sensor_active():
-            print("Starting on IR sensor")
-            while ir_sensor_active():
-                led[0] = (0, 255, 0)
-                led.show()
-                await asyncio.sleep(0)
-            print("Left IR sensor")
-        led[0] = (0, 0, 0)
-        led.show()
-        print("Searching for IR home")
-        while not ir_sensor_active():
-            led[0] = (0, 0, 0)
-            led.show()
-            await asyncio.sleep(0)
-        led[0] = (0, 255, 0)
-        led.show()
-        train.throttle = 0
-        current_throttle = 0
-        bumper_progress = 0.0
-        loop_ir_active = True
-        print("Loop home found")
-        print("Loop POS complete:", percentage, "%")
-        return True
+
+    speed = abs(speed)
+    if speed > 100:
+        speed = 100
+    if speed <= 0:
+        print("Loop POS speed must be greater than 0")
+        return False
+
+    requested_speed = speed / 100
     current_position = bumper_progress * 100
     target_position = float(percentage)
-    clockwise_distance = target_position - current_position
+
+    if target_position == 100:
+        target_for_distance = 0.0
+    else:
+        target_for_distance = target_position
+
+    clockwise_distance = target_for_distance - current_position
     if clockwise_distance < 0:
         clockwise_distance += 100
-    counter_clockwise_distance = current_position - target_position
+
+    counter_clockwise_distance = current_position - target_for_distance
     if counter_clockwise_distance < 0:
         counter_clockwise_distance += 100
+
     print("Loop POS command")
+    print("Speed:", speed)
     print("Current position:", current_position)
     print("Target position:", target_position)
     print("Clockwise distance:", clockwise_distance)
     print("Counter-clockwise distance:", counter_clockwise_distance)
+
+    if percentage == 0 or percentage == 100:
+        if percentage == 0:
+            home_direction = -1
+            distance = counter_clockwise_distance
+            lap_time = controller.time_reverse
+            print("Loop POS homing 0")
+        else:
+            home_direction = 1
+            distance = clockwise_distance
+            lap_time = controller.time_forward
+            print("Loop POS homing 100")
+
+        bumper_requested_throttle = 0.0
+        bumper_direction = home_direction
+
+        # Calibration time is based on LOOP_CAL_SPEED.
+        # Adjust the expected travel time for the requested POS speed.
+        if distance > .5:
+            travel_time = lap_time * (distance / 100)
+            travel_time = travel_time * (LOOP_CAL_SPEED / requested_speed)
+            print("Distance to expected home:", distance, "%")
+            print("Time to expected home:", travel_time)
+            print("Traveling toward home at:", speed, "%")
+            train.throttle = home_direction * requested_speed
+            current_throttle = int(home_direction * speed)
+            start = time.monotonic()
+            while time.monotonic() - start < travel_time:
+                await asyncio.sleep(.01)
+
+        # Continue at the requested POS speed until we enter the sensor.
+        print("Looking for home sensor at", speed, "%")
+        train.throttle = home_direction * requested_speed
+        current_throttle = int(home_direction * speed)
+
+        while not ir_sensor_active():
+            led[0] = (0, 0, 0)
+            led.show()
+            await asyncio.sleep(0)
+
+        # We hit the positive edge at the requested POS speed.
+        # Keep going until completely through the sensor.
+        print("Home sensor entered - continuing through")
+        led[0] = (0, 255, 0)
+        led.show()
+
+        while ir_sensor_active():
+            led[0] = (0, 255, 0)
+            led.show()
+            await asyncio.sleep(0)
+
+        led[0] = (0, 0, 0)
+        led.show()
+        print("Home sensor cleared")
+
+        # Reverse and return slowly to the front edge.
+        final_direction = -home_direction
+        bumper_direction = final_direction
+        train.throttle = final_direction * FINAL_HOME_SPEED / 100
+        current_throttle = final_direction * FINAL_HOME_SPEED
+
+        print("Returning to home edge at", FINAL_HOME_SPEED, "%")
+
+        while True:
+            sensor_active = ir_sensor_active()
+            if sensor_active:
+                train.throttle = 0
+                current_throttle = 0
+                bumper_requested_throttle = 0.0
+                bumper_progress = 0.0
+                loop_ir_active = True
+                led[0] = (0, 255, 0)
+                led.show()
+                print("Home front edge detected - stopped")
+                print("Loop POS complete:", percentage, "%")
+                return True
+
+            led[0] = (0, 0, 0)
+            led.show()
+            await asyncio.sleep(0)
+
+    # NORMAL POSITION
+    # Always use the shortest route around the loop.
     if clockwise_distance <= .5 or counter_clockwise_distance <= .5:
         bumper_progress = target_position / 100
         print("Already at requested position")
         return True
+
     if clockwise_distance <= counter_clockwise_distance:
         direction = 1
         distance = clockwise_distance
@@ -941,17 +1011,26 @@ async def position_trolley_loop(speed, percentage):
         distance = counter_clockwise_distance
         lap_time = controller.time_reverse
         print("Loop POS traveling counter-clockwise")
+
+    # Calibration is at LOOP_CAL_SPEED, so adjust time for POS speed.
     travel_time = lap_time * (distance / 100)
+    travel_time = travel_time * (LOOP_CAL_SPEED / requested_speed)
     travel_seconds = round(travel_time, 1)
+
     print("Calibration lap time:", lap_time)
     print("Travel distance:", distance, "%")
+    print("Travel speed:", speed, "%")
     print("Travel time:", travel_time)
     print("Travel seconds:", travel_seconds)
-    spk_str(str(travel_seconds), False)
+
+    if debug_travel_times:
+        spk_str(str(travel_seconds), False)
+
     bumper_direction = direction
     bumper_requested_throttle = 0.0
-    current_throttle = int(direction * LOOP_CAL_SPEED * 100)
-    train.throttle = direction * LOOP_CAL_SPEED
+    current_throttle = int(direction * speed)
+    train.throttle = direction * requested_speed
+
     start = time.monotonic()
     while time.monotonic() - start < travel_time:
         if an_running:
@@ -961,11 +1040,15 @@ async def position_trolley_loop(speed, percentage):
                 return False
         else:
             await asyncio.sleep(.01)
+
     train.throttle = 0
     current_throttle = 0
     bumper_progress = target_position / 100
+
     print("Loop POS complete:", percentage, "%")
     return True
+
+
 
 ################################################################################
 # Setup wifi and web server
@@ -1513,7 +1596,7 @@ def add_command_to_ts(command):
 def get_track_voltage(samples=20):
     total = 0.0
     for _ in range(samples):
-        total += track_a_in.value / 65536 * 3.3 * 15.684 * debug_voltage_multiplier
+        total += track_a_in.value / 65536 * 3.3 * 15.684 * debug_track_voltage_multiplier
         time.sleep(.0017)
     return total / samples
 
@@ -1585,14 +1668,13 @@ async def an_light_async(f_nm):
     if len(flsh_t) > 0:
         ft1 = flsh_t[flsh_i].split("|")
         w0_exists = await set_hdw_async(ft1[1])
+        flsh_i += 1
         srt_t = time.monotonic()
         ft1 = []
         ft2 = []
         ft_last = flsh_t[len(flsh_t)-1].split("|")
         tm_last = float(ft_last[0]) + .1
         flsh_t.append(str(tm_last) + "|")
-        if w0_exists:
-            flsh_i += 1
     else:
         an_running = False
         return
@@ -1607,8 +1689,7 @@ async def an_light_async(f_nm):
         if dur < 0:
             dur = 0
         if t_elsp > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            files.log_item("time elapsed: " + str(t_elsp) +
-                           " Timestamp: " + ft1[0] + " Command: " + ft1[1])
+            files.log_item("time elapsed: " + str(t_elsp) + " Timestamp: " + ft1[0] + " Command: " + ft1[1])
             if len(ft1) == 1 or ft1[1] == "":
                 result = await set_hdw_async("", dur)
                 if result == "STOP":
@@ -1632,6 +1713,7 @@ async def an_light_async(f_nm):
             result = await set_hdw_async("TA_0_2", 0)
             result = await set_hdw_async("VR100", 0)
             return
+
 
 
 def add_command_to_ts(command):
@@ -2615,9 +2697,9 @@ else:
 upd_vol(.5)
 
 
-if cfg["bumper_mode"] == "bumper" and not debug_ir_sensor:
+if cfg["bumper_mode"] == "bumper" and not debug_ir_sensor_voltage:
     calibrate_bumper()
-elif cfg["bumper_mode"] == "loop" and not debug_ir_sensor:
+elif cfg["bumper_mode"] == "loop" and not debug_ir_sensor_voltage:
     calibrate_loop()
 
 st_mch.go_to('base_state')
@@ -2808,7 +2890,7 @@ async def state_mach_upd_task(st_mch):
         else:
             await asyncio.sleep(.02)
 
-if debug_ir_sensor:
+if debug_ir_sensor_voltage:
     while True:
         print(get_ir_sensor_voltage(), ir_sensor_active())
         travel_seconds = round(get_ir_sensor_voltage(), 1)
