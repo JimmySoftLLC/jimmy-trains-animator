@@ -407,7 +407,7 @@ async def ply_a_1_async(file_name, repeat=False):
     if mix.voice[1].playing:
         mix.voice[1].stop()
         while mix.voice[1].playing:
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
     if file_name.lower().endswith(".mp3"):
         w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
     elif file_name.lower().endswith(".wav"):
@@ -416,7 +416,7 @@ async def ply_a_1_async(file_name, repeat=False):
         raise ValueError("Unsupported audio format: " + file_name)
     mix.voice[1].play(w1, loop=repeat)
     while mix.voice[1].playing:
-        await asyncio.sleep(0)
+        await asyncio.sleep(.02)
 
 
 def wait_snd():
@@ -430,7 +430,7 @@ async def wait_snd_1():
             if await animation_wait(.01):
                 return True
         else:
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
     return False
 
 
@@ -577,6 +577,13 @@ VIRTUAL_ACCELERATION = 2
 
 MIN_TRACK_VOLTAGE = 9.0
 
+IR_SENSOR_THRESHOLD = 0.25
+LOOP_CAL_SPEED = 0.25
+LOOP_CAL_CYCLES = 4
+LOOP_SENSOR_TIMEOUT = 60.0
+
+loop_ir_active = False
+
 
 def calibrate_bumper():
     global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_calibrated
@@ -610,30 +617,120 @@ def calibrate_bumper():
         save_cfg_safely()
 
 
+def wait_for_ir_state(active, timeout=LOOP_SENSOR_TIMEOUT):
+    start = time.monotonic()
+    while ir_sensor_active() != active:
+        if ir_sensor_active():
+            led[0] = (0, 255, 0)
+        else:
+            led[0] = (0, 0, 0)
+        led.show()
+        if time.monotonic() - start >= timeout:
+            return False
+        time.sleep(.01)
+    if active:
+        led[0] = (0, 255, 0)
+    else:
+        led[0] = (0, 0, 0)
+    led.show()
+    return True
+
+
+def calibrate_loop_direction(direction):
+    train.throttle = direction * LOOP_CAL_SPEED
+    if not wait_for_ir_state(False):
+        train.throttle = 0
+        return None
+    if not wait_for_ir_state(True):
+        train.throttle = 0
+        return None
+    print("Loop calibration home found")
+    total = 0.0
+    for i in range(LOOP_CAL_CYCLES):
+        if not wait_for_ir_state(False):
+            train.throttle = 0
+            return None
+        start = time.monotonic()
+        if not wait_for_ir_state(True):
+            train.throttle = 0
+            return None
+        lap_time = time.monotonic() - start
+        total += lap_time
+        print("Loop calibration lap", i + 1, ":", lap_time)
+    train.throttle = 0
+    average = total / LOOP_CAL_CYCLES
+    print("Loop average:", average)
+    return average
+
+
+
+def calibrate_loop():
+    global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_calibrated
+    global bumper_target_position, bumper_positioning, bumper_position_success, current_throttle
+    bumper_requested_throttle = 0.0
+    bumper_progress = 0.0
+    bumper_calibrated = False
+    bumper_target_position = None
+    bumper_positioning = False
+    bumper_position_success = False
+    current_throttle = 0
+    print("Loop calibration starting...")
+    ply_a_0(mvc_folder + "bumper_cal_starting.mp3")
+    forward_time = calibrate_loop_direction(1)
+    if forward_time is None:
+        train.throttle = 0
+        print("Forward loop calibration failed")
+        ply_a_0(mvc_folder + "bumper_calibration_failed.mp3")
+        return
+    time.sleep(.5)
+    reverse_time = calibrate_loop_direction(-1)
+    train.throttle = 0
+    current_throttle = 0
+    if reverse_time is None:
+        print("Reverse loop calibration failed")
+        ply_a_0(mvc_folder + "bumper_calibration_failed.mp3")
+        return
+    controller.time_forward = forward_time
+    controller.time_reverse = reverse_time
+    controller.base_speed = LOOP_CAL_SPEED
+    bumper_direction = -1
+    bumper_progress = 0.0
+    bumper_last_time = time.monotonic()
+    bumper_calibrated = True
+    print("Loop calibration complete")
+    print("Clockwise time:", controller.time_forward)
+    print("Counter-clockwise time:", controller.time_reverse)
+    ply_a_0(mvc_folder + "the_calibration_was_successful.mp3")
+
+
 async def set_bumper_speed(target_throttle, acceleration=None):
-    global bumper_requested_throttle
+    global bumper_requested_throttle, bumper_direction
+    if cfg["bumper_mode"] == "loop":
+        if target_throttle > 0:
+            bumper_direction = 1
+        elif target_throttle < 0:
+            bumper_direction = -1
     target_throttle = abs(target_throttle)
     if target_throttle > 100:
         target_throttle = 100
     if acceleration is None or acceleration <= 0:
         bumper_requested_throttle = target_throttle / 100
-        await asyncio.sleep(0)
+        await asyncio.sleep(.02)
         return False
     target = target_throttle / 100
     step = acceleration / 100
     while bumper_requested_throttle != target:
         if bumper_requested_throttle < target:
-            bumper_requested_throttle = min(
-                bumper_requested_throttle + step, target)
+            bumper_requested_throttle = min(bumper_requested_throttle + step, target)
         else:
-            bumper_requested_throttle = max(
-                bumper_requested_throttle - step, target)
+            bumper_requested_throttle = max(bumper_requested_throttle - step, target)
         if an_running:
             if await animation_wait(.02):
                 return True
         else:
             await asyncio.sleep(.02)
     return False
+
 
 
 async def back_off_bumper(hit_direction):
@@ -661,7 +758,7 @@ async def back_off_bumper(hit_direction):
         if now - backoff_start >= BUMPER_BACKOFF_TIMEOUT:
             print("Bumper backoff timeout")
             break
-        await asyncio.sleep(0)
+        await asyncio.sleep(.02)
     elapsed = time.monotonic() - backoff_start
     return elapsed, backoff_speed
 
@@ -724,6 +821,8 @@ async def position_trolley(speed, percentage):
     global bumper_direction, bumper_requested_throttle
     global bumper_target_position, bumper_positioning, bumper_position_success
     global current_throttle
+    if cfg["bumper_mode"] == "loop":
+        return await position_trolley_loop(speed, percentage)
     speed = abs(speed)
     if speed > 100:
         speed = 100
@@ -733,7 +832,7 @@ async def position_trolley(speed, percentage):
     if percentage < 0 or percentage > 100:
         print("POS position must be between 0 and 100")
         return False
-    if not cfg["bumper_mode"] or not bumper_calibrated:
+    if cfg["bumper_mode"] == "off" or not bumper_calibrated:
         return await position_trolley_virtual(speed, percentage)
     target = percentage / 100
     print("POS command")
@@ -746,14 +845,20 @@ async def position_trolley(speed, percentage):
         bumper_positioning = True
         bumper_position_success = False
         bumper_requested_throttle = speed / 100
-        print("POS homing LEFT")
+        if cfg["bumper_mode"] == "loop":
+            print("POS homing counter-clockwise to IR")
+        else:
+            print("POS homing LEFT")
     elif percentage == 100:
         bumper_direction = 1
         bumper_target_position = 1.0
         bumper_positioning = True
         bumper_position_success = False
         bumper_requested_throttle = speed / 100
-        print("POS homing RIGHT")
+        if cfg["bumper_mode"] == "loop":
+            print("POS homing clockwise to IR")
+        else:
+            print("POS homing RIGHT")
     else:
         if abs(bumper_progress - target) <= 0.01:
             train.throttle = 0
@@ -763,15 +868,14 @@ async def position_trolley(speed, percentage):
             return True
         if target > bumper_progress:
             bumper_direction = 1
-            print("POS traveling RIGHT")
+            print("POS traveling clockwise" if cfg["bumper_mode"] == "loop" else "POS traveling RIGHT")
         else:
             bumper_direction = -1
-            print("POS traveling LEFT")
+            print("POS traveling counter-clockwise" if cfg["bumper_mode"] == "loop" else "POS traveling LEFT")
         bumper_target_position = target
         bumper_positioning = True
         bumper_position_success = False
         bumper_requested_throttle = speed / 100
-
     while bumper_positioning:
         if an_running:
             if await animation_wait(.01):
@@ -783,12 +887,113 @@ async def position_trolley(speed, percentage):
                 current_throttle = 0
                 return False
         else:
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
     if bumper_position_success:
         print("POS complete:", percentage, "%")
         return True
     print("POS did not reach destination")
     return False
+
+async def position_trolley_loop(speed, percentage):
+    global bumper_progress, bumper_requested_throttle, bumper_direction, current_throttle
+    speed = abs(speed)
+    if speed > 100:
+        speed = 100
+    if speed <= 0:
+        print("Loop POS speed must be greater than 0")
+        return False
+    if percentage < 0 or percentage > 100:
+        print("Loop POS position must be between 0 and 100")
+        return False
+
+    # 0 homes counter-clockwise
+    if percentage == 0:
+        direction = -1
+        print("Loop POS homing counter-clockwise")
+    else:
+        direction = 1
+        print("Loop POS homing clockwise")
+
+    bumper_direction = direction
+    bumper_requested_throttle = speed / 100
+    train.throttle = direction * bumper_requested_throttle
+    current_throttle = direction * speed
+
+    # If currently over the IR sensor, leave it first
+    if ir_sensor_active():
+        while ir_sensor_active():
+            if an_running:
+                if await animation_wait(.01):
+                    train.throttle = 0
+                    current_throttle = 0
+                    bumper_requested_throttle = 0.0
+                    return False
+            else:
+                await asyncio.sleep(.01)
+
+    # Find the IR home position
+    while not ir_sensor_active():
+        if an_running:
+            if await animation_wait(.01):
+                train.throttle = 0
+                current_throttle = 0
+                bumper_requested_throttle = 0.0
+                return False
+        else:
+            await asyncio.sleep(.01)
+
+    train.throttle = 0
+    current_throttle = 0
+    bumper_requested_throttle = 0.0
+    bumper_progress = 0.0
+    print("Loop home found")
+
+    # 0 means stop at home
+    if percentage == 0:
+        print("Loop POS complete: 0 %")
+        return True
+
+    # 100 also means home, approached clockwise
+    if percentage == 100:
+        print("Loop POS complete: 100 %")
+        return True
+
+    # Use clockwise calibration because intermediate positions travel clockwise
+    lap_time = controller.time_forward
+
+    # Adjust calibrated lap time for requested throttle
+    requested_speed = speed / 100
+    speed_ratio = controller.base_speed / requested_speed
+    requested_lap_time = lap_time * speed_ratio
+    travel_time = requested_lap_time * (percentage / 100)
+
+    print("Calibrated lap time:", lap_time)
+    print("Requested lap time:", requested_lap_time)
+    print("Target:", percentage, "%")
+    print("Travel time:", travel_time)
+
+    bumper_direction = 1
+    bumper_requested_throttle = requested_speed
+    train.throttle = requested_speed
+    current_throttle = speed
+
+    start = time.monotonic()
+    while time.monotonic() - start < travel_time:
+        if an_running:
+            if await animation_wait(.01):
+                train.throttle = 0
+                current_throttle = 0
+                bumper_requested_throttle = 0.0
+                return False
+        else:
+            await asyncio.sleep(.01)
+
+    train.throttle = 0
+    current_throttle = 0
+    bumper_requested_throttle = 0.0
+    bumper_progress = percentage / 100
+    print("Loop POS complete:", percentage, "%")
+    return True
 
 
 ################################################################################
@@ -1192,7 +1397,7 @@ async def process_cmd():
                 await an_async(cmd_split[1])
         else:
             await set_hdw_async(cmd)
-        await asyncio.sleep(0)
+        await asyncio.sleep(.02)
 
 
 def clr_cmd_queue():
@@ -1251,7 +1456,7 @@ async def animation_wait(wait_time):
                             if not cfg["museum_mode"] and power_off_time <= 1 and not spoken:
                                 spoken = True
                                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
-                        await asyncio.sleep(0)
+                        await asyncio.sleep(.02)
                     power_off_time = time.monotonic() - power_off_start
                     if power_off_time <= 1:
                         if cfg["museum_mode"]:
@@ -1272,18 +1477,18 @@ async def animation_wait(wait_time):
                     else:
                         led.fill((1, 1, 1))
                         led.show()
-                        await asyncio.sleep(0)
+                        await asyncio.sleep(.02)
         if sw == "left":
             if spoken:
                 await asyncio.sleep(1)
                 while mix.voice[1].playing:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(.02)
             else:
                 stop_all_cmds(False)
                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
                 await asyncio.sleep(1)
                 while mix.voice[1].playing:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(.02)
             an_running = False
             return True
         if sw == "left_held":
@@ -1291,29 +1496,29 @@ async def animation_wait(wait_time):
                 if spoken:
                     await asyncio.sleep(1)
                     while mix.voice[1].playing:
-                        await asyncio.sleep(0)
+                        await asyncio.sleep(.02)
                 else:
                     stop_all_cmds(False)
                     asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
                     await asyncio.sleep(1)
                     while mix.voice[1].playing:
-                        await asyncio.sleep(0)
+                        await asyncio.sleep(.02)
                 cfg["cont_mode"] = False
                 save_cfg_safely()
             else:
                 if spoken:
                     await asyncio.sleep(1)
                     while mix.voice[1].playing:
-                        await asyncio.sleep(0)
+                        await asyncio.sleep(.02)
                 else:
                     stop_all_cmds(False)
                     asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
                     await asyncio.sleep(1)
                     while mix.voice[1].playing:
-                        await asyncio.sleep(0)
+                        await asyncio.sleep(.02)
             an_running = False
             return True
-        await asyncio.sleep(0)
+        await asyncio.sleep(.02)
     return False
 
 
@@ -1341,12 +1546,15 @@ def get_track_voltage(samples=20):
         time.sleep(.0017)
     return total / samples
 
-def get_ir_sensor_voltage(samples=20):
+def get_ir_sensor_voltage(samples=10):
     total = 0.0
     for _ in range(samples):
         total += ir_sensor_a_in.value / 65536 * 3.3
         time.sleep(.0017)
     return total / samples
+
+def ir_sensor_active():
+    return get_ir_sensor_voltage() >= IR_SENSOR_THRESHOLD
 
 
 def rst_def():
@@ -1542,8 +1750,7 @@ def set_hdw_not_async(seg):
 
 
 async def set_hdw_async(cmd, dur=3):
-    global brightness, current_throttle, media_index, exit_set_hdw_async, bumper_requested_throttle
-    global bckgrnd_vol, bckgrnd_vol_track_throttle
+    global brightness, current_throttle, media_index, exit_set_hdw_async, bumper_requested_throttle, bckgrnd_vol, bckgrnd_vol_track_throttle, bumper_direction
     if cmd == "":
         return "NOCMDS"
     segs = cmd.split(",")
@@ -1655,7 +1862,12 @@ async def set_hdw_async(cmd, dur=3):
         elif seg[:1] == 'T':
             try:
                 target_throttle = int(seg[1:])
-                if cfg["bumper_mode"]:
+                if cfg["bumper_mode"] != "off":
+                    if cfg["bumper_mode"] == "loop":
+                        if target_throttle > 0:
+                            bumper_direction = 1
+                        elif target_throttle < 0:
+                            bumper_direction = -1
                     bumper_requested_throttle = abs(target_throttle) / 100
                 else:
                     train.throttle = target_throttle / 100
@@ -2323,12 +2535,17 @@ class BumperOpt(Ste):
         if sw == "right":
             selected_menu_item = bump_set[self.sel_i]
             if selected_menu_item == "bumper_mode_on":
-                cfg["bumper_mode"] = True
+                cfg["bumper_mode"] = "bumper"
+                save_cfg_safely()
+                ply_a_0(mvc_folder + "bumper_instructions.mp3")
+                mch.go_to('base_state')
+            elif selected_menu_item == "loop_mode_on":
+                cfg["bumper_mode"] = "loop"
                 save_cfg_safely()
                 ply_a_0(mvc_folder + "bumper_instructions.mp3")
                 mch.go_to('base_state')
             elif selected_menu_item == "bumper_mode_off":
-                cfg["bumper_mode"] = False
+                cfg["bumper_mode"] = "off"
                 bumper_requested_throttle = 0.0
                 bumper_target_position = None
                 bumper_positioning = False
@@ -2426,8 +2643,10 @@ else:
 # initialize items
 upd_vol(.5)
 
-if cfg["bumper_mode"]:
+if cfg["bumper_mode"] == "bumper":
     calibrate_bumper()
+elif cfg["bumper_mode"] == "loop":
+    calibrate_loop()
 
 st_mch.go_to('base_state')
 files.log_item("animator has started...")
@@ -2438,26 +2657,18 @@ gc_col("animations started.")
 
 
 async def bumper_tsk():
-    global bumper_direction
-    global bumper_requested_throttle
-    global bumper_progress
-    global bumper_last_time
-    global current_throttle
-    global bumper_target_position
-    global bumper_positioning
-    global bumper_position_success
-    global bckgrnd_vol_track_throttle
-
+    global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time
+    global current_throttle, bumper_target_position, bumper_positioning, bumper_position_success
+    global bckgrnd_vol_track_throttle, loop_ir_active
     bumper_last_time = time.monotonic()
-
     while True:
-        if not cfg["bumper_mode"]:
+        if cfg["bumper_mode"] == "off":
             bumper_last_time = time.monotonic()
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
             continue
         if not bumper_calibrated:
             bumper_last_time = time.monotonic()
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
             continue
         now = time.monotonic()
         dt = now - bumper_last_time
@@ -2465,98 +2676,109 @@ async def bumper_tsk():
         if bumper_requested_throttle <= 0:
             train.throttle = 0
             current_throttle = 0
-
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
             continue
-        bumper_hit = False
         hit_direction = bumper_direction
-        if bumper_direction > 0 and r_sw_io.value:
-            print("RIGHT bumper")
-            bumper_hit = True
-        elif bumper_direction < 0 and l_sw_io.value:
-            print("LEFT bumper")
-            bumper_hit = True
-        if bumper_hit:
-            homing_to_bumper = False
-            if bumper_positioning and bumper_target_position is not None:
-                if hit_direction < 0 and bumper_target_position == 0.0:
-                    homing_to_bumper = True
-
-                elif hit_direction > 0 and bumper_target_position == 1.0:
-                    homing_to_bumper = True
-            backoff_time, backoff_speed = await back_off_bumper(hit_direction)
-            bumper_direction = -hit_direction
-            if hit_direction < 0:
-                if controller.time_forward and controller.base_speed:
-                    bumper_progress = backoff_time * \
-                        (backoff_speed / controller.base_speed) / \
-                        controller.time_forward
-                else:
+        if cfg["bumper_mode"] == "loop":
+            ir_now = ir_sensor_active()
+            ir_hit = ir_now and not loop_ir_active
+            loop_ir_active = ir_now
+            if ir_hit:
+                print("IR home detected")
+                if bumper_positioning and bumper_target_position is not None:
+                    if hit_direction < 0 and bumper_target_position == 0.0:
+                        bumper_progress = 0.0
+                        train.throttle = 0
+                        current_throttle = 0
+                        await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
+                        bumper_requested_throttle = 0.0
+                        bumper_target_position = None
+                        bumper_positioning = False
+                        bumper_position_success = True
+                        print("POS home 0 complete")
+                        await asyncio.sleep(.02)
+                        continue
+                    if hit_direction > 0 and bumper_target_position == 1.0:
+                        bumper_progress = 1.0
+                        train.throttle = 0
+                        current_throttle = 0
+                        await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
+                        bumper_requested_throttle = 0.0
+                        bumper_target_position = None
+                        bumper_positioning = False
+                        bumper_position_success = True
+                        print("POS home 100 complete")
+                        await asyncio.sleep(.02)
+                        continue
+                if hit_direction > 0:
                     bumper_progress = 0.0
-                if bumper_progress < 0.0:
-                    bumper_progress = 0.0
-                if bumper_progress > 1.0:
-                    bumper_progress = 1.0
-                print("Position reset from LEFT bumper:", int(bumper_progress * 100), "%")
-            else:
-                if controller.time_reverse and controller.base_speed:
-                    bumper_progress = 1.0 - (backoff_time * (backoff_speed / controller.base_speed) / controller.time_reverse)
+                    print("Loop position reset: 0%")
                 else:
                     bumper_progress = 1.0
-                if bumper_progress < 0.0:
-                    bumper_progress = 0.0
-                if bumper_progress > 1.0:
-                    bumper_progress = 1.0
-                print("Position reset from RIGHT bumper:", int(bumper_progress * 100), "%")
-            if bumper_positioning:
-                train.throttle = 0
-                current_throttle = 0
-                await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
-                bumper_requested_throttle = 0.0
-                bumper_target_position = None
-                bumper_positioning = False
-                if homing_to_bumper:
-                    bumper_position_success = True
-                    print("POS homing complete")
-                else:
-                    bumper_position_success = False
-                    print("POS aborted - unexpected bumper reached")
-                bumper_last_time = time.monotonic()
-                await asyncio.sleep(0)
-                continue
-
-            if bumper_direction > 0:
-                print("Now traveling RIGHT")
-            else:
-                print("Now traveling LEFT")
-            bumper_last_time = time.monotonic()
-            await asyncio.sleep(0)
-            continue
-        if bumper_direction > 0:
-            est_time = controller.time_forward
+                    print("Loop position reset: 100%")
         else:
-            est_time = controller.time_reverse
+            bumper_hit = False
+            if bumper_direction > 0 and r_sw_io.value:
+                print("RIGHT bumper")
+                bumper_hit = True
+            elif bumper_direction < 0 and l_sw_io.value:
+                print("LEFT bumper")
+                bumper_hit = True
+            if bumper_hit:
+                homing_to_bumper = False
+                if bumper_positioning and bumper_target_position is not None:
+                    if hit_direction < 0 and bumper_target_position == 0.0:
+                        homing_to_bumper = True
+                    elif hit_direction > 0 and bumper_target_position == 1.0:
+                        homing_to_bumper = True
+                backoff_time, backoff_speed = await back_off_bumper(hit_direction)
+                bumper_direction = -hit_direction
+                if hit_direction < 0:
+                    if controller.time_forward and controller.base_speed:
+                        bumper_progress = backoff_time * (backoff_speed / controller.base_speed) / controller.time_forward
+                    else:
+                        bumper_progress = 0.0
+                    bumper_progress = max(0.0, min(1.0, bumper_progress))
+                    print("Position reset from LEFT bumper:", int(bumper_progress * 100), "%")
+                else:
+                    if controller.time_reverse and controller.base_speed:
+                        bumper_progress = 1.0 - (backoff_time * (backoff_speed / controller.base_speed) / controller.time_reverse)
+                    else:
+                        bumper_progress = 1.0
+                    bumper_progress = max(0.0, min(1.0, bumper_progress))
+                    print("Position reset from RIGHT bumper:", int(bumper_progress * 100), "%")
+                if bumper_positioning:
+                    train.throttle = 0
+                    current_throttle = 0
+                    await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
+                    bumper_requested_throttle = 0.0
+                    bumper_target_position = None
+                    bumper_positioning = False
+                    bumper_position_success = homing_to_bumper
+                    print("POS homing complete" if homing_to_bumper else "POS aborted - unexpected bumper reached")
+                    bumper_last_time = time.monotonic()
+                    await asyncio.sleep(.02)
+                    continue
+                print("Now traveling RIGHT" if bumper_direction > 0 else "Now traveling LEFT")
+                bumper_last_time = time.monotonic()
+                await asyncio.sleep(.02)
+                continue
+        est_time = controller.time_forward if bumper_direction > 0 else controller.time_reverse
         if est_time is None or est_time <= 0:
             train.throttle = 0
             current_throttle = 0
             await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
             continue
         requested_speed = abs(bumper_requested_throttle)
         commanded_speed = requested_speed
-        if bumper_direction > 0:
-            travel_progress = bumper_progress
-        else:
-            travel_progress = 1.0 - bumper_progress
+        travel_progress = bumper_progress if bumper_direction > 0 else 1.0 - bumper_progress
         if bumper_positioning and bumper_target_position is not None:
-            if bumper_target_position > 0.0 and bumper_target_position < 1.0:
-                distance_remaining = abs(
-                    bumper_target_position - bumper_progress)
+            if 0.0 < bumper_target_position < 1.0:
+                distance_remaining = abs(bumper_target_position - bumper_progress)
                 if distance_remaining < POS_RAMP_DISTANCE:
                     ramp_ratio = distance_remaining / POS_RAMP_DISTANCE
-                    min_speed = POS_MIN_SPEED
-                    if commanded_speed < min_speed:
-                        min_speed = commanded_speed
+                    min_speed = min(POS_MIN_SPEED, commanded_speed)
                     commanded_speed = min_speed + ((commanded_speed - min_speed) * ramp_ratio)
         ramped_throttle = controller._ramped_throttle(bumper_direction, commanded_speed, travel_progress)
         train.throttle = ramped_throttle
@@ -2572,28 +2794,30 @@ async def bumper_tsk():
                 bumper_progress += position_change
             else:
                 bumper_progress -= position_change
-        if bumper_progress > 1.0:
-            bumper_progress = 1.0
-        if bumper_progress < 0.0:
-            bumper_progress = 0.0
-        if bumper_positioning and bumper_target_position is not None:
-            if bumper_target_position > 0.0 and bumper_target_position < 1.0:
-                target_reached = False
-                if bumper_direction > 0 and bumper_progress >= bumper_target_position:
-                    target_reached = True
-                elif bumper_direction < 0 and bumper_progress <= bumper_target_position:
-                    target_reached = True
-                if target_reached:
-                    bumper_progress = bumper_target_position
-                    train.throttle = 0
-                    current_throttle = 0
-                    await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
-                    bumper_requested_throttle = 0.0
-                    print("POS destination reached:", int(bumper_progress * 100), "%")
-                    bumper_target_position = None
-                    bumper_positioning = False
-                    bumper_position_success = True
-        await asyncio.sleep(0)
+        if cfg["bumper_mode"] == "loop":
+            if bumper_progress >= 1.0:
+                bumper_progress -= 1.0
+            elif bumper_progress < 0.0:
+                bumper_progress += 1.0
+        else:
+            bumper_progress = max(0.0, min(1.0, bumper_progress))
+        if bumper_positioning and bumper_target_position is not None and 0.0 < bumper_target_position < 1.0:
+            target_reached = False
+            if bumper_direction > 0 and bumper_progress >= bumper_target_position:
+                target_reached = True
+            elif bumper_direction < 0 and bumper_progress <= bumper_target_position:
+                target_reached = True
+            if target_reached:
+                bumper_progress = bumper_target_position
+                train.throttle = 0
+                current_throttle = 0
+                await upd_bckgrnd_throttle_async(0, bumper_requested_throttle)
+                bumper_requested_throttle = 0.0
+                print("POS destination reached:", int(bumper_progress * 100), "%")
+                bumper_target_position = None
+                bumper_positioning = False
+                bumper_position_success = True
+        await asyncio.sleep(.02)
 
 
 async def process_cmd_tsk():
@@ -2603,7 +2827,7 @@ async def process_cmd_tsk():
             await process_cmd()
         except Exception as e:
             files.log_item(e)
-        await asyncio.sleep(0)
+        await asyncio.sleep(.02)
 
 
 async def server_poll_tsk(server):
@@ -2630,12 +2854,12 @@ async def state_mach_upd_task(st_mch):
             await asyncio.sleep(3)
             an_just_added = False
         else:
-            await asyncio.sleep(0)
+            await asyncio.sleep(.02)
 
 
 # while True:
-#     ir_sensor = get_ir_sensor_voltage()
-#     print(ir_sensor)
+#     print(get_ir_sensor_voltage(), ir_sensor_active())
+#     time.sleep(.1)
 
 
 async def main():
