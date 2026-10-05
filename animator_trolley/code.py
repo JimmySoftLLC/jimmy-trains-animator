@@ -75,7 +75,7 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 3
+debug_voltage_multiplier = 1
 
 animations_folder = "/sd/snds/"
 mvc_folder = "/sd/mvc/"
@@ -663,7 +663,6 @@ def calibrate_loop_direction(direction):
     return average
 
 
-
 def calibrate_loop():
     global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_calibrated
     global bumper_target_position, bumper_positioning, bumper_position_success, current_throttle
@@ -697,10 +696,15 @@ def calibrate_loop():
     bumper_progress = 0.0
     bumper_last_time = time.monotonic()
     bumper_calibrated = True
+    cal_seconds = int(((forward_time + reverse_time) / 2) + .5)
     print("Loop calibration complete")
-    print("Clockwise time:", controller.time_forward)
-    print("Counter-clockwise time:", controller.time_reverse)
+    print("Clockwise time:", forward_time)
+    print("Counter-clockwise time:", reverse_time)
+    print("Calibration seconds:", cal_seconds)
     ply_a_0(mvc_folder + "the_calibration_was_successful.mp3")
+    spk_str(str(cal_seconds), False)
+    ply_a_0(mvc_folder + "seconds.mp3")
+
 
 
 async def set_bumper_speed(target_throttle, acceleration=None):
@@ -896,32 +900,34 @@ async def position_trolley(speed, percentage):
 
 async def position_trolley_loop(speed, percentage):
     global bumper_progress, bumper_requested_throttle, bumper_direction, current_throttle
-    speed = abs(speed)
-    if speed > 100:
-        speed = 100
-    if speed <= 0:
-        print("Loop POS speed must be greater than 0")
-        return False
     if percentage < 0 or percentage > 100:
         print("Loop POS position must be between 0 and 100")
         return False
-
-    # 0 homes counter-clockwise
-    if percentage == 0:
-        direction = -1
-        print("Loop POS homing counter-clockwise")
-    else:
-        direction = 1
-        print("Loop POS homing clockwise")
-
-    bumper_direction = direction
-    bumper_requested_throttle = speed / 100
-    train.throttle = direction * bumper_requested_throttle
-    current_throttle = direction * speed
-
-    # If currently over the IR sensor, leave it first
-    if ir_sensor_active():
-        while ir_sensor_active():
+    if not bumper_calibrated:
+        print("Loop is not calibrated")
+        return False
+    if percentage == 0 or percentage == 100:
+        if percentage == 0:
+            direction = -1
+            print("Loop POS homing counter-clockwise")
+        else:
+            direction = 1
+            print("Loop POS homing clockwise")
+        bumper_direction = direction
+        bumper_requested_throttle = LOOP_CAL_SPEED
+        train.throttle = direction * LOOP_CAL_SPEED
+        current_throttle = int(direction * LOOP_CAL_SPEED * 100)
+        if ir_sensor_active():
+            while ir_sensor_active():
+                if an_running:
+                    if await animation_wait(.01):
+                        train.throttle = 0
+                        current_throttle = 0
+                        bumper_requested_throttle = 0.0
+                        return False
+                else:
+                    await asyncio.sleep(.01)
+        while not ir_sensor_active():
             if an_running:
                 if await animation_wait(.01):
                     train.throttle = 0
@@ -930,53 +936,55 @@ async def position_trolley_loop(speed, percentage):
                     return False
             else:
                 await asyncio.sleep(.01)
-
-    # Find the IR home position
-    while not ir_sensor_active():
-        if an_running:
-            if await animation_wait(.01):
-                train.throttle = 0
-                current_throttle = 0
-                bumper_requested_throttle = 0.0
-                return False
-        else:
-            await asyncio.sleep(.01)
-
-    train.throttle = 0
-    current_throttle = 0
-    bumper_requested_throttle = 0.0
-    bumper_progress = 0.0
-    print("Loop home found")
-
-    # 0 means stop at home
-    if percentage == 0:
-        print("Loop POS complete: 0 %")
+        train.throttle = 0
+        current_throttle = 0
+        bumper_requested_throttle = 0.0
+        bumper_progress = 0.0
+        print("Loop home found")
+        print("Loop POS complete:", percentage, "%")
         return True
-
-    # 100 also means home, approached clockwise
-    if percentage == 100:
-        print("Loop POS complete: 100 %")
+    current_position = bumper_progress * 100
+    target_position = float(percentage)
+    clockwise_distance = target_position - current_position
+    if clockwise_distance < 0:
+        clockwise_distance += 100
+    counter_clockwise_distance = current_position - target_position
+    if counter_clockwise_distance < 0:
+        counter_clockwise_distance += 100
+    print("Loop POS command")
+    print("Current position:", current_position)
+    print("Target position:", target_position)
+    print("Clockwise distance:", clockwise_distance)
+    print("Counter-clockwise distance:", counter_clockwise_distance)
+    if clockwise_distance <= .5 or counter_clockwise_distance <= .5:
+        train.throttle = 0
+        current_throttle = 0
+        bumper_requested_throttle = 0.0
+        bumper_progress = target_position / 100
+        print("Already at requested position")
         return True
-
-    # Use clockwise calibration because intermediate positions travel clockwise
-    lap_time = controller.time_forward
-
-    # Adjust calibrated lap time for requested throttle
-    requested_speed = speed / 100
-    speed_ratio = controller.base_speed / requested_speed
-    requested_lap_time = lap_time * speed_ratio
-    travel_time = requested_lap_time * (percentage / 100)
-
-    print("Calibrated lap time:", lap_time)
-    print("Requested lap time:", requested_lap_time)
-    print("Target:", percentage, "%")
+    if clockwise_distance <= counter_clockwise_distance:
+        direction = 1
+        distance = clockwise_distance
+        lap_time = controller.time_forward
+        print("Loop POS traveling clockwise")
+    else:
+        direction = -1
+        distance = counter_clockwise_distance
+        lap_time = controller.time_reverse
+        print("Loop POS traveling counter-clockwise")
+    travel_time = lap_time * (distance / 100)
+    travel_seconds = int(travel_time + .5)
+    print("Calibration lap time:", lap_time)
+    print("Travel distance:", distance, "%")
     print("Travel time:", travel_time)
-
-    bumper_direction = 1
-    bumper_requested_throttle = requested_speed
-    train.throttle = requested_speed
-    current_throttle = speed
-
+    print("Travel seconds:", travel_seconds)
+    spk_str(str(travel_seconds), False)
+    ply_a_0(mvc_folder + "seconds.mp3")
+    bumper_direction = direction
+    bumper_requested_throttle = LOOP_CAL_SPEED
+    train.throttle = direction * LOOP_CAL_SPEED
+    current_throttle = int(direction * LOOP_CAL_SPEED * 100)
     start = time.monotonic()
     while time.monotonic() - start < travel_time:
         if an_running:
@@ -987,11 +995,10 @@ async def position_trolley_loop(speed, percentage):
                 return False
         else:
             await asyncio.sleep(.01)
-
     train.throttle = 0
     current_throttle = 0
     bumper_requested_throttle = 0.0
-    bumper_progress = percentage / 100
+    bumper_progress = target_position / 100
     print("Loop POS complete:", percentage, "%")
     return True
 
