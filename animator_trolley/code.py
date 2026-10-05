@@ -620,49 +620,50 @@ def calibrate_bumper():
 
 def wait_for_ir_state(active, timeout=LOOP_SENSOR_TIMEOUT):
     start = time.monotonic()
-    while ir_sensor_active() != active:
-        if ir_sensor_active():
+    while True:
+        sensor_active = ir_sensor_active()
+        if sensor_active:
             led[0] = (0, 255, 0)
         else:
             led[0] = (0, 0, 0)
         led.show()
+        if sensor_active == active:
+            if active:
+                return time.monotonic()
+            return True
         if time.monotonic() - start >= timeout:
-            return False
+            return None
         time.sleep(.01)
-    if active:
-        led[0] = (0, 255, 0)
-    else:
-        led[0] = (0, 0, 0)
-    led.show()
-    return True
 
 
 def calibrate_loop_direction(direction):
     train.throttle = direction * LOOP_CAL_SPEED
-    if not wait_for_ir_state(False):
+    if ir_sensor_active():
+        if wait_for_ir_state(False) is None:
+            train.throttle = 0
+            return None
+    sensor_front_edge = wait_for_ir_state(True)
+    if sensor_front_edge is None:
         train.throttle = 0
         return None
-    if not wait_for_ir_state(True):
-        train.throttle = 0
-        return None
-    print("Loop calibration home found")
+    print("Loop calibration starting edge:", sensor_front_edge)
     total = 0.0
     for i in range(LOOP_CAL_CYCLES):
-        if not wait_for_ir_state(False):
+        if wait_for_ir_state(False) is None:
             train.throttle = 0
             return None
-        start = time.monotonic()
-        if not wait_for_ir_state(True):
+        next_front_edge = wait_for_ir_state(True)
+        if next_front_edge is None:
             train.throttle = 0
             return None
-        lap_time = time.monotonic() - start
-        total += lap_time
+        lap_time = next_front_edge - sensor_front_edge
         print("Loop calibration lap", i + 1, ":", lap_time)
+        sensor_front_edge = next_front_edge
+        total += lap_time
     train.throttle = 0
     average = total / LOOP_CAL_CYCLES
     print("Loop average:", average)
     return average
-
 
 def calibrate_loop():
     global bumper_direction, bumper_requested_throttle, bumper_progress, bumper_last_time, bumper_calibrated
