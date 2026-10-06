@@ -873,6 +873,7 @@ async def position_trolley_virtual(speed, percentage):
     print("Virtual POS complete:", percentage, "%")
     return True
 
+
 async def position_trolley_loop(speed, percentage):
     global bumper_progress, bumper_requested_throttle, bumper_direction, current_throttle, loop_ir_active
     if percentage < 0 or percentage > 100:
@@ -904,49 +905,85 @@ async def position_trolley_loop(speed, percentage):
     print("Speed:", speed)
     print("Current position:", current_position)
     print("Target position:", target_position)
-    print("Clockwise distance:", clockwise_distance)
-    print("Counter-clockwise distance:", counter_clockwise_distance)
 
     if percentage == 0 or percentage == 100:
         if percentage == 0:
             home_direction = -1
             distance = counter_clockwise_distance
             lap_time = controller.time_reverse
+            backoff_lap_time = controller.time_forward
             print("Loop POS homing 0")
         else:
             home_direction = 1
             distance = clockwise_distance
             lap_time = controller.time_forward
+            backoff_lap_time = controller.time_reverse
             print("Loop POS homing 100")
+
         bumper_requested_throttle = 0.0
+
+        if distance > .5:
+            bumper_direction = home_direction
+            distance_traveled = 0.0
+            last_time = time.monotonic()
+            print("Distance to expected home:", distance, "%")
+            print("Traveling toward home at:", speed, "%")
+            while distance_traveled < distance:
+                now = time.monotonic()
+                dt = now - last_time
+                last_time = now
+                distance_remaining = distance - distance_traveled
+                commanded_speed = requested_speed
+                if distance_remaining < POS_RAMP_DISTANCE * 100:
+                    ramp_ratio = distance_remaining / (POS_RAMP_DISTANCE * 100)
+                    min_speed = POS_MIN_SPEED
+                    if requested_speed < min_speed:
+                        min_speed = requested_speed
+                    commanded_speed = min_speed + ((requested_speed - min_speed) * ramp_ratio)
+                train.throttle = home_direction * commanded_speed
+                current_throttle = int(train.throttle * 100)
+                distance_traveled += dt * (commanded_speed / LOOP_CAL_SPEED) / lap_time * 100
+                if an_running:
+                    if await animation_wait(.01):
+                        train.throttle = 0
+                        current_throttle = 0
+                        return False
+                else:
+                    await asyncio.sleep(.01)
+
+        train.throttle = 0
+        current_throttle = 0
+
+        backoff_direction = -home_direction
+        backoff_time = backoff_lap_time * .05 * (LOOP_CAL_SPEED / (FINAL_HOME_SPEED / 100))
+        bumper_direction = backoff_direction
+        train.throttle = backoff_direction * FINAL_HOME_SPEED / 100
+        current_throttle = backoff_direction * FINAL_HOME_SPEED
+        print("Backing away 5% at", FINAL_HOME_SPEED, "%")
+
+        if an_running:
+            if await animation_wait(backoff_time):
+                train.throttle = 0
+                current_throttle = 0
+                return False
+        else:
+            await asyncio.sleep(backoff_time)
+
+        train.throttle = 0
+        current_throttle = 0
+
+        if an_running:
+            if await animation_wait(.1):
+                return False
+        else:
+            await asyncio.sleep(.1)
+
         bumper_direction = home_direction
-        distance_traveled = 0.0
-        last_time = time.monotonic()
-        print("Distance to expected home:", distance, "%")
-        print("Traveling toward home at:", speed, "%")
+        train.throttle = home_direction * FINAL_HOME_SPEED / 100
+        current_throttle = home_direction * FINAL_HOME_SPEED
+        print("Returning to home edge at", FINAL_HOME_SPEED, "%")
 
-        # Travel toward expected home while tracking actual distance.
-        # Ramp during the final POS_RAMP_DISTANCE.
-        while distance_traveled < distance:
-            now = time.monotonic()
-            dt = now - last_time
-            last_time = now
-            distance_remaining = distance - distance_traveled
-            commanded_speed = requested_speed
-            if distance_remaining < POS_RAMP_DISTANCE * 100:
-                ramp_ratio = distance_remaining / (POS_RAMP_DISTANCE * 100)
-                min_speed = POS_MIN_SPEED
-                if requested_speed < min_speed:
-                    min_speed = requested_speed
-                commanded_speed = min_speed + ((requested_speed - min_speed) * ramp_ratio)
-            train.throttle = home_direction * commanded_speed
-            current_throttle = int(train.throttle * 100)
-
-            # lap_time is the time for 100% of the loop at LOOP_CAL_SPEED.
-            # Scale the position change by the actual commanded speed.
-            position_change = dt * (commanded_speed / LOOP_CAL_SPEED) / lap_time
-            distance_traveled += position_change * 100
-
+        while not ir_sensor_active():
             if an_running:
                 if await animation_wait(.01):
                     train.throttle = 0
@@ -955,60 +992,22 @@ async def position_trolley_loop(speed, percentage):
             else:
                 await asyncio.sleep(.01)
 
-        # We should now be close to the physical home sensor.
-        # Continue at the ramp minimum speed until entering the sensor.
-        search_speed = POS_MIN_SPEED
-        if requested_speed < search_speed:
-            search_speed = requested_speed
-        print("Looking for home sensor at", int(search_speed * 100), "%")
-        train.throttle = home_direction * search_speed
-        current_throttle = int(home_direction * search_speed * 100)
-        while not ir_sensor_active():
-            led[0] = (0, 0, 0)
-            led.show()
-            await asyncio.sleep(0)
-
-        # Continue through the complete sensor area.
-        print("Home sensor entered - continuing through")
+        train.throttle = 0
+        current_throttle = 0
+        bumper_requested_throttle = 0.0
+        bumper_progress = 0.0
+        loop_ir_active = True
         led[0] = (0, 255, 0)
         led.show()
-        while ir_sensor_active():
-            led[0] = (0, 255, 0)
-            led.show()
-            await asyncio.sleep(0)
-        led[0] = (0, 0, 0)
-        led.show()
-        print("Home sensor cleared")
+        print("Home front edge detected - stopped")
+        print("Loop POS complete:", percentage, "%")
+        return True
 
-        # Reverse and return to the front edge at the fixed home speed.
-        # No ramp here.
-        final_direction = -home_direction
-        bumper_direction = final_direction
-        train.throttle = final_direction * FINAL_HOME_SPEED / 100
-        current_throttle = final_direction * FINAL_HOME_SPEED
-        print("Returning to home edge at", FINAL_HOME_SPEED, "%")
-        while True:
-            sensor_active = ir_sensor_active()
-            if sensor_active:
-                train.throttle = 0
-                current_throttle = 0
-                bumper_requested_throttle = 0.0
-                bumper_progress = 0.0
-                loop_ir_active = True
-                led[0] = (0, 255, 0)
-                led.show()
-                print("Home front edge detected - stopped")
-                print("Loop POS complete:", percentage, "%")
-                return True
-            led[0] = (0, 0, 0)
-            led.show()
-            await asyncio.sleep(0)
-
-    # Normal positions use the shortest direction around the loop.
     if clockwise_distance <= .5 or counter_clockwise_distance <= .5:
         bumper_progress = target_position / 100
         print("Already at requested position")
         return True
+
     if clockwise_distance <= counter_clockwise_distance:
         direction = 1
         distance = clockwise_distance
@@ -1020,16 +1019,12 @@ async def position_trolley_loop(speed, percentage):
         lap_time = controller.time_reverse
         print("Loop POS traveling counter-clockwise")
 
-    # This is only the estimated time at the original requested speed.
-    # Actual position below is calculated continuously from actual speed.
-    travel_time = lap_time * (distance / 100)
-    travel_time = travel_time * (LOOP_CAL_SPEED / requested_speed)
+    travel_time = lap_time * (distance / 100) * (LOOP_CAL_SPEED / requested_speed)
     travel_seconds = round(travel_time, 1)
     print("Calibration lap time:", lap_time)
     print("Travel distance:", distance, "%")
     print("Travel speed:", speed, "%")
     print("Estimated travel time:", travel_time)
-    print("Travel seconds:", travel_seconds)
     if debug_travel_times:
         spk_str(str(travel_seconds), False)
 
@@ -1038,28 +1033,21 @@ async def position_trolley_loop(speed, percentage):
     distance_traveled = 0.0
     last_time = time.monotonic()
 
-    # Track distance using actual ramped speed.
     while distance_traveled < distance:
         now = time.monotonic()
         dt = now - last_time
         last_time = now
         distance_remaining = distance - distance_traveled
         commanded_speed = requested_speed
-
-        # Same style of position ramp used by bumper mode.
         if distance_remaining < POS_RAMP_DISTANCE * 100:
             ramp_ratio = distance_remaining / (POS_RAMP_DISTANCE * 100)
             min_speed = POS_MIN_SPEED
             if requested_speed < min_speed:
                 min_speed = requested_speed
             commanded_speed = min_speed + ((requested_speed - min_speed) * ramp_ratio)
-
         train.throttle = direction * commanded_speed
         current_throttle = int(train.throttle * 100)
-
-        # Convert elapsed time at the current speed into loop position.
-        position_change = dt * (commanded_speed / LOOP_CAL_SPEED) / lap_time
-        distance_traveled += position_change * 100
+        distance_traveled += dt * (commanded_speed / LOOP_CAL_SPEED) / lap_time * 100
 
         if an_running:
             if await animation_wait(.01):
@@ -1074,6 +1062,9 @@ async def position_trolley_loop(speed, percentage):
     bumper_progress = target_position / 100
     print("Loop POS complete:", percentage, "%")
     return True
+
+
+
 
 ################################################################################
 # Setup wifi and web server
@@ -1442,10 +1433,10 @@ def measure_signal_strength(MY_SSID, cycles):
         if count > cycles:
             return avg_rssi
 
-
-cycles = 10
-avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
-print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+if web:
+    cycles = 10
+    avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
 
 ################################################################################
 # Command queue
@@ -1532,12 +1523,12 @@ async def animation_wait(wait_time):
                                 spoken = True
                                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
                         else:
-                            if not cfg["museum_mode"] and power_off_time <= 1 and not spoken:
+                            if not cfg["museum_mode"] and power_off_time <= 1 and power_off_time > .2 and not spoken:
                                 spoken = True
                                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
                         await asyncio.sleep(.02)
                     power_off_time = time.monotonic() - power_off_start
-                    if power_off_time <= 1:
+                    if power_off_time <= 1 and power_off_time > .2:
                         if cfg["museum_mode"]:
                             aud_en.value = True
                             led.brightness = 1
@@ -2340,7 +2331,7 @@ class BseSt(Ste):
                             spoken = True
                             ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
                 power_off_time = time.monotonic() - power_off_start
-                if power_off_time <= 1:
+                if power_off_time <= 1 and power_off_time > .2:
                     sw = "left"
                 elif power_off_time > 1 and power_off_time < 3:
                     if not cfg["museum_mode"]:
@@ -2698,7 +2689,7 @@ aud_en.value = True
 upd_vol(.1)
 
 
-if (web):
+if web:
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
@@ -2710,9 +2701,6 @@ if (web):
         spk_web()
     except Exception as e:
         files.log_item(e)
-        time.sleep(5)
-        files.log_item("restarting...")
-        rst()
 else:
     led[1] = (255, 0, 0)
     led.show()
