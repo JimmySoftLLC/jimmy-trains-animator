@@ -1702,10 +1702,11 @@ async def an_light_async(f_nm):
     stp_a_0()
     flsh_t = []
     w0_exists = False
+    flsh_i = 0
     
     if f_exists(animations_folder + f_nm + ".json") == True:
         flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
-    flsh_i = 0
+
     if len(flsh_t) > 0:
         ft1 = flsh_t[flsh_i].split("|")
         w0_exists = await set_hdw_async(ft1[1])
@@ -1715,11 +1716,11 @@ async def an_light_async(f_nm):
         ft_last = flsh_t[len(flsh_t)-1].split("|")
         tm_last = float(ft_last[0]) + .1
         flsh_t.append(str(tm_last) + "|")
-        if w0_exists:
-            flsh_i += 1
+        flsh_i += 1
     else:
         an_running = False
         return
+    
     while True:
         t_elsp = time.monotonic()-srt_t
         if flsh_i < len(flsh_t)-1:
