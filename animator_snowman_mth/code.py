@@ -74,7 +74,7 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 1
+debug_voltage_multiplier = 3
 
 animations_folder = "snds/"
 mvc_folder = "mvc/"
@@ -180,6 +180,10 @@ dance_target = [110, 75, 105]
 
 # Time between one-degree servo movements
 dance_interval = .02
+dance_enabled = [False, False, False]
+dance_task = None
+random_light_task = None
+
 
 
 def m_servo(n, p):
@@ -232,32 +236,90 @@ async def move_servo(n, target, spd):
 
 async def dance(st, dur):
     next_move = st
-
     while True:
         if exit_set_hdw_async:
             return
-
         now = time.monotonic()
-
         if now - st >= dur:
             return
-
         if now >= next_move:
             next_move += dance_interval
-
             for n in range(3):
                 if p_arr[n] == dance_target[n]:
                     dance_target[n] = random.randint(dance_min[n], dance_max[n])
-
                 if p_arr[n] < dance_target[n]:
                     m_servo(n, p_arr[n] + 1)
-
                 elif p_arr[n] > dance_target[n]:
                     m_servo(n, p_arr[n] - 1)
-
         await asyncio.sleep(0)
 
+async def continuous_dance():
+    global dance_task
+    next_move = time.monotonic()
+    try:
+        while True:
+            if exit_set_hdw_async:
+                return
+            if not any(dance_enabled):
+                return
+            now = time.monotonic()
+            if now >= next_move:
+                next_move = now + dance_interval
+                for n in range(3):
+                    if not dance_enabled[n]:
+                        continue
+                    if p_arr[n] == dance_target[n]:
+                        dance_target[n] = random.randint(dance_min[n], dance_max[n])
+                    if p_arr[n] < dance_target[n]:
+                        m_servo(n, p_arr[n] + 1)
+                    elif p_arr[n] > dance_target[n]:
+                        m_servo(n, p_arr[n] - 1)
+            await asyncio.sleep(0)
+    finally:
+        dance_task = None
 
+
+def set_dance_enabled(seg, enabled):
+    global dance_task
+    parts = seg.split("_")
+    if len(parts) == 1:
+        for n in range(3):
+            dance_enabled[n] = enabled
+    else:
+        for part in parts[1:]:
+            n = int(part) - 1
+            if n >= 0 and n < 3:
+                dance_enabled[n] = enabled
+    if enabled and dance_task is None:
+        dance_task = asyncio.create_task(continuous_dance())
+
+
+def stop_continuous_effects():
+    global random_light_task
+    for n in range(3):
+        dance_enabled[n] = False
+    if random_light_task is not None:
+        random_light_task.cancel()
+        random_light_task = None
+
+
+async def continuous_random_lights():
+    global random_light_task
+    try:
+        while True:
+            if exit_set_hdw_async:
+                return
+            effect = random.randint(1, 3)
+            st = time.monotonic()
+            if effect == 1:
+                await rbow(st, 0.012, 5)
+            elif effect == 2:
+                multi_color()
+                await asyncio.sleep(5)
+            else:
+                await fire(st, 5)
+    finally:
+        random_light_task = None
 
 ################################################################################
 # Setup hardware
@@ -1316,6 +1378,7 @@ def clr_cmd_queue():
 
 def stop_all_cmds(cont_mode_off=True):
     global exit_set_hdw_async
+    stop_continuous_effects()
     if cont_mode_off:
         cfg["cont_mode"] = False
     mix.voice[0].stop()
@@ -1539,6 +1602,7 @@ async def an_light_async(f_nm):
                     return
             flsh_i += 1
         if (not mix.voice[0].playing and w0_exists == "w0_true") or not flsh_i < len(flsh_t)-1:
+            stop_continuous_effects()
             mix.voice[0].stop()
             mix.voice[1].stop()
             result = await set_hdw_async("TA_0_2", 0)
@@ -1638,7 +1702,7 @@ def set_hdw_not_async(seg):
 
 async def set_hdw_async(cmd, dur=3):
     global brightness, current_throttle, media_index, exit_set_hdw_async
-    global bckgrnd_vol
+    global bckgrnd_vol, random_light_task
 
     if cmd == "":
         return "NOCMDS"
@@ -1654,26 +1718,50 @@ async def set_hdw_async(cmd, dur=3):
             parts = seg.split("_")
             num = int(parts[0][1])
             v = int(parts[0][2:])
+            if num == 0:
+                for i in range(3):
+                    dance_enabled[i] = False
+            else:
+                dance_enabled[num - 1] = False
             if len(parts) > 1:
                 spd = float(parts[1])
                 if num == 0:
                     for i in range(3):
                         asyncio.create_task(move_servo(i, v, spd))
                 else:
-                    asyncio.create_task(move_servo(num-1, v, spd))
+                    asyncio.create_task(move_servo(num - 1, v, spd))
             else:
                 if num == 0:
                     for i in range(3):
                         m_servo(i, v)
                 else:
-                    m_servo(num-1, v)
+                    m_servo(num - 1, v)
 
-        # ZDANCE = Dance snowmen for duration of timestamp segment
+        # Continuous dancing for selected snowmen
+        elif seg.startswith("ZDANCEON"):
+            set_dance_enabled(seg, True)
+
+        # Stop continuous dancing for selected snowmen
+        elif seg.startswith("ZDANCEOFF"):
+            set_dance_enabled(seg, False)
+
+        # Original duration-controlled dance
         elif seg == "ZDANCE":
             asyncio.create_task(dance(st, dur))
 
-        # ZRAND = Random rainbow, fire, or color change
-        elif seg == 'ZRAND':
+        # Start continuous random lighting
+        elif seg == "ZRANDON":
+            if random_light_task is None:
+                random_light_task = asyncio.create_task(continuous_random_lights())
+
+        # Stop continuous random lighting
+        elif seg == "ZRANDOFF":
+            if random_light_task is not None:
+                random_light_task.cancel()
+                random_light_task = None
+
+        # Original duration-controlled random lighting
+        elif seg == "ZRAND":
             random_effect(st, 1, 3, dur)
 
         # ZRWBTTT = red, white, blue wheel, TTT cycle speed in decimal seconds
@@ -2457,3 +2545,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
