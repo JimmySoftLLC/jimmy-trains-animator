@@ -74,7 +74,7 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 3
+debug_voltage_multiplier = 1
 
 animations_folder = "snds/"
 mvc_folder = "mvc/"
@@ -198,60 +198,70 @@ def m_servo(n, p):
     s_arr[n].angle = p
     p_arr[n] = p
 
-
 async def move_servo(n, target, spd):
     start_pos = p_arr[n]
     st = time.monotonic()
-
-    if target > start_pos:
-        direction = 1
-    elif target < start_pos:
-        direction = -1
-    else:
-        return
-
-    while True:
-        if exit_set_hdw_async:
-            return
-
-        elapsed = time.monotonic() - st
-        steps = int(elapsed / spd)
-
-        new_pos = start_pos + steps * direction
-
-        if direction > 0:
-            if new_pos >= target:
-                m_servo(n, target)
-                return
+    try:
+        if target > start_pos:
+            direction = 1
+        elif target < start_pos:
+            direction = -1
         else:
-            if new_pos <= target:
-                m_servo(n, target)
+            return
+        while True:
+            if exit_set_hdw_async:
                 return
+            elapsed = time.monotonic() - st
+            steps = int(elapsed / spd)
+            new_pos = start_pos + steps * direction
+            if direction > 0:
+                if new_pos >= target:
+                    m_servo(n, target)
+                    break
+            else:
+                if new_pos <= target:
+                    m_servo(n, target)
+                    break
+            if new_pos != p_arr[n]:
+                m_servo(n, new_pos)
+            await asyncio.sleep(0)
+    finally:
+        s_arr[n].angle = None
 
-        if new_pos != p_arr[n]:
-            m_servo(n, new_pos)
-
-        await asyncio.sleep(0)
-
-
-async def dance(st, dur):
+async def dance(st, dur, seg):
+    selected = [False, False, False]
+    nums = seg.split("_")[1]
+    if "0" in nums:
+        selected = [True, True, True]
+    else:
+        for num in nums:
+            n = int(num) - 1
+            if n >= 0 and n < 3:
+                selected[n] = True
     next_move = st
-    while True:
-        if exit_set_hdw_async:
-            return
-        now = time.monotonic()
-        if now - st >= dur:
-            return
-        if now >= next_move:
-            next_move += dance_interval
-            for n in range(3):
-                if p_arr[n] == dance_target[n]:
-                    dance_target[n] = random.randint(dance_min[n], dance_max[n])
-                if p_arr[n] < dance_target[n]:
-                    m_servo(n, p_arr[n] + 1)
-                elif p_arr[n] > dance_target[n]:
-                    m_servo(n, p_arr[n] - 1)
-        await asyncio.sleep(0)
+    try:
+        while True:
+            if exit_set_hdw_async:
+                return
+            now = time.monotonic()
+            if now - st >= dur:
+                return
+            if now >= next_move:
+                next_move = now + dance_interval
+                for n in range(3):
+                    if not selected[n]:
+                        continue
+                    if p_arr[n] == dance_target[n]:
+                        dance_target[n] = random.randint(dance_min[n], dance_max[n])
+                    if p_arr[n] < dance_target[n]:
+                        m_servo(n, p_arr[n] + 1)
+                    elif p_arr[n] > dance_target[n]:
+                        m_servo(n, p_arr[n] - 1)
+            await asyncio.sleep(0)
+    finally:
+        for n in range(3):
+            if selected[n] and not dance_enabled[n]:
+                s_arr[n].angle = None
 
 async def continuous_dance():
     global dance_task
@@ -276,23 +286,26 @@ async def continuous_dance():
                         m_servo(n, p_arr[n] - 1)
             await asyncio.sleep(0)
     finally:
+        for n in range(3):
+            if not dance_enabled[n]:
+                s_arr[n].angle = None
         dance_task = None
 
 
-def set_dance_enabled(seg, enabled):
+async def set_dance_enabled(seg, enabled):
     global dance_task
-    parts = seg.split("_")
-    if len(parts) == 1:
-        for n in range(3):
+    nums = seg.split("_")[1]
+    for n in range(3):
+        if "0" in nums or str(n + 1) in nums:
             dance_enabled[n] = enabled
+            if not enabled:
+                s_arr[n].angle = None
+    if enabled:
+        if dance_task is None or dance_task.done():
+            dance_task = asyncio.create_task(continuous_dance())
     else:
-        for part in parts[1:]:
-            n = int(part) - 1
-            if n >= 0 and n < 3:
-                dance_enabled[n] = enabled
-    if enabled and dance_task is None:
-        dance_task = asyncio.create_task(continuous_dance())
-
+        if not any(dance_enabled) and dance_task is not None:
+            await dance_task
 
 def stop_continuous_effects():
     global random_light_task
@@ -656,8 +669,8 @@ async def no_trk():
 def spk_web():
     ply_a_0(mvc_folder + "animator_available_on_network.mp3")
     ply_a_0(mvc_folder + "to_access_type.mp3")
-    if cfg["HOST_NAME"] == "animator-trolley":
-        ply_a_0(mvc_folder + "animator_trolley.mp3")
+    if cfg["HOST_NAME"] == "animator-snowman-car":
+        ply_a_0(mvc_folder + "animator_snowman_car.mp3")
         ply_a_0(mvc_folder + "dot.mp3")
         ply_a_0(mvc_folder + "local.mp3")
     else:
@@ -1515,7 +1528,7 @@ def rst_def():
     cfg["option_selected"] = "random all"
     cfg["cont_mode"] = False
     cfg["volume"] = "50"
-    cfg["HOST_NAME"] = "animator-trolley"
+    cfg["HOST_NAME"] = "animator-snowman-car"
     cfg["serve_webpage"] = True
     cfg["museum_mode"] = False
 
@@ -1713,10 +1726,11 @@ async def set_hdw_async(cmd, dur=3):
     for seg in segs:
         if exit_set_hdw_async:
             return "STOP"
-
-        # SNXXX = Servo N (0 All, 1-3) XXX 0 to 180
-        # SNXXX_SPD = Servo N to XXX at 1 degree every SPD seconds
-        elif seg[0] == 'S':
+        
+        # SNXXX = Move servo N (0=all, 1-3) to XXX degrees
+        # SNXXX_SPD = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree
+        # SNXXX_SPD_W = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree and wait till finished
+        elif seg.startswith("S") and seg[1:2].isdigit():
             parts = seg.split("_")
             num = int(parts[0][1])
             v = int(parts[0][2:])
@@ -1727,11 +1741,19 @@ async def set_hdw_async(cmd, dur=3):
                 dance_enabled[num - 1] = False
             if len(parts) > 1:
                 spd = float(parts[1])
+                wait = False
+                if len(parts) > 2:
+                    if parts[2] == "W":
+                        wait = True
+                tasks = []
                 if num == 0:
                     for i in range(3):
-                        asyncio.create_task(move_servo(i, v, spd))
+                        tasks.append(asyncio.create_task(move_servo(i, v, spd)))
                 else:
-                    asyncio.create_task(move_servo(num - 1, v, spd))
+                    tasks.append(asyncio.create_task(move_servo(num - 1, v, spd)))
+                if wait:
+                    for task in tasks:
+                        await task
             else:
                 if num == 0:
                     for i in range(3):
@@ -1739,30 +1761,30 @@ async def set_hdw_async(cmd, dur=3):
                 else:
                     m_servo(num - 1, v)
 
-        # Continuous dancing for selected snowmen
-        elif seg.startswith("ZDANCEON"):
-            set_dance_enabled(seg, True)
+        # ZDANCE_N = Dance for timestamp duration (N=0 all, or combination of 1,2,3)
+        elif seg.startswith("ZDANCE_"):
+            asyncio.create_task(dance(st, dur, seg))
 
-        # Stop continuous dancing for selected snowmen
-        elif seg.startswith("ZDANCEOFF"):
-            set_dance_enabled(seg, False)
+        # ZDANCEON_N = Start continuous dancing (N=0 all, or combination of 1,2,3)
+        elif seg.startswith("ZDANCEON_"):
+            await set_dance_enabled(seg, True)
 
-        # Original duration-controlled dance
-        elif seg == "ZDANCE":
-            asyncio.create_task(dance(st, dur))
+        # ZDANCEOFF_N = Stop continuous dancing (N=0 all, or combination of 1,2,3)
+        elif seg.startswith("ZDANCEOFF_"):
+            await set_dance_enabled(seg, False)
 
-        # Start continuous random lighting
+        # ZRANDON = Start continuous random lighting
         elif seg == "ZRANDON":
             if random_light_task is None:
                 random_light_task = asyncio.create_task(continuous_random_lights())
 
-        # Stop continuous random lighting
+        # ZRANDOFF = Stop continuous random lighting
         elif seg == "ZRANDOFF":
             if random_light_task is not None:
                 random_light_task.cancel()
                 random_light_task = None
 
-        # Original duration-controlled random lighting
+        # ZRAND = timestamp duration controlled random lighting
         elif seg == "ZRAND":
             random_effect(st, 1, 3, dur)
 
@@ -1857,6 +1879,20 @@ async def set_hdw_async(cmd, dur=3):
                 return "w0_true"
             else:
                 return "w0_false"
+
+        #MWRfolder/subfolder = Play random MP3 from CIRCUITPY root folder/subfolder and wait (e.g. MWRblizzard/introduction)
+        elif seg.startswith("MWR"):
+            folder = "/" + seg[3:].strip("/") + "/"
+            filename = get_random_media_file(folder)
+            if filename:
+                print("Playing random:", folder + filename + ".mp3")
+                await stp_a_1()
+                w1 = audiomp3.MP3Decoder(open(folder + filename + ".mp3", "rb"))
+                mix.voice[1].play(w1, loop=False)
+                if await wait_snd_1():
+                    return "STOP"
+            else:
+                print("No MP3 files found:", folder)
 
         # MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A animations, E elves, B bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN play next in sequence, SEQF play first in sequence)
         elif seg[0] == 'M':

@@ -107,40 +107,6 @@
             </li>
         </ul>
         <div class="mui-tabs__pane mui--is-active" id="trainControl" style="padding-top:0.5rem;">
-            <!-- <div class="parent-container ">
-                <div class="knob-container">
-                    <div class="knob" id="knob">
-                        <div class="indicator"></div>
-                    </div>
-                    <div class="knob-text" id="knob-text">0</div>
-                </div>
-            </div>
-            <button class="mui-btn mui-btn--primary" onclick="stopTrain()">Stop</button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPHRAND" data-url="/test-animation"
-                type="button">
-                Horn
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPBRAND" data-url="/test-animation"
-                type="button">
-                Bell
-            </button>
-
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPERAND" data-url="/test-animation"
-                type="button">
-                Elf
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPTRAND" data-url="/test-animation"
-                type="button">
-                Station stops
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPSSEQN" data-url="/test-animation"
-                type="button">
-                Santa
-            </button>
-            <button class="mui-btn mui-btn--primary animator-action" data-value="MPCSEQN" data-url="/test-animation"
-                type="button">
-                Christmas story
-            </button> -->
             <h2>Track Voltage:</h2>
             <input class="input" id="trackVoltage" type="number" disabled>
             <button class="mui-btn mui-btn--primary" onclick="getTrackVoltage()" type="button">
@@ -399,7 +365,8 @@
             <div>BXXX = Brightness XXX 0 to 100</div>
             <div>FXXX = Fade brightness in or out XXX 0 to 100</div>
             <div>HA = Blow horn or bell, A (H Horn, B Bell)</div>
-            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A animations, E elves, B
+            <div>MALXXX = Play file, A (P play music, W play music wait, S stop music), L = file location (A animations,
+                E elves, B
                 bells, H horns, T stops, C christmas story) XXX (file name, if RAND random selection of folder, SEQN
                 play next in sequence, SEQF play first in sequence)</div>
             <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
@@ -412,14 +379,19 @@
             <div>VRXXX = Set background volume to XXX, 0 to 100</div>
             <div>QCCC = add command CCC</div>
             <div>WXXX = Wait XXX decimal seconds</div>
-            <div>ZDANCE = Dance snowmen for duration of timestamp segment</div>
+            <div>ZDANCE = ZDANCE_N = Dance for timestamp duration (N=0 all, or combination of 1,2,3)</div>
+            <div>ZDANCEON_N = Start continuous dancing (N=0 all, or combination of 1,2,3)</div>
+            <div>ZDANCEOFF_N = Stop continuous dancing (N=0 all, or combination of 1,2,3)</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
+            <div>ZRANDON = Start continuous random lighting</div>
+            <div>ZRANDOFF = Stop continuous random lighting</div>
             <div>ZRTTT = Rainbow, TTT cycle speed in decimal seconds</div>
             <div>ZRWBTTT = red, white, blue wheel, TTT cycle speed in decimal seconds</div>
             <div>ZFIRE = Fire</div>
             <div>ZCOLCH = Color change</div>
             <div>SNXXX = Servo N (0 All, 1-3) XXX 0 to 180</div>
-            <div>SNXXX_SPD = Servo N to XXX at 1 degree every SPD seconds</div>
+            <div>SNXXX_SPD = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree</div>
+            <div>SNXXX_SPD_W = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree and wait till finished</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
