@@ -74,7 +74,7 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 1
+debug_voltage_multiplier = 3
 
 animations_folder = "snds/"
 mvc_folder = "mvc/"
@@ -155,13 +155,13 @@ an_just_added = False
 
 ################################################################################
 # Setup the servos
-s_1_pin = board.GP4
+s_1_pin = board.GP16
 
 s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
 s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
 
-p_arr = [90]
-s_arr = [s_1]
+p_arr = [90,90,90]
+s_arr = [s_1,s_1,s_1]
 
 # Allowed dance target ranges for each snowman
 dance_min = [55, 65, 45]
@@ -384,12 +384,13 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 n_px = 3
 
-led1 = neopixel.NeoPixel(board.GP5, 1, auto_write=False)
-led2 = neopixel.NeoPixel(board.GP6, 1, auto_write=False)
-led3 = neopixel.NeoPixel(board.GP7, 1, auto_write=False)
+led1 = neopixel.NeoPixel(board.GP17, 20, auto_write=False)
+led2 = neopixel.NeoPixel(board.GP22, 20, auto_write=False)
 
-led_channels = [led1]
+led_channels = [led1,led2,led2]
 
+led1.fill((100, 100, 100))
+led2.fill((100, 100, 100))
 
 class SeparateNeoPixels:
     def __init__(self, channels):
