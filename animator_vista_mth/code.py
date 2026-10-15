@@ -154,159 +154,35 @@ an_running = False
 an_just_added = False
 
 ################################################################################
-# Setup the servos
+# Setup the continuous servo
+
 s_1_pin = board.GP16
 
-s_1 = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
-s_1 = servo.Servo(s_1, min_pulse=500, max_pulse=2500)
+s_1_pwm = pwmio.PWMOut(s_1_pin, duty_cycle=2 ** 15, frequency=50)
+s_1 = servo.ContinuousServo(s_1_pwm, min_pulse=1000, max_pulse=2000)
 
-p_arr = [90,90,90]
-s_arr = [s_1,s_1,s_1]
+s_1_pwm.duty_cycle = 0
 
-# Allowed dance target ranges for each snowman
-dance_min = [55, 65, 45]
-dance_max = [125, 135, 115]
-
-# Starting targets
-dance_target = [110, 75, 105]
-
-# Time between one-degree servo movements
-dance_interval = .02
-dance_enabled = [False, False, False]
-dance_task = None
 random_light_task = None
 
 
-
-def m_servo(n, p):
-    global p_arr
-
-    if p < 0:
-        p = 0
-
-    if p > 180:
-        p = 180
-
-    s_arr[n].angle = p
-    p_arr[n] = p
-
-async def move_servo(n, target, spd):
-    start_pos = p_arr[n]
-    st = time.monotonic()
-    try:
-        if target > start_pos:
-            direction = 1
-        elif target < start_pos:
-            direction = -1
-        else:
-            return
-        while True:
-            if exit_set_hdw_async:
-                return
-            elapsed = time.monotonic() - st
-            steps = int(elapsed / spd)
-            new_pos = start_pos + steps * direction
-            if direction > 0:
-                if new_pos >= target:
-                    m_servo(n, target)
-                    break
-            else:
-                if new_pos <= target:
-                    m_servo(n, target)
-                    break
-            if new_pos != p_arr[n]:
-                m_servo(n, new_pos)
-            await asyncio.sleep(0)
-    finally:
-        s_arr[n].angle = None
-
-async def dance(st, dur, seg):
-    selected = [False, False, False]
-    nums = seg.split("_")[1]
-    if "0" in nums:
-        selected = [True, True, True]
-    else:
-        for num in nums:
-            n = int(num) - 1
-            if n >= 0 and n < 3:
-                selected[n] = True
-    next_move = st
-    try:
-        while True:
-            if exit_set_hdw_async:
-                return
-            now = time.monotonic()
-            if now - st >= dur:
-                return
-            if now >= next_move:
-                next_move = now + dance_interval
-                for n in range(3):
-                    if not selected[n]:
-                        continue
-                    if p_arr[n] == dance_target[n]:
-                        dance_target[n] = random.randint(dance_min[n], dance_max[n])
-                    if p_arr[n] < dance_target[n]:
-                        m_servo(n, p_arr[n] + 1)
-                    elif p_arr[n] > dance_target[n]:
-                        m_servo(n, p_arr[n] - 1)
-            await asyncio.sleep(0)
-    finally:
-        for n in range(3):
-            if selected[n] and not dance_enabled[n]:
-                s_arr[n].angle = None
-
-async def continuous_dance():
-    global dance_task
-    next_move = time.monotonic()
-    try:
-        while True:
-            if exit_set_hdw_async:
-                return
-            if not any(dance_enabled):
-                return
-            now = time.monotonic()
-            if now >= next_move:
-                next_move = now + dance_interval
-                for n in range(3):
-                    if not dance_enabled[n]:
-                        continue
-                    if p_arr[n] == dance_target[n]:
-                        dance_target[n] = random.randint(dance_min[n], dance_max[n])
-                    if p_arr[n] < dance_target[n]:
-                        m_servo(n, p_arr[n] + 1)
-                    elif p_arr[n] > dance_target[n]:
-                        m_servo(n, p_arr[n] - 1)
-            await asyncio.sleep(0)
-    finally:
-        for n in range(3):
-            if not dance_enabled[n]:
-                s_arr[n].angle = None
-        dance_task = None
+def m_servo(throttle):
+    if throttle > 1:
+        throttle = 1
+    if throttle < -1:
+        throttle = -1
+    s_1.throttle = throttle
 
 
-async def set_dance_enabled(seg, enabled):
-    global dance_task
-    nums = seg.split("_")[1]
-    for n in range(3):
-        if "0" in nums or str(n + 1) in nums:
-            dance_enabled[n] = enabled
-            if not enabled:
-                s_arr[n].angle = None
-    if enabled:
-        if dance_task is None or dance_task.done():
-            dance_task = asyncio.create_task(continuous_dance())
-    else:
-        if not any(dance_enabled) and dance_task is not None:
-            await dance_task
+def stop_servo():
+    s_1_pwm.duty_cycle = 0
 
 def stop_continuous_effects():
     global random_light_task
-    for n in range(3):
-        dance_enabled[n] = False
+    stop_servo()
     if random_light_task is not None:
         random_light_task.cancel()
         random_light_task = None
-
 
 async def continuous_random_lights():
     global random_light_task
@@ -379,36 +255,48 @@ aud_en.value = False
 r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
+
 ################################################################################
 # Setup neo pixels
 
-n_px = 3
+n_px1 = 18
+n_px2 = 10
+n_px = n_px1 + n_px2
 
-led1 = neopixel.NeoPixel(board.GP17, 20, auto_write=False)
-led2 = neopixel.NeoPixel(board.GP22, 20, auto_write=False)
+led1 = neopixel.NeoPixel(board.GP17, n_px1, auto_write=False)
+led2 = neopixel.NeoPixel(board.GP22, n_px2, auto_write=False)
 
-led_channels = [led1,led2,led2]
-
-led1.fill((100, 100, 100))
-led2.fill((100, 100, 100))
+led_channels = [led1, led2]
 
 class SeparateNeoPixels:
     def __init__(self, channels):
         self.channels = channels
         self._brightness = 1.0
+        self.count = sum(len(channel) for channel in channels)
 
     def __len__(self):
-        return len(self.channels)
+        return self.count
 
     def __setitem__(self, index, color):
-        self.channels[index][0] = color
+        if index < 0 or index >= self.count:
+            raise IndexError("NeoPixel index out of range")
+        for channel in self.channels:
+            if index < len(channel):
+                channel[index] = color
+                return
+            index -= len(channel)
 
     def __getitem__(self, index):
-        return self.channels[index][0]
+        if index < 0 or index >= self.count:
+            raise IndexError("NeoPixel index out of range")
+        for channel in self.channels:
+            if index < len(channel):
+                return channel[index]
+            index -= len(channel)
 
     def fill(self, color):
         for channel in self.channels:
-            channel[0] = color
+            channel.fill(color)
 
     def show(self):
         for channel in self.channels:
@@ -424,13 +312,13 @@ class SeparateNeoPixels:
         for channel in self.channels:
             channel.brightness = value
 
-
 led = SeparateNeoPixels(led_channels)
 
 led.fill((255, 255, 255))
 led.show()
 
 gc_col("Neopixels setup")
+
 
 
 ################################################################################
@@ -1713,51 +1601,14 @@ async def set_hdw_async(cmd, dur=3):
         if exit_set_hdw_async:
             return "STOP"
         
-        # SNXXX = Move servo N (0=all, 1-3) to XXX degrees
-        # SNXXX_SPD = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree
-        # SNXXX_SPD_W = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree and wait till finished
-        elif seg.startswith("S") and seg[1:2].isdigit():
-            parts = seg.split("_")
-            num = int(parts[0][1])
-            v = int(parts[0][2:])
-            if num == 0:
-                for i in range(3):
-                    dance_enabled[i] = False
+        # SXXX = Set continuous servo throttle (-100 to 100)
+        # S0 = Stop servo and disable PWM
+        elif seg.startswith("S") and len(seg) > 1:
+            throttle = int(seg[1:])
+            if throttle == 0:
+                stop_servo()
             else:
-                dance_enabled[num - 1] = False
-            if len(parts) > 1:
-                spd = float(parts[1])
-                wait = False
-                if len(parts) > 2:
-                    if parts[2] == "W":
-                        wait = True
-                tasks = []
-                if num == 0:
-                    for i in range(3):
-                        tasks.append(asyncio.create_task(move_servo(i, v, spd)))
-                else:
-                    tasks.append(asyncio.create_task(move_servo(num - 1, v, spd)))
-                if wait:
-                    for task in tasks:
-                        await task
-            else:
-                if num == 0:
-                    for i in range(3):
-                        m_servo(i, v)
-                else:
-                    m_servo(num - 1, v)
-
-        # ZDANCE_N = Dance for timestamp duration (N=0 all, or combination of 1,2,3)
-        elif seg.startswith("ZDANCE_"):
-            asyncio.create_task(dance(st, dur, seg))
-
-        # ZDANCEON_N = Start continuous dancing (N=0 all, or combination of 1,2,3)
-        elif seg.startswith("ZDANCEON_"):
-            await set_dance_enabled(seg, True)
-
-        # ZDANCEOFF_N = Stop continuous dancing (N=0 all, or combination of 1,2,3)
-        elif seg.startswith("ZDANCEOFF_"):
-            await set_dance_enabled(seg, False)
+                m_servo(throttle / 100)
 
         # ZRANDON = Start continuous random lighting
         elif seg == "ZRANDON":
