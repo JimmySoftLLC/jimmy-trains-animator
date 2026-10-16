@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Animator - Snowman car</title>
+    <title>Animator - Dome car</title>
     <meta http-equiv="Content-type" content="text/html;charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="/mui.min.css" />
@@ -76,9 +76,9 @@
 <body>
     <div id="modalEl"></div>
     <div class="mui-container">
-        <h1>Animator - Snowman car</h1>
+        <h1>Animator - Dome car</h1>
         <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your Animator - Snowman car
+            Use this web app to control and setup your Animator - Dome car
             product. Have fun animating.
         </p>
         <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
@@ -371,17 +371,11 @@
                 play next in sequence, SEQF play first in sequence)</div>
             <div>MBRXXX = Music background, R repeat (0 no, 1 yes), XXX (file name) must be in first row all others
                 ignored</div>
-            <div>TXXX = Train XXX throttle -100 to 100</div>
-            <div>TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100</div>
-            <div>POS_SS_PP = Position SS throttle (0 to 100 0 home left, 100 home right) PP decimal percent</div>
-            <div>VRT = Background volume automatically tracks trolley throttle</div>
             <div>VRFXXX = Fade background volume to XXX, 0 to 100</div>
             <div>VRXXX = Set background volume to XXX, 0 to 100</div>
             <div>QCCC = add command CCC</div>
             <div>WXXX = Wait XXX decimal seconds</div>
-            <div>ZDANCE = ZDANCE_N = Dance for timestamp duration (N=0 all, or combination of 1,2,3)</div>
-            <div>ZDANCEON_N = Start continuous dancing (N=0 all, or combination of 1,2,3)</div>
-            <div>ZDANCEOFF_N = Stop continuous dancing (N=0 all, or combination of 1,2,3)</div>
+            <div>ZDANCE = Dance for timestamp duration</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
             <div>ZRANDON = Start continuous random lighting</div>
             <div>ZRANDOFF = Stop continuous random lighting</div>
@@ -389,9 +383,7 @@
             <div>ZRWBTTT = red, white, blue wheel, TTT cycle speed in decimal seconds</div>
             <div>ZFIRE = Fire</div>
             <div>ZCOLCH = Color change</div>
-            <div>SNXXX = Servo N (0 All, 1-3) XXX 0 to 180</div>
-            <div>SNXXX_SPD = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree</div>
-            <div>SNXXX_SPD_W = Move servo N (0=all, 1-3) to XXX degrees at SPD seconds per degree and wait till finished</div>
+            <div>SXXX = Continuos servo, speed XXX -100 to 100</div>
             <div>
                 <button id="saveAnimationScriptDataButton" class="mui-btn mui-btn--primary" type="button">Save
                     Animations</button>
