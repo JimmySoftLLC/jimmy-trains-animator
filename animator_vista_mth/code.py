@@ -34,7 +34,6 @@ import rtc
 import random
 import board
 import digitalio
-import busio
 import audiomp3
 import audiomixer
 import audiobusio
@@ -43,8 +42,6 @@ import gc
 import files
 import os
 import audiocore
-import sdcardio
-import storage
 from adafruit_motor import servo
 
 
@@ -74,7 +71,7 @@ gc_col("Imports gc, files")
 ################################################################################
 # Globals
 
-debug_voltage_multiplier = 3
+debug_track_voltage_multiplier = 1
 
 animations_folder = "snds/"
 mvc_folder = "mvc/"
@@ -177,12 +174,30 @@ def m_servo(throttle):
 def stop_servo():
     s_1_pwm.duty_cycle = 0
 
-def stop_continuous_effects():
+background_tasks = []
+random_light_task = None
+
+def start_background_task(coro):
+    for task in background_tasks[:]:
+        if task.done():
+            background_tasks.remove(task)
+    task = asyncio.create_task(coro)
+    background_tasks.append(task)
+    return task
+
+
+def stop_background_tasks():
     global random_light_task
+    for task in background_tasks:
+        task.cancel()
+    background_tasks.clear()
+    random_light_task = None
+
+
+def stop_continuous_effects():
     stop_servo()
-    if random_light_task is not None:
-        random_light_task.cancel()
-        random_light_task = None
+    stop_background_tasks()
+
 
 async def continuous_random_lights():
     global random_light_task
@@ -200,7 +215,9 @@ async def continuous_random_lights():
             else:
                 await fire(st, 5)
     finally:
-        random_light_task = None
+        task = asyncio.current_task()
+        if random_light_task is task:
+            random_light_task = None
 
 ################################################################################
 # Setup hardware
@@ -1232,19 +1249,19 @@ command_queue = []
 
 
 def add_cmd(command, to_start=False):
-    global exit_set_hdw_async
-    exit_set_hdw_async = False
     if to_start:
-        command_queue.insert(0, command)  # Add to the front
+        command_queue.insert(0, command)
         print("Command added to the start:", command)
     else:
-        command_queue.append(command)  # Add to the end
+        command_queue.append(command)
         print("Command added to the end:", command)
 
 
 async def process_cmd():
+    global exit_set_hdw_async
     while command_queue:
         cmd = command_queue.pop(0)
+        exit_set_hdw_async = False
         print("Processing command:", cmd)
         if cmd[:2] == 'AN':
             cmd_split = cmd.split("_")
@@ -1265,6 +1282,7 @@ def clr_cmd_queue():
 
 def stop_all_cmds(cont_mode_off=True):
     global exit_set_hdw_async
+    exit_set_hdw_async = True
     stop_continuous_effects()
     if cont_mode_off:
         cfg["cont_mode"] = False
@@ -1273,7 +1291,6 @@ def stop_all_cmds(cont_mode_off=True):
     led.fill((0, 0, 0))
     led.show()
     clr_cmd_queue()
-    exit_set_hdw_async = True
     print("Processing stopped and command queue cleared.")
 
 async def animation_wait(wait_time):
@@ -1393,9 +1410,16 @@ def add_command_to_ts(command):
 def get_track_voltage(samples=20):
     total = 0.0
     for _ in range(samples):
-        total += track_a_in.value / 65536 * 3.3 * 15.684 * debug_voltage_multiplier
+        total += track_a_in.value / 65536 * 3.3 * 15.684 * debug_track_voltage_multiplier
         time.sleep(.0017)
     return total / samples
+
+def check_light_power():
+    if get_track_voltage(3) < MIN_TRACK_VOLTAGE:
+        led.fill((0, 0, 0))
+        led.show()
+        return False
+    return True
 
 
 def rst_def():
@@ -1449,12 +1473,19 @@ async def an_light_async(f_nm):
     w0_exists = False
     flsh_i = 0
 
+    if exit_set_hdw_async:
+        an_running = False
+        return
+
     if f_exists(animations_folder + f_nm + ".json") == True:
         flsh_t = files.read_json_file(animations_folder + f_nm + ".json")
 
     if len(flsh_t) > 0:
         ft1 = flsh_t[flsh_i].split("|")
         w0_exists = await set_hdw_async(ft1[1])
+        if exit_set_hdw_async or w0_exists == "STOP":
+            an_running = False
+            return
         srt_t = time.monotonic()
         ft1 = []
         ft2 = []
@@ -1465,44 +1496,67 @@ async def an_light_async(f_nm):
     else:
         an_running = False
         return
-    
+
     while True:
+        if exit_set_hdw_async:
+            an_running = False
+            return
+
         t_elsp = time.monotonic()-srt_t
+
         if flsh_i < len(flsh_t)-1:
             ft1 = flsh_t[flsh_i].split("|")
             ft2 = flsh_t[flsh_i+1].split("|")
             dur = float(ft2[0]) - float(ft1[0]) - 0.25
         else:
             dur = 0.25
+
         if dur < 0:
             dur = 0
+
         if flsh_i < len(flsh_t)-1 and t_elsp > float(ft1[0]) - 0.25:
+            if exit_set_hdw_async:
+                an_running = False
+                return
+
             files.log_item("time elapsed: " + str(t_elsp) +
                            " Timestamp: " + ft1[0] + " Command: " + ft1[1])
+
             if len(ft1) == 1 or ft1[1] == "":
                 result = await set_hdw_async("", dur)
-                if result == "STOP":
-                    an_running = False
-                    return
             else:
                 result = await set_hdw_async(ft1[1], dur)
-                if result == "STOP":
-                    an_running = False
-                    return
+
+            if exit_set_hdw_async or result == "STOP":
+                an_running = False
+                return
+
             flsh_i += 1
+
         if (not mix.voice[0].playing and w0_exists == "w0_true") or not flsh_i < len(flsh_t)-1:
+            if exit_set_hdw_async:
+                an_running = False
+                return
+
             stop_continuous_effects()
             mix.voice[0].stop()
             mix.voice[1].stop()
+
             result = await set_hdw_async("TA_0_2", 0)
+            if exit_set_hdw_async or result == "STOP":
+                an_running = False
+                return
+
             result = await set_hdw_async("VR100", 0)
             an_running = False
             return
+
         upd_vol(0)
+
         if await animation_wait(.1):
-            result = await set_hdw_async("TA_0_2", 0)
-            result = await set_hdw_async("VR100", 0)
+            an_running = False
             return
+
 
 
 def add_command_to_ts(command):
@@ -1572,8 +1626,8 @@ h_media_file_index = 0
 
 def set_hdw_not_async(seg):
     global brightness
-
-    # lights LNZZZ_R_G_B = Neo pixel lights ZZZ (0 All, 1 to 999) RGB 0 to 255
+    if not check_light_power():
+        return
     if seg[:2] == 'LN':
         seg_split = seg.split("_")
         light_n = int(seg_split[0][2:])-1
@@ -1581,8 +1635,6 @@ def set_hdw_not_async(seg):
         g = int(seg_split[2])
         b = int(seg_split[3])
         set_neo_to(light_n, r, g, b)
-
-    # BXXX = Brightness XXX 0 to 100
     elif seg[0] == 'B':
         brightness = int(seg[1:])
         led.brightness = float(brightness / 100)
@@ -1600,6 +1652,8 @@ async def set_hdw_async(cmd, dur=3):
     for seg in segs:
         if exit_set_hdw_async:
             return "STOP"
+        if not check_light_power():
+            return "LOW_POWER"
         
         # SXXX = Set continuous servo throttle (-100 to 100)
         # S0 = Stop servo and disable PWM
@@ -1613,7 +1667,7 @@ async def set_hdw_async(cmd, dur=3):
         # ZRANDON = Start continuous random lighting
         elif seg == "ZRANDON":
             if random_light_task is None:
-                random_light_task = asyncio.create_task(continuous_random_lights())
+                random_light_task = start_background_task(continuous_random_lights())
 
         # ZRANDOFF = Stop continuous random lighting
         elif seg == "ZRANDOFF":
@@ -1628,12 +1682,12 @@ async def set_hdw_async(cmd, dur=3):
         # ZRWBTTT = red, white, blue wheel, TTT cycle speed in decimal seconds
         elif seg[:4] == 'ZRWB':
             v = float(seg[4:])
-            asyncio.create_task(rwb_bow(st, v, dur))
+            start_background_task(rwb_bow(st, v, dur))
 
         # ZRTTT = Rainbow, TTT cycle speed in decimal seconds
         elif seg[:2] == 'ZR':
             v = float(seg[2:])
-            asyncio.create_task(rbow(st, v, dur))
+            start_background_task(rbow(st, v, dur))
 
         # ZFIRE_R_G_B = Fire effect R, G, B, (0-255 or None)
         elif seg.startswith("ZFIRE"):
@@ -1647,7 +1701,7 @@ async def set_hdw_async(cmd, dur=3):
                 g = int(parts[2])
             if len(parts) > 3 and parts[3] != "None":
                 b = int(parts[3])
-            asyncio.create_task(fire(st, dur, r, g, b))
+            start_background_task(fire(st, dur, r, g, b))
 
         # ZCOLCH_R_G_B_C = Color change R, G, B, (0-255 or None), C one color (True or False)
         elif seg.startswith("ZCOLCH"):
@@ -1775,14 +1829,17 @@ async def set_hdw_async(cmd, dur=3):
         elif seg[0] == 'F':
             target_brightness = int(seg[1:])
             while brightness != target_brightness:
+                if exit_set_hdw_async:
+                    return "STOP"
+                if not check_light_power():
+                    return "LOW_POWER"
                 if brightness < target_brightness:
                     brightness += 1
-                    led.brightness = float(brightness / 100)
                 else:
                     brightness -= 1
-                    led.brightness = float(brightness / 100)
+                led.brightness = float(brightness / 100)
                 led.show()
-                time.sleep(.01)
+                await asyncio.sleep(.01)
 
         elif seg[0] == 'W':
             s = float(seg[1:])
@@ -1810,15 +1867,16 @@ def set_neo_to(light_n, r, g, b):
 def random_effect(st, il, ih, dur):
     i = random.randint(il, ih)
     if i == 1:
-        asyncio.create_task(rbow(st, 0.012, dur))
+        start_background_task(rbow(st, 0.012, dur))
     elif i == 2:
         multi_color()
     elif i == 3:
-        asyncio.create_task(fire(st, dur))
+        start_background_task(fire(st, dur))
 
 
 async def rbow(st, spd, dur):
     last_j = -1
+    next_power_check = 0
     while True:
         if exit_set_hdw_async:
             return
@@ -1826,6 +1884,10 @@ async def rbow(st, spd, dur):
         elapsed = now - st
         if elapsed >= dur:
             return
+        if now >= next_power_check:
+            if not check_light_power():
+                return
+            next_power_check = now + .05
         j = int(elapsed / spd) & 255
         if j != last_j:
             last_j = j
@@ -1853,6 +1915,7 @@ def red_white_blue_wheel(pos):
 
 async def rwb_bow(st, spd, dur):
     last_j = -1
+    next_power_check = 0
     while True:
         if exit_set_hdw_async:
             return
@@ -1860,6 +1923,10 @@ async def rwb_bow(st, spd, dur):
         elapsed = now - st
         if elapsed >= dur:
             return
+        if now >= next_power_check:
+            if not check_light_power():
+                return
+            next_power_check = now + .05
         j = int(elapsed / spd) & 255
         if j != last_j:
             last_j = j
@@ -1901,6 +1968,7 @@ def multi_color(r=None, g=None, b=None, set_one_color=True):
 
 async def fire(st, dur, r=None, g=None, b=None):
     next_change = st
+    next_power_check = 0
     if r is None:
         r = random.randint(128, 255)
     if g is None:
@@ -1913,6 +1981,10 @@ async def fire(st, dur, r=None, g=None, b=None):
         now = time.monotonic()
         if now - st >= dur:
             return
+        if now >= next_power_check:
+            if not check_light_power():
+                return
+            next_power_check = now + .05
         if now >= next_change:
             next_change = now + random.uniform(0.05, 0.1)
             for i in range(n_px):
@@ -2021,55 +2093,55 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global an_just_added, MIN_TRACK_VOLTAGE
-        if an_running:
-            return
-        sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
-        spoken = False
-        if sw == "none":
-            if get_track_voltage() < MIN_TRACK_VOLTAGE:
-                led.fill((0, 0, 0))
-                led.show()
-                power_off_start = time.monotonic()
-                while get_track_voltage() < MIN_TRACK_VOLTAGE:
-                    power_off_time = time.monotonic() - power_off_start
-                    if not cfg["cont_mode"] and not cfg["museum_mode"]:
-                        if power_off_time > 1 and power_off_time < 3 and not spoken:
-                            spoken = True
-                            ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
-                power_off_time = time.monotonic() - power_off_start
-                if power_off_time <= 1:
-                    sw = "left"
-                elif power_off_time > 1 and power_off_time < 3:
-                    if not cfg["museum_mode"]:
-                        sw = "left_held"
-                else:
-                    led.fill((1, 1, 1))
+            global an_just_added, MIN_TRACK_VOLTAGE
+            if an_running:
+                return
+            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
+            spoken = False
+            if sw == "none":
+                if get_track_voltage() < MIN_TRACK_VOLTAGE:
+                    led.fill((0, 0, 0))
                     led.show()
-        if sw == "left":
-            if not mix.voice[0].playing and not an_running and not an_just_added:
+                    power_off_start = time.monotonic()
+                    while get_track_voltage() < MIN_TRACK_VOLTAGE:
+                        power_off_time = time.monotonic() - power_off_start
+                        if not cfg["cont_mode"] and not cfg["museum_mode"]:
+                            if power_off_time > 1 and power_off_time < 3 and not spoken:
+                                spoken = True
+                                ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
+                    power_off_time = time.monotonic() - power_off_start
+                    if power_off_time <= 1 and power_off_time > .2:
+                        sw = "left"
+                    elif power_off_time > 1 and power_off_time < 3:
+                        if not cfg["museum_mode"]:
+                            sw = "left_held"
+                    else:
+                        led.fill((1, 1, 1))
+                        led.show()
+            if sw == "left":
+                if not mix.voice[0].playing and not an_running and not an_just_added:
+                    add_cmd("AN_" + cfg["option_selected"])
+                    an_just_added = True
+            elif sw == "left_held":
+                if not cfg["cont_mode"]:
+                    if spoken:
+                        time.sleep(1)
+                        while mix.voice[1].playing:
+                            time.sleep(.1)
+                    else:
+                        ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
+                        time.sleep(1)
+                        while mix.voice[1].playing:
+                            time.sleep(.1)
+                    cfg["cont_mode"] = True
+                    save_cfg_safely()
+            elif sw == "right":
+                if not mix.voice[0].playing:
+                    mch.go_to("main_menu")
+            if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
                 add_cmd("AN_" + cfg["option_selected"])
                 an_just_added = True
-        elif sw == "left_held":
-            if not cfg["cont_mode"]:
-                if spoken:
-                    time.sleep(1)
-                    while mix.voice[1].playing:
-                        time.sleep(.1)
-                else:
-                    ply_a_1(mvc_folder_local + "continuous_mode_activated.mp3", wait=False)
-                    time.sleep(1)
-                    while mix.voice[1].playing:
-                        time.sleep(.1)
-                cfg["cont_mode"] = True
-                save_cfg_safely()
-        elif sw == "right":
-            if not mix.voice[0].playing:
-                mch.go_to("main_menu")
-        if cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
-            add_cmd("AN_" + cfg["option_selected"])
-            an_just_added = True
-
+    
 
 class Main(Ste):
 
