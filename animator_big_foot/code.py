@@ -111,6 +111,10 @@ def rnd_prob(random_value):
 ################################################################################
 # Servo methods
 
+def servos_off():
+    for s in servo_arr:
+        s.angle = None
+
 
 def move_at_speed(n, new_position, speed):
     global prev_pos_arr
@@ -189,30 +193,29 @@ def an():
         if rnd_prob(.4):
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
-            move_at_speed(1, cfg["forward"],
-                          cfg["staring_speed"])
+            move_at_speed(1, cfg["forward"], cfg["staring_speed"])
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
             move_at_speed(1, cfg["backward"], cfg["turning_speed"])
         asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"] + cfg["swagger"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     else:  # peek to see if someone is there
-        peek_pos = int((cfg["visible"]-cfg["hidden"])
-                       * cfg["peek"]+cfg["hidden"])
+        peek_pos = int((cfg["visible"] - cfg["hidden"]) * cfg["peek"] + cfg["hidden"])
         asyncio.run(swagger_walk(peek_pos, cfg["peek_rotation"]))
         rand_timer = random.uniform(1.0, 5.0)
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
         asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"] + cfg["swagger"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+    servos_off()
 
 
 ################################################################################
 # animations
 
 def show_mode(cycles, stay_at_middle=False):
-    middle_point = int((cfg["visible"]+cfg["hidden"])/2)
-    show_mode_point = int((middle_point+cfg["visible"])/2)
+    middle_point = int((cfg["visible"] + cfg["hidden"]) / 2)
+    show_mode_point = int((middle_point + cfg["visible"]) / 2)
     show_mode_spd = 0.04
     move_at_speed(0, middle_point, show_mode_spd)
     time.sleep(1)
@@ -232,8 +235,8 @@ def show_timer_mode():
 
 
 def show_timer_program_option(cycles):
-    middle_point = int((cfg["forward"] + cfg["backward"])/2)
-    show_mode_point = int((middle_point + cfg["forward"])/2)
+    middle_point = int((cfg["forward"] + cfg["backward"]) / 2)
+    show_mode_point = int((middle_point + cfg["forward"]) / 2)
     move_at_speed(1, cfg["forward"], cfg["turning_speed"])
     for _ in range(cycles):
         move_at_speed(1, show_mode_point, cfg["turning_speed"])
