@@ -403,20 +403,21 @@
             </div>
         </div>
         <div class="mui-tabs__pane" id="files" style="padding-top:0.5rem;">
-            <h2>My sound tracks:</h2>
-            <div id="myTracksContainer"></div>
             <h2>Sound file manager:</h2>
             <p>Selected Pico folder:</p>
             <div>
                 <strong id="selectedFolder">snds/</strong>
             </div>
-            <button class="mui-btn mui-btn--primary" type="button" onclick="choosePicoFolder()">Choose Folder</button>
+            <button class="mui-btn mui-btn--primary" type="button" onclick="choosePicoFolder()">
+                Choose Folder
+            </button>
             <div class="mui-textfield">
                 <label>Upload location:</label>
                 <input type="text" id="uploadLocation" value="snds/" placeholder="Save location">
             </div>
             <div>
                 <input type="file" id="soundFile" style="display:none;" onchange="uploadSound()">
+
                 <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button"
                     onclick="document.getElementById('soundFile').click()">
                     Upload File
@@ -542,8 +543,8 @@
         try {
             const response = await fetch("/get-folders", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({path: browsingPicoFolder})
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: browsingPicoFolder })
             });
 
             if (!response.ok) {
@@ -592,8 +593,8 @@
         try {
             const response = await fetch("/check-folder", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({path: browsingPicoFolder})
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: browsingPicoFolder })
             });
             const result = await response.text();
 
@@ -612,7 +613,6 @@
     function closePicoFolderDialog() {
         mui.overlay("off");
     }
-
 
     async function refreshSoundFiles() {
         const container = document.getElementById("soundFilesContainer");
@@ -645,24 +645,159 @@
                 name.textContent = filename;
                 name.style.display = "inline-block";
                 name.style.minWidth = "300px";
+                row.appendChild(name);
+
+                const lowerName = filename.toLowerCase();
+
+                if (lowerName.endsWith(".mp3") || lowerName.endsWith(".wav")) {
+                    const playButton = document.createElement("button");
+                    playButton.type = "button";
+                    playButton.className = "mui-btn mui-btn--primary";
+                    playButton.textContent = "Play";
+                    playButton.addEventListener("click", function () {
+                        playSoundFile(filename);
+                    });
+                    row.appendChild(playButton);
+
+                    const stopButton = document.createElement("button");
+                    stopButton.type = "button";
+                    stopButton.className = "mui-btn mui-btn--primary";
+                    stopButton.textContent = "Stop";
+                    stopButton.addEventListener("click", function () {
+                        stopSoundFile();
+                    });
+                    row.appendChild(stopButton);
+                }
+
+                const downloadButton = document.createElement("button");
+                downloadButton.type = "button";
+                downloadButton.className = "mui-btn mui-btn--primary";
+                downloadButton.textContent = "Download";
+                downloadButton.addEventListener("click", function () {
+                    downloadSoundFile(filename);
+                });
+                row.appendChild(downloadButton);
 
                 const deleteButton = document.createElement("button");
                 deleteButton.type = "button";
                 deleteButton.className = "mui-btn mui-btn--primary";
                 deleteButton.textContent = "Delete";
-
                 deleteButton.addEventListener("click", function () {
                     deleteSoundFile(filename);
                 });
-
-                row.appendChild(name);
                 row.appendChild(deleteButton);
+
                 container.appendChild(row);
             });
 
         } catch (error) {
             console.log(error);
             container.innerHTML = "Unable to load files.";
+        }
+    }
+
+
+    async function playSoundFile(filename) {
+        const status = document.getElementById("uploadStatus");
+        const folder = selectedPicoFolder;
+
+        status.innerText = "Playing " + filename + "...";
+
+        try {
+            const response = await fetch("/play-sound-file", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    filename: filename,
+                    path: folder
+                })
+            });
+
+            const result = (await response.text()).trim();
+
+            if (result == "success") {
+                status.innerText = "Playing: " + filename;
+            } else {
+                status.innerText = "Play failed: " + result;
+                console.log("Play failed:", result);
+            }
+
+        } catch (error) {
+            console.log("Play sound error:", error);
+            status.innerText = "Unable to play: " + filename;
+        }
+    }
+
+    async function downloadSoundFile(filename) {
+        const status = document.getElementById("uploadStatus");
+
+        status.innerText = "Downloading " + filename + "...";
+
+        try {
+            const url = "/download-file?filename=" +
+                encodeURIComponent(filename) +
+                "&path=" +
+                encodeURIComponent(selectedPicoFolder);
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error("Download request failed");
+            }
+
+            let blob;
+
+            if (filename.toLowerCase().endsWith(".json")) {
+                const text = await response.text();
+                const jsonData = JSON.parse(text);
+                const formattedJson = JSON.stringify(jsonData, null, 4);
+                blob = new Blob([formattedJson + "\n"], {
+                    type: "application/json"
+                });
+            } else {
+                blob = await response.blob();
+            }
+
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = downloadUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            URL.revokeObjectURL(downloadUrl);
+
+            status.innerText = "Downloaded: " + filename;
+
+        } catch (error) {
+            console.log("Download error:", error);
+            status.innerText = "Download failed: " + filename;
+        }
+    }
+
+    async function stopSoundFile() {
+        const status = document.getElementById("uploadStatus");
+
+        try {
+            const response = await fetch("/stop-sound-file", {
+                method: "POST"
+            });
+
+            const result = await response.text();
+
+            if (result == "success") {
+                status.innerText = "Playback stopped.";
+            } else {
+                status.innerText = "Unable to stop playback.";
+            }
+
+        } catch (error) {
+            console.log(error);
+            status.innerText = "Unable to stop playback.";
         }
     }
 

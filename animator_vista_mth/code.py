@@ -1157,7 +1157,88 @@ if web:
                 print("Delete sound file error:", e)
                 return Response(request, "error")
 
+        @server.route("/play-sound-file", [POST])
+        def play_sound_file(request: Request):
+            global preview_audio
+            try:
+                rq_d = request.json()
+                filename = rq_d["filename"]
+                path = rq_d["path"].replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "invalid path")
+                if filename in ("", ".", ".."):
+                    return Response(request, "invalid filename")
+                if "/" in filename or "\\" in filename:
+                    return Response(request, "invalid filename")
+                lower_name = filename.lower()
+                if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
+                    return Response(request, "invalid file type")
+                file_path = path.rstrip("/") + "/" + filename
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+                if an_running:
+                    return Response(request, "animation running")
+                if mix.voice[1].playing and not preview_audio:
+                    return Response(request, "audio busy")
+                preview_audio = False
+                mix.voice[1].stop()
+                ply_a_1(file_path, wait=False)
+                preview_audio = True
+                return Response(request, "success")
+            except Exception as e:
+                preview_audio = False
+                print("Play sound error:", e)
+                return Response(request, "error")
 
+        @server.route("/download-file")
+        def download_file(request: Request):
+            try:
+                filename = request.query_params.get("filename", "")
+                path = request.query_params.get("path", animations_folder)
+
+                filename = url_decode(filename)
+                path = url_decode(path)
+                path = path.replace("\\", "/")
+
+                if not path.startswith("/"):
+                    path = "/" + path
+
+                if ".." in path.split("/"):
+                    return Response(request, "invalid path", status=400)
+
+                if filename in ("", ".", ".."):
+                    return Response(request, "invalid filename", status=400)
+
+                if "/" in filename or "\\" in filename:
+                    return Response(request, "invalid filename", status=400)
+
+                file_path = path.rstrip("/") + "/" + filename
+
+                if not f_exists(file_path):
+                    return Response(request, "file not found", status=404)
+
+                if os.stat(file_path)[0] & 0x4000:
+                    return Response(request, "cannot download directory", status=400)
+
+                print("Downloading:", file_path)
+
+                return FileResponse(request, file_path, "/")
+
+            except Exception as e:
+                print("Download error:", e)
+                return Response(request, "download error", status=500)
+
+        @server.route("/stop-sound-file", [POST])
+        def stop_sound_file(request: Request):
+            try:
+                if not an_running:
+                    mix.voice[1].stop()
+                return Response(request, "success")
+            except Exception as e:
+                print("Stop sound error:", e)
+                return Response(request, "error")
 
         @server.route("/upload-sound", [POST])
         def upload_sound(request: Request):
