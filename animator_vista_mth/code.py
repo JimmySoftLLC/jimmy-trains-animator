@@ -827,6 +827,52 @@ if web:
                 st_mch.go_to('base_state')
             return Response(request, "Utility: " + rq_d["an"])
 
+
+        @server.route("/get-folders", [POST])
+        def get_folders(request: Request):
+            try:
+                rq_d = request.json()
+                path = rq_d.get("path", "/")
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "[]")
+                folders = []
+                for name in os.listdir(path):
+                    if name.startswith("."):
+                        continue
+                    full_path = path.rstrip("/") + "/" + name
+                    try:
+                        if os.stat(full_path)[0] & 0x4000:
+                            folders.append(name)
+                    except OSError:
+                        pass
+                folders.sort()
+                return Response(request, files.json_stringify(folders))
+            except Exception as e:
+                print("Get folders error:", e)
+                return Response(request, "[]")
+
+
+        @server.route("/check-folder", [POST])
+        def check_folder(request: Request):
+            try:
+                rq_d = request.json()
+                path = rq_d.get("path", "/")
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "invalid")
+                os.listdir(path)
+                print("Folder selected:", path)
+                return Response(request, "success")
+            except Exception as e:
+                print("Check folder error:", e)
+                return Response(request, "invalid")
+
+
         @server.route("/mode", [POST])
         def btn(request: Request):
             global ts_mode
@@ -1056,17 +1102,29 @@ if web:
                 return Response(request, "out of memory")
             return Response(request, "success")
 
+
         @server.route("/get-sound-files", [POST])
         def get_sound_files(request: Request):
             try:
+                rq_d = request.json()
+                path = rq_d.get("path", animations_folder)
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "[]")
                 sound_files = []
-                for filename in os.listdir(animations_folder):
-                    lower_name = filename.lower()
-                    if lower_name.endswith(".mp3") or lower_name.endswith(".wav"):
-                        sound_files.append(filename)
+                for filename in os.listdir(path):
+                    if filename.startswith("."):
+                        continue
+                    full_path = path.rstrip("/") + "/" + filename
+                    try:
+                        if not os.stat(full_path)[0] & 0x4000:
+                            sound_files.append(filename)
+                    except OSError:
+                        pass
                 sound_files.sort()
                 return Response(request, files.json_stringify(sound_files))
-
             except Exception as e:
                 print("Get sound files error:", e)
                 return Response(request, "[]")
@@ -1077,22 +1135,28 @@ if web:
             try:
                 rq_d = request.json()
                 filename = rq_d["filename"]
-                filename = filename.replace("\\", "/")
-                filename = filename.split("/")[-1]
-                if not filename:
+                path = rq_d.get("path", animations_folder)
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if filename in ("", ".", ".."):
                     return Response(request, "invalid filename")
-                lower_name = filename.lower()
-                if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
-                    return Response(request, "invalid file type")
-                file_path = animations_folder + filename
+                if "/" in filename or "\\" in filename:
+                    return Response(request, "invalid filename")
+                if ".." in path.split("/"):
+                    return Response(request, "invalid path")
+                file_path = path.rstrip("/") + "/" + filename
                 if not f_exists(file_path):
                     return Response(request, "file not found")
+                if os.stat(file_path)[0] & 0x4000:
+                    return Response(request, "cannot delete directory")
                 os.remove(file_path)
-                print("Deleted sound file:", filename)
+                print("Deleted file:", file_path)
                 return Response(request, "success")
             except Exception as e:
                 print("Delete sound file error:", e)
                 return Response(request, "error")
+
 
 
         @server.route("/upload-sound", [POST])

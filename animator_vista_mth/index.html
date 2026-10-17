@@ -406,7 +406,13 @@
             <h2>My sound tracks:</h2>
             <div id="myTracksContainer"></div>
             <h2>Sound file manager:</h2>
+            <p>Selected Pico folder:</p>
             <div>
+                <strong id="selectedFolder">snds/</strong>
+            </div>
+            <button class="mui-btn mui-btn--primary" type="button" onclick="choosePicoFolder()">Choose Folder</button>
+            <div class="mui-textfield">
+                <label>Upload location:</label>
                 <input type="text" id="uploadLocation" value="snds/" placeholder="Save location">
             </div>
             <div>
@@ -417,7 +423,7 @@
                 </button>
             </div>
             <div id="uploadStatus" style="padding-top:0.5rem;"></div>
-            <h3>Sound files:</h3>
+            <h3>Files:</h3>
             <div id="soundFilesContainer"></div>
         </div>
     </div>
@@ -472,12 +478,144 @@
         getVolume()
         getAnimations()
         getTrackVoltage()
-        refreshSoundFiles()
+        setSelectedPicoFolder("snds/")
     });
+
+
+    let selectedPicoFolder = "snds/";
+    let browsingPicoFolder = "/";
+
+    function normalizePicoFolder(path) {
+        path = path.replace(/\\/g, "/");
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        if (!path.endsWith("/")) {
+            path += "/";
+        }
+        return path;
+    }
+
+    function setSelectedPicoFolder(path) {
+        selectedPicoFolder = normalizePicoFolder(path);
+        document.getElementById("selectedFolder").textContent = selectedPicoFolder;
+        document.getElementById("uploadLocation").value = selectedPicoFolder;
+        refreshSoundFiles();
+    }
+
+    function choosePicoFolder() {
+        browsingPicoFolder = normalizePicoFolder(selectedPicoFolder);
+
+        const dialog = document.createElement("div");
+        dialog.className = "mui-container";
+        dialog.id = "picoFolderDialog";
+        dialog.style.width = "min(450px, 90vw)";
+        dialog.style.maxHeight = "80vh";
+        dialog.style.overflowY = "auto";
+        dialog.style.margin = "50px auto";
+        dialog.style.backgroundColor = "#fff";
+        dialog.style.padding = "20px";
+        dialog.style.borderRadius = "5px";
+
+        dialog.innerHTML = `
+            <h3>Select Pico Folder</h3>
+            <p id="picoBrowsePath"></p>
+            <div id="picoFolderList"></div>
+            <button class="mui-btn mui-btn--primary"
+                onclick="selectPicoFolder()">Select This Folder</button>
+            <button class="mui-btn" onclick="closePicoFolderDialog()">
+                Cancel
+            </button>
+        `;
+
+        mui.overlay("on", dialog);
+        browsePicoFolder(browsingPicoFolder);
+    }
+
+    async function browsePicoFolder(path) {
+        browsingPicoFolder = normalizePicoFolder(path);
+        document.getElementById("picoBrowsePath").textContent = browsingPicoFolder;
+
+        const container = document.getElementById("picoFolderList");
+        container.textContent = "Loading...";
+
+        try {
+            const response = await fetch("/get-folders", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({path: browsingPicoFolder})
+            });
+
+            if (!response.ok) {
+                throw new Error("Folder request failed");
+            }
+
+            const folders = await response.json();
+            container.innerHTML = "";
+
+            if (browsingPicoFolder != "/") {
+                const upButton = document.createElement("button");
+                upButton.className = "mui-btn";
+                upButton.textContent = ".. (Parent Folder)";
+                upButton.style.display = "block";
+                upButton.onclick = function () {
+                    const parts = browsingPicoFolder.split("/").filter(Boolean);
+                    parts.pop();
+                    browsePicoFolder("/" + parts.join("/") + "/");
+                };
+                container.appendChild(upButton);
+            }
+
+            folders.forEach(function (folder) {
+                const button = document.createElement("button");
+                button.className = "mui-btn";
+                button.style.display = "block";
+                button.textContent = "📁 " + folder;
+                button.onclick = function () {
+                    browsePicoFolder(browsingPicoFolder + folder + "/");
+                };
+                container.appendChild(button);
+            });
+
+            if (folders.length == 0) {
+                const message = document.createElement("p");
+                message.textContent = "No subfolders.";
+                container.appendChild(message);
+            }
+        } catch (error) {
+            console.log(error);
+            container.textContent = "Unable to browse folders.";
+        }
+    }
+
+    async function selectPicoFolder() {
+        try {
+            const response = await fetch("/check-folder", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({path: browsingPicoFolder})
+            });
+            const result = await response.text();
+
+            if (result != "success") {
+                alert("Folder is not available.");
+                return;
+            }
+
+            setSelectedPicoFolder(browsingPicoFolder);
+            closePicoFolderDialog();
+        } catch (error) {
+            alert("Unable to select folder.");
+        }
+    }
+
+    function closePicoFolderDialog() {
+        mui.overlay("off");
+    }
+
 
     async function refreshSoundFiles() {
         const container = document.getElementById("soundFilesContainer");
-
         container.innerHTML = "Loading...";
 
         try {
@@ -485,16 +623,17 @@
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
-                }
+                },
+                body: JSON.stringify({
+                    path: selectedPicoFolder
+                })
             });
 
-            const data = await response.text();
-            const soundFiles = JSON.parse(data);
-
+            const soundFiles = await response.json();
             container.innerHTML = "";
 
             if (soundFiles.length == 0) {
-                container.innerHTML = "No sound files.";
+                container.innerHTML = "No files in selected folder.";
                 return;
             }
 
@@ -518,21 +657,21 @@
 
                 row.appendChild(name);
                 row.appendChild(deleteButton);
-
                 container.appendChild(row);
             });
 
         } catch (error) {
             console.log(error);
-            container.innerHTML = "Unable to load sound files.";
+            container.innerHTML = "Unable to load files.";
         }
     }
 
 
     async function deleteSoundFile(filename) {
         const status = document.getElementById("uploadStatus");
+        const folder = selectedPicoFolder;
 
-        if (!confirm("Delete " + filename + "?")) {
+        if (!confirm("Delete " + folder + filename + "?")) {
             return;
         }
 
@@ -545,7 +684,8 @@
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    filename: filename
+                    filename: filename,
+                    path: folder
                 })
             });
 
