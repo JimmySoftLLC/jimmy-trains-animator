@@ -101,6 +101,11 @@ media_index = {'A': 0, 'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
 
 cfg = files.read_json_file("/cfg.json")
 
+if "servo_center" not in cfg:
+    cfg["servo_center"] = -0.08
+if "servo_max_speed" not in cfg:
+    cfg["servo_max_speed"] = 0.80
+
 snd_opt = []
 menu_snd_opt = []
 
@@ -164,6 +169,14 @@ random_light_task = None
 
 
 def m_servo(throttle):
+    if throttle == 0:
+        stop_servo()
+        return
+    if throttle > 1:
+        throttle = 1
+    if throttle < -1:
+        throttle = -1
+    throttle = cfg["servo_center"] + throttle * cfg["servo_max_speed"]
     if throttle > 1:
         throttle = 1
     if throttle < -1:
@@ -1078,6 +1091,37 @@ if web:
             else:
                 f_n = "/t_s_def/timestamp mode.json"
                 return FileResponse(request, f_n, "/")
+
+        @server.route("/get-servo-settings", [POST])
+        def get_servo_settings(request: Request):
+            data = {
+                "center": cfg["servo_center"],
+                "max_speed": cfg["servo_max_speed"]
+            }
+            return Response(request, files.json_stringify(data))
+
+        @server.route("/update-servo-settings", [POST])
+        def update_servo_settings(request: Request):
+            try:
+                rq_d = request.json()
+                center = float(rq_d["center"])
+                max_speed = float(rq_d["max_speed"])
+                if center < -1 or center > 1:
+                    return Response(request, "invalid center")
+                if max_speed <= 0 or max_speed > 1:
+                    return Response(request, "invalid max speed")
+                if center - max_speed < -1:
+                    return Response(request, "reverse range exceeds limit")
+                if center + max_speed > 1:
+                    return Response(request, "forward range exceeds limit")
+                stop_servo()
+                cfg["servo_center"] = center
+                cfg["servo_max_speed"] = max_speed
+                save_cfg_safely()
+                return Response(request, "success")
+            except Exception as e:
+                print("Servo settings error:", e)
+                return Response(request, "error")
 
         data = []
 

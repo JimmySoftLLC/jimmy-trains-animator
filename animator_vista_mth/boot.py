@@ -3,7 +3,7 @@ import board
 import digitalio
 
 # Setup the switches
-right_sw_pin = board.GP15
+right_sw_pin = board.GP3
 
 right_sw = digitalio.DigitalInOut(right_sw_pin)
 right_sw.direction = digitalio.Direction.INPUT

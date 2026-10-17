@@ -288,6 +288,19 @@
                     Museum Mode Off
                 </button>
             </div>
+            <h2>Continuous Servo Calibration:</h2>
+            <div class="mui-textfield">
+                <label>Servo Center (-1 to 1):</label>
+                <input type="number" id="servoCenter" value="-0.08" min="-1" max="1" step="0.01">
+            </div>
+            <div class="mui-textfield">
+                <label>Servo Max Speed (0 to 1):</label>
+                <input type="number" id="servoMaxSpeed" value="0.80" min="0.01" max="1" step="0.01">
+            </div>
+            <button class="mui-btn mui-btn--primary" type="button" onclick="saveServoSettings()">
+                Save Servo Settings
+            </button>
+            <div id="servoSettingsStatus"></div>
             <h2>Utilities:</h2>
             <button class="mui-btn mui-btn--primary animator-action" data-value="speaker_test" data-url="/speaker"
                 type="button">
@@ -480,6 +493,7 @@
         getAnimations()
         getTrackVoltage()
         setSelectedPicoFolder("snds/")
+        getServoSettings()
     });
 
 
@@ -531,6 +545,58 @@
 
         mui.overlay("on", dialog);
         browsePicoFolder(browsingPicoFolder);
+    }
+
+    async function getServoSettings() {
+        try {
+            const response = await fetch("/get-servo-settings", {
+                method: "POST"
+            });
+
+            const data = await response.json();
+
+            document.getElementById("servoCenter").value = data.center;
+            document.getElementById("servoMaxSpeed").value = data.max_speed;
+
+        } catch (error) {
+            console.log("Get servo settings error:", error);
+        }
+    }
+
+    async function saveServoSettings() {
+        const status = document.getElementById("servoSettingsStatus");
+        const center = Number(document.getElementById("servoCenter").value);
+        const maxSpeed = Number(document.getElementById("servoMaxSpeed").value);
+
+        if (!Number.isFinite(center) || !Number.isFinite(maxSpeed)) {
+            status.innerText = "Invalid servo settings.";
+            return;
+        }
+
+        try {
+            const response = await fetch("/update-servo-settings", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    center: center,
+                    max_speed: maxSpeed
+                })
+            });
+
+            const result = (await response.text()).trim();
+
+            if (result == "success") {
+                status.innerText = "Servo settings saved.";
+            } else {
+                status.innerText = "Save failed: " + result;
+            }
+
+        } catch (error) {
+            console.log("Save servo settings error:", error);
+            status.innerText = "Unable to save servo settings.";
+        }
     }
 
     async function browsePicoFolder(path) {
