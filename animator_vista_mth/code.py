@@ -573,8 +573,8 @@ async def no_trk():
 def spk_web():
     ply_a_0(mvc_folder + "animator_available_on_network.mp3")
     ply_a_0(mvc_folder + "to_access_type.mp3")
-    if cfg["HOST_NAME"] == "animator-snowman-car":
-        ply_a_0(mvc_folder + "animator_snowman_car.mp3")
+    if cfg["HOST_NAME"] == "animator-dome-car":
+        ply_a_0(mvc_folder + "animator_dome_car.mp3")
         ply_a_0(mvc_folder + "dot.mp3")
         ply_a_0(mvc_folder + "local.mp3")
     else:
@@ -1615,7 +1615,7 @@ def rst_def():
     cfg["option_selected"] = "random all"
     cfg["cont_mode"] = False
     cfg["volume"] = "50"
-    cfg["HOST_NAME"] = "animator-snowman-car"
+    cfg["HOST_NAME"] = "animator-dome-car"
     cfg["serve_webpage"] = True
     cfg["museum_mode"] = False
 
@@ -2609,14 +2609,15 @@ if (web):
         led.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         dbm_string = str(-int(avg_rssi))+"dbm"
-        spk_str(dbm_string, False)
-        spk_web()
+        try:
+            spk_str(dbm_string, False)
+            spk_web()
+        except Exception as e:
+            files.log_item(e)
     except Exception as e:
         files.log_item(e)
-        # time.sleep(5)
-        files.log_item("restarting...")
         web = False
-        # rst()
+
 else:
     led2[0] = (255, 0, 0)
     led.show()
