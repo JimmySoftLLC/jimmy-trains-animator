@@ -92,6 +92,9 @@ srt_t = time.monotonic()
 ################################################################################
 # Servo methods
 
+def servos_off():
+    for s in servo_arr:
+        s.angle = None
 
 def move_at_speed(n, new_position, speed):
     global prev_pos_arr
@@ -128,6 +131,7 @@ def an():
     s_1_wiggle_movement(0, cfg["wiggle_pos"], cyc, cfg["wiggle_speed"])
     time.sleep(.1)
     move_at_speed(0, cfg["cast_pos"], cfg["cast_speed"])
+    servos_off()
 
 
 def show_mode(cycles):
