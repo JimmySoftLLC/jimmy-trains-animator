@@ -102,15 +102,15 @@ prev_pos_arr = [cfg["hidden"], cfg["forward"]]
 servo_arr = [servo_1, servo_2]
 
 # Setup the switches
-left_sw = digitalio.DigitalInOut(left_sw_pin)
-left_sw.direction = digitalio.Direction.INPUT
-left_sw.pull = digitalio.Pull.UP
-left_sw = Debouncer(left_sw)
+left_sw_io = digitalio.DigitalInOut(left_sw_pin)
+left_sw_io.direction = digitalio.Direction.INPUT
+left_sw_io.pull = digitalio.Pull.UP
+left_sw = Debouncer(left_sw_io)
 
-right_sw = digitalio.DigitalInOut(right_sw_pin)
-right_sw.direction = digitalio.Direction.INPUT
-right_sw.pull = digitalio.Pull.UP
-right_sw = Debouncer(right_sw)
+right_sw_io = digitalio.DigitalInOut(right_sw_pin)
+right_sw_io.direction = digitalio.Direction.INPUT
+right_sw_io.pull = digitalio.Pull.UP
+right_sw = Debouncer(right_sw_io)
 
 trig_sw = digitalio.DigitalInOut(trig_sw_pin)
 trig_sw.direction = digitalio.Direction.INPUT
@@ -151,6 +151,19 @@ def rnd_prob(random_value):
     print("False Random value: " + str(y) + " < Random limit: " + str(random_value))
     return False
 
+def animation_cancelled():
+    if not left_sw_io.value:
+        return True
+    return False
+
+def animation_sleep(seconds):
+    end_time = time.monotonic() + seconds
+    while time.monotonic() < end_time:
+        if animation_cancelled():
+            return False
+        time.sleep(0.02)
+    return True
+
 
 ################################################################################
 # Servo methods
@@ -161,17 +174,22 @@ def servos_off():
 
 
 
-def move_at_speed(n, new_position, speed, function_to_run = None):
+def move_at_speed(n, new_position, speed, function_to_run=None):
     global prev_pos_arr
-    if function_to_run:
-        function_to_run
     sign = 1
     if prev_pos_arr[n] > new_position:
-        sign = - 1
+        sign = -1
     for servo_pos in range(prev_pos_arr[n], new_position, sign):
+        if function_to_run:
+            if function_to_run():
+                return False
         m_servo(n, servo_pos)
         time.sleep(speed)
+    if function_to_run:
+        if function_to_run():
+            return False
     m_servo(n, new_position)
+    return True
 
 
 def m_servo(n, p):
@@ -472,14 +490,19 @@ async def move_at_speed_async(n, new_position, speed):
     global prev_pos_arr, async_running
     sign = 1
     if prev_pos_arr[n] > new_position:
-        sign = - 1
+        sign = -1
     for servo_pos in range(prev_pos_arr[n], new_position, sign):
+        if animation_cancelled():
+            async_running = False
+            return
         if not async_running:
             return
         m_servo(n, servo_pos)
         await asyncio.sleep(speed)
+    if animation_cancelled():
+        async_running = False
+        return
     m_servo(n, new_position)
-
 
 async def walking_swagger(n, center_pt, spd, wiggle_amount):
     global async_running
@@ -513,49 +536,87 @@ async def swagger_walk(figure_location, figure_rotation, function_to_run = False
 # animations
 
 def an():
+    if animation_cancelled():
+        return
     if rnd_prob(.67):
         intro_sound(True)
+        if animation_cancelled():
+            return
         rand_timer = random.uniform(0.5, 3.0)
-        time.sleep(rand_timer)
+        if not animation_sleep(rand_timer):
+            return
     if rnd_prob(.67):  # come all the way out
         if rnd_prob(.67):
             asyncio.run(swagger_walk(cfg["visible"], cfg["forward"], bigfoot_sound(False)))
         else:
             asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
+        if animation_cancelled():
+            return
         rand_timer = random.uniform(1.0, 5.0)
         servos_off()
-        time.sleep(rand_timer)
-        move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+        if not animation_sleep(rand_timer):
+            return
+        if not move_at_speed(1, cfg["backward"], cfg["turning_speed"], animation_cancelled):
+            return
         if rnd_prob(.33):
             rand_timer = random.uniform(1.0, 5.0)
-            time.sleep(rand_timer)
-            move_at_speed(1, cfg["forward"], cfg["staring_speed"])
+            if not animation_sleep(rand_timer):
+                return
+            if not move_at_speed(1, cfg["forward"], cfg["staring_speed"], animation_cancelled):
+                return
             bigfoot_sound(False)
+            if animation_cancelled():
+                return
             rand_timer = random.uniform(1.0, 5.0)
-            time.sleep(rand_timer)
-            move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+            if not animation_sleep(rand_timer):
+                return
+            if not move_at_speed(1, cfg["backward"], cfg["turning_speed"], animation_cancelled):
+                return
             asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
+            if animation_cancelled():
+                return
         else:
             if rnd_prob(.67):
-                asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"],bigfoot_sound(False)))
+                asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"], bigfoot_sound(False)))
             else:
                 asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
-        move_at_speed(1, cfg["forward"], cfg["turning_speed"])   
+            if animation_cancelled():
+                return
+        if not move_at_speed(1, cfg["forward"], cfg["turning_speed"], animation_cancelled):
+            return
         if rnd_prob(.67):
-                rand_timer = random.uniform(0.5, 3.0)
-                time.sleep(rand_timer)
-                ending_sound(True)
+            rand_timer = random.uniform(0.5, 3.0)
+            if not animation_sleep(rand_timer):
+                return
+            ending_sound(True)
+            if animation_cancelled():
+                return
     else:  # peek to see if someone is there
-        peek_pos = int((cfg["visible"]-cfg["hidden"])
-                       * cfg["peek"]+cfg["hidden"])
+        peek_pos = int((cfg["visible"] - cfg["hidden"]) * cfg["peek"] + cfg["hidden"])
         asyncio.run(swagger_walk(peek_pos, cfg["peek_rotation"]))
+        if animation_cancelled():
+            return
         rand_timer = random.uniform(1.0, 5.0)
-        time.sleep(rand_timer)
-        move_at_speed(1, cfg["backward"], cfg["turning_speed"])
+        if not animation_sleep(rand_timer):
+            return
+        if not move_at_speed(1, cfg["backward"], cfg["turning_speed"], animation_cancelled):
+            return
         asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
-        move_at_speed(1, cfg["forward"], cfg["turning_speed"])
-    servos_off()
+        if animation_cancelled():
+            return
+        if not move_at_speed(1, cfg["forward"], cfg["turning_speed"], animation_cancelled):
+            return
 
+
+def return_from_animation():
+    global async_running
+    async_running = False
+    mix.voice[0].stop()
+    mix.voice[1].stop()
+    move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+    move_at_speed(0, cfg["hidden"], cfg["walking_speed"])
+    servos_off()
+    print("Animation finished")
 
 def show_mode(cycles, stay_at_middle=False):
     middle_point = int((cfg["visible"]+cfg["hidden"])/2)
@@ -684,8 +745,9 @@ class BseSt(Ste):
                 files.write_json_file("cfg.json", cfg)
             show_timer_mode()
         elif cfg["timer"] == True:
-            if rand_timer <= time.monotonic()-srt_t:
+            if rand_timer <= time.monotonic() - srt_t:
                 an()
+                return_from_animation()
                 timer_val_split = cfg["timer_val"].split("_")
                 if timer_val_split[0] == "random":
                     rand_timer = random.uniform(
@@ -697,17 +759,16 @@ class BseSt(Ste):
                     next_time = "{:.1f}".format(rand_timer)
                     print("Next time : " + next_time)
                 srt_t = time.monotonic()
-            if sw == "trigger":
-                an()
-                print("an done")
         elif sw == "left":
             an()
+            return_from_animation()
             print("an done")
         elif sw == "trigger":
             an()
+            return_from_animation()
             print("an done")
         elif sw == "right":
-            mch.go_to("main_menu")
+            mch.go_to("main_menu")  
 
 class Main(Ste):
 
