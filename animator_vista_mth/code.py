@@ -77,24 +77,27 @@ animations_folder = "snds/"
 mvc_folder = "mvc/"
 mvc_folder_local = "mvc/"
 
-elves_folder = "elves/"
-bells_folder = "bells/"
-horns_folder = "horns/"
-stops_folder = "stops/"
+boy_folder = "boy/"
+grumbles_folder = "grumbles/"
+jingles_folder = "jingles/"
+mrs_claus_folder = "jingles/"
 santa_folder = "santa/"
-story_folder = "story/"
+tinsel_folder = "tinsel/"
+root_folder = ""
 
 FOLDER_MAP = {
     'A': animations_folder,
-    'E': elves_folder,
-    'B': bells_folder,
-    'H': horns_folder,
-    'T': stops_folder,
+    'B': boy_folder,
+    'G': grumbles_folder,
+    'J': jingles_folder,
+    'C': mrs_claus_folder,
     'S': santa_folder,
-    'C': story_folder
+    'T': tinsel_folder,
+    'M': mvc_folder,
+    'X': root_folder
 }
 
-media_index = {'A': 0, 'E': 0, 'B': 0, 'H': 0, 'T': 0, 'S': 0, 'C': 0}
+media_index = {'A': 0, 'B': 0, 'G': 0, 'J': 0, 'C': 0, 'S': 0, 'T': 0, 'M': 0, 'X': 0}
 
 ################################################################################
 # Flash data
