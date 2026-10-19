@@ -20,7 +20,7 @@
   "timer_val": "timer_0_seconds",
   "peek": 0.3,
   "swagger_speed": 0.015,
-  "staring_speed": 0.001,
+  "staring_speed": 0.003,
   "backward": 15,
   "volume_pot": false,
   "peek_rotation": 90,

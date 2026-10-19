@@ -155,6 +155,11 @@ def rnd_prob(random_value):
 ################################################################################
 # Servo methods
 
+def servos_off():
+    for s in servo_arr:
+        s.angle = None
+
+
 
 def move_at_speed(n, new_position, speed, function_to_run = None):
     global prev_pos_arr
@@ -518,15 +523,14 @@ def an():
         else:
             asyncio.run(swagger_walk(cfg["visible"], cfg["forward"]))
         rand_timer = random.uniform(1.0, 5.0)
+        servos_off()
         time.sleep(rand_timer)
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
         if rnd_prob(.33):
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
-            if rnd_prob(1):
-                move_at_speed(1, cfg["forward"], cfg["staring_speed"], bigfoot_sound(False))
-            else:
-                move_at_speed(1, cfg["forward"], cfg["staring_speed"]) 
+            move_at_speed(1, cfg["forward"], cfg["staring_speed"])
+            bigfoot_sound(False)
             rand_timer = random.uniform(1.0, 5.0)
             time.sleep(rand_timer)
             move_at_speed(1, cfg["backward"], cfg["turning_speed"])
@@ -550,6 +554,7 @@ def an():
         move_at_speed(1, cfg["backward"], cfg["turning_speed"])
         asyncio.run(swagger_walk(cfg["hidden"], cfg["backward"]))
         move_at_speed(1, cfg["forward"], cfg["turning_speed"])
+    servos_off()
 
 
 def show_mode(cycles, stay_at_middle=False):
