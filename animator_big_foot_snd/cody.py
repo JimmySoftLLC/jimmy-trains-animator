@@ -276,8 +276,6 @@ def ch_vol(action):
 
 def ply_a_0(file_name, wait=True, repeat=False):
     upd_vol(0)
-    if not cfg["use_sd_card"] and "/sd/" in file_name:
-        return
 
     # Stop if voice is currently playing
     if mix.voice[0].playing:
@@ -305,8 +303,6 @@ def ply_a_0(file_name, wait=True, repeat=False):
 
 def ply_a_1(file_name, wait=True, repeat=False):
     upd_vol(0)
-    if not cfg["use_sd_card"] and "/sd/" in file_name:
-        return
 
     if wait:
         while mix.voice[1].playing:
