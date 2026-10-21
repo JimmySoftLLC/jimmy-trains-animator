@@ -616,7 +616,7 @@ def calibrate_bumper():
     else:
         ply_a_0(mvc_folder + "bumper_calibration_failed.mp3")
         print("Bumper calibration failed, bumper mode turned off")
-        cfg["bumper_mode"] = False
+        cfg["bumper_mode"] = "off"
         save_cfg_safely()
 
 
@@ -1178,12 +1178,12 @@ if (web):
                     ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
                 elif rq_d["an"] == "bumper_mode_on":
                     stop_all_cmds()
-                    cfg["bumper_mode"] = True
+                    cfg["bumper_mode"] = "bumper"
                     save_cfg_safely()
                     ply_a_0(mvc_folder + "bumper_instructions.mp3")
                 elif rq_d["an"] == "bumper_mode_off":
                     stop_all_cmds()
-                    cfg["bumper_mode"] = False
+                    cfg["bumper_mode"] = "off"
                     save_cfg_safely()
                     ply_a_0(mvc_folder + "bumper_mode_off.mp3")
                 elif rq_d["an"] == "museum_mode_on":
@@ -1504,7 +1504,7 @@ async def animation_wait(wait_time):
                 l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
-            if cfg["bumper_mode"]:
+            if cfg["bumper_mode"] == "bumper":
                 if sw == "left" or sw == "right":
                     sw = "none"
             if sw == "none" and time.monotonic() - srt_t > 2:
@@ -1633,7 +1633,7 @@ def rst_def():
     cfg["volume"] = "50"
     cfg["HOST_NAME"] = "animator-trolley"
     cfg["serve_webpage"] = True
-    cfg["bumper_mode"] = False
+    cfg["bumper_mode"] = "off"
     cfg["museum_mode"] = False
 
 
@@ -1833,7 +1833,7 @@ async def set_hdw_async(cmd, dur=3):
                 seg_split = seg.split("_")
                 target_throttle = int(seg_split[1])
                 acceleration = int(seg_split[2])
-                if cfg["bumper_mode"]:
+                if cfg["bumper_mode"] == "bumper":
                     if await set_bumper_speed(target_throttle, acceleration):
                         return "STOP"
                 else:
@@ -2315,7 +2315,7 @@ class BseSt(Ste):
         global an_just_added, MIN_TRACK_VOLTAGE
         if an_running:
             return
-        if cfg["bumper_mode"] and bumper_calibrated and bumper_requested_throttle > 0:
+        if cfg["bumper_mode"] == "bumper" and bumper_calibrated and bumper_requested_throttle > 0:
             return
         sw = utilities.switch_state(l_sw, r_sw, upd_vol, 3.0, ovrde_sw_st, wait_at_end = False)
         spoken = False
