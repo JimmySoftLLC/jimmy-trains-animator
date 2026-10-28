@@ -120,18 +120,27 @@ r = rtc.RTC()
 r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 
 ################################################################################
-# Setup motor controller
-p_frq = 10000  # Custom PWM frequency in Hz; PWMOut min/max 1Hz/50kHz, default is 500Hz
-d_mde = motor.SLOW_DECAY  # Set controller to Slow Decay (braking) mode
+# Setup motor controllers
 
-# DC motor setup; Set pins to custom PWM frequency
-pwm_a = pwmio.PWMOut(board.GP11, frequency=p_frq)
-pwm_b = pwmio.PWMOut(board.GP10, frequency=p_frq)
-train = motor.DCMotor(pwm_a, pwm_b)
-train.decay_mode = d_mde
-train.throttle = 0
-current_throttle = 0
+p_frq = 10000
+d_mde = motor.SLOW_DECAY
 
+motor_pins = [
+    (board.GP11, board.GP10),  # Motor 1
+    (board.GP14, board.GP13)   # Motor 2
+]
+
+trains = []
+current_throttles = []
+
+for pin_a, pin_b in motor_pins:
+    pwm_a = pwmio.PWMOut(pin_a, frequency=p_frq)
+    pwm_b = pwmio.PWMOut(pin_b, frequency=p_frq)
+    train = motor.DCMotor(pwm_a, pwm_b)
+    train.decay_mode = d_mde
+    train.throttle = 0
+    trains.append(train)
+    current_throttles.append(0)
 
 ################################################################################
 # Flash data and globals
@@ -417,11 +426,17 @@ if (web):
             def btn(request: Request):
                 return Response(request, cfg["volume"])
             
+
             @server.route("/get-throttle", [POST])
             def btn(request: Request):
-                cur_throttle_str = str(current_throttle)
-                print("sending current throttle: ", cur_throttle_str)
+                rq_d = request.json()
+                motor_n = int(rq_d["motor"])
+                if motor_n < 1 or motor_n > len(trains):
+                    return Response(request, "Invalid motor number")
+                cur_throttle_str = str(current_throttles[motor_n - 1])
+                print("Sending motor", motor_n, "throttle:", cur_throttle_str)
                 return Response(request, cur_throttle_str)
+
 
             @server.route("/get-animations", [POST])
             def btn(request: Request):
@@ -883,7 +898,7 @@ async def an_light_async(f_nm):
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
         if not flsh_i < len(flsh_t)-1:
             mix.voice[0].stop()
-            add_cmd("TA_0_2")
+            add_cmd("TA_0_0_2")
             return
         await upd_vol_async(.1)
 
@@ -949,43 +964,59 @@ br = 0
 
 
 def set_hdw(input_string):
-    global sp, br, current_throttle
+    global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
     # Process each segment
     for seg in segs:
-        # TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100
+        # TA_N_XXX_AAA = Train throttle, N train, XXX throttle -100 to 100, AAA acceleration increments 1 to 100
         if seg[:2] == 'TA':
             try:
                 seg_split = seg.split("_")
-                v_str = seg_split[1]         
-                target_throttle = int(v_str)
-                a_str = seg_split[2]
-                acceleration = int(a_str)
-                diff = target_throttle - current_throttle
-                while diff != 0:
-                    if diff > 0:
-                        new_throttle = min(current_throttle + acceleration, target_throttle)  # Increase throttle
-                    else:
-                        new_throttle = max(current_throttle - acceleration, target_throttle)  # Decrease throttle
-                    v = new_throttle / 100
-                    train.throttle = v
-                    current_throttle = new_throttle
-                    diff = target_throttle - current_throttle
+                motor_n = int(seg_split[1])
+                target_throttle = int(seg_split[2])
+                acceleration = int(seg_split[3])
+                if motor_n == 0:
+                    indices = range(len(trains))
+                else:
+                    indices = [motor_n - 1]
+                if acceleration <= 0:
+                    print("Invalid acceleration:", acceleration)
+                    continue
+                while True:
+                    moving = False
+                    for i in indices:
+                        diff = target_throttle - current_throttles[i]
+                        if diff != 0:
+                            moving = True
+                            if diff > 0:
+                                new_throttle = min(current_throttles[i] + acceleration, target_throttle)
+                            else:
+                                new_throttle = max(current_throttles[i] - acceleration, target_throttle)
+                            trains[i].throttle = new_throttle / 100
+                            current_throttles[i] = new_throttle
+                    if not moving:
+                        break
                     time.sleep(.02)
             except Exception as e:
                 print(e)
-        # TXXX_AAA = Train XXX throttle -100 to 100
-        elif seg[:1] == 'T':
-            try:   
-                v_str = seg[1:]         
-                target_throttle = int(v_str)
-                new_throttle = target_throttle
-                v = new_throttle / 100
-                train.throttle = v
-                current_throttle = new_throttle
+
+        # T_N_XXX = Train throttle, N train, XXX throttle -100 to 100
+        elif seg[:2] == 'T_':
+            try:
+                seg_split = seg.split("_")
+                motor_n = int(seg_split[1])
+                target_throttle = int(seg_split[2])
+                if motor_n == 0:
+                    indices = range(len(trains))
+                else:
+                    indices = [motor_n - 1]
+                for i in indices:
+                    trains[i].throttle = target_throttle / 100
+                    current_throttles[i] = target_throttle
             except Exception as e:
                 print(e)
+
         # MBXXX = Play background file, XXX (file name)  
         elif seg[:2] == 'MB': # play file
             file_nm = seg[2:]
@@ -1057,29 +1088,39 @@ def set_hdw(input_string):
 
 
 async def set_hdw_async(input_string):
-    global sp, br, current_throttle
+    global sp, br
     # Split the input string into segments
     segs = input_string.split(",")
     # Process each segment
     for seg in segs:
-        # TA_XXX_AAA = Train XXX throttle -100 to 100 AAA acceleration increments 1 to 100
+        # TA_N_XXX_AAA = Train throttle, N train, XXX throttle -100 to 100, AAA acceleration increments 1 to 100
         if seg[:2] == 'TA':
             try:
                 seg_split = seg.split("_")
-                v_str = seg_split[1]         
-                target_throttle = int(v_str)
-                a_str = seg_split[2]
-                acceleration = int(a_str)
-                diff = target_throttle - current_throttle
-                while diff != 0:
-                    if diff > 0:
-                        new_throttle = min(current_throttle + acceleration, target_throttle)  # Increase throttle
-                    else:
-                        new_throttle = max(current_throttle - acceleration, target_throttle)  # Decrease throttle
-                    v = new_throttle / 100
-                    train.throttle = v
-                    current_throttle = new_throttle
-                    diff = target_throttle - current_throttle
+                motor_n = int(seg_split[1])
+                target_throttle = int(seg_split[2])
+                acceleration = int(seg_split[3])
+                if motor_n == 0:
+                    indices = range(len(trains))
+                else:
+                    indices = [motor_n - 1]
+                if acceleration <= 0:
+                    print("Invalid acceleration:", acceleration)
+                    continue
+                while True:
+                    moving = False
+                    for i in indices:
+                        diff = target_throttle - current_throttles[i]
+                        if diff != 0:
+                            moving = True
+                            if diff > 0:
+                                new_throttle = min(current_throttles[i] + acceleration, target_throttle)
+                            else:
+                                new_throttle = max(current_throttles[i] - acceleration, target_throttle)
+                            trains[i].throttle = new_throttle / 100
+                            current_throttles[i] = new_throttle
+                    if not moving:
+                        break
                     await asyncio.sleep(.02)
             except Exception as e:
                 print(e)
@@ -1087,15 +1128,19 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'W':  # wait time
             s = float(seg[1:])
             await asyncio.sleep(s)
-        # TXXX_AAA = Train XXX throttle -100 to 100
-        elif seg[:1] == 'T':
-            try:   
-                v_str = seg[1:]         
-                target_throttle = int(v_str)
-                new_throttle = target_throttle
-                v = new_throttle / 100
-                train.throttle = v
-                current_throttle = new_throttle
+        # T_N_XXX = Train throttle, N train, XXX throttle -100 to 100
+        elif seg[:2] == 'T_':
+            try:
+                seg_split = seg.split("_")
+                motor_n = int(seg_split[1])
+                target_throttle = int(seg_split[2])
+                if motor_n == 0:
+                    indices = range(len(trains))
+                else:
+                    indices = [motor_n - 1]
+                for i in indices:
+                    trains[i].throttle = target_throttle / 100
+                    current_throttles[i] = target_throttle
             except Exception as e:
                 print(e)
         # MBXXX = Play background file, XXX (file name)  
