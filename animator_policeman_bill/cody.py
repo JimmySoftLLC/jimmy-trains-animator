@@ -225,19 +225,20 @@ r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
 ################################################################################
 # Setup neo pixels
 
-n_px1 = 1
-n_px2 = 1
-n_px3 = 1
-n_px4 = 1
+# NeoPixel configuration (pin, number of LEDs)
+led_config = [
+    (board.GP4, 1),
+    (board.GP5, 1),
+    (board.GP6, 1),
+    (board.GP7, 1)
+]
 
-n_px = n_px1 + n_px2 + n_px3 + n_px4
+led_channels = []
 
-led1 = neopixel.NeoPixel(board.GP4, n_px)
-led2 = neopixel.NeoPixel(board.GP5, n_px)
-led3 = neopixel.NeoPixel(board.GP6, n_px)
-led4 = neopixel.NeoPixel(board.GP7, n_px)
-
-led_channels = [led1,led2,led3,led4]
+for item in led_config:
+    pin = item[0]
+    count = item[1]
+    led_channels.append(neopixel.NeoPixel(pin, count, auto_write=False))
 
 class SeparateNeoPixels:
     def __init__(self, channels):
@@ -681,6 +682,8 @@ if web:
             wifi_connected = True
             break
         except Exception as e:
+            led[0] = (0, 0, 50)
+            led.show()            
             files.log_item(e)
             time.sleep(1)
     if not wifi_connected:
@@ -1299,9 +1302,8 @@ async def an_ts(f_nm):
             ovrde_sw_st["switch_value"] = ""
         if not mix.voice[0].playing:
             add_command_to_ts("")
-            for i in range(4):
-                led_channels[i].fill((0, 0, 0))
-                led_channels[i].show()
+            led.fill((0, 0, 0))
+            led.show()
             files.write_json_file(
                 "/snds/" + f_nm + ".json", t_s)
             break
@@ -1422,26 +1424,25 @@ def set_hdw(input_string):
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
-            for i in range(4):
-                led_channels[i].brightness = float(br/100)
+            led.brightness = float(br/100)
+            led.show()
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
             while not br == v:
                 if br < v:
                     br += 1
-                    for i in range(4):
-                        led_channels[i].brightness = float(br/100)
+                    led.brightness = float(br/100)
                 else:
                     br -= 1
-                    for i in range(4):
-                        led_channels[i].brightness = float(br/100)
+                    led.brightness = float(br/100)
+                led.show()
                 upd_vol(.01)
         # QXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
-            for i in range(4):
-                led_channels[i].brightness = float(br/100)
+            led.brightness = float(br/100)
+            led.show()
 
 
 async def set_hdw_async(input_string):
@@ -1550,20 +1551,17 @@ async def set_hdw_async(input_string):
         # BXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
-            for i in range(4):
-                led_channels[i].brightness = float(br/100)
+            led.brightness = float(br/100)
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
             while not br == v:
                 if br < v:
                     br += 1
-                    for i in range(4):
-                        led_channels[i].brightness = float(br/100)
+                    led.brightness = float(br/100)
                 else:
                     br -= 1
-                    for i in range(4):
-                        led_channels[i].brightness = float(br/100)
+                    led.brightness = float(br/100)
                 upd_vol_async(.01)
         # QXXXX = Add command XXXX any command ie AN_filename to add new animation
         elif seg[0] == 'Q':
@@ -1572,12 +1570,11 @@ async def set_hdw_async(input_string):
 
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
-        for i in range(4):
-            led_channels[i][0] = (r, g, b)
-            led_channels[i].show
+        led.fill((r, g, b)) 
+        led.show()
     else:
-        led_channels[light_n][0] = (r, g, b)
-        led_channels[light_n].show()
+        led[light_n] = (r, g, b)
+        led.show()
 
 def get_random_media_file(folder_to_search):
     files = files.return_directory("", folder_to_search, ".mp3")
@@ -1935,23 +1932,25 @@ aud_en.value = True
 
 upd_vol(.1)
 
-
 if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
-        led_channels[1][0] = (0, 255, 0)
-        led_channels[1].show()
+        led[1] = (0, 255, 0)
+        led.show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
-        spk_web()
+        dbm_string = str(-int(avg_rssi))+"dbm"
+        try:
+            spk_str(dbm_string, False)
+            spk_web()
+        except Exception as e:
+            files.log_item(e)
     except Exception as e:
         files.log_item(e)
-        time.sleep(5)
-        files.log_item("restarting...")
-        rst()
+        web = False
 else:
-    led_channels[1][0] = (255, 0, 0)
-    led_channels[1].show()
+    led[1] = (255, 0, 0)
+    led.show()
     time.sleep(3)
 
 # initialize items
