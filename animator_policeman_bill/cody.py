@@ -1552,6 +1552,7 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'B':
             br = int(seg[1:])
             led.brightness = float(br/100)
+            led.show()
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
@@ -1562,6 +1563,7 @@ async def set_hdw_async(input_string):
                 else:
                     br -= 1
                     led.brightness = float(br/100)
+                led.show()
                 upd_vol_async(.01)
         # QXXXX = Add command XXXX any command ie AN_filename to add new animation
         elif seg[0] == 'Q':
