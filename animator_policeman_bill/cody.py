@@ -129,8 +129,6 @@ cfg_add_song = files.read_json_file(
     "add_sounds_animate.json")
 add_snd = cfg_add_song["add_sounds_animate"]
 
-cont_run = cfg["cont_mode"]
-
 local_ip = ""
 
 ovrde_sw_st = {}
@@ -771,7 +769,7 @@ if web:
 
         @server.route("/mode", [POST])
         def btn(request: Request):
-            global cont_run, ts_mode
+            global ts_mode
             rq_d = request.json()
             if rq_d["an"] == "left":
                 ovrde_sw_st["switch_value"] = "left"
@@ -784,15 +782,15 @@ if web:
             elif rq_d["an"] == "four":
                 ovrde_sw_st["switch_value"] = "four"
             elif rq_d["an"] == "cont_mode_on":
-                cont_run = True
-                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-                cfg["cont_mode"] = cont_run
+                stop_all_cmds()
+                cfg["cont_mode"] = True
                 files.write_json_file("/cfg.json", cfg)
+                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
             elif rq_d["an"] == "cont_mode_off":
                 stop_all_cmds()
-                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-                cfg["cont_mode"] = cont_run
+                cfg["cont_mode"] = False
                 files.write_json_file("/cfg.json", cfg)
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
             elif rq_d["an"] == "timestamp_mode_on":
                 stop_all_cmds()
                 ts_mode = True
@@ -1069,6 +1067,7 @@ def stop_all_cmds(cont_mode_off=True):
     exit_set_hdw_async = True
     if cont_mode_off:
         cfg["cont_mode"] = False
+        files.write_json_file("/cfg.json", cfg)
     mix.voice[0].stop()
     mix.voice[1].stop()
     led.fill((0, 0, 0))
@@ -1080,7 +1079,6 @@ def stop_all_cmds(cont_mode_off=True):
 async def animation_wait(wait_time):
     global an_running, flsh_i, srt_t
     start_time = time.monotonic()
-    spoken = False
     sw = ""
     while time.monotonic() - start_time < wait_time:
         if ovrde_sw_st["switch_value"] == "left":
@@ -1089,10 +1087,22 @@ async def animation_wait(wait_time):
         else:
             sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
         if sw == "left":
-            if spoken:
+            stop_all_cmds(False)
+            asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+            await asyncio.sleep(1)
+            while mix.voice[1].playing:
+                await asyncio.sleep(0)
+            an_running = False
+            return True
+        if sw == "left_held":
+            if cfg["cont_mode"] == True:
+                stop_all_cmds(False)
+                asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
                 await asyncio.sleep(1)
                 while mix.voice[1].playing:
                     await asyncio.sleep(0)
+                cfg["cont_mode"] = False
+                files.write_json_file("/cfg.json", cfg)
             else:
                 stop_all_cmds(False)
                 asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
@@ -1101,36 +1111,8 @@ async def animation_wait(wait_time):
                     await asyncio.sleep(0)
             an_running = False
             return True
-        if sw == "left_held":
-            if cfg["cont_mode"] == True:
-                if spoken:
-                    await asyncio.sleep(1)
-                    while mix.voice[1].playing:
-                        await asyncio.sleep(0)
-                else:
-                    stop_all_cmds(False)
-                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
-                    await asyncio.sleep(1)
-                    while mix.voice[1].playing:
-                        await asyncio.sleep(0)
-                cfg["cont_mode"] = False
-            else:
-                if spoken:
-                    await asyncio.sleep(1)
-                    while mix.voice[1].playing:
-                        await asyncio.sleep(0)
-                else:
-                    stop_all_cmds(False)
-                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
-                    await asyncio.sleep(1)
-                    while mix.voice[1].playing:
-                        await asyncio.sleep(0)
-            an_running = False
-            return True
         await asyncio.sleep(0)
     return False
-
-
 
 
 def add_command_to_ts(command):
@@ -1185,7 +1167,7 @@ async def an_async(f_nm):
 
 
 async def an_light_async(f_nm):
-    global cont_run, flsh_i, flsh_t
+    global flsh_i, flsh_t
 
     stp_a_0()
 
@@ -1252,8 +1234,9 @@ async def an_light_async(f_nm):
         if sw == "left_held":
             mix.voice[0].stop()
             flsh_i = len(flsh_t) - 1
-            if cont_run:
-                cont_run = False
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
+                files.write_json_file("/cfg.json", cfg)
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
         if not flsh_i < len(flsh_t)-1:
@@ -1649,21 +1632,27 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global cont_run
+        global an_just_added
         sw = utilities.switch_state(
             l_sw, r_sw, time.sleep, 3.0, ovrde_sw_st)
         if sw == "left_held":
-            if cont_run:
-                cont_run = False
+            if cfg["cont_mode"]:
+                cfg["cont_mode"] = False
+                files.write_json_file("/cfg.json", cfg)
                 stop_all_cmds()
                 ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
             else:
-                cont_run = True
+                cfg["cont_mode"] = True
+                files.write_json_file("/cfg.json", cfg)
                 ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-        elif (sw == "left" or cont_run) and not an_running:
+        elif sw == "left" and not mix.voice[0].playing and not an_running and not an_just_added:
             add_cmd("AN_" + cfg["option_selected"])
+            an_just_added = True
         elif sw == "right" and not an_running:
             mch.go_to('main_menu')
+        elif cfg["cont_mode"] and not mix.voice[0].playing and not an_running and not an_just_added:
+            add_cmd("AN_" + cfg["option_selected"])
+            an_just_added = True
 
 
 class Main(Ste):
@@ -1991,9 +1980,14 @@ async def server_poll_tsk(server):
 
 
 async def state_mach_upd_task(st_mch):
+    global an_just_added
     while True:
         st_mch.upd()
-        await asyncio.sleep(.05)
+        if an_just_added:
+            await asyncio.sleep(3)
+            an_just_added = False
+        else:
+            await asyncio.sleep(0)
 
 
 async def main():
