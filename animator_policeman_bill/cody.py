@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 JimmySoftLLC
+# Copyright (c) 2026 JimmySoftLLC
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +41,7 @@ import time
 import gc
 import files
 import os
+import audiocore
 
 
 def gc_col(collection_point):
@@ -67,86 +68,11 @@ def rst():
 gc_col("Imports gc, files")
 
 ################################################################################
-# Setup hardware
+# Globals
 
-# Setup pin for v
-a_in = AnalogIn(board.A0)
-
-# setup pin for audio enable 21 on 5v aud board
-aud_en = digitalio.DigitalInOut(board.GP21)
-aud_en.direction = digitalio.Direction.OUTPUT
-aud_en.value = True
-
-# Setup the switches
-l_sw = digitalio.DigitalInOut(board.GP2)
-l_sw.direction = digitalio.Direction.INPUT
-l_sw.pull = digitalio.Pull.UP
-l_sw = Debouncer(l_sw)
-
-r_sw = digitalio.DigitalInOut(board.GP3)
-r_sw.direction = digitalio.Direction.INPUT
-r_sw.pull = digitalio.Pull.UP
-r_sw = Debouncer(r_sw)
-
-
-# setup i2s audio
-i2s_bclk = board.GP18   # BCLK on MAX98357A
-i2s_lrc = board.GP19  # LRC on MAX98357A
-i2s_din = board.GP20  # DIN on MAX98357A
-
-aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
-
-# Setup sdCard
-aud_en.value = True
-
-# Setup the mixer to play mp3 files
-mix = audiomixer.Mixer(
-    voice_count=2,
-    sample_rate=22050,
-    channel_count=2,
-    bits_per_sample=16,
-    samples_signed=True,
-    buffer_size=16384,
-)
-aud.play(mix)
-
-mix.voice[0].level = .2
-mix.voice[1].level = .2
-
-aud_en.value = False
-
-# Setup time
-r = rtc.RTC()
-r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
-
-################################################################################
-# Setup motor controllers
-
-p_frq = 10000
-d_mde = motor.SLOW_DECAY
-
-motor_pins = [
-    (board.GP11, board.GP10),  # Motor 1
-    (board.GP14, board.GP13)   # Motor 2
-]
-
-trains = []
-current_throttles = []
-
-for pin_a, pin_b in motor_pins:
-    pwm_a = pwmio.PWMOut(pin_a, frequency=p_frq)
-    pwm_b = pwmio.PWMOut(pin_b, frequency=p_frq)
-    train = motor.DCMotor(pwm_a, pwm_b)
-    train.decay_mode = d_mde
-    train.throttle = 0
-    trains.append(train)
-    current_throttles.append(0)
-
-################################################################################
-# Flash data and globals
-
-animations_folder = "/snds/"
-mvc_folder = "/mvc/"
+animations_folder = "snds/"
+mvc_folder = "mvc/"
+mvc_folder_local = "mvc/"
 
 female_folder = "female/"
 male_folder = "male/"
@@ -163,6 +89,9 @@ FOLDER_MAP = {
 }
 
 media_index = {'F': 0, 'M': 0, 'O': 0, 'P': 0, 'S': 0}
+
+################################################################################
+# Flash data
 
 cfg = files.read_json_file("cfg.json")
 
@@ -218,393 +147,148 @@ t_s = []
 t_elsp = 0.0
 
 an_running = False
+an_just_added = False
+
+################################################################################
+# Setup motor controllers
+
+p_frq = 10000
+d_mde = motor.SLOW_DECAY
+
+motor_pins = [
+    (board.GP11, board.GP10),  # Motor 1
+    (board.GP14, board.GP13)   # Motor 2
+]
+
+trains = []
+current_throttles = []
+
+for pin_a, pin_b in motor_pins:
+    pwm_a = pwmio.PWMOut(pin_a, frequency=p_frq)
+    pwm_b = pwmio.PWMOut(pin_b, frequency=p_frq)
+    train = motor.DCMotor(pwm_a, pwm_b)
+    train.decay_mode = d_mde
+    train.throttle = 0
+    trains.append(train)
+    current_throttles.append(0)
+
+################################################################################
+# Setup hardware
+
+# Setup pin for v
+a_in = AnalogIn(board.A0)
+
+# setup pin for audio enable 21 on 5v aud board
+aud_en = digitalio.DigitalInOut(board.GP21)
+aud_en.direction = digitalio.Direction.OUTPUT
+aud_en.value = True
+
+# Setup the switches
+l_sw = digitalio.DigitalInOut(board.GP2)
+l_sw.direction = digitalio.Direction.INPUT
+l_sw.pull = digitalio.Pull.UP
+l_sw = Debouncer(l_sw)
+
+r_sw = digitalio.DigitalInOut(board.GP3)
+r_sw.direction = digitalio.Direction.INPUT
+r_sw.pull = digitalio.Pull.UP
+r_sw = Debouncer(r_sw)
+
+# setup i2s audio
+i2s_bclk = board.GP18   # BCLK on MAX98357A
+i2s_lrc = board.GP19  # LRC on MAX98357A
+i2s_din = board.GP20  # DIN on MAX98357A
+
+aud = audiobusio.I2SOut(bit_clock=i2s_bclk, word_select=i2s_lrc, data=i2s_din)
+
+# Setup the mixer to play mp3 files
+mix = audiomixer.Mixer(
+    voice_count=2,
+    sample_rate=22050,
+    channel_count=2,
+    bits_per_sample=16,
+    samples_signed=True,
+    buffer_size=16384,
+)
+aud.play(mix)
+
+mix.voice[0].level = .2
+mix.voice[1].level = .2
+
+aud_en.value = False
+
+# Setup time
+r = rtc.RTC()
+r.datetime = time.struct_time((2019, 5, 29, 15, 14, 15, 0, -1, -1))
+
 
 ################################################################################
 # Setup neo pixels
 
-n_px = 2
+n_px1 = 1
+n_px2 = 1
+n_px3 = 1
+n_px4 = 1
 
-led_1 = neopixel.NeoPixel(board.GP4, n_px)
-led_2 = neopixel.NeoPixel(board.GP5, n_px)
-led_3 = neopixel.NeoPixel(board.GP6, n_px)
-led_4 = neopixel.NeoPixel(board.GP7, n_px)
+n_px = n_px1 + n_px2 + n_px3 + n_px4
 
-led = [led_1,led_2,led_3,led_4]
+led1 = neopixel.NeoPixel(board.GP4, n_px)
+led2 = neopixel.NeoPixel(board.GP5, n_px)
+led3 = neopixel.NeoPixel(board.GP6, n_px)
+led4 = neopixel.NeoPixel(board.GP7, n_px)
+
+led_channels = [led1,led2,led3,led4]
+
+class SeparateNeoPixels:
+    def __init__(self, channels):
+        self.channels = channels
+        self._brightness = 1.0
+        self.count = sum(len(channel) for channel in channels)
+
+    def __len__(self):
+        return self.count
+
+    def __setitem__(self, index, color):
+        if index < 0 or index >= self.count:
+            raise IndexError("NeoPixel index out of range")
+        for channel in self.channels:
+            if index < len(channel):
+                channel[index] = color
+                return
+            index -= len(channel)
+
+    def __getitem__(self, index):
+        if index < 0 or index >= self.count:
+            raise IndexError("NeoPixel index out of range")
+        for channel in self.channels:
+            if index < len(channel):
+                return channel[index]
+            index -= len(channel)
+
+    def fill(self, color):
+        for channel in self.channels:
+            channel.fill(color)
+
+    def show(self):
+        for channel in self.channels:
+            channel.show()
+
+    @property
+    def brightness(self):
+        return self._brightness
+
+    @brightness.setter
+    def brightness(self, value):
+        self._brightness = value
+        for channel in self.channels:
+            channel.brightness = value
+
+led = SeparateNeoPixels(led_channels)
+
+led.fill((255, 255, 255))
+led.show()
 
 gc_col("Neopixels setup")
-
-################################################################################
-# Setup wifi and web server
-
-if (web):
-    import socketpool
-    import mdns
-    import wifi
-    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
-    gc_col("config wifi imports")
-
-    files.log_item("Connecting to WiFi")
-
-    # default for manufacturing and shows
-    WIFI_SSID = "jimmytrainsguest"
-    WIFI_PASSWORD = ""
-
-    try:
-        env = files.read_json_file("env.json")
-        WIFI_SSID = env["WIFI_SSID"]
-        WIFI_PASSWORD = env["WIFI_PASSWORD"]
-        gc_col("wifi env")
-        print("Using env ssid and password")
-    except:
-        print("Using default ssid and password")
-
-    for i in range(4):
-        web = True
-        led[0][0] = (0, 0, 255)
-        led[0].show()
-        try:
-            # connect to your SSID
-            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
-            gc_col("wifi connect")
-
-            # setup mdns server
-            mdns = mdns.Server(wifi.radio)
-            mdns.hostname = cfg["HOST_NAME"]
-            mdns.advertise_service(
-                service_type="_http", protocol="_tcp", port=80)
-            
-            local_ip = str(wifi.radio.ipv4_address)
-
-            # files.log_items IP address to REPL
-            files.log_item("IP is " + local_ip)
-            files.log_item("Connected")
-
-            # set up server
-            pool = socketpool.SocketPool(wifi.radio)
-            server = Server(pool, "/static", debug=True)
-            server.port = 80  # Explicitly set port to 80
-
-            gc_col("wifi server")
-
-            ################################################################################
-            # Setup routes
-
-            @server.route("/")
-            def base(req: HTTPRequest):
-                return FileResponse(req, "index.html", "/")
-
-            @server.route("/mui.min.css")
-            def base(req: HTTPRequest):
-                return FileResponse(req, "mui.min.css", "/")
-
-            @server.route("/mui.min.js")
-            def base(req: HTTPRequest):
-                return FileResponse(req, "mui.min.js", "/")
-
-            @server.route("/animation", [POST])
-            def btn(request: Request):
-                rq_d = request.json()
-                cfg["option_selected"] = rq_d["an"]
-                add_cmd("AN_" + cfg["option_selected"])
-                if not mix.voice[0].playing:
-                    files.write_json_file("/cfg.json", cfg)
-                return Response(request, "Animation " + cfg["option_selected"] + " started.")
-            
-            @server.route("/defaults", [POST])
-            def btn(request: Request):
-                stop_all_cmds()
-                rq_d = request.json()
-                if rq_d["an"] == "reset_animation_timing_to_defaults":
-                    for ts_fn in ts_jsons:
-                        ts = files.read_json_file(
-                            "/t_s_def/" + ts_fn + ".json")
-                        files.write_json_file(
-                            "/snds/"+ts_fn+".json", ts)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
-                elif rq_d["an"] == "reset_to_defaults":
-                    rst_def()
-                    files.write_json_file("/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
-                    st_mch.go_to('base_state')
-                return Response(request, "Utility: " + rq_d["an"])
-
-            @server.route("/mode", [POST])
-            def btn(request: Request):
-                global cont_run, ts_mode
-                rq_d = request.json()
-                if rq_d["an"] == "left":
-                    ovrde_sw_st["switch_value"] = "left"
-                elif rq_d["an"] == "right":
-                    ovrde_sw_st["switch_value"] = "right"
-                elif rq_d["an"] == "right_held":
-                    ovrde_sw_st["switch_value"] = "right_held"
-                elif rq_d["an"] == "three":
-                    ovrde_sw_st["switch_value"] = "three"
-                elif rq_d["an"] == "four":
-                    ovrde_sw_st["switch_value"] = "four"
-                elif rq_d["an"] == "cont_mode_on":
-                    cont_run = True
-                    ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
-                    cfg["cont_mode"] = cont_run
-                    files.write_json_file("/cfg.json", cfg)
-                elif rq_d["an"] == "cont_mode_off":
-                    stop_all_cmds()
-                    ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
-                    cfg["cont_mode"] = cont_run
-                    files.write_json_file("/cfg.json", cfg)
-                elif rq_d["an"] == "timestamp_mode_on":
-                    stop_all_cmds()
-                    ts_mode = True
-                    ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
-                    ply_a_0(mvc_folder + "timestamp_instructions.mp3")
-                elif rq_d["an"] == "timestamp_mode_off":
-                    ts_mode = False
-                    ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
-                return Response(request, "Utility: " + rq_d["an"])
-
-            @server.route("/speaker", [POST])
-            def btn(request: Request):
-                stop_all_cmds()
-                rq_d = request.json()
-                if rq_d["an"] == "speaker_test":
-                    ply_a_0(mvc_folder + "left_speaker_right_speaker.mp3")
-                elif rq_d["an"] == "volume_pot_off":
-                    cfg["volume_pot"] = False
-                    files.write_json_file("/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
-                elif rq_d["an"] == "volume_pot_on":
-                    cfg["volume_pot"] = True
-                    files.write_json_file("/cfg.json", cfg)
-                    ply_a_0(mvc_folder + "all_changes_complete.mp3")
-                return Response(request, "Utility: " + rq_d["an"])
-
-            @server.route("/lights", [POST])
-            def btn(request: Request):
-                rq_d = request.json()
-                command = rq_d["an"]
-                add_command_to_ts(command)
-                set_hdw(command)
-                return Response(request, "Utility: " + "Utility: set lights")
-            
-            @server.route("/set-item-lights", [POST])
-            def btn(request: Request):
-                rq_d = request.json()
-                command = "LN0_" + str(rq_d["r"]) + "_" + \
-                str(rq_d["g"]) + "_" + str(rq_d["b"])
-                add_command_to_ts(command)
-                set_hdw(command)
-                return Response(request, "Utility: " + "Utility: set lights")
-            
-            @server.route("/update-host-name", [POST])
-            def btn(request: Request):
-                stop_all_cmds()
-                rq_d = request.json()
-                cfg["HOST_NAME"] = rq_d["an"]
-                files.write_json_file("/cfg.json", cfg)
-                mdns.hostname = cfg["HOST_NAME"]
-                spk_web()
-                return Response(request, cfg["HOST_NAME"])
-
-            @server.route("/get-host-name", [POST])
-            def btn(request: Request):
-                stop_all_cmds()
-                return Response(request, cfg["HOST_NAME"])
-
-            @server.route("/get-local-ip", [POST])
-            def buttonpress(req: Request):
-                stop_all_cmds()
-                return Response(req, local_ip)
-
-            @server.route("/update-volume", [POST])
-            def btn(request: Request):
-                rq_d = request.json()
-                ch_vol(rq_d["action"])
-                files.write_json_file("/cfg.json", cfg)
-                return Response(request, cfg["volume"])
-
-            @server.route("/get-volume", [POST])
-            def btn(request: Request):
-                return Response(request, cfg["volume"])
-            
-
-            @server.route("/get-throttle", [POST])
-            def btn(request: Request):
-                rq_d = request.json()
-                motor_n = int(rq_d["motor"])
-                if motor_n < 1 or motor_n > len(trains):
-                    return Response(request, "Invalid motor number")
-                cur_throttle_str = str(current_throttles[motor_n - 1])
-                print("Sending motor", motor_n, "throttle:", cur_throttle_str)
-                return Response(request, cur_throttle_str)
-
-
-            @server.route("/get-animations", [POST])
-            def btn(request: Request):
-                stop_all_cmds()
-                sounds = []
-                sounds.extend(snd_opt)
-                my_string = files.json_stringify(sounds)
-                return Response(request, my_string)
-            
-            @server.route("/create-animation", [POST])
-            def btn(request: Request):
-                try:
-                    global data, animations_folder
-                    rq_d = request.json()  # Parse the incoming JSON
-                    print(rq_d)
-                    f_n = animations_folder + rq_d["fn"] + ".json"
-                    print(f_n)
-                    an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
-                    files.write_json_file(f_n, an_data)
-                    upd_media()
-                    return Response(request, "Created animation successfully.")
-                except Exception as e:
-                    files.log_item(e)  # Log any errors
-                    return Response(request, "Error creating animation.")
-            
-            @server.route("/rename-animation", [POST])
-            def btn(request: Request):
-                try:
-                    global data, animations_folder
-                    rq_d = request.json()  # Parse the incoming JSON
-                    fo = animations_folder + rq_d["fo"] + ".json"
-                    fn = animations_folder + rq_d["fn"] + ".json"
-                    os.rename(fo, fn)
-                    upd_media()
-                    return Response(request, "Renamed animation successfully.")
-                except Exception as e:
-                    files.log_item(e)  # Log any errors
-                    return Response(request, "Error setting lights.")
-                
-            @server.route("/delete-animation", [POST])
-            def btn(request: Request):
-                try:
-                    global data, animations_folder
-                    rq_d = request.json()  # Parse the incoming JSON
-                    print(rq_d)
-                    f_n = animations_folder + rq_d["fn"] + ".json"
-                    print(f_n)
-                    os.remove(f_n)
-                    upd_media()
-                    return Response(request, "Delete animation successfully.")
-                except Exception as e:
-                    files.log_item(e)  # Log any errors
-                    return Response(request, "Error setting lights.")
-
-            @server.route("/test-animation", [POST])
-            def btn(request: Request):
-                try:
-                    rq_d = request.json()
-                    clr_cmd_queue()
-                    add_cmd(rq_d["an"])
-                    return Response(request, "success")
-                except Exception as e:
-                    print(e)
-                    return Response(request, "error")
-            
-
-            @server.route("/get-animation", [POST])
-            def btn(request: Request):
-                stop_all_cmds()
-                rq_d = request.json()
-                snd_f = rq_d["an"]
-                if (f_exists("/snds/" + snd_f + ".json") == True):
-                    f_n = "/snds/" + snd_f + ".json"
-                    return FileResponse(request, f_n, "/")
-                else:
-                    f_n = "/t_s_def/timestamp mode.json"
-                    return FileResponse(request, f_n, "/")
-                
-            data = []
-
-            @server.route("/save-data", [POST])
-            def btn(request: Request):
-                global data
-                stop_all_cmds()
-                rq_d = request.json()
-                try:
-                    if rq_d[0] == 0:
-                        data = []
-                    data.extend(rq_d[2])
-                    if rq_d[0] == rq_d[1]:
-                        f_n = "/snds/" + \
-                            rq_d[3] + ".json"
-                        files.write_json_file(f_n, data)
-                        data = []
-                    upd_media()
-                except Exception as e:
-                    files.log_item(e)
-                    data = []
-                    return Response(request, "out of memory")
-                return Response(request, "success")
-            break
-        except Exception as e:
-            web = False
-            files.log_item(e)
-            led[0][0] = (0, 0, 75)
-            led[0].show()
-            time.sleep(2)
-
-gc_col("web server")
-
-################################################################################
-# Command queue
-command_queue = []
-
-
-def add_cmd(command, to_start=False):
-    global exit_set_hdw_async
-    exit_set_hdw_async = False
-    if to_start:
-        command_queue.insert(0, command)  # Add to the front
-        print("Command added to the start:", command)
-    else:
-        command_queue.append(command)  # Add to the end
-        print("Command added to the end:", command)
-
-
-async def process_cmd():
-    while command_queue:
-        cmd = command_queue.pop(0)  # Retrieve from the front of the queue
-        print("Processing command:", cmd)
-        # Process each command as an async operation
-        if cmd[:2] == 'AN': # AN_XXX = Animation XXX filename
-            cmd_split = cmd.split("_")
-            await an_async(cmd_split[1])
-        else:
-            await set_hdw_async(cmd)
-        await asyncio.sleep(0)  # Yield control to the event loop
-
-
-def clr_cmd_queue():
-    command_queue.clear()
-    print("Command queue cleared.")
-
-
-def stop_all_cmds():
-    global exit_set_hdw_async,cont_run
-    cont_run = False
-    clr_cmd_queue()
-    exit_set_hdw_async = True
-    print("Processing stopped and command queue cleared.")
-
-def add_command_to_ts(command):
-    global ts_mode, t_s, t_elsp
-    if not ts_mode:
-        return
-    t_elsp_formatted = "{:.3f}".format(t_elsp)
-    t_s.append(t_elsp_formatted + "|" + command)
-    files.log_item(t_elsp_formatted + "|" + command)
-
-################################################################################
-# Misc Methods
-
-
-def rst_def():
-    cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-trolley"
-    cfg["option_selected"] = "random all"
-    cfg["volume"] = "20"
 
 ################################################################################
 # Dialog and sound play methods
@@ -689,6 +373,57 @@ def ply_a_0(file_name):
     mix.voice[0].play(w0, loop=False)
     while mix.voice[0].playing:
         exit_early()
+
+
+
+def ply_a_1(file_name, wait=True, repeat=False):
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+    mix.voice[1].play(w1, loop=repeat)
+    if wait:
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+            pass
+
+def ply_a_1(file_name, wait=True, repeat=False):
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+    mix.voice[1].play(w1, loop=repeat)
+    if wait:
+        while mix.voice[1].playing:
+            upd_vol(0.1)
+            pass
+
+async def ply_a_1_async(file_name, repeat=False):
+    if mix.voice[1].playing:
+        mix.voice[1].stop()
+        while mix.voice[1].playing:
+            await asyncio.sleep(0)
+    if file_name.lower().endswith(".mp3"):
+        w1 = audiomp3.MP3Decoder(open(file_name, "rb"))
+    elif file_name.lower().endswith(".wav"):
+        w1 = audiocore.WaveFile(open(file_name, "rb"))
+    else:
+        raise ValueError("Unsupported audio format: " + file_name)
+    mix.voice[1].play(w1, loop=repeat)
+    while mix.voice[1].playing:
+        await asyncio.sleep(0)
 
 
 def wait_snd():
@@ -783,6 +518,636 @@ def get_snds(dir, typ):
     return fn
 
 ################################################################################
+# Setup wifi and web server
+#
+# These are deliberately top-level so they can be called later from the
+# physical buttons or from one of the menu states.
+
+
+def url_decode(value):
+    result = ""
+    i = 0
+    while i < len(value):
+        if value[i] == "%" and i + 2 < len(value):
+            try:
+                result += chr(int(value[i + 1:i + 3], 16))
+                i += 3
+                continue
+            except:
+                pass
+        if value[i] == "+":
+            result += " "
+        else:
+            result += value[i]
+        i += 1
+    return result
+
+def scan_wifi_networks():
+    import wifi
+    networks = []
+    try:
+        print("Scanning for WiFi networks...")
+        for network in wifi.radio.start_scanning_networks():
+            ssid = network.ssid
+            if not ssid:
+                continue
+            found = False
+            for item in networks:
+                if item["ssid"] == ssid:
+                    found = True
+                    if network.rssi > item["rssi"]:
+                        item["rssi"] = network.rssi
+                    break
+            if not found:
+                networks.append({
+                    "ssid": ssid,
+                    "rssi": network.rssi
+                })
+        wifi.radio.stop_scanning_networks()
+    except Exception as e:
+        print("WiFi scan error:", e)
+        try:
+            wifi.radio.stop_scanning_networks()
+        except:
+            pass
+    networks.sort(key=lambda item: item["rssi"], reverse=True)
+    return networks
+
+def start_wifi_setup():
+    global wifi_setup_restart, web
+    import socketpool
+    import wifi
+    import ipaddress
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
+    wifi_setup_restart = False
+    web = False
+    networks = scan_wifi_networks()
+    try:
+        wifi.radio.stop_station()
+    except Exception as e:
+        print("Stop station:", e)
+    print("Starting setup access point...")
+    wifi.radio.start_ap("JimmyTrainsAnimator", "")
+    wifi.radio.set_ipv4_address_ap(
+        ipv4=ipaddress.IPv4Address("10.10.10.10"),
+        netmask=ipaddress.IPv4Address("255.255.255.0"),
+        gateway=ipaddress.IPv4Address("10.10.10.10")
+    )
+    wifi.radio.start_dhcp_ap()
+    setup_ip = "10.10.10.10"
+    print("")
+    print("======================================")
+    print("WiFi setup access point is running")
+    print("SSID: JimmyTrainsAnimator")
+    print("Password:")
+    print("Connect your computer or phone to that WiFi network")
+    print("Use: http://10.10.10.10")
+    print("======================================")
+    print("")
+    setup_pool = socketpool.SocketPool(wifi.radio)
+    setup_server = Server(setup_pool, "/", debug=False)
+
+    ply_a_0(mvc_folder + "enter_ssid_password.mp3")
+
+
+    @setup_server.route("/")
+    def setup_home(request: Request):
+        return FileResponse(request, "wifi_setup.html", "/")
+
+    @setup_server.route("/scan-wifi")
+    def setup_scan_wifi(request: Request):
+        return JSONResponse(request, networks)
+
+    @setup_server.route("/save-wifi", [POST])
+    def setup_save_wifi(request: Request):
+        global wifi_setup_restart
+        try:
+            rq_d = request.json()
+            ssid = rq_d["ssid"].strip()
+            password = rq_d["password"]
+            if ssid == "":
+                return Response(request, "Please select a WiFi network.")
+            env = {
+                "WIFI_SSID": ssid,
+                "WIFI_PASSWORD": password
+            }
+            files.write_json_file("env.json", env)
+            print("WiFi settings saved for:", ssid)
+            wifi_setup_restart = True
+            return Response(request, "WiFi saved. Animator restarting...")
+        
+        except Exception as e:
+            print("WiFi setup save error:", e)
+            return Response(request, "Unable to save WiFi settings.")
+    setup_server.start(setup_ip, port=80)
+    while True:
+        try:
+            setup_server.poll()
+        except OSError as e:
+            print("Setup HTTP error:", e)
+        except Exception as e:
+            print("Setup server error:", e)
+        if wifi_setup_restart:
+            time.sleep(2)
+            microcontroller.reset()
+        time.sleep(.01)
+
+################################################################################
+# Normal WiFi connection and web server
+
+if web:
+    import socketpool
+    import mdns
+    import wifi
+    from adafruit_httpserver import Server, Request, FileResponse, Response, POST, JSONResponse
+    gc_col("config wifi imports")
+    files.log_item("Connecting to WiFi")
+    WIFI_SSID = "jimmytrainsguest"
+    WIFI_PASSWORD = ""
+    try:
+        env = files.read_json_file("env.json")
+        WIFI_SSID = env["WIFI_SSID"]
+        WIFI_PASSWORD = env["WIFI_PASSWORD"]
+        gc_col("wifi env")
+        print("Using env ssid and password")
+    except Exception:
+        print("Using default ssid and password")
+    wifi_connected = False
+    for i in range(3):
+        led[0] = (0, 0, 255)
+        led.show()
+        try:
+            wifi.radio.connect(WIFI_SSID, WIFI_PASSWORD)
+            wifi_connected = True
+            break
+        except Exception as e:
+            files.log_item(e)
+            time.sleep(1)
+    if not wifi_connected:
+        print("Unable to connect to configured WiFi")
+        print("WiFi setup access point is available from the physical/menu command")
+        web = False
+    else:
+        gc_col("wifi connect")
+        mdns = mdns.Server(wifi.radio)
+        mdns.hostname = cfg["HOST_NAME"]
+        mdns.advertise_service(service_type="_http", protocol="_tcp", port=80)
+        local_ip = str(wifi.radio.ipv4_address)
+        files.log_item("IP is " + local_ip)
+        files.log_item("Connected")
+        pool = socketpool.SocketPool(wifi.radio)
+        server = Server(pool, "/static", debug=False)
+        server.port = 80
+        gc_col("wifi server")
+
+        def create_directory_if_needed(path):
+            if path == "" or path == "/":
+                return
+
+            path = path.replace("\\", "/")
+
+            if not path.startswith("/"):
+                path = "/" + path
+
+            parts = path.strip("/").split("/")
+            current_path = ""
+
+            for part in parts:
+                if part == "":
+                    continue
+
+                current_path += "/" + part
+
+                try:
+                    os.stat(current_path)
+                except OSError:
+                    print("Creating directory:", current_path)
+                    os.mkdir(current_path)
+
+        ################################################################################
+        # Setup routes
+
+        @server.route("/")
+        def base(req: HTTPRequest):
+            return FileResponse(req, "index.html", "/")
+
+        @server.route("/mui.min.css")
+        def base(req: HTTPRequest):
+            return FileResponse(req, "mui.min.css", "/")
+
+        @server.route("/mui.min.js")
+        def base(req: HTTPRequest):
+            return FileResponse(req, "mui.min.js", "/")
+
+        @server.route("/animation", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            cfg["option_selected"] = rq_d["an"]
+            add_cmd("AN_" + cfg["option_selected"])
+            if not mix.voice[0].playing:
+                files.write_json_file("/cfg.json", cfg)
+            return Response(request, "Animation " + cfg["option_selected"] + " started.")
+        
+        @server.route("/defaults", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            if rq_d["an"] == "reset_animation_timing_to_defaults":
+                for ts_fn in ts_jsons:
+                    ts = files.read_json_file(
+                        "/t_s_def/" + ts_fn + ".json")
+                    files.write_json_file(
+                        "/snds/"+ts_fn+".json", ts)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+            elif rq_d["an"] == "reset_to_defaults":
+                rst_def()
+                files.write_json_file("/cfg.json", cfg)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+                st_mch.go_to('base_state')
+            return Response(request, "Utility: " + rq_d["an"])
+
+        @server.route("/mode", [POST])
+        def btn(request: Request):
+            global cont_run, ts_mode
+            rq_d = request.json()
+            if rq_d["an"] == "left":
+                ovrde_sw_st["switch_value"] = "left"
+            elif rq_d["an"] == "right":
+                ovrde_sw_st["switch_value"] = "right"
+            elif rq_d["an"] == "right_held":
+                ovrde_sw_st["switch_value"] = "right_held"
+            elif rq_d["an"] == "three":
+                ovrde_sw_st["switch_value"] = "three"
+            elif rq_d["an"] == "four":
+                ovrde_sw_st["switch_value"] = "four"
+            elif rq_d["an"] == "cont_mode_on":
+                cont_run = True
+                ply_a_0(mvc_folder + "continuous_mode_activated.mp3")
+                cfg["cont_mode"] = cont_run
+                files.write_json_file("/cfg.json", cfg)
+            elif rq_d["an"] == "cont_mode_off":
+                stop_all_cmds()
+                ply_a_0(mvc_folder + "continuous_mode_deactivated.mp3")
+                cfg["cont_mode"] = cont_run
+                files.write_json_file("/cfg.json", cfg)
+            elif rq_d["an"] == "timestamp_mode_on":
+                stop_all_cmds()
+                ts_mode = True
+                ply_a_0(mvc_folder + "timestamp_mode_on.mp3")
+                ply_a_0(mvc_folder + "timestamp_instructions.mp3")
+            elif rq_d["an"] == "timestamp_mode_off":
+                ts_mode = False
+                ply_a_0(mvc_folder + "timestamp_mode_off.mp3")
+            return Response(request, "Utility: " + rq_d["an"])
+
+        @server.route("/speaker", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            if rq_d["an"] == "speaker_test":
+                ply_a_0(mvc_folder + "left_speaker_right_speaker.mp3")
+            elif rq_d["an"] == "volume_pot_off":
+                cfg["volume_pot"] = False
+                files.write_json_file("/cfg.json", cfg)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+            elif rq_d["an"] == "volume_pot_on":
+                cfg["volume_pot"] = True
+                files.write_json_file("/cfg.json", cfg)
+                ply_a_0(mvc_folder + "all_changes_complete.mp3")
+            return Response(request, "Utility: " + rq_d["an"])
+
+        @server.route("/lights", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            command = rq_d["an"]
+            add_command_to_ts(command)
+            set_hdw(command)
+            return Response(request, "Utility: " + "Utility: set lights")
+        
+        @server.route("/set-item-lights", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            command = "LN0_" + str(rq_d["r"]) + "_" + \
+            str(rq_d["g"]) + "_" + str(rq_d["b"])
+            add_command_to_ts(command)
+            set_hdw(command)
+            return Response(request, "Utility: " + "Utility: set lights")
+        
+        @server.route("/update-host-name", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            cfg["HOST_NAME"] = rq_d["an"]
+            files.write_json_file("/cfg.json", cfg)
+            mdns.hostname = cfg["HOST_NAME"]
+            spk_web()
+            return Response(request, cfg["HOST_NAME"])
+
+        @server.route("/get-host-name", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            return Response(request, cfg["HOST_NAME"])
+
+        @server.route("/get-local-ip", [POST])
+        def buttonpress(req: Request):
+            stop_all_cmds()
+            return Response(req, local_ip)
+
+        @server.route("/update-volume", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            ch_vol(rq_d["action"])
+            files.write_json_file("/cfg.json", cfg)
+            return Response(request, cfg["volume"])
+
+        @server.route("/get-volume", [POST])
+        def btn(request: Request):
+            return Response(request, cfg["volume"])
+        
+
+        @server.route("/get-throttle", [POST])
+        def btn(request: Request):
+            rq_d = request.json()
+            motor_n = int(rq_d["motor"])
+            if motor_n < 1 or motor_n > len(trains):
+                return Response(request, "Invalid motor number")
+            cur_throttle_str = str(current_throttles[motor_n - 1])
+            print("Sending motor", motor_n, "throttle:", cur_throttle_str)
+            return Response(request, cur_throttle_str)
+
+
+        @server.route("/get-animations", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            sounds = []
+            sounds.extend(snd_opt)
+            my_string = files.json_stringify(sounds)
+            return Response(request, my_string)
+        
+        @server.route("/create-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                print(rq_d)
+                f_n = animations_folder + rq_d["fn"] + ".json"
+                print(f_n)
+                an_data = ["0.0|", "1.0|", "2.0|", "3.0|"]
+                files.write_json_file(f_n, an_data)
+                upd_media()
+                return Response(request, "Created animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error creating animation.")
+        
+        @server.route("/rename-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                fo = animations_folder + rq_d["fo"] + ".json"
+                fn = animations_folder + rq_d["fn"] + ".json"
+                os.rename(fo, fn)
+                upd_media()
+                return Response(request, "Renamed animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.")
+            
+        @server.route("/delete-animation", [POST])
+        def btn(request: Request):
+            try:
+                global data, animations_folder
+                rq_d = request.json()  # Parse the incoming JSON
+                print(rq_d)
+                f_n = animations_folder + rq_d["fn"] + ".json"
+                print(f_n)
+                os.remove(f_n)
+                upd_media()
+                return Response(request, "Delete animation successfully.")
+            except Exception as e:
+                files.log_item(e)  # Log any errors
+                return Response(request, "Error setting lights.")
+
+        @server.route("/test-animation", [POST])
+        def btn(request: Request):
+            try:
+                rq_d = request.json()
+                clr_cmd_queue()
+                add_cmd(rq_d["an"])
+                return Response(request, "success")
+            except Exception as e:
+                print(e)
+                return Response(request, "error")
+        
+
+        @server.route("/get-animation", [POST])
+        def btn(request: Request):
+            stop_all_cmds()
+            rq_d = request.json()
+            snd_f = rq_d["an"]
+            if (f_exists("/snds/" + snd_f + ".json") == True):
+                f_n = "/snds/" + snd_f + ".json"
+                return FileResponse(request, f_n, "/")
+            else:
+                f_n = "/t_s_def/timestamp mode.json"
+                return FileResponse(request, f_n, "/")
+            
+        data = []
+
+        @server.route("/save-data", [POST])
+        def btn(request: Request):
+            global data
+            stop_all_cmds()
+            rq_d = request.json()
+            try:
+                if rq_d[0] == 0:
+                    data = []
+                data.extend(rq_d[2])
+                if rq_d[0] == rq_d[1]:
+                    f_n = "/snds/" + \
+                        rq_d[3] + ".json"
+                    files.write_json_file(f_n, data)
+                    data = []
+                upd_media()
+            except Exception as e:
+                files.log_item(e)
+                data = []
+                return Response(request, "out of memory")
+            return Response(request, "success")
+
+
+gc_col("web server")
+
+def measure_signal_strength(MY_SSID, cycles):
+    if not web:
+        return 0
+    print("Monitoring signal for:", MY_SSID)
+    print("Showing current RSSI + running average (simple sum + count)\n")
+    total_sum = 0.0
+    count = 0
+    while True:
+        current_rssi = None
+        found = False
+        try:
+            for network in wifi.radio.start_scanning_networks():
+                if network.ssid == MY_SSID:
+                    current_rssi = network.rssi
+                    print(
+                        f"{time.monotonic():.1f}s | {MY_SSID} → RSSI = {current_rssi} dBm", end="")
+                    found = True
+                    break
+            wifi.radio.stop_scanning_networks()
+            if found and current_rssi is not None:
+                total_sum += current_rssi
+                count += 1
+                if count > 0:
+                    avg_rssi = total_sum / count
+                    print(f"   |   Avg ({count} readings): {avg_rssi:.1f} dBm")
+                else:
+                    print("   |   Avg: waiting...")
+            else:
+                print(
+                    "   |   Could not see your SSID (hidden, out of range, or scan miss)")
+        except Exception as e:
+            print(f"Scan error: {e}")
+            wifi.radio.stop_scanning_networks()  # cleanup on error
+        time.sleep(0.1)
+        if count > cycles:
+            return avg_rssi
+
+cycles = 10
+
+if web:
+    avg_rssi = measure_signal_strength(WIFI_SSID, cycles)
+    print(f"Avg ({cycles} readings): {avg_rssi:.1f} dBm")
+else:
+    avg_rssi = 0
+
+################################################################################
+# Command queue
+command_queue = []
+
+
+def add_cmd(command, to_start=False):
+    if to_start:
+        command_queue.insert(0, command)
+        print("Command added to the start:", command)
+    else:
+        command_queue.append(command)
+        print("Command added to the end:", command)
+
+
+async def process_cmd():
+    global exit_set_hdw_async
+    while command_queue:
+        cmd = command_queue.pop(0)
+        exit_set_hdw_async = False
+        print("Processing command:", cmd)
+        if cmd[:2] == 'AN':
+            cmd_split = cmd.split("_")
+            clr_cmd_queue()
+            if cmd_split[1] == "customers":
+                await an_async(cmd_split[1]+"_"+cmd_split[2]+"_"+cmd_split[3]+"_"+cmd_split[4])
+            else:
+                await an_async(cmd_split[1])
+        else:
+            await set_hdw_async(cmd)
+        await asyncio.sleep(0)
+
+
+def clr_cmd_queue():
+    command_queue.clear()
+    print("Command queue cleared.")
+
+
+def stop_all_cmds(cont_mode_off=True):
+    global exit_set_hdw_async
+    exit_set_hdw_async = True
+    if cont_mode_off:
+        cfg["cont_mode"] = False
+    mix.voice[0].stop()
+    mix.voice[1].stop()
+    led.fill((0, 0, 0))
+    led.show()
+    clr_cmd_queue()
+    print("Processing stopped and command queue cleared.")
+
+
+async def animation_wait(wait_time):
+    global an_running, flsh_i, srt_t
+    start_time = time.monotonic()
+    spoken = False
+    sw = ""
+    while time.monotonic() - start_time < wait_time:
+        if ovrde_sw_st["switch_value"] == "left":
+            sw = utilities.switch_state(
+                l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+        else:
+            sw = utilities.switch_state(l_sw, r_sw, upd_vol, 1.0, ovrde_sw_st, False)
+        if sw == "left":
+            if spoken:
+                await asyncio.sleep(1)
+                while mix.voice[1].playing:
+                    await asyncio.sleep(0)
+            else:
+                stop_all_cmds(False)
+                asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                await asyncio.sleep(1)
+                while mix.voice[1].playing:
+                    await asyncio.sleep(0)
+            an_running = False
+            return True
+        if sw == "left_held":
+            if cfg["cont_mode"] == True:
+                if spoken:
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                else:
+                    stop_all_cmds(False)
+                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "continuous_mode_deactivated.mp3"))
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                cfg["cont_mode"] = False
+            else:
+                if spoken:
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+                else:
+                    stop_all_cmds(False)
+                    asyncio.create_task(ply_a_1_async(mvc_folder_local + "animation_canceled.mp3"))
+                    await asyncio.sleep(1)
+                    while mix.voice[1].playing:
+                        await asyncio.sleep(0)
+            an_running = False
+            return True
+        await asyncio.sleep(0)
+    return False
+
+
+
+
+def add_command_to_ts(command):
+    global ts_mode, t_s, t_elsp
+    if not ts_mode:
+        return
+    t_elsp_formatted = "{:.3f}".format(t_elsp)
+    t_s.append(t_elsp_formatted + "|" + command)
+    files.log_item(t_elsp_formatted + "|" + command)
+
+################################################################################
+# Misc Methods
+
+def rst_def():
+    cfg["volume_pot"] = True
+    cfg["HOST_NAME"] = "animator-trolley"
+    cfg["option_selected"] = "random all"
+    cfg["volume"] = "20"
+
+################################################################################
 # Animations
 
 
@@ -790,7 +1155,7 @@ lst_opt = ""
 
 
 async def an_async(f_nm):
-    global lst_opt, ts_mode, an_running, cont_run
+    global lst_opt, ts_mode
     print("Filename: " + f_nm)
     cur_opt = f_nm
     try:
@@ -805,21 +1170,13 @@ async def an_async(f_nm):
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
         if ts_mode:
-            an_running = True
             await an_ts(cur_opt)
-            gc_col("animation cleanup")
-            an_running = False
         else:
-            an_running = True
             await an_light_async(cur_opt)
-            gc_col("animation cleanup")
-            an_running = False
     except Exception as e:
         files.log_item(e)
         await no_trk()
         cfg["option_selected"] = "random all"
-        cont_run = False
-        an_running = False
         return
     gc_col("Animation complete.")
 
@@ -943,8 +1300,8 @@ async def an_ts(f_nm):
         if not mix.voice[0].playing:
             add_command_to_ts("")
             for i in range(4):
-                led[i].fill((0, 0, 0))
-                led[i].show()
+                led_channels[i].fill((0, 0, 0))
+                led_channels[i].show()
             files.write_json_file(
                 "/snds/" + f_nm + ".json", t_s)
             break
@@ -1066,7 +1423,7 @@ def set_hdw(input_string):
         elif seg[0] == 'B':
             br = int(seg[1:])
             for i in range(4):
-                led[i].brightness = float(br/100)
+                led_channels[i].brightness = float(br/100)
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
@@ -1074,17 +1431,17 @@ def set_hdw(input_string):
                 if br < v:
                     br += 1
                     for i in range(4):
-                        led[i].brightness = float(br/100)
+                        led_channels[i].brightness = float(br/100)
                 else:
                     br -= 1
                     for i in range(4):
-                        led[i].brightness = float(br/100)
+                        led_channels[i].brightness = float(br/100)
                 upd_vol(.01)
         # QXXX = Brightness XXX 0 to 100
         elif seg[0] == 'B':
             br = int(seg[1:])
             for i in range(4):
-                led[i].brightness = float(br/100)
+                led_channels[i].brightness = float(br/100)
 
 
 async def set_hdw_async(input_string):
@@ -1194,7 +1551,7 @@ async def set_hdw_async(input_string):
         elif seg[0] == 'B':
             br = int(seg[1:])
             for i in range(4):
-                led[i].brightness = float(br/100)
+                led_channels[i].brightness = float(br/100)
         # FXXX = Fade brightness in or out XXX 0 to 100
         elif seg[0] == 'F':
             v = int(seg[1:])
@@ -1202,11 +1559,11 @@ async def set_hdw_async(input_string):
                 if br < v:
                     br += 1
                     for i in range(4):
-                        led[i].brightness = float(br/100)
+                        led_channels[i].brightness = float(br/100)
                 else:
                     br -= 1
                     for i in range(4):
-                        led[i].brightness = float(br/100)
+                        led_channels[i].brightness = float(br/100)
                 upd_vol_async(.01)
         # QXXXX = Add command XXXX any command ie AN_filename to add new animation
         elif seg[0] == 'Q':
@@ -1216,11 +1573,11 @@ async def set_hdw_async(input_string):
 def set_neo_to(light_n, r, g, b):
     if light_n == -1:
         for i in range(4):
-            led[i][0] = (r, g, b)
-            led[i].show
+            led_channels[i][0] = (r, g, b)
+            led_channels[i].show
     else:
-        led[light_n][0] = (r, g, b)
-        led[light_n].show()
+        led_channels[light_n][0] = (r, g, b)
+        led_channels[light_n].show()
 
 def get_random_media_file(folder_to_search):
     files = files.return_directory("", folder_to_search, ".mp3")
@@ -1583,8 +1940,8 @@ if (web):
     files.log_item("starting server...")
     try:
         server.start(str(wifi.radio.ipv4_address), port=80)
-        led[1][0] = (0, 255, 0)
-        led[1].show()
+        led_channels[1][0] = (0, 255, 0)
+        led_channels[1].show()
         files.log_item("Listening on http://%s:80" % wifi.radio.ipv4_address)
         spk_web()
     except Exception as e:
@@ -1593,8 +1950,8 @@ if (web):
         files.log_item("restarting...")
         rst()
 else:
-    led[1][0] = (255, 0, 0)
-    led[1].show()
+    led_channels[1][0] = (255, 0, 0)
+    led_channels[1].show()
     time.sleep(3)
 
 # initialize items
@@ -1656,3 +2013,4 @@ try:
     asyncio.run(main())
 except KeyboardInterrupt:
     pass
+
