@@ -753,20 +753,56 @@ if web:
         def btn(request: Request):
             stop_all_cmds()
             rq_d = request.json()
-            if rq_d["an"] == "reset_animation_timing_to_defaults":
-                for ts_fn in ts_jsons:
-                    ts = files.read_json_file(
-                        "/t_s_def/" + ts_fn + ".json")
-                    files.write_json_file(
-                        "/snds/"+ts_fn+".json", ts)
-                ply_a_0(mvc_folder + "all_changes_complete.mp3")
-            elif rq_d["an"] == "reset_to_defaults":
+            if rq_d["an"] == "reset_to_defaults":
                 rst_def()
-                files.write_json_file("/cfg.json", cfg)
                 ply_a_0(mvc_folder + "all_changes_complete.mp3")
                 st_mch.go_to('base_state')
             return Response(request, "Utility: " + rq_d["an"])
 
+
+        @server.route("/get-folders", [POST])
+        def get_folders(request: Request):
+            try:
+                rq_d = request.json()
+                path = rq_d.get("path", "/")
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "[]")
+                folders = []
+                for name in os.listdir(path):
+                    if name.startswith("."):
+                        continue
+                    full_path = path.rstrip("/") + "/" + name
+                    try:
+                        if os.stat(full_path)[0] & 0x4000:
+                            folders.append(name)
+                    except OSError:
+                        pass
+                folders.sort()
+                return Response(request, files.json_stringify(folders))
+            except Exception as e:
+                print("Get folders error:", e)
+                return Response(request, "[]")
+
+        @server.route("/check-folder", [POST])
+        def check_folder(request: Request):
+            try:
+                rq_d = request.json()
+                path = rq_d.get("path", "/")
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "invalid")
+                os.listdir(path)
+                print("Folder selected:", path)
+                return Response(request, "success")
+            except Exception as e:
+                print("Check folder error:", e)
+                return Response(request, "invalid")
+        
         @server.route("/mode", [POST])
         def btn(request: Request):
             global ts_mode
@@ -833,6 +869,11 @@ if web:
             add_command_to_ts(command)
             set_hdw(command)
             return Response(request, "Utility: " + "Utility: set lights")
+
+        @server.route("/get-wifi-signal", [POST])
+        def get_local_ip(request: Request):
+            avg_rssi = measure_signal_strength(WIFI_SSID, 10)
+            return Response(request, str(avg_rssi))
         
         @server.route("/update-host-name", [POST])
         def btn(request: Request):
@@ -977,6 +1018,242 @@ if web:
                 return Response(request, "out of memory")
             return Response(request, "success")
 
+        @server.route("/get-sound-files", [POST])
+        def get_sound_files(request: Request):
+            try:
+                rq_d = request.json()
+                path = rq_d.get("path", animations_folder)
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "[]")
+                sound_files = []
+                for filename in os.listdir(path):
+                    if filename.startswith("."):
+                        continue
+                    full_path = path.rstrip("/") + "/" + filename
+                    try:
+                        if not os.stat(full_path)[0] & 0x4000:
+                            sound_files.append(filename)
+                    except OSError:
+                        pass
+                sound_files.sort()
+                return Response(request, files.json_stringify(sound_files))
+            except Exception as e:
+                print("Get sound files error:", e)
+                return Response(request, "[]")       
+
+        @server.route("/delete-sound-file", [POST])
+        def delete_sound_file(request: Request):
+            try:
+                rq_d = request.json()
+                filename = rq_d["filename"]
+                path = rq_d.get("path", animations_folder)
+                path = path.replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if filename in ("", ".", ".."):
+                    return Response(request, "invalid filename")
+                if "/" in filename or "\\" in filename:
+                    return Response(request, "invalid filename")
+                if ".." in path.split("/"):
+                    return Response(request, "invalid path")
+                file_path = path.rstrip("/") + "/" + filename
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+                if os.stat(file_path)[0] & 0x4000:
+                    return Response(request, "cannot delete directory")
+                os.remove(file_path)
+                print("Deleted file:", file_path)
+                return Response(request, "success")
+            except Exception as e:
+                print("Delete sound file error:", e)
+                return Response(request, "error")
+
+        @server.route("/play-sound-file", [POST])
+        def play_sound_file(request: Request):
+            global preview_audio
+            try:
+                rq_d = request.json()
+                filename = rq_d["filename"]
+                path = rq_d["path"].replace("\\", "/")
+                if not path.startswith("/"):
+                    path = "/" + path
+                if ".." in path.split("/"):
+                    return Response(request, "invalid path")
+                if filename in ("", ".", ".."):
+                    return Response(request, "invalid filename")
+                if "/" in filename or "\\" in filename:
+                    return Response(request, "invalid filename")
+                lower_name = filename.lower()
+                if not lower_name.endswith(".mp3") and not lower_name.endswith(".wav"):
+                    return Response(request, "invalid file type")
+                file_path = path.rstrip("/") + "/" + filename
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+                if an_running:
+                    return Response(request, "animation running")
+                if mix.voice[1].playing and not preview_audio:
+                    return Response(request, "audio busy")
+                preview_audio = False
+                mix.voice[1].stop()
+                ply_a_1(file_path, wait=False)
+                preview_audio = True
+                return Response(request, "success")
+            except Exception as e:
+                preview_audio = False
+                print("Play sound error:", e)
+                return Response(request, "error")
+
+        @server.route("/download-file")
+        def download_file(request: Request):
+            try:
+                filename = request.query_params.get("filename", "")
+                path = request.query_params.get("path", animations_folder)
+
+                filename = url_decode(filename)
+                path = url_decode(path)
+                path = path.replace("\\", "/")
+
+                if not path.startswith("/"):
+                    path = "/" + path
+
+                if ".." in path.split("/"):
+                    return Response(request, "invalid path", status=400)
+
+                if filename in ("", ".", ".."):
+                    return Response(request, "invalid filename", status=400)
+
+                if "/" in filename or "\\" in filename:
+                    return Response(request, "invalid filename", status=400)
+
+                file_path = path.rstrip("/") + "/" + filename
+
+                if not f_exists(file_path):
+                    return Response(request, "file not found", status=404)
+
+                if os.stat(file_path)[0] & 0x4000:
+                    return Response(request, "cannot download directory", status=400)
+
+                print("Downloading:", file_path)
+
+                return FileResponse(request, file_path, "/")
+
+            except Exception as e:
+                print("Download error:", e)
+                return Response(request, "download error", status=500)
+
+        @server.route("/stop-sound-file", [POST])
+        def stop_sound_file(request: Request):
+            try:
+                if not an_running:
+                    mix.voice[1].stop()
+                return Response(request, "success")
+            except Exception as e:
+                print("Stop sound error:", e)
+                return Response(request, "error")
+
+
+        @server.route("/upload-sound", [POST])
+        def upload_sound(request: Request):
+            try:
+                filename = request.query_params.get("filename")
+                location = request.query_params.get("location", "")
+                offset = int(request.query_params.get("offset", "0"))
+
+                if not filename:
+                    return Response(request, "missing filename")
+
+                filename = url_decode(filename)
+                location = url_decode(location)
+
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+
+                location = location.replace("\\", "/")
+
+                if not filename:
+                    return Response(request, "invalid filename")
+
+                if location == "":
+                    location = "/"
+
+                if not location.startswith("/"):
+                    location = "/" + location
+
+                if location != "/" and not location.endswith("/"):
+                    location += "/"
+
+                file_path = location + filename
+                chunk_size = len(request.body)
+
+                if offset == 0:
+                    create_directory_if_needed(location)
+
+                    with open(file_path, "wb") as f:
+                        f.write(request.body)
+
+                else:
+                    if not f_exists(file_path):
+                        return Response(request, "file not found")
+
+                    with open(file_path, "r+b") as f:
+                        f.seek(offset)
+                        f.write(request.body)
+
+                print("Uploaded:", file_path, "offset:", offset, "bytes:", chunk_size)
+
+                return Response(request, "success")
+
+            except Exception as e:
+                print("Upload error:", e)
+                return Response(request, "error")
+
+ 
+        @server.route("/upload-sound-complete", [POST])
+        def upload_sound_complete(request: Request):
+            try:
+                rq_d = request.json()
+
+                filename = rq_d["filename"]
+                location = rq_d.get("location", "")
+                expected_size = int(rq_d["size"])
+
+                filename = filename.replace("\\", "/")
+                filename = filename.split("/")[-1]
+
+                location = location.replace("\\", "/")
+
+                if not filename:
+                    return Response(request, "invalid filename")
+
+                if location == "":
+                    location = "/"
+
+                if location != "/" and not location.endswith("/"):
+                    location += "/"
+
+                file_path = location + filename
+
+                if not f_exists(file_path):
+                    return Response(request, "file not found")
+
+                actual_size = os.stat(file_path)[6]
+
+                print("Upload complete:", file_path)
+                print("Expected size:", expected_size)
+                print("Actual size:", actual_size)
+
+                if actual_size != expected_size:
+                    return Response(request, "size mismatch")
+
+                return Response(request, "success")
+
+            except Exception as e:
+                print("Upload complete error:", e)
+                return Response(request, "error")
+            
 
 gc_col("web server")
 
