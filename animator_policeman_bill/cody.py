@@ -73,22 +73,17 @@ gc_col("Imports gc, files")
 animations_folder = "snds/"
 mvc_folder = "mvc/"
 mvc_folder_local = "mvc/"
-
-female_folder = "female/"
-male_folder = "male/"
-male_officer_folder = "male_off/"
-female_officer_folder = "female_off/"
-sirens_folder = "sirens/"
+policeman_folder = "policeman/"
+witch_folder = "witch/"
+convo_folder = "convo/"
 
 FOLDER_MAP = {
-    'F': female_folder,
-    'M': male_folder,
-    'O': male_officer_folder,
-    'P': female_officer_folder,
-    'S': sirens_folder
+    'P': policeman_folder,
+    'W': witch_folder,
+    'C': convo_folder
 }
 
-media_index = {'F': 0, 'M': 0, 'O': 0, 'P': 0, 'S': 0}
+media_index = {'P': 0, 'W': 0, 'C': 0}
 
 ################################################################################
 # Flash data
@@ -496,8 +491,8 @@ async def no_trk():
 def spk_web():
     ply_a_0(mvc_folder + "animator_available_on_network.mp3")
     ply_a_0(mvc_folder + "to_access_type.mp3")
-    if cfg["HOST_NAME"] == "animator-ride-on-train":
-        ply_a_0(mvc_folder + "animator_ride_on_train.mp3")
+    if cfg["HOST_NAME"] == "animator-policeman-bill":
+        ply_a_0(mvc_folder + "animator_policeman_bill.mp3")
         ply_a_0(mvc_folder + "dot.mp3")
         ply_a_0(mvc_folder + "local.mp3")
     else:
@@ -1405,9 +1400,9 @@ def add_command_to_ts(command):
 
 def rst_def():
     cfg["volume_pot"] = True
-    cfg["HOST_NAME"] = "animator-trolley"
+    cfg["HOST_NAME"] = "animator-policeman-bill"
     cfg["option_selected"] = "random all"
-    cfg["volume"] = "20"
+    cfg["volume"] = "50"
 
 ################################################################################
 # Animations
@@ -1775,6 +1770,12 @@ async def set_hdw_async(input_string):
                         w1 = audiomp3.MP3Decoder(open("/snds/" + seg[3:] + ".mp3", "rb"))
                     elif seg[2] == "M":
                         w1 = audiomp3.MP3Decoder(open(mvc_folder + "" + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "W":
+                        w1 = audiomp3.MP3Decoder(open(witch_folder + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "P":
+                        w1 = audiomp3.MP3Decoder(open(policeman_folder + "" + seg[3:] + ".mp3", "rb"))
+                    elif seg[2] == "C":
+                        w1 = audiomp3.MP3Decoder(open(convo_folder + seg[3:] + ".mp3", "rb"))
                     elif seg[2] == "T":
                         print("this segment is: ", seg[3:])
                         if seg[3:] == "RAND":
