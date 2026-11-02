@@ -347,6 +347,7 @@ def spk_word(str_to_speak):
         or str_to_speak == "dialog"
         or str_to_speak == "museum"
         or str_to_speak == "patriotic"
+        or str_to_speak == "save"
     ):
         ply_a_0(str_to_speak)
         return
@@ -616,8 +617,13 @@ async def move_flag_to(pos, sound_folder=None, sound_pos=None, light_val=None, l
 async def rn_an(steps, direction, rand, keep_track=True):
     global async_running
     async_running = True
-    rot_f = asyncio.create_task(wave_flag_async(rand))
     deploy_f = asyncio.create_task(deploy_flag(steps, direction, keep_track, True))
+    await asyncio.sleep(0.3)
+    if kill_process:
+        async_running = False
+        await deploy_f
+        return
+    rot_f = asyncio.create_task(wave_flag_async(rand))
     await deploy_f
     async_running = False
     await rot_f
@@ -626,34 +632,40 @@ async def wave_flag(folder=None, duration=None):
     global async_running
     if folder is not None:
         clear_finished_w0()
-        if play_dialog_folder(folder):
-            async_running = True
-            wave_f = asyncio.create_task(wave_flag_async(False))
-            while mix.voice[0].playing:
-                if animation_stop():
-                    async_running = False
-                    await wave_f
-                    return
-                await asyncio.sleep(0.01)
-            async_running = False
-            await wave_f
-            clear_finished_w0()
-            return
-    if duration is not None:
-        async_running = True
-        wave_f = asyncio.create_task(wave_flag_async(False))
-        end_time = time.monotonic() + duration
-        while time.monotonic() < end_time:
-            if animation_stop():
-                async_running = False
-                await wave_f
-                return
+        while mix.voice[0].playing:
+            if animation_stop(): return
             await asyncio.sleep(0.01)
-        async_running = False
-        await wave_f
+        clear_finished_w0()
+        if not play_dialog_folder(folder):
+            folder = None
+            duration = random.randint(5, 10)
+    if folder is None and duration is None:
+        await rn_an(wave_motor_steps, "up", False, False)
         return
-    await rn_an(wave_motor_steps, "up", False, False)
-
+    async_running = True
+    deploy_f = asyncio.create_task(deploy_flag(50, "up", False, True))
+    await asyncio.sleep(0.3)
+    if kill_process:
+        async_running = False
+        await deploy_f
+        return
+    wave_f = asyncio.create_task(wave_flag_async(False))
+    end_time = time.monotonic() + duration if duration is not None else None
+    while not kill_process:
+        if folder is not None:
+            if not mix.voice[0].playing: break
+        elif end_time is not None:
+            if time.monotonic() >= end_time: break
+        if animation_stop(): break
+        if deploy_f.done():
+            await deploy_f
+            if kill_process: break
+            deploy_f = asyncio.create_task(deploy_flag(50, "up", False, True))
+        await asyncio.sleep(0.01)
+    async_running = False
+    await deploy_f
+    await wave_f
+    clear_finished_w0()
 
 async def home_flag():
     global lst_deploy_pos, kill_process
@@ -713,16 +725,7 @@ def an():
         if museum_stop(): return
         if kill_process: return
         if cfg_temp["mode"] == "raise_wave_lower":
-            asyncio.run(deploy_flag(flag_up_extra, "up", False))
-            if museum_stop(): return
-            if kill_process: return
             if cfg_temp["sound"] == "sound_oreveille_oretreat_patriotic":
-                while mix.voice[0].playing:
-                    if animation_stop(): break
-                    upd_vol(0.01)
-                if museum_stop(): return
-                if kill_process: return
-                clear_finished_w0()
                 asyncio.run(wave_flag("patriotic"))
             else:
                 asyncio.run(wave_flag(duration=random.randint(5, 10)))
@@ -751,9 +754,6 @@ def an():
             if kill_process: return
     elif cfg_temp["mode"] == "raise_wave":
         asyncio.run(move_flag_to(flag_deploy_max, sound_up, half_mast_pos if sound_up else None, 255, half_mast_pos))
-        if museum_stop(): return
-        if kill_process: return
-        asyncio.run(deploy_flag(flag_up_extra, "up", False))
         if museum_stop(): return
         if kill_process: return
         while not kill_process:
@@ -1094,7 +1094,7 @@ class Opt(Ste):
                 cfg["mode"] = "raise_wave_lower"
             elif mnu_o[self.sel_i] == "raise_wave":
                 cfg["mode"] = "raise_wave"
-            elif mnu_o[self.sel_i] == "exit_this_menu":
+            elif mnu_o[self.sel_i] == "save_options":
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
