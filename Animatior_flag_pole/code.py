@@ -213,41 +213,35 @@ def stop_dialog():
         mix.voice[0].stop()
     clear_w0()
 
+
 def play_dialog_folder(folder, chance=1.0):
     global w0
     if not cfg["dialog"]:
+        return False
+    if not isinstance(folder, str) or not folder:
+        print("Invalid dialog folder:", folder)
         return False
     if mix.voice[0].playing:
         return False
     if random.random() >= chance:
         return False
     clear_w0()
-    path = folder
     try:
-        sounds = os.listdir(path)
+        sounds = os.listdir(folder)
     except Exception as e:
-        files.log_item("Dialog folder error " + folder + ": " + str(e))
+        files.log_item("Dialog folder error " + str(folder) + ": " + str(e))
         gc.collect()
         return False
-    if len(sounds) == 0:
-        sounds = None
+    sounds = [f for f in sounds if not f.startswith(".") and f.lower().endswith(".mp3")]
+    if not sounds:
         gc.collect()
         return False
-    attempts = len(sounds)
-    while attempts > 0:
-        file_name = random.choice(sounds)
-        if file_name.lower().endswith(".mp3"):
-            break
-        attempts -= 1
-    else:
-        sounds = None
-        gc.collect()
-        return False
+    file_name = random.choice(sounds)
     sounds = None
     gc.collect()
     print("Dialog: " + folder + "/" + file_name)
     try:
-        w0 = audiomp3.MP3Decoder(open(path + "/" + file_name, "rb"))
+        w0 = audiomp3.MP3Decoder(open(folder + "/" + file_name, "rb"))
         mix.voice[0].play(w0, loop=False)
     except Exception as e:
         files.log_item("Dialog play error: " + str(e))
@@ -654,7 +648,7 @@ def museum_stop():
     kill_process = False
     async_running = False
     rot.angle = 180
-    asyncio.run(move_flag_to(0, False, False))
+    asyncio.run(move_flag_to(0, allow_cancel=False))
     coils_off()
     clear_finished_w0()
     play_dialog_folder("end")
@@ -672,95 +666,78 @@ def an():
     museum_long_press_stop = False
     button_press_start = None
     cfg_temp = files.read_json_file("cfg.json")
-
-    # Old random sound selection is no longer used.
-    # Taps can later be used for special Memorial sequences.
-
-    if cfg_temp["mode"] == "raise_wave_lower":
-        asyncio.run(move_flag_to(flag_deploy_max, "up", half_mast_pos, 255, half_mast_pos))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        asyncio.run(deploy_flag(flag_up_extra, "up", False))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        asyncio.run(wave_flag("patriotic"))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        rot.angle = 180
-        asyncio.run(deploy_flag(flag_up_extra, "up", False))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        asyncio.run(move_flag_to(0, "down", flag_deploy_max-100, 0, half_mast_pos))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-
-    elif cfg_temp["mode"] == "raise_lower":
-        asyncio.run(move_flag_to(flag_deploy_max, "up", half_mast_pos, 255, half_mast_pos))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        asyncio.run(deploy_flag(flag_up_extra, "up", False))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        asyncio.run(wave_flag(duration=random.randint(5, 10)))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        rot.angle = 180
-        asyncio.run(deploy_flag(flag_up_extra, "up", False))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-        asyncio.run(move_flag_to(0, "down", flag_deploy_max-100, 0, half_mast_pos))
-        if museum_stop():
-            return
-        if kill_process:
-            return
-
+    if cfg_temp["random"]:
+        pick = random.randint(0, 2)
+        if pick == 0:
+            cfg_temp["sound"] = "sound_off"
+        elif pick == 1:
+            cfg_temp["sound"] = "sound_otaps"
+        else:
+            cfg_temp["sound"] = "sound_oreveille_oretreat"
+    sound_up = None
+    sound_down = None
+    if cfg_temp["sound"] == "sound_oreveille_oretreat":
+        sound_up = "up"
+        sound_down = "down"
+    elif cfg_temp["sound"] == "sound_otaps":
+        sound_down = "memorial"
+    print("Selected sound: " + cfg_temp["sound"])
+    if cfg_temp["mode"] == "raise_wave_lower" or cfg_temp["mode"] == "raise_lower":
+        asyncio.run(move_flag_to(flag_deploy_max, sound_up, half_mast_pos if sound_up else None, 255, half_mast_pos))
+        if museum_stop(): return
+        if kill_process: return
+        if cfg_temp["mode"] == "raise_wave_lower":
+            asyncio.run(deploy_flag(flag_up_extra, "up", False))
+            if museum_stop(): return
+            if kill_process: return
+            if cfg_temp["sound"] == "sound_oreveille_oretreat":
+                asyncio.run(wave_flag("patriotic"))
+            else:
+                asyncio.run(wave_flag(duration=random.randint(5, 10)))
+            if museum_stop(): return
+            if kill_process: return
+            rot.angle = 180
+            asyncio.run(deploy_flag(flag_up_extra, "up", False))
+            if museum_stop(): return
+            if kill_process: return
+        if cfg_temp["sound"] == "sound_otaps":
+            clear_finished_w0()
+            play_dialog_folder("memorial")
+            asyncio.run(move_flag_to(0))
+            if museum_stop(): return
+            if kill_process: return
+            while mix.voice[0].playing:
+                animation_stop()
+                if museum_stop(): return
+                if kill_process: return
+                upd_vol(0.01)
+            clear_finished_w0()
+            led.duty_cycle = 0
+        else:
+            asyncio.run(move_flag_to(0, sound_down, flag_deploy_max - 100 if sound_down else None, 0, half_mast_pos))
+            if museum_stop(): return
+            if kill_process: return
     elif cfg_temp["mode"] == "raise_wave":
-        asyncio.run(move_flag_to(flag_deploy_max, "up", half_mast_pos, 255, half_mast_pos))
-        if museum_stop():
-            return
-        if kill_process:
-            return
+        asyncio.run(move_flag_to(flag_deploy_max, sound_up, half_mast_pos if sound_up else None, 255, half_mast_pos))
+        if museum_stop(): return
+        if kill_process: return
         asyncio.run(deploy_flag(flag_up_extra, "up", False))
-        if museum_stop():
-            return
-        if kill_process:
-            return
+        if museum_stop(): return
+        if kill_process: return
         while not kill_process:
             steps = random.randint(300, 600)
             asyncio.run(rn_an(steps, "up", False, False))
-            if museum_stop():
-                return
-            if kill_process:
-                return
+            if museum_stop(): return
+            if kill_process: return
             coils_off()
             wait_period = random.randint(2, 7)
             time_done = time.monotonic() + wait_period
             while time.monotonic() < time_done:
                 time.sleep(0.05)
                 animation_stop()
-                if museum_stop():
-                    return
-                if kill_process:
-                    return
-                
+                if museum_stop(): return
+                if kill_process: return
+                                
 ################################################################################
 # State Machine
 
@@ -1161,4 +1138,5 @@ gc_col("animations started")
 while True:
     st_mch.upd()
     upd_vol(0.01)
+
 
