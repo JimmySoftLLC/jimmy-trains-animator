@@ -29,8 +29,10 @@ def gc_col(collection_point):
 
 gc_col("Imports gc, files")
 
+
+
 ################################################################################
-# Config variables
+# config variables
 
 cfg = files.read_json_file("cfg.json")
 
@@ -47,13 +49,11 @@ cfg_muse_set = files.read_json_file("museum_settings.json")
 muse_set = cfg_muse_set["museum_settings"]
 
 ################################################################################
-# Globals
-
-lst_rot_pos = 90
-lst_deploy_pos = cfg["kite_deploy_max"]
+# globals
+lst_kite_rot_pos = 90
+lst_kite_deploy_pos = cfg["kite_deploy_max"]
 kite_min = 0
 kite_max = 180
-
 kill_process = False
 async_running = False
 rand_timer = 0
@@ -62,8 +62,9 @@ button_press_start = None
 museum_long_press_stop = False
 
 ################################################################################
-# Switch hardware
+# setup hardware
 
+# Setup the switches
 l_sw_io = digitalio.DigitalInOut(board.GP2)
 l_sw_io.direction = digitalio.Direction.INPUT
 l_sw_io.pull = digitalio.Pull.UP
@@ -125,15 +126,14 @@ stepper_sm = rp2pio.StateMachine(stepper_program, frequency=5000, init=stepper_i
 stepper_done = array.array("I", [0])
 
 ################################################################################
-# Audio hardware
+# Audio
 
-# setup pin for vol on 5v aud board
+# Setup pin for vol on 5v aud board
 a_in = AnalogIn(board.A2)
 
 # setup pin for audio enable 21 on 5v aud board
 aud_en = digitalio.DigitalInOut(board.GP21)
 aud_en.direction = digitalio.Direction.OUTPUT
-aud_en.value = True
 
 # setup i2s audio
 bclk = board.GP18  # BCLK on MAX98357A
@@ -142,7 +142,7 @@ din = board.GP20  # DIN on MAX98357A
 
 aud = audiobusio.I2SOut(bit_clock=bclk, word_select=lrc, data=din)
 
-# setup the mixer to play mp3 files
+# Setup the mixer to play mp3 files
 mix = audiomixer.Mixer(
     voice_count=1,
     sample_rate=22050,
@@ -173,10 +173,10 @@ upd_vol(0.01)
 
 ################################################################################
 # Servos
+kite_rot = pwmio.PWMOut(board.GP17, duty_cycle=2**15, frequency=50)
+kite_rot = servo.Servo(kite_rot, min_pulse=500, max_pulse=2500)
+kite_rot.angle = lst_kite_rot_pos
 
-rot = pwmio.PWMOut(board.GP17, duty_cycle=2**15, frequency=50)
-rot = servo.Servo(rot, min_pulse=500, max_pulse=2500)
-rot.angle = lst_rot_pos
 
 ################################################################################
 # Sound helpers
@@ -264,10 +264,10 @@ def play_flight_sound(target_pos):
     if launch_dialog_played and cfg["wind"] and not mix.voice[0].playing and rnd_prob(WIND_PROB):
         if play_wind():
             return
-    if target_pos > lst_deploy_pos:
+    if target_pos > lst_kite_deploy_pos:
         if launch_dialog_played:
             play_dialog_folder("flight_up", FLIGHT_DIALOG_PROB)
-    elif target_pos < lst_deploy_pos:
+    elif target_pos < lst_kite_deploy_pos:
         play_dialog_folder("flight_down", FLIGHT_DIALOG_PROB)
 
 
@@ -366,7 +366,7 @@ def spk_word(str_to_speak):
 
 
 ################################################################################
-# Misc
+# misc
 
 
 def exit_early():
@@ -406,12 +406,6 @@ def animation_stop():
         return True
     return False
 
-def rnd_prob(c):
-    y = random.random()
-    if y < c:
-        return True
-    return False
-
 ################################################################################
 # stepper motor
 
@@ -429,13 +423,13 @@ def stop_stepper():
 # servo motor
 
 def servo_m(servo_pos):
-    global lst_rot_pos
+    global lst_kite_rot_pos
     if servo_pos < kite_min:
         servo_pos = kite_min
     if servo_pos > kite_max:
         servo_pos = kite_max
-    rot.angle = servo_pos
-    lst_rot_pos = servo_pos
+    kite_rot.angle = servo_pos
+    lst_kite_rot_pos = servo_pos
 
 
 def ch_servo(action):
@@ -458,6 +452,7 @@ def ch_servo(action):
 
 ################################################################################
 # async methods
+
 
 loop = asyncio.get_event_loop()
 
@@ -483,15 +478,15 @@ def rotate_spd():
 
 
 async def rotate_kite_async():
-    global lst_rot_pos, async_running
+    global lst_kite_rot_pos, async_running
     while async_running:
         center_servo_pos = int(cfg["servo"])
         rand_pos_1 = random.randint(center_servo_pos - 70, center_servo_pos - 70)
         rand_pos_2 = random.randint(center_servo_pos + 70, center_servo_pos + 70)
         sign = 1
-        if lst_rot_pos > rand_pos_1:
+        if lst_kite_rot_pos > rand_pos_1:
             sign = -1
-        total_steps = abs(rand_pos_1 - lst_rot_pos)
+        total_steps = abs(rand_pos_1 - lst_kite_rot_pos)
         animation_stop()
         if not async_running or kill_process:
             break
@@ -500,14 +495,14 @@ async def rotate_kite_async():
                 async_running = False
                 return
             spd = rotate_spd()
-            kite_ang = lst_rot_pos + 1 * sign
+            kite_ang = lst_kite_rot_pos + 1 * sign
             servo_m(kite_ang)
             await asyncio.sleep(spd)
         await asyncio.sleep(2 * spd)
         sign = 1
-        if lst_rot_pos > rand_pos_2:
+        if lst_kite_rot_pos > rand_pos_2:
             sign = -1
-        total_steps = abs(rand_pos_2 - lst_rot_pos)
+        total_steps = abs(rand_pos_2 - lst_kite_rot_pos)
         animation_stop()
         if not async_running or kill_process:
             break
@@ -516,14 +511,14 @@ async def rotate_kite_async():
                 async_running = False
                 return
             spd = rotate_spd()
-            kite_ang = lst_rot_pos + 1 * sign
+            kite_ang = lst_kite_rot_pos + 1 * sign
             servo_m(kite_ang)
             await asyncio.sleep(spd)
         await asyncio.sleep(2 * spd)
 
 
-async def deploy_kite(steps, direction):
-    global async_running, lst_deploy_pos, launch_dialog_played
+async def deploy_kite(steps, direction, spd=0.005):
+    global async_running, lst_kite_deploy_pos, launch_dialog_played
     if steps <= 0:
         async_running = False
         return
@@ -535,7 +530,7 @@ async def deploy_kite(steps, direction):
     direction_bit = 1 if direction == "up" else 0
     command = ((steps - 1) << 1) | direction_bit
     command_data = array.array("I", [command])
-    start_pos = lst_deploy_pos
+    start_pos = lst_kite_deploy_pos
     start_time = time.monotonic()
     launch_position = int(cfg["kite_deploy_max"] * 0.15)
     stepper_sm.write(command_data)
@@ -545,10 +540,10 @@ async def deploy_kite(steps, direction):
         if completed_steps > steps:
             completed_steps = steps
         if direction == "up":
-            lst_deploy_pos = start_pos + completed_steps
+            lst_kite_deploy_pos = start_pos + completed_steps
         else:
-            lst_deploy_pos = start_pos - completed_steps
-        if direction == "up" and not launch_dialog_played and lst_deploy_pos >= launch_position:
+            lst_kite_deploy_pos = start_pos - completed_steps
+        if direction == "up" and not launch_dialog_played and lst_kite_deploy_pos >= launch_position:
             clear_finished_w0()
             if play_dialog_folder("launch"):
                 launch_dialog_played = True
@@ -560,20 +555,20 @@ async def deploy_kite(steps, direction):
         await asyncio.sleep(0)
     stepper_sm.readinto(stepper_done)
     if direction == "up":
-        lst_deploy_pos = start_pos + steps
+        lst_kite_deploy_pos = start_pos + steps
     else:
-        lst_deploy_pos = start_pos - steps
+        lst_kite_deploy_pos = start_pos - steps
     async_running = False
 
 
 async def rn_an(target_pos, play_sound=True):
     global async_running
-    if target_pos == lst_deploy_pos:
+    if target_pos == lst_kite_deploy_pos:
         return
     direction = "up"
-    if target_pos < lst_deploy_pos:
+    if target_pos < lst_kite_deploy_pos:
         direction = "down"
-    steps = abs(target_pos - lst_deploy_pos)
+    steps = abs(target_pos - lst_kite_deploy_pos)
     clear_finished_w0()
     if play_sound:
         play_flight_sound(target_pos)
@@ -592,6 +587,13 @@ async def rn_home(steps, direction):
 
 ################################################################################
 # Animations
+
+
+def rnd_prob(c):
+    y = random.random()
+    if y < c:
+        return True
+    return False
 
 def an():
     global kill_process, launch_dialog_played, museum_long_press_stop
@@ -630,7 +632,7 @@ def an():
                 mix.voice[0].stop()
             clear_w0()
             play_dialog_folder("flight_fail")
-            total_steps = abs(0 - lst_deploy_pos)
+            total_steps = abs(0 - lst_kite_deploy_pos)
             asyncio.run(rn_home(total_steps, "down"))
             if mix.voice[0].playing:
                 mix.voice[0].stop()
@@ -643,7 +645,7 @@ def an():
     gc_col("An done clean up sound")
     if museum_long_press_stop:
         kill_process = False
-        total_steps = abs(0 - lst_deploy_pos)
+        total_steps = abs(0 - lst_kite_deploy_pos)
         asyncio.run(rn_home(total_steps, "down"))
         coils_off()
         clear_finished_w0()
@@ -666,10 +668,10 @@ def home_motors():
     direction = "up"
     kite_ang = int(cfg["servo"] )
     servo_m(kite_ang)
-    if lst_deploy_pos > 0:
+    if lst_kite_deploy_pos > 0:
         direction = "down"
     ply_a_0("homing")
-    total_steps = abs(0 - lst_deploy_pos)
+    total_steps = abs(0 - lst_kite_deploy_pos)
     asyncio.run(rn_home(total_steps, direction))
 
 
