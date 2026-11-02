@@ -345,6 +345,8 @@ def spk_word(str_to_speak):
         or str_to_speak == "lrdiseng"
         or str_to_speak == "wind"
         or str_to_speak == "dialog"
+        or str_to_speak == "museum"
+        or str_to_speak == "patriotic"
     ):
         ply_a_0(str_to_speak)
         return
@@ -370,7 +372,7 @@ def exit_early():
     return False
 
 def animation_stop():
-    global kill_process, button_press_start, museum_long_press_stop
+    global kill_process, button_press_start, museum_long_press_stop, rand_timer
     if kill_process:
         return True
     if cfg["museum_mode"]:
@@ -387,17 +389,39 @@ def animation_stop():
                 return True
         else:
             button_press_start = None
-    elif not l_sw_io.value:
-        kill_process = True
-        if mix.voice[0].playing:
-            mix.voice[0].stop()
-        stop_stepper()
-        while not l_sw_io.value:
-            time.sleep(0.01)
-        time.sleep(0.05)
-        return True
+    else:
+        if not l_sw_io.value:
+            if button_press_start is None:
+                button_press_start = time.monotonic()
+            elif time.monotonic() - button_press_start >= 3.0:
+                kill_process = True
+                if mix.voice[0].playing:
+                    mix.voice[0].stop()
+                stop_stepper()
+                clear_finished_w0()
+                if cfg["timer"] == True:
+                    cfg["timer"] = False
+                    announcement = "timer_mode_off"
+                else:
+                    cfg["timer"] = True
+                    announcement = "timer_mode_on"
+                rand_timer = 0
+                aud_en.value = False
+                files.write_json_file("cfg.json", cfg)
+                aud_en.value = True
+                spk_sentence(announcement)
+                while not l_sw_io.value:
+                    time.sleep(0.01)
+                button_press_start = None
+                return True
+        elif button_press_start is not None:
+            button_press_start = None
+            kill_process = True
+            if mix.voice[0].playing:
+                mix.voice[0].stop()
+            stop_stepper()
+            return True
     return False
-
 
 def reset_motors():
     global kill_process
@@ -667,16 +691,18 @@ def an():
     button_press_start = None
     cfg_temp = files.read_json_file("cfg.json")
     if cfg_temp["random"]:
-        pick = random.randint(0, 2)
+        pick = random.randint(0, 3)
         if pick == 0:
             cfg_temp["sound"] = "sound_off"
         elif pick == 1:
             cfg_temp["sound"] = "sound_otaps"
-        else:
+        elif pick == 2:
             cfg_temp["sound"] = "sound_oreveille_oretreat"
+        elif pick == 3:
+            cfg_temp["sound"] = "sound_oreveille_oretreat_patriotic"
     sound_up = None
     sound_down = None
-    if cfg_temp["sound"] == "sound_oreveille_oretreat":
+    if cfg_temp["sound"] == "sound_oreveille_oretreat" or cfg_temp["sound"] == "sound_oreveille_oretreat_patriotic":
         sound_up = "up"
         sound_down = "down"
     elif cfg_temp["sound"] == "sound_otaps":
@@ -690,7 +716,13 @@ def an():
             asyncio.run(deploy_flag(flag_up_extra, "up", False))
             if museum_stop(): return
             if kill_process: return
-            if cfg_temp["sound"] == "sound_oreveille_oretreat":
+            if cfg_temp["sound"] == "sound_oreveille_oretreat_patriotic":
+                while mix.voice[0].playing:
+                    if animation_stop(): break
+                    upd_vol(0.01)
+                if museum_stop(): return
+                if kill_process: return
+                clear_finished_w0()
                 asyncio.run(wave_flag("patriotic"))
             else:
                 asyncio.run(wave_flag(duration=random.randint(5, 10)))
@@ -737,7 +769,8 @@ def an():
                 animation_stop()
                 if museum_stop(): return
                 if kill_process: return
-                                
+
+
 ################################################################################
 # State Machine
 
@@ -838,6 +871,8 @@ class BseSt(Ste):
                     return
             elif cfg["timer"] == True:
                 if rand_timer <= 0:
+                    if not l_sw_io.value:
+                        return
                     an()
                     time.sleep(.25)
                     coils_off()
@@ -853,6 +888,7 @@ class BseSt(Ste):
                 print("an done")
             elif sw == "right":
                 mch.go_to("main_menu")
+
 
 class Main(Ste):
 
@@ -1046,6 +1082,8 @@ class Opt(Ste):
                 cfg["sound"] = "sound_otaps"
             elif mnu_o[self.sel_i] == "sound_oreveille_oretreat":
                 cfg["sound"] = "sound_oreveille_oretreat"
+            elif mnu_o[self.sel_i] == "sound_oreveille_oretreat_patriotic":
+                cfg["sound"] = "sound_oreveille_oretreat_patriotic"
             elif mnu_o[self.sel_i] == "random_sound_off":
                 cfg["random"] = False
             elif mnu_o[self.sel_i] == "random_sound_on":
