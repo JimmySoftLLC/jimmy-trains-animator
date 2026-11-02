@@ -2953,10 +2953,10 @@ class BseSt(Ste):
     def exit(self, mch):
         Ste.exit(self, mch)
 
+
     def upd(self, mch):
         global an_just_added
-        sw = utilities.switch_state(
-            l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
+        sw = utilities.switch_state(l_sw, r_sw, time.sleep, 3.0, override_switch_state, False)
         if sw == "left_held":
             if cfg["cont_mode"]:
                 cont_mode_off()
@@ -2964,11 +2964,12 @@ class BseSt(Ste):
             else:
                 cont_mode_on()
                 files.write_json_file("cfg.json", cfg)
-        elif (sw == "left" or cfg["cont_mode"]) and not an_running:
+        elif (sw == "left" or (cfg["cont_mode"] and startup_command_sent)) and not an_running and not command_queue:
             add_command("AN_" + cfg["option_selected"])
             an_just_added = True
         elif sw == "right":
             mch.go_to('main_menu')
+
 
 
 class Main(Ste):
@@ -3051,18 +3052,19 @@ gc_col("animations started.")
 
 startup_command_sent = False
 
+
 async def process_commands_task():
     global startup_command_sent
+    if not startup_command_sent:
+        add_command(cfg["startup_string"], to_start=True)
+        startup_command_sent = True
     while True:
-        if not startup_command_sent:
-            await asyncio.sleep(2)
-            startup_command_sent = True
-            add_command(cfg["startup_string"])
         try:
             await process_commands()
         except Exception as e:
             files.log_item(e)
         await asyncio.sleep(0.01)
+
 
 
 async def server_poll_task(server):

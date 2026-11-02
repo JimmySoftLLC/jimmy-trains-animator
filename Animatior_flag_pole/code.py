@@ -549,6 +549,7 @@ async def wave_flag_async(rand):
             await asyncio.sleep(spd)
         await asyncio.sleep(2 * spd)
 
+
 async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True, sound_folder=None, sound_pos=None, light_val=None, light_pos=None):
     global async_running, lst_deploy_pos
     steps = int(steps)
@@ -559,7 +560,7 @@ async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True, soun
         return
     stepper_sm.restart()
     clear_stepper_done()
-    direction_bit = 0 if direction == "up" else 1
+    direction_bit = 1 if direction == "up" else 0
     command = ((steps - 1) << 1) | direction_bit
     command_data = array.array("I", [command])
     start_pos = lst_deploy_pos
@@ -604,6 +605,8 @@ async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True, soun
             lst_deploy_pos = start_pos + steps
         else:
             lst_deploy_pos = start_pos - steps
+
+
 
 async def move_flag_to(pos, sound_folder=None, sound_pos=None, light_val=None, light_pos=None, allow_cancel=True):
     pos = int(pos)
