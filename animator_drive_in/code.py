@@ -1614,6 +1614,10 @@ def open_midori():
 ################################################################################
 # Setup routes
 
+class ReusableThreadingTCPServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
@@ -2214,14 +2218,25 @@ if web:
         print(f"Local IP address: {local_ip}")
 
         QUEUE_PORT = 8001
-        PORT = 8083
+        PORT = 80
+
+        # to make port 80 to work must set permissions for python
+        # sudo setcap 'cap_net_bind_service=+ep' $(readlink -f $(which python3))
 
         httpd = None
 
         def start_http_server():
             global httpd
+
             handler = MyHttpRequestHandler
-            httpd = socketserver.TCPServer((local_ip, PORT), handler)
+
+            if httpd:
+                try:
+                    httpd.server_close()
+                except Exception:
+                    pass
+
+            httpd = ReusableThreadingTCPServer((local_ip, PORT), handler)
             httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             print(f"Serving on {local_ip}:{PORT}")
             httpd.serve_forever()
