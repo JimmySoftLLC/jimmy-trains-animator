@@ -2495,7 +2495,7 @@ def spk_str(str_to_speak, addLocal):
             files.log_item(e)
             print("Invalid character in string to speak")
     if addLocal:
-        play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
+        play_mix(code_folder + "mvc/dot_local.wav")
 
 
 def l_r_but():
@@ -2533,7 +2533,7 @@ def spk_web():
     play_mix(code_folder + "mvc/to_access_type.wav")
     if cfg["HOST_NAME"] == "animator-drive-in":
         play_mix(code_folder + "mvc/animator_dash_drive_dash_in.wav")
-        play_mix(code_folder + "mvc/dot_local_colon_8083.wav")
+        play_mix(code_folder + "mvc/dot_local.wav")
     else:
         spk_str(cfg["HOST_NAME"], True)
     play_mix(code_folder + "mvc/in_your_browser.wav")
