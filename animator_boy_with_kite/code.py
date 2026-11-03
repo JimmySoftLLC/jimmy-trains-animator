@@ -354,6 +354,7 @@ def spk_word(str_to_speak):
         or str_to_speak == "alignlrsave"
         or str_to_speak == "wind"
         or str_to_speak == "dialog"
+        or str_to_speak == "save"
     ):
         ply_a_0(str_to_speak)
         return
@@ -988,7 +989,7 @@ class Opt(Ste):
                 cfg["random"] = True
             elif mnu_o[self.sel_i] == "raise_lower":
                 cfg["random"] = False
-            elif mnu_o[self.sel_i] == "exit_this_menu":
+            elif mnu_o[self.sel_i] == "save_options":
                 aud_en.value = False
                 files.write_json_file("cfg.json", cfg)
                 aud_en.value = True
