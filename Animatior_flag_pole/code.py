@@ -64,6 +64,7 @@ async_running = False
 rand_timer = 0
 button_press_start = None
 museum_long_press_stop = False
+flag_reverse = False
 
 ################################################################################
 # Switch hardware
@@ -501,9 +502,9 @@ loop = asyncio.get_event_loop()
 
 def rotate_spd():
     if mix.voice[0].playing:
-        return 0.005
+        return 0.02
     else:
-        return random.uniform(0.03, 0.03)
+        return random.uniform(0.02, 0.02)
     
 
 async def wave_flag_async(rand):
@@ -560,7 +561,16 @@ async def deploy_flag(steps, direction, keep_track=True, allow_cancel=True, soun
         return
     stepper_sm.restart()
     clear_stepper_done()
-    direction_bit = 1 if direction == "up" else 0
+    if flag_reverse:
+        if direction == "up":
+            direction_bit = 0
+        else:
+            direction_bit = 1
+    else:
+        if direction == "up":
+            direction_bit = 1
+        else:
+            direction_bit = 0
     command = ((steps - 1) << 1) | direction_bit
     command_data = array.array("I", [command])
     start_pos = lst_deploy_pos
