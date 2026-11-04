@@ -499,19 +499,6 @@
                 data-url="/mode">Three</button>
             <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
                 data-url="/mode">Four</button>
-            <h1>Animator - City Lights</h1>
-            <p style="padding-top:0.5rem;">
-                Use this web app to control and setup your Animator - City Lights
-                product. Have fun animating.
-            </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-                data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-                data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-                data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-                data-url="/mode">Four</button>
             <div class="mui-textfield">
                 <input class="input" id="volume" type="number" disabled>
                 <button class="mui-btn mui-btn--primary animator-volume-update" type="button" data-url="/update-volume"
@@ -633,9 +620,20 @@
                     Change
                 </button>
             </div>
-
-            <h2>Media:</h2>
+            <h2>Media and Animations:</h2>
             <div id="mediaScriptContainer"></div>
+            <p id="animationManageStatus"></p>
+            <h2>Manage Animations:</h2>
+            <div>
+                <button class="mui-btn mui-btn--primary" type="button" onclick="createAnimationDialog()">Create
+                    Animation</button>
+                <button class="mui-btn mui-btn--primary" type="button" onclick="duplicateAnimationDialog()">Duplicate
+                    Animation</button>
+                <button class="mui-btn mui-btn--primary" type="button" onclick="renameAnimationDialog()">Rename
+                    Animation</button>
+                <button class="mui-btn mui-btn--primary" type="button" onclick="deleteAnimationDialog()">Delete
+                    Animation</button>
+            </div>
             <h2>Animation script table:</h2>
             <div class="mui-textfield">
                 <input class="input" id="animationName" type="text" disabled>
@@ -850,6 +848,298 @@
         getResetHdw()
         setSelectedPiFolder("/home/drivein/media/");
     });
+
+    async function sendAnimationManagementRequest(url, data) {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+        const result = await response.text();
+        if (!response.ok) {
+            throw new Error(result);
+        }
+        return result;
+    }
+
+    function selectedStandaloneAnimation() {
+        const filename = document.getElementById("animationName").value;
+        if (!filename.startsWith("animations/") || !filename.toLowerCase().endsWith(".json")) {
+            showAlert("Select a standalone JSON animation first.");
+            return "";
+        }
+        return filename;
+    }
+
+    function animationDialog(title, filename, action, deleteMode = false) {
+        const modalEl = document.getElementById("modalEl");
+        removeChildNodes(modalEl);
+        modalEl.style.width = "400px";
+        modalEl.style.height = "auto";
+        modalEl.style.margin = "100px auto";
+        modalEl.style.backgroundColor = "#fff";
+        const form = document.createElement("form");
+        form.className = "mui-form";
+        form.style.padding = "20px";
+        form.style.margin = "20px";
+        const legend = document.createElement("legend");
+        legend.textContent = title;
+        form.appendChild(legend);
+        let filenameInput = null;
+        if (deleteMode) {
+            const message = document.createElement("p");
+            message.textContent = "Are you sure you want to delete " + filename + "? This cannot be undone.";
+            form.appendChild(message);
+        } else {
+            const field = document.createElement("div");
+            field.className = "mui-textfield";
+            filenameInput = document.createElement("input");
+            filenameInput.type = "text";
+            filenameInput.id = "animationDialogFilename";
+            filenameInput.placeholder = "Enter animation name";
+            filenameInput.value = filename;
+            field.appendChild(filenameInput);
+            form.appendChild(field);
+        }
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "mui--text-danger mui--text-caption";
+        form.appendChild(errorMessage);
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "mui-btn mui-btn--primary";
+        if (deleteMode) {
+            saveBtn.textContent = "Delete";
+        } else {
+            saveBtn.textContent = "Save";
+        }
+        saveBtn.addEventListener("click", async function () {
+            let name = "";
+            if (!deleteMode) {
+                name = filenameInput.value.trim();
+                if (!name || name.includes("/") || name.includes("\\") || name.startsWith(".")) {
+                    errorMessage.textContent = "Enter a valid animation name.";
+                    return;
+                }
+            }
+            saveBtn.disabled = true;
+            try {
+                await action(name);
+                mui.overlay("off", modalEl);
+            } catch (error) {
+                errorMessage.textContent = error.message;
+            } finally {
+                saveBtn.disabled = false;
+            }
+        });
+        form.appendChild(saveBtn);
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "mui-btn";
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.addEventListener("click", function () {
+            mui.overlay("off", modalEl);
+        });
+        form.appendChild(cancelBtn);
+        modalEl.appendChild(form);
+        mui.overlay("on", modalEl);
+        if (filenameInput) {
+            filenameInput.focus();
+            filenameInput.select();
+        }
+    }
+    function createAnimationDialog() {
+        animationDialog("Create Animation", "", createAnimation);
+    }
+
+    async function createAnimation(name) {
+        const result = await animationManagementRequest("/create-animator", { fn: name });
+        const created = JSON.parse(result);
+        await loadManagedAnimation(created.filename);
+        refreshManagedAnimations();
+    }
+
+    function duplicateAnimationDialog() {
+        const selected = selectedStandaloneAnimation();
+        if (!selected) {
+            return;
+        }
+        const currentName = selected.substring("animations/".length).replace(/\.json$/i, "");
+        animationDialog("Duplicate Animation", currentName + "_copy", async function (name) {
+            await duplicateAnimation(selected, name);
+        });
+    }
+
+    async function duplicateAnimation(selected, name) {
+        const result = await animationManagementRequest("/duplicate-animator", { fo: selected, fn: name });
+        const created = JSON.parse(result);
+        await loadManagedAnimation(created.filename);
+        refreshManagedAnimations();
+    }
+
+    function renameAnimationDialog() {
+        const selected = selectedStandaloneAnimation();
+        if (!selected) {
+            return;
+        }
+        const currentName = selected.substring("animations/".length).replace(/\.json$/i, "");
+        animationDialog("Rename Animation", currentName, async function (name) {
+            await renameAnimation(selected, name);
+        });
+    }
+
+    async function renameAnimation(selected, name) {
+        const result = await animationManagementRequest("/rename-animator", { fo: selected, fn: name });
+        const renamed = JSON.parse(result);
+        await loadManagedAnimation(renamed.filename);
+        refreshManagedAnimations();
+    }
+
+    function deleteAnimationDialog() {
+        const selected = selectedStandaloneAnimation();
+        if (!selected) {
+            return;
+        }
+        animationDialog("Delete Animation", selected, async function () {
+            await deleteAnimation(selected);
+        }, true);
+    }
+
+    async function deleteAnimation(selected) {
+        await animationManagementRequest("/delete-animator", { fn: selected });
+        document.getElementById("animationName").value = "";
+        document.querySelector("#animationsTable tbody").innerHTML = "";
+        refreshManagedAnimations();
+    }
+
+    async function animationManagementRequest(url, data) {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+        const result = await response.text();
+        if (!response.ok) {
+            throw new Error(result);
+        }
+        return result;
+    }
+
+    async function loadManagedAnimation(filename) {
+        const response = await fetch("/get-animation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ an: filename })
+        });
+        if (!response.ok) {
+            throw new Error("Unable to load " + filename);
+        }
+        const animationData = await response.json();
+        document.getElementById("animationName").value = filename;
+        populateAnimationsTable(animationData);
+    }
+
+    function refreshManagedAnimations() {
+        getMedia();
+    }
+
+    async function loadStandaloneAnimation(filename) {
+        const response = await fetch("/get-animation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ an: filename })
+        });
+        if (!response.ok) {
+            throw new Error("Unable to load animation");
+        }
+        const data = await response.json();
+        document.getElementById("animationName").value = filename;
+        populateAnimationsTable(data);
+    }
+
+    function selectedStandaloneAnimation() {
+        const filename = document.getElementById("animationName").value;
+        if (!filename.startsWith("animations/") || !filename.toLowerCase().endsWith(".json")) {
+            showAlert("Select a standalone JSON animation first.");
+            return "";
+        }
+        return filename;
+    }
+
+    async function createStandaloneAnimation() {
+        const name = prompt("New animation name:");
+        if (name === null || !name.trim()) {
+            return;
+        }
+        try {
+            const result = await sendAnimationManagementRequest("/create-animator", { fn: name.trim() });
+            const created = JSON.parse(result);
+            getMedia();
+            await loadStandaloneAnimation(created.filename);
+            document.getElementById("animationManageStatus").textContent = "Created: " + created.filename;
+        } catch (error) {
+            showAlert(error.message);
+        }
+    }
+
+    async function duplicateStandaloneAnimation() {
+        const selected = selectedStandaloneAnimation();
+        if (!selected) {
+            return;
+        }
+        const name = prompt("Name for duplicate:", selected.substring("animations/".length).replace(/\.json$/i, "") + "_copy");
+        if (name === null || !name.trim()) {
+            return;
+        }
+        try {
+            const result = await sendAnimationManagementRequest("/duplicate-animator", { fo: selected, fn: name.trim() });
+            const created = JSON.parse(result);
+            getMedia();
+            await loadStandaloneAnimation(created.filename);
+            document.getElementById("animationManageStatus").textContent = "Duplicated: " + created.filename;
+        } catch (error) {
+            showAlert(error.message);
+        }
+    }
+
+    async function renameStandaloneAnimation() {
+        const selected = selectedStandaloneAnimation();
+        if (!selected) {
+            return;
+        }
+        const oldName = selected.substring("animations/".length).replace(/\.json$/i, "");
+        const name = prompt("Rename animation:", oldName);
+        if (name === null || !name.trim() || name.trim() === oldName) {
+            return;
+        }
+        try {
+            const result = await sendAnimationManagementRequest("/rename-animator", { fo: selected, fn: name.trim() });
+            const renamed = JSON.parse(result);
+            getMedia();
+            await loadStandaloneAnimation(renamed.filename);
+            document.getElementById("animationManageStatus").textContent = "Renamed: " + renamed.filename;
+        } catch (error) {
+            showAlert(error.message);
+        }
+    }
+
+    async function deleteStandaloneAnimation() {
+        const selected = selectedStandaloneAnimation();
+        if (!selected) {
+            return;
+        }
+        if (!confirm("Permanently delete " + selected + "?")) {
+            return;
+        }
+        try {
+            await sendAnimationManagementRequest("/delete-animator", { fn: selected });
+            document.getElementById("animationName").value = "";
+            document.querySelector("#animationsTable tbody").innerHTML = "";
+            getMedia();
+            document.getElementById("animationManageStatus").textContent = "Deleted: " + selected;
+        } catch (error) {
+            showAlert(error.message);
+        }
+    }
 
     let selectedPiFolder = "/home/drivein/media/";
     let browsingPiFolder = "/home/drivein/media/";

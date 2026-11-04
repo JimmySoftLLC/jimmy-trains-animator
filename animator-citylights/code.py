@@ -158,6 +158,7 @@ tmp_wav_file_name = code_folder + "tmp.wav"
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
 MP_CMD_WAIT=.2
+animation_added = 0.0
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -263,7 +264,6 @@ gc_col("Imports gc, files")
 
 cfg = files.read_json_file(code_folder + "cfg.json")
 default_cfg = files.read_json_file(code_folder + "default_cfg.json")
-animator_configs = []
 
 
 def get_media_files(folder_to_search, extensions):
@@ -288,46 +288,25 @@ def get_media_files(folder_to_search, extensions):
 
 
 def upd_media():
-    global media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission, animator_files, animator_configs
-
-    extensions = ['.wav', '.mp4']  # List of extensions to filter by
-    media_files = get_media_files(media_folder, extensions)
-
-    # gets folders in the random_config directory, currently only all and play lists, the folders are empty
-    rand_files = get_media_files(media_folder + "random_config/", extensions)
-    media_files.update(rand_files)  # add rand_files to media_files dictionary
-    # print("All media: " + str(media_files))
-
-    extensions = ['.json']  # List of extensions to filter by
-    animator_files = get_media_files(media_folder + "animator/", extensions)
-    # print("Animators: " + str(animator_files))
-
+    global media_list_all, media_files, menu_snd_opt, media_list_all_no_intermission, animator_files
+    media_files = get_media_files(media_folder, ['.wav', '.mp4'])
+    rand_files = get_media_files(media_folder + "random_config/", ['.wav', '.mp4'])
+    media_files.update(rand_files)
+    os.makedirs(animators_folder, exist_ok=True)
+    animator_files = sorted([name for name in os.listdir(animators_folder) if name.lower().endswith(".json") and os.path.isfile(os.path.join(animators_folder, name))])
+    media_files["animations"] = animator_files
     media_list_all = []
     for topic, my_files in media_files.items():
-        media_list_all.extend(
-            [f"{topic}/{my_file}" for my_file in my_files])
-
+        for my_file in my_files:
+            media_list_all.append(topic + "/" + my_file)
     media_list_all_no_intermission = []
-    for topic, my_files in media_files.items():
-        if "intermission" not in topic.lower():  # Ignore topics with 'intermission'
-            media_list_all_no_intermission.extend(
-                [f"{topic}/{my_file}" for my_file in my_files])
-
-    # print(str(rand_files.keys))
-
+    for item in media_list_all:
+        if "intermission" not in item.lower():
+            media_list_all_no_intermission.append(item)
     menu_snd_opt = []
-
-    for myKey in media_files:
-        if myKey != "random_config" and myKey != "pictures":
-            menu_snd_opt.append("random_" + myKey + ".wav")
-
-    # print("Menu sound tracks: " + str(menu_snd_opt))
-
-    animator_configs = []
-    for animator_file in animator_files["animators"]:
-        cfg_animator = files.read_json_file(animators_folder + animator_file)
-        animator_configs.append(cfg_animator)
-
+    for topic in media_files:
+        if topic != "random_config" and topic != "pictures":
+            menu_snd_opt.append("random_" + topic + ".wav")
 
 upd_media()
 
@@ -1930,6 +1909,25 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.test_animation_post(post_data_obj)
         elif self.path == "/get-local-ip":
             self.get_local_ip(post_data_obj)
+        elif self.path == "/create-animation":
+            self.create_animation_post(post_data_obj)
+        elif self.path == "/duplicate-animator":
+            self.duplicate_animator_post(post_data_obj)
+
+    def get_animator_post(self, rq_d):
+        name = rq_d.get("an", "").strip()
+        if name.startswith("animations/"):
+            name = name[len("animations/"):]
+        if not name.lower().endswith(".json"):
+            name += ".json"
+        if name in (".json", "..json") or "/" in name or "\\" in name or name.startswith("."):
+            self.file_manager_reply(400, "Invalid animation name")
+            return
+        path = os.path.join(animators_folder, name)
+        if os.path.isfile(path):
+            self.handle_serve_file_name(path)
+        else:
+            self.file_manager_reply(404, "Animation not found")
 
     def test_animation_post(self, rq_d):
         global exit_set_hdw
@@ -1961,17 +1959,33 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def rename_animator_post(self, rq_d):
-        global data
-        fo = animators_folder + rq_d["fo"]
-        fn = animators_folder + rq_d["fn"] + ".json"
-        os.rename(fo, fn)
-        upd_media()
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "your response message"
-        self.wfile.write(response.encode('utf-8'))
-        print("Response sent:", response)
+        try:
+            old_name = rq_d.get("fo", "").strip()
+            new_name = rq_d.get("fn", "").strip()
+            if old_name.startswith("animations/"):
+                old_name = old_name[len("animations/"):]
+            if old_name.lower().endswith(".json"):
+                old_name = old_name[:-5]
+            if new_name.lower().endswith(".json"):
+                new_name = new_name[:-5]
+            for name in (old_name, new_name):
+                if not name or name in (".", "..") or "/" in name or "\\" in name or name.startswith("."):
+                    self.file_manager_reply(400, "Invalid animation name")
+                    return
+            old_path = os.path.join(animators_folder, old_name + ".json")
+            new_path = os.path.join(animators_folder, new_name + ".json")
+            if not os.path.isfile(old_path):
+                self.file_manager_reply(404, "Animation not found")
+                return
+            if os.path.exists(new_path):
+                self.file_manager_reply(409, "Animation name already exists")
+                return
+            os.rename(old_path, new_path)
+            upd_media()
+            self.file_manager_reply(200, json.dumps({"filename": "animations/" + new_name + ".json"}))
+        except Exception as e:
+            print("Rename animation error:", e)
+            self.file_manager_reply(500, str(e))
 
     data = []
 
@@ -1982,36 +1996,50 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                 data = []
             data.extend(rq_d[2])
             if rq_d[0] == rq_d[1]:
-                f_n = ""
-                an = rq_d[3].split("_")
-                if "plylst" == an[0]:
-                    snd_f = rq_d[3].replace("plylst_", "")
-                    snd_f = snd_f.replace(".mp4", "")
-                    snd_f = snd_f.replace(".wav", "")
-                    f_n = animators_folder + \
-                        snd_f + ".json"
+                snd_f = rq_d[3]
+                if snd_f.startswith("animations/"):
+                    filename = os.path.basename(snd_f)
+                    if not filename.lower().endswith(".json"):
+                        filename += ".json"
+                    f_n = os.path.join(animators_folder, filename)
                 else:
-                    snd_f = rq_d[3].replace(".mp4", "")
-                    snd_f = snd_f.replace(".wav", "")
-                    f_n = media_folder + snd_f + ".json"
+                    filename = os.path.splitext(snd_f)[0] + ".json"
+                    f_n = os.path.join(media_folder, filename)
                 files.write_json_file(f_n, data)
                 upd_media()
                 data = []
-        except:
+        except Exception as e:
             data = []
-            self.send_response(500)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            response = "out of memory"
-            self.wfile.write(response.encode('utf-8'))
-            print("Response sent:", response)
+            print("Save animation error:", e)
+            self.file_manager_reply(500, "Unable to save animation")
             return
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "success"
-        self.wfile.write(response.encode('utf-8'))
-        print("Response sent:", response)
+        self.file_manager_reply(200, "success")
+
+    def create_animation_post(self, rq_d):
+        try:
+            name = rq_d.get("name", "").strip()
+            if name.lower().endswith(".json"):
+                name = name[:-5]
+            if not name or name in (".", ".."):
+                self.file_manager_reply(400, "Invalid animation name")
+                return
+            if "/" in name or "\\" in name or name.startswith("."):
+                self.file_manager_reply(400, "Invalid animation name")
+                return
+            os.makedirs(animators_folder, exist_ok=True)
+            filename = name + ".json"
+            file_path = os.path.join(animators_folder, filename)
+            if os.path.exists(file_path):
+                self.file_manager_reply(409, "Animation already exists")
+                return
+            animation_data = ["0.0|", "1.0|"]
+            with open(file_path, "x", encoding="utf-8") as file:
+                json.dump(animation_data, file, indent=4)
+            upd_media()
+            self.file_manager_reply(200, json.dumps({"filename": "animations/" + filename}))
+        except Exception as e:
+            print("Create animation error:", e)
+            self.file_manager_reply(500, "Unable to create animation")
 
     def save_animator_data_post(self, rq_d):
         f_n = animators_folder + rq_d["fn"]
@@ -2023,66 +2051,92 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(response.encode('utf-8'))
 
     def delete_animator_post(self, rq_d):
-        f_n = animators_folder + rq_d["fn"]
-        os.remove(f_n)
-        upd_media()
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = rq_d["fn"] + " animator file deleted"
-        self.wfile.write(response.encode('utf-8'))
+        try:
+            name = rq_d.get("fn", "").strip()
+            if name.startswith("animations/"):
+                name = name[len("animations/"):]
+            if name.lower().endswith(".json"):
+                name = name[:-5]
+            if not name or name in (".", "..") or "/" in name or "\\" in name or name.startswith("."):
+                self.file_manager_reply(400, "Invalid animation name")
+                return
+            path = os.path.join(animators_folder, name + ".json")
+            if not os.path.isfile(path):
+                self.file_manager_reply(404, "Animation not found")
+                return
+            os.remove(path)
+            upd_media()
+            self.file_manager_reply(200, "success")
+        except Exception as e:
+            print("Delete animation error:", e)
+            self.file_manager_reply(500, str(e))
+
+    def duplicate_animator_post(self, rq_d):
+        try:
+            old_name = rq_d.get("fo", "").strip()
+            new_name = rq_d.get("fn", "").strip()
+            if old_name.startswith("animations/"):
+                old_name = old_name[len("animations/"):]
+            if old_name.lower().endswith(".json"):
+                old_name = old_name[:-5]
+            if new_name.lower().endswith(".json"):
+                new_name = new_name[:-5]
+            for name in (old_name, new_name):
+                if not name or name in (".", "..") or "/" in name or "\\" in name or name.startswith("."):
+                    self.file_manager_reply(400, "Invalid animation name")
+                    return
+            old_path = os.path.join(animators_folder, old_name + ".json")
+            new_path = os.path.join(animators_folder, new_name + ".json")
+            if not os.path.isfile(old_path):
+                self.file_manager_reply(404, "Source animation not found")
+                return
+            if os.path.exists(new_path):
+                self.file_manager_reply(409, "Animation already exists")
+                return
+            animation_data = files.read_json_file(old_path)
+            with open(new_path, "x", encoding="utf-8") as file:
+                json.dump(animation_data, file, indent=4)
+            upd_media()
+            self.file_manager_reply(200, json.dumps({"filename": "animations/" + new_name + ".json"}))
+        except Exception as e:
+            print("Duplicate animation error:", e)
+            self.file_manager_reply(500, str(e))
 
     def get_animation_post(self, rq_d):
-        global cfg
         snd_f = rq_d["an"]
-        snd_f = snd_f.replace(".mp4", "")
-        snd_f = snd_f.replace(".wav", "")
-        if (f_exists(media_folder + snd_f + ".json") == True):
-            f_n = media_folder + snd_f + ".json"
+        if snd_f.startswith("animations/"):
+            filename = os.path.basename(snd_f)
+            f_n = os.path.join(animators_folder, filename)
+        else:
+            filename = os.path.splitext(snd_f)[0] + ".json"
+            f_n = os.path.join(media_folder, filename)
+        if f_exists(f_n):
             self.handle_serve_file_name(f_n)
-            return
         else:
             f_n = code_folder + "t_s_def/timestamp mode.json"
             self.handle_serve_file_name(f_n)
-            return
-
-    def get_animator_post(self, rq_d):
-        global cfg
-        if (f_exists(animators_folder + rq_d["an"]) == True):
-            f_n = animators_folder + rq_d["an"]
-            self.handle_serve_file_name(f_n)
-            return
-        else:
-            f_n = code_folder + "animator_def/animator.json"
-            self.handle_serve_file_name(f_n)
-            return
 
     def create_animator_post(self, rq_d):
-        global data
-        f_n = animators_folder + rq_d["fn"] + ".json"
-        an_data = {
-            "fn": f_n,
-            "device": "accessory",
-            "address": 1,
-            "table_data": [
-                [
-                    "AUX1",
-                    ""
-                ],
-                [
-                    "AUX2",
-                    ""
-                ]
-            ]
-        }
-        files.write_json_file(f_n, an_data)
-        upd_media()
-        gc_col("created animator")
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        response = "created " + rq_d["fn"] + " animator"
-        self.wfile.write(response.encode('utf-8'))
+        try:
+            name = rq_d.get("fn", "").strip()
+            if name.lower().endswith(".json"):
+                name = name[:-5]
+            if not name or name in (".", "..") or "/" in name or "\\" in name or name.startswith("."):
+                self.file_manager_reply(400, "Invalid animation name")
+                return
+            os.makedirs(animators_folder, exist_ok=True)
+            filename = name + ".json"
+            path = os.path.join(animators_folder, filename)
+            if os.path.exists(path):
+                self.file_manager_reply(409, "Animation already exists")
+                return
+            with open(path, "x", encoding="utf-8") as file:
+                json.dump(["0.0|", "1.0|"], file, indent=4)
+            upd_media()
+            self.file_manager_reply(200, json.dumps({"filename": "animations/" + filename}))
+        except Exception as e:
+            print("Create animation error:", e)
+            self.file_manager_reply(500, str(e))
 
     def update_light_string_post(self, rq_d):
         global cfg
@@ -2986,115 +3040,93 @@ def return_file_to_use(f_nm):
         print("Sound file: " + cur_opt)
     return cur_opt
 
-
 def an_light(f_nm):
-    global running_mode, terminal_process, current_media_playing, mix_is_paused, current_media_playing, exit_set_hdw
+    global running_mode, terminal_process, current_media_playing, mix_is_paused, exit_set_hdw
     exit_set_hdw = False
     current_media_playing = f_nm
-    plylst_f = "plylst_" in f_nm
-    is_video = ".mp4" in f_nm
-    json_fn = f_nm.replace(".mp4", "")
-    json_fn = json_fn.replace(".wav", "")
-
-    flsh_t = []
-
-    if plylst_f:
-        f_nm = f_nm.replace("plylst_", "")
-        if (f_exists(animators_folder + f_nm + ".json") == True):
-            flsh_t = files.read_json_file(animators_folder + f_nm + ".json")
-        else:
-            flsh_t.append("0.0|")
-            flsh_t.append("5000.0|")
-            files.write_json_file(animators_folder + f_nm + ".json", flsh_t)
+    is_json = f_nm.startswith("animations/") and f_nm.lower().endswith(".json")
+    is_video = f_nm.lower().endswith(".mp4")
+    is_audio = f_nm.lower().endswith(".wav")
+    if is_json:
+        json_path = os.path.join(animators_folder, os.path.basename(f_nm))
     else:
-        if (f_exists(media_folder + json_fn + ".json") == True):
-            flsh_t = files.read_json_file(media_folder + json_fn + ".json")
-        else:
-            flsh_t.append("0.0|")
-            flsh_t.append("5000.0|")
-            files.write_json_file(media_folder + json_fn + ".json", flsh_t)
-
-    flsh_i = 0
-
-    ft1 = []
-    ft2 = []
-
-    # add end command to time stamps to stop video when timestamps run out
-    ft_last = flsh_t[len(flsh_t)-1].split("|")
+        json_path = os.path.join(media_folder, os.path.splitext(f_nm)[0] + ".json")
+    if f_exists(json_path):
+        flsh_t = files.read_json_file(json_path)
+    else:
+        if is_json:
+            print("Animation not found:", json_path)
+            return an_done_reset("DONE")
+        flsh_t = ["0.0|", "5000.0|"]
+        files.write_json_file(json_path, flsh_t)
+    if not flsh_t:
+        return an_done_reset("DONE")
+    ft_last = flsh_t[-1].split("|")
     tm_last = float(ft_last[0]) + 1
     flsh_t.append(str(tm_last) + "|E")
     flsh_t.append(str(tm_last + 1) + "|E")
-
+    flsh_i = 0
     check_thread, stop_event = run_check_switches_thread()
-
-    if not plylst_f:
-        media0 = media_folder + f_nm
+    if is_video:
+        running_mode = "media_player"
+        media0 = os.path.join(media_folder, f_nm)
         if terminal_window_during_playback:
             terminal_process = open_terminal()
-        if is_video:
-            running_mode = "media_player"
-            play_movie_file(media0)
-        else:
-            running_mode = "mix"
-            change_wallpaper(media0)
-            play_mix_media(media0)
-            mix_is_paused = False
-            close_midori()
+        play_movie_file(media0)
+    elif is_audio:
+        running_mode = "mix"
+        media0 = os.path.join(media_folder, f_nm)
+        if terminal_window_during_playback:
+            terminal_process = open_terminal()
+        change_wallpaper(media0)
+        play_mix_media(media0)
+        mix_is_paused = False
+        close_midori()
+    elif is_json:
+        running_mode = "animation"
+        close_midori()
     else:
-        running_mode = "play_list"
-
+        stop_event.set()
+        check_thread.join()
+        return an_done_reset("DONE")
     srt_t = time.monotonic()
-
     window_moved = False
-
     while True:
-        t_past = time.monotonic()-srt_t
+        t_past = time.monotonic() - srt_t
         if is_video and terminal_window_during_playback and not window_moved and t_past > 0.5:
             move_vlc_window()
             window_moved = True
-        if flsh_i < len(flsh_t)-1:
-            ft1 = flsh_t[flsh_i].split("|")
-            ft2 = flsh_t[flsh_i+1].split("|")
+        if flsh_i < len(flsh_t) - 1:
+            ft1 = flsh_t[flsh_i].split("|", 1)
+            ft2 = flsh_t[flsh_i + 1].split("|", 1)
             dur = float(ft2[0]) - float(ft1[0]) - 0.25
+            if dur < 0:
+                dur = 0
+            if t_past >= float(ft1[0]) - 0.25:
+                log_this = "TE: {:.3f} TS: {} Dur: {:.3f} Cmd: {}".format(t_past, ft1[0], dur, ft1[1])
+                files.log_item(log_this)
+                resp = set_hdw(ft1[1], dur, "")
+                if resp == "STOP":
+                    stop_event.set()
+                    check_thread.join()
+                    return an_done_reset(resp)
+                flsh_i += 1
+        if is_json:
+            if flsh_i >= len(flsh_t) - 1:
+                stop_event.set()
+                check_thread.join()
+                return an_done_reset("DONE")
         else:
-            dur = 0.25
-        if dur < 0:
-            dur = 0
-        if t_past > float(ft1[0]) - 0.25 and flsh_i < len(flsh_t)-1:
-            t_elaspsed = "{:.3f}".format(t_past)
-            duration = "{:.3f}".format(dur)
-            log_this = "TE: " + \
-                str(t_elaspsed) + " TS: " + \
-                ft1[0] + " Dur: " + str(duration) + " Cmd: " + ft1[1]
-            files.log_item(log_this)
-            resp = set_hdw(ft1[1], dur, "")
-            if resp == "STOP":
-                result = an_done_reset(resp)
-                return result
-            flsh_i += 1
-
-        media_player_state_now = media_player_state()
-        if plylst_f:
-            if flsh_i > len(flsh_t)-1:
-                stop_event.set()  # Signal the thread to stop
-                check_thread.join()  # Wait for the thread to finish
-                change_wallpaper(media_folder + 'pictures/black.jpg')
-                hide_terminal()
-                current_media_playing = ""
-                running_mode = ""
-                return "DONE"
-        else:
+            media_player_state_now = media_player_state()
             if not mix_media.get_busy() and media_player_state_now != "Playing" and media_player_state_now != "Paused":
-                stop_event.set()  # Signal the thread to stop
-                check_thread.join()  # Wait for the thread to finish
-                result = an_done_reset("DONE")
-                return result
-            elif flsh_i > len(flsh_t)-1:
-                stop_event.set()  # Signal the thread to stop
-                check_thread.join()  # Wait for the thread to finish
-                result = an_done_reset("DONE")
-                return result
-        time.sleep(.05)
+                stop_event.set()
+                check_thread.join()
+                return an_done_reset("DONE")
+            if flsh_i >= len(flsh_t) - 1:
+                stop_event.set()
+                check_thread.join()
+                return an_done_reset("DONE")
+        time.sleep(0.05)
 
 
 def an_done_reset(return_value):
