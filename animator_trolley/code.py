@@ -625,9 +625,9 @@ def wait_for_ir_state(active, timeout=LOOP_SENSOR_TIMEOUT):
     while True:
         sensor_active = ir_sensor_active()
         if sensor_active:
-            led[0] = (0, 255, 0)
+            led.fill((0, 255, 0))
         else:
-            led[0] = (0, 0, 0)
+            led.fill((0, 0, 0))
         led.show()
         if sensor_active == active:
             if active:
@@ -997,8 +997,6 @@ async def position_trolley_loop(speed, percentage):
         bumper_requested_throttle = 0.0
         bumper_progress = 0.0
         loop_ir_active = True
-        led[0] = (0, 255, 0)
-        led.show()
         print("Home front edge detected - stopped")
         print("Loop POS complete:", percentage, "%")
         return True
@@ -1616,7 +1614,7 @@ def get_track_voltage(samples=20):
         time.sleep(.0017)
     return total / samples
 
-def get_ir_sensor_voltage(samples=20):
+def get_ir_sensor_voltage(samples=20):         
     total = 0.0
     for _ in range(samples):
         total += ir_sensor_a_in.value / 65536 * 3.3
