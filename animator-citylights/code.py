@@ -130,6 +130,7 @@ import sys
 import asyncio
 import websockets
 import pyautogui
+from urllib.parse import urlsplit, parse_qs, quote
 
 
 # setup pin for audio enable 21 on 5v aud board 22 on tiny 28 on large
@@ -1513,7 +1514,7 @@ def send_animator_post(url, endpoint, new_data=None):
         return created_data
     except Exception as e:
         print(f"Comms issue: {e}")
-        return None  # Optionally return None or raise the exception, depending on your needs
+        return None
 
 
 ################################################################################
@@ -1603,24 +1604,231 @@ class ReusableThreadingTCPServer(socketserver.ThreadingTCPServer):
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
-        if self.path == "/":
-            print(self.path)
+        route = urlsplit(self.path).path
+        if route == "/download-file":
+            self.download_file()
+        elif route == "/":
             self.handle_serve_file("/code/index.html")
-        elif self.path.endswith(".css"):
-            print(self.path)
-            self.handle_serve_file("/code" + self.path, "text/css")
-        elif self.path.endswith(".js"):
-            print(self.path)
-            self.handle_serve_file("/code" + self.path,
-                                   "application/javascript")
+        elif route.endswith(".css"):
+            self.handle_serve_file("/code" + route, "text/css")
+        elif route.endswith(".js"):
+            self.handle_serve_file("/code" + route, "application/javascript")
         else:
-            self.handle_serve_file(self.path)
+            self.handle_serve_file(route)
 
     def do_POST(self):
-        if self.path == "/upload":
-            self.handle_file_upload()
+        route = urlsplit(self.path).path
+        if route == "/get-folders":
+            self.get_folders()
+        elif route == "/check-folder":
+            self.check_folder()
+        elif route == "/get-sound-files":
+            self.get_sound_files()
+        elif route == "/delete-sound-file":
+            self.delete_sound_file()
+        elif route == "/upload-sound":
+            self.upload_sound()
+        elif route == "/upload-sound-complete":
+            self.upload_sound_complete()
         else:
-            self.handle_generic_post(self.path)
+            self.handle_generic_post(route)
+
+    def file_manager_path(self, path, filename=""):
+        if not isinstance(path, str) or not isinstance(filename, str):
+            raise ValueError("Invalid path")
+        if "\\" in path or "\\" in filename or "\x00" in path or "\x00" in filename:
+            raise ValueError("Invalid path")
+        if filename:
+            if filename in (".", "..") or "/" in filename or filename.startswith("."):
+                raise ValueError("Invalid filename")
+            if filename.lower() in ("cfg.json", "default_cfg.json", "env.json", "secrets.json"):
+                raise ValueError("Protected filename")
+        root = os.path.realpath("/home/drivein/media")
+        if not path:
+            path = root
+        if not path.startswith("/"):
+            path = os.path.join(root, path)
+        full_path = os.path.realpath(os.path.join(path, filename))
+        if full_path != root and not full_path.startswith(root + os.sep):
+            raise ValueError("Path outside media folder")
+        relative_path = os.path.relpath(full_path, root)
+        for part in relative_path.split(os.sep):
+            if part.lower() in ("random_config", "rand_config"):
+                raise ValueError("Protected folder")
+        return full_path
+
+
+    def get_folders(self):
+        try:
+            request = self.file_manager_json()
+            path = self.file_manager_path(request.get("path", media_folder))
+            folders = []
+            for name in os.listdir(path):
+                if name.startswith("."):
+                    continue
+                if name.lower() in ("random_config", "rand_config"):
+                    continue
+                child = self.file_manager_path(path, name)
+                if os.path.isdir(child):
+                    folders.append(name)
+            folders.sort(key=str.lower)
+            self.file_manager_reply(200, json.dumps(folders))
+        except Exception as e:
+            print("Get folders error:", e)
+            self.file_manager_reply(400, "[]")
+
+    def check_folder(self):
+        try:
+            request = self.file_manager_json()
+            path = self.file_manager_path(request.get("path", media_folder))
+            if request.get("create", False):
+                os.makedirs(path, exist_ok=True)
+            if not os.path.isdir(path):
+                raise ValueError("Not a directory")
+            self.file_manager_reply(200, "success")
+        except Exception as e:
+            print("Check folder error:", e)
+            self.file_manager_reply(400, "invalid")
+
+    def get_sound_files(self):
+        try:
+            request = self.file_manager_json()
+            path = self.file_manager_path(request.get("path", media_folder))
+            names = []
+            for name in os.listdir(path):
+                if name.startswith("."):
+                    continue
+                if name.lower() in ("cfg.json", "default_cfg.json", "env.json", "secrets.json"):
+                    continue
+                child = self.file_manager_path(path, name)
+                if os.path.isfile(child):
+                    names.append(name)
+            names.sort(key=str.lower)
+            self.file_manager_reply(200, json.dumps(names))
+        except Exception as e:
+            print("Get files error:", e)
+            self.file_manager_reply(400, "[]")
+
+    def delete_sound_file(self):
+        try:
+            request = self.file_manager_json()
+            filename = request["filename"]
+            path = self.file_manager_path(request.get("path", media_folder), filename)
+            if not os.path.isfile(path):
+                raise ValueError("File not found")
+            os.remove(path)
+            self.file_manager_reply(200, "success")
+        except Exception as e:
+            print("Delete file error:", e)
+            self.file_manager_reply(400, "error")
+
+    def file_manager_json(self):
+        content_length = int(self.headers.get("Content-Length", "0"))
+        if content_length < 1 or content_length > 65536:
+            raise ValueError("Invalid JSON request length")
+        return json.loads(self.rfile.read(content_length).decode("utf-8"))
+
+    def file_manager_reply(self, status, message):
+        data = message.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def download_file(self):
+        response_started = False
+        try:
+            query = parse_qs(urlsplit(self.path).query)
+            filename = query.get("filename", [""])[0]
+            path = query.get("path", [media_folder])[0]
+            file_path = self.file_manager_path(path, filename)
+            if not filename or not os.path.isfile(file_path):
+                self.file_manager_reply(404, "file not found")
+                return
+            size = os.path.getsize(file_path)
+            with open(file_path, "rb") as file:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + quote(filename))
+                self.send_header("Content-Length", str(size))
+                self.end_headers()
+                response_started = True
+                while True:
+                    chunk = file.read(65536)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            print("Download canceled by browser")
+        except Exception as e:
+            print("Download error:", e)
+            if not response_started:
+                self.file_manager_reply(400, "download error")
+
+
+    def upload_sound(self):
+        try:
+            query = parse_qs(urlsplit(self.path).query)
+            filename = query.get("filename", [""])[0]
+            location = query.get("location", [media_folder])[0]
+            offset = int(query.get("offset", ["0"])[0])
+            length = int(self.headers.get("Content-Length", "0"))
+            file_path = self.file_manager_path(location, filename)
+            part_path = file_path + ".part"
+            if not filename or offset < 0 or length < 1 or length > 262144:
+                raise ValueError("Invalid upload chunk")
+            if not os.path.isdir(os.path.dirname(file_path)):
+                raise ValueError("Folder does not exist")
+            if offset == 0:
+                mode = "wb"
+            else:
+                if not os.path.isfile(part_path):
+                    raise ValueError("Upload not started")
+                if os.path.getsize(part_path) != offset:
+                    raise ValueError("Unexpected upload offset")
+                mode = "ab"
+            remaining = length
+            with open(part_path, mode) as file:
+                while remaining > 0:
+                    amount = min(remaining, 65536)
+                    chunk = self.rfile.read(amount)
+                    if not chunk:
+                        raise IOError("Incomplete upload chunk")
+                    file.write(chunk)
+                    remaining -= len(chunk)
+            print("Uploaded chunk:", filename, "offset:", offset, "bytes:", length)
+            self.file_manager_reply(200, "success")
+        except Exception as e:
+            print("Upload error:", e)
+            self.file_manager_reply(400, "error")
+            
+
+    def upload_sound_complete(self):
+        try:
+            request = self.file_manager_json()
+            filename = request["filename"]
+            location = request.get("location", media_folder)
+            expected_size = int(request["size"])
+            file_path = self.file_manager_path(location, filename)
+            part_path = file_path + ".part"
+            if not filename or expected_size < 0:
+                raise ValueError("Invalid upload")
+            if not os.path.isfile(part_path):
+                raise ValueError("Upload not found")
+            actual_size = os.path.getsize(part_path)
+            print("Upload complete:", file_path)
+            print("Expected size:", expected_size)
+            print("Actual size:", actual_size)
+            if actual_size != expected_size:
+                self.file_manager_reply(400, "size mismatch")
+                return
+            os.replace(part_path, file_path)
+            self.file_manager_reply(200, "success")
+        except Exception as e:
+            print("Upload complete error:", e)
+            self.file_manager_reply(400, "error")
+
 
     def handle_serve_file(self, path, content_type="text/html"):
         file_path = path.lstrip("/")
@@ -1648,61 +1856,6 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(b"File not found")
-
-    def handle_file_upload(self):
-        content_length = int(self.headers['Content-Length'])
-        content_type = self.headers['Content-Type']
-
-        if 'multipart/form-data' in content_type:
-            boundary = content_type.split("boundary=")[1].encode()
-            body = self.rfile.read(content_length)
-            parts = body.split(b'--' + boundary)
-
-            for part in parts:
-                gc.collect()
-                if part:
-                    try:
-                        headers, content = part.split(b'\r\n\r\n', 1)
-                    except ValueError:
-                        continue
-                    content = content.rstrip(b'\r\n--')
-                    header_lines = headers.decode().split('\r\n')
-                    headers_dict = {}
-                    for line in header_lines:
-                        if ': ' in line:
-                            key, value = line.split(': ', 1)
-                            headers_dict[key] = value
-
-                    if 'Content-Disposition' in headers_dict:
-                        disposition = headers_dict['Content-Disposition']
-                        if 'filename=' in disposition:
-                            file_name = disposition.split(
-                                'filename=')[1].strip('"')
-                            # Ensure the uploads directory exists
-                            os.makedirs("uploads", exist_ok=True)
-                            file_path = os.path.join("uploads", file_name)
-
-                            with open(file_path, "wb") as f:
-                                f.write(content)
-
-                            self.send_response(200)
-                            self.send_header(
-                                "Content-type", "application/json")
-                            self.end_headers()
-                            response = {"status": "success",
-                                        "message": "File uploaded successfully"}
-                            self.wfile.write(json.dumps(
-                                response).encode('utf-8'))
-                            return
-
-            self.send_response(400)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            response = {"status": "error", "message": "No file part"}
-            self.wfile.write(json.dumps(response).encode('utf-8'))
-        else:
-            self.send_response(400)
-            self.end_headers()
 
     def handle_generic_post(self, path):
         content_length = int(self.headers['Content-Length'])

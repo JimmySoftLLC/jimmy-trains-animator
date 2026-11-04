@@ -105,6 +105,9 @@
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
             </li>
+            <li>
+                <a data-mui-toggle="tab" data-mui-controls="files">Files</a>
+            </li>
             <!-- <li>
                 <a data-mui-toggle="tab" data-mui-controls="camera">Camera train</a>
             </li>
@@ -324,16 +327,13 @@
             </div>
             <h2>Rotating flag:</h2>
             <div>
-                <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="NP1_l" data-url="/lights">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NP1_l" data-url="/lights">
                     Left
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="NP1_r" data-url="/lights">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NP1_r" data-url="/lights">
                     Right
                 </button>
-                <button class="mui-btn mui-btn--primary animator-action"
-                    data-value="NP1_lh" data-url="/lights">
+                <button class="mui-btn mui-btn--primary animator-action" data-value="NP1_lh" data-url="/lights">
                     Left held
                 </button>
             </div>
@@ -796,6 +796,27 @@
                     <tbody></tbody>
                 </table>
         </div>
+        <div class="mui-tabs__pane" id="files" style="padding-top:0.5rem;">
+            <h2>File Manager</h2>
+            <div class="mui-textfield">
+                <label>Folder:</label>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <strong>/home/drivein/media/</strong>
+                    <input type="text" id="uploadLocation" value="" style="flex:1;">
+                </div>
+            </div>
+            <button class="mui-btn mui-btn--primary" type="button" onclick="selectPiFolder()">Open / Create
+                Folder</button>
+            <button class="mui-btn mui-btn--primary" type="button" onclick="choosePiFolder()">Browse Folders</button>
+            <div>
+                <input type="file" id="soundFile" style="display:none;" onchange="uploadSound()">
+                <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button"
+                    onclick="document.getElementById('soundFile').click()">Upload File</button>
+            </div>
+            <div id="uploadStatus" style="padding-top:0.5rem;"></div>
+            <h3>Files in <span id="selectedFolder">/home/drivein/media/</span></h3>
+            <div id="soundFilesContainer"></div>
+        </div>
         <div class="mui-tabs__pane" id="camera">
             <div class="iframe-container">
                 <iframe src="http://animator-camera-train.local:8083/control" width="100%" height="400"
@@ -827,7 +848,324 @@
         getNeoChanges()
         getLifxEnabled()
         getResetHdw()
+        setSelectedPiFolder("/home/drivein/media/");
     });
+
+    let selectedPiFolder = "/home/drivein/media/";
+    let browsingPiFolder = "/home/drivein/media/";
+    const piHomeFolder = "/home/drivein/media/";
+
+    function normalizePiFolder(path) {
+        path = path.replace(/\\/g, "/");
+        if (!path.startsWith("/")) {
+            path = piHomeFolder + path;
+        }
+        if (!path.endsWith("/")) {
+            path += "/";
+        }
+        return path;
+    }
+
+
+    function setSelectedPiFolder(path) {
+        selectedPiFolder = normalizePiFolder(path);
+        if (!selectedPiFolder.startsWith(piHomeFolder)) {
+            selectedPiFolder = piHomeFolder;
+        }
+        document.getElementById("selectedFolder").textContent = selectedPiFolder;
+        document.getElementById("uploadLocation").value = selectedPiFolder.substring(piHomeFolder.length);
+        refreshSoundFiles();
+    }
+
+    function choosePiFolder() {
+        browsingPiFolder = normalizePiFolder(selectedPiFolder);
+        const dialog = document.createElement("div");
+        dialog.className = "mui-container";
+        dialog.style.width = "min(450px, 90vw)";
+        dialog.style.maxHeight = "80vh";
+        dialog.style.overflowY = "auto";
+        dialog.style.margin = "50px auto";
+        dialog.style.backgroundColor = "#fff";
+        dialog.style.padding = "20px";
+        dialog.style.borderRadius = "5px";
+        dialog.innerHTML = `
+            <h3>Select Pi Folder</h3>
+            <p id="piBrowsePath"></p>
+            <div id="piFolderList"></div>
+            <button class="mui-btn mui-btn--primary" onclick="selectPiFolder(true)">Select This Folder</button>
+            <button class="mui-btn" onclick="mui.overlay('off')">Cancel</button>
+        `;
+        mui.overlay("on", dialog);
+        browsePiFolder(browsingPiFolder);
+    }
+
+    async function selectPiFolder(fromBrowser = false) {
+        const status = document.getElementById("uploadStatus");
+        let path = "";
+        if (fromBrowser) {
+            path = browsingPiFolder;
+        } else {
+            const relativePath = document.getElementById("uploadLocation").value.trim().replace(/\\/g, "/");
+            if (relativePath.startsWith("/") || relativePath.split("/").includes("..") || relativePath.split("/").includes(".")) {
+                status.textContent = "Invalid folder path.";
+                return;
+            }
+            path = piHomeFolder + relativePath;
+        }
+        path = normalizePiFolder(path);
+        try {
+            const response = await fetch("/check-folder", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: path, create: !fromBrowser })
+            });
+            const result = await response.text();
+            if (!response.ok || result != "success") {
+                throw new Error(result);
+            }
+            setSelectedPiFolder(path);
+            status.textContent = "Selected folder: " + path;
+            if (fromBrowser) {
+                mui.overlay("off");
+            }
+        } catch (error) {
+            console.log(error);
+            status.textContent = "Unable to open or create folder: " + error.message;
+        }
+    }
+
+    async function browsePiFolder(path) {
+        browsingPiFolder = normalizePiFolder(path);
+        document.getElementById("piBrowsePath").textContent = browsingPiFolder;
+        const container = document.getElementById("piFolderList");
+        container.textContent = "Loading...";
+        try {
+            const response = await fetch("/get-folders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: browsingPiFolder })
+            });
+            if (!response.ok) {
+                throw new Error("Folder request failed");
+            }
+            const folders = await response.json();
+            container.innerHTML = "";
+            if (browsingPiFolder != piHomeFolder) {
+                const upButton = document.createElement("button");
+                upButton.className = "mui-btn";
+                upButton.textContent = ".. (Parent Folder)";
+                upButton.style.display = "block";
+                upButton.style.marginLeft = "0";
+                upButton.style.textAlign = "left";
+                upButton.onclick = function () {
+                    const parts = browsingPiFolder.split("/").filter(Boolean);
+                    parts.pop();
+                    const parent = "/" + parts.join("/") + "/";
+                    if (parent.startsWith(piHomeFolder)) {
+                        browsePiFolder(parent);
+                    } else {
+                        browsePiFolder(piHomeFolder);
+                    }
+                };
+                container.appendChild(upButton);
+            }
+            folders.forEach(function (folder) {
+                const button = document.createElement("button");
+                button.className = "mui-btn";
+                button.style.display = "block";
+                button.style.marginLeft = "0";
+                button.style.textAlign = "left";
+                button.textContent = "📁 " + folder;
+                button.onclick = function () {
+                    browsePiFolder(browsingPiFolder + folder + "/");
+                };
+                container.appendChild(button);
+            });
+            if (folders.length == 0) {
+                const message = document.createElement("p");
+                message.textContent = "No subfolders.";
+                container.appendChild(message);
+            }
+        } catch (error) {
+            console.log(error);
+            container.textContent = "Unable to browse folders.";
+        }
+    }
+
+    async function refreshSoundFiles() {
+        const container = document.getElementById("soundFilesContainer");
+        container.textContent = "Loading...";
+        try {
+            const response = await fetch("/get-sound-files", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: selectedPiFolder })
+            });
+            if (!response.ok) {
+                throw new Error("Unable to list files");
+            }
+            const filenames = await response.json();
+            container.innerHTML = "";
+            if (filenames.length == 0) {
+                container.textContent = "No files in selected folder.";
+                return;
+            }
+            filenames.forEach(function (filename) {
+                const row = document.createElement("div");
+                row.style.padding = "3px 0";
+                const name = document.createElement("span");
+                name.textContent = filename;
+                name.style.display = "inline-block";
+                name.style.minWidth = "300px";
+                row.appendChild(name);
+                const downloadButton = document.createElement("button");
+                downloadButton.className = "mui-btn mui-btn--primary";
+                downloadButton.textContent = "Download";
+                downloadButton.onclick = function () {
+                    downloadSoundFile(filename);
+                };
+                row.appendChild(downloadButton);
+                const deleteButton = document.createElement("button");
+                deleteButton.className = "mui-btn mui-btn--primary";
+                deleteButton.textContent = "Delete";
+                deleteButton.onclick = function () {
+                    deleteSoundFile(filename);
+                };
+                row.appendChild(deleteButton);
+                container.appendChild(row);
+            });
+        } catch (error) {
+            console.log(error);
+            container.textContent = "Unable to load files.";
+        }
+    }
+
+    async function downloadSoundFile(filename) {
+        const status = document.getElementById("uploadStatus");
+        const url = "/download-file?filename=" + encodeURIComponent(filename) +
+            "&path=" + encodeURIComponent(selectedPiFolder);
+        status.textContent = "Downloading " + filename + "...";
+        try {
+            if (filename.toLowerCase().endsWith(".json")) {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error("Download failed");
+                }
+                const data = await response.json();
+                const formatted = JSON.stringify(data, null, 4) + "\n";
+                const blob = new Blob([formatted], { type: "application/json" });
+                const downloadUrl = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = downloadUrl;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(function () {
+                    URL.revokeObjectURL(downloadUrl);
+                }, 1000);
+            } else {
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            status.textContent = "Download requested: " + filename;
+        } catch (error) {
+            console.log(error);
+            status.textContent = "Download failed: " + filename;
+        }
+    }
+
+    async function deleteSoundFile(filename) {
+        const status = document.getElementById("uploadStatus");
+        if (!confirm("Delete " + selectedPiFolder + filename + "?")) {
+            return;
+        }
+        status.textContent = "Deleting " + filename + "...";
+        try {
+            const response = await fetch("/delete-sound-file", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename: filename,
+                    path: selectedPiFolder
+                })
+            });
+            const result = await response.text();
+            if (!response.ok || result != "success") {
+                throw new Error(result);
+            }
+            status.textContent = "Deleted: " + filename;
+            refreshSoundFiles();
+        } catch (error) {
+            console.log(error);
+            status.textContent = "Delete failed: " + error.message;
+        }
+    }
+
+    async function uploadSound() {
+        const input = document.getElementById("soundFile");
+        const status = document.getElementById("uploadStatus");
+        const uploadButton = document.getElementById("uploadSoundButton");
+        const location = selectedPiFolder;
+        if (!input.files.length) {
+            return;
+        }
+        const file = input.files[0];
+        const chunkSize = 256 * 1024;
+        let offset = 0;
+        uploadButton.disabled = true;
+        status.textContent = "Starting upload...";
+        try {
+            if (file.size == 0) {
+                throw new Error("Cannot upload an empty file");
+            }
+            while (offset < file.size) {
+                const chunk = file.slice(offset, offset + chunkSize);
+                const url = "/upload-sound?filename=" + encodeURIComponent(file.name) +
+                    "&location=" + encodeURIComponent(location) +
+                    "&offset=" + offset;
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/octet-stream" },
+                    body: chunk
+                });
+                const result = await response.text();
+                if (!response.ok || result != "success") {
+                    throw new Error(result);
+                }
+                offset += chunk.size;
+                const percent = Math.floor(offset / file.size * 100);
+                status.textContent = "Uploading " + file.name + ": " + percent + "%";
+            }
+            status.textContent = "Verifying upload...";
+            const response = await fetch("/upload-sound-complete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename: file.name,
+                    location: location,
+                    size: file.size
+                })
+            });
+            const result = await response.text();
+            if (!response.ok || result != "success") {
+                throw new Error(result);
+            }
+            status.textContent = "Upload complete: " + file.name;
+            refreshSoundFiles();
+        } catch (error) {
+            console.log("Upload error:", error);
+            status.textContent = "Upload failed: " + error.message;
+        } finally {
+            uploadButton.disabled = false;
+            input.value = "";
+        }
+    }
+
 
     function getLightString() {
         fetch('/get-light-string', {

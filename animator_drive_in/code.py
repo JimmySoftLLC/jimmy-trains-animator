@@ -1518,21 +1518,32 @@ class ApiClient:
     def handle_response(self, response):
         """Handle the HTTP response."""
         if response.status_code == 200:
-            return response.json()  # or response.text for raw text
+            try:
+                # Try to parse the response as JSON
+                return response.json()
+            except ValueError:
+                # If JSON parsing fails, treat it as plain text
+                return response.text
         else:
-            response.raise_for_status()  # Raise an error for bd responses
+            response.raise_for_status()  # Raise an error for bad responses
 
 
-def send_animator_post(url, endpoint, new_data):
+def send_animator_post(url, endpoint, new_data=None):
     try:
         new_url = "http://" + url
-        new_data_loads = json.loads(new_data)
         api_client = ApiClient(new_url)
-        created_data = api_client.post(endpoint, data=new_data_loads)
+
+        if new_data is not None:
+            new_data_loads = json.loads(new_data)
+            created_data = api_client.post(endpoint, data=new_data_loads)
+        else:
+            created_data = api_client.post(endpoint)
+
         print("POST response:", created_data)
         return created_data
     except Exception as e:
         print(f"Comms issue: {e}")
+        return None
 
 
 ################################################################################
