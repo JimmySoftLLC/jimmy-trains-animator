@@ -158,7 +158,7 @@ tmp_wav_file_name = code_folder + "tmp.wav"
 override_switch_state = {}
 override_switch_state["switch_value"] = ""
 MP_CMD_WAIT=.2
-animation_added = 0.0
+an_just_added = False
 
 ################################################################################
 # Loading image as wallpaper on pi
@@ -2217,16 +2217,17 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         print("Response sent:", response)
 
     def animation_post(self, rq_d):
-        global cfg
+        global cfg, an_just_added
         cfg["option_selected"] = rq_d["an"]
-        add_command(cfg["option_selected"])
+        add_command("AN_" + cfg["option_selected"])
+        an_just_added = True
         files.write_json_file(code_folder + "cfg.json", cfg)
         self.send_response(200)
         self.send_header("Content-type", "application/json")
         self.end_headers()
         response = {"Animation added to queue: ": cfg["option_selected"]}
         self.wfile.write(json.dumps(response).encode('utf-8'))
-        print("Response sent:", response)
+        time.sleep(0.05)
 
     def defaults_post(self, rq_d):
         global cfg
@@ -2533,11 +2534,15 @@ def add_command(command, to_start=False):
 
 
 def process_commands():
-    """Process commands in a FIFO order from the front."""
+    global an_just_added
     while command_queue:
-        command = command_queue.popleft()  # Retrieve from the front
+        command = command_queue.popleft()
         print(f"Processing command: {command}")
-        an(command)
+        if command.startswith("AN_"):
+            an(command[3:])
+            an_just_added = False
+        else:
+            set_hdw(command, 0, "")
 
 
 def clear_command_queue():
@@ -3139,7 +3144,7 @@ def an_done_reset(return_value):
 
 def insert_intermission_start_of_queue():
     if rnd_prob(float(cfg["intermission"])):
-        add_command("random_intermission", True)
+        add_command("AN_random_intermission", True)
 
 
 def add_command_to_ts(command):
@@ -3379,14 +3384,24 @@ def set_hdw(cmd, dur, url=""):
                     clear_pixel_scale_all()
                 elif n > 0:
                     clear_pixel_scale_one(n - 1)  # convert to 0-based
-
-            # modules NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
+            # NRZZZ_I_XXX = Set relay state
+            # NRZZZ_I_XXX_TTT = Pulse opposite state for TTT seconds
             elif seg[:2] == 'NR':
                 segs_split = seg.split("_")
-                mod_n = int(segs_split[0].replace("NR", ""))
-                index = int(segs_split[1])
-                v = int(segs_split[2])
-                set_neo_relay_to(mod_n, index, v)
+                mod_n = int(segs_split[0][2:])
+                relay_n = int(segs_split[1])
+                normal_state = int(segs_split[2])
+                if len(segs_split) == 4:
+                    pulse_time = float(segs_split[3])
+                    if normal_state == 0:
+                        pulse_state = 1
+                    else:
+                        pulse_state = 0
+                    set_neo_relay_to(mod_n, relay_n, pulse_state)
+                    time.sleep(pulse_time)
+                    set_neo_relay_to(mod_n, relay_n, normal_state)
+                else:
+                    set_neo_relay_to(mod_n, relay_n, normal_state)
             # ZRAND = Random rainbow, fire, or color change
             elif seg[0:] == 'ZRAND':
                 random_effect(1, 3, dur)
@@ -3429,6 +3444,10 @@ def set_hdw(cmd, dur, url=""):
             # QXXXX = Add command XXXX any command ie AN_filename to add new animation
             elif seg[0] == 'Q':
                 add_command(seg[1:])
+            # WXXX = Wait XXX decimal seconds
+            elif seg[0] == 'W':
+                s = float(seg[1:])
+                time.sleep(s)
             # API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an": data_object}
             elif seg[:3] == 'API':
                 seg_split = split_string(seg)
@@ -3753,7 +3772,7 @@ class BseSt(Ste):
         Ste.exit(self, mch)
 
     def upd(self, mch):
-        global running_mode, override_switch_state
+        global running_mode, override_switch_state, an_just_added
         if running_mode != "time_stamp_mode":
             process_commands()
             switch_state = utilities.switch_state_four_switches(
@@ -3767,8 +3786,13 @@ class BseSt(Ste):
                     play_mix(code_folder + "mvc/continuous_mode_activated.wav")
                 files.write_json_file(code_folder + "cfg.json", cfg)
                 time.sleep(.5)
-            elif switch_state == "left" or cfg["cont_run"]:
-                add_command(cfg["option_selected"])
+            elif switch_state == "left":
+                add_command("AN_" + cfg["option_selected"])
+                an_just_added = True
+                time.sleep(.5)
+            elif cfg["cont_run"] and not mix.get_busy() and not an_just_added:
+                add_command("AN_" + cfg["option_selected"])
+                an_just_added = True
                 time.sleep(.5)
             elif switch_state == "right":
                 mch.go_to('main_menu')
@@ -3782,7 +3806,6 @@ class BseSt(Ste):
                 ch_vol("raise")
                 time.sleep(.5)
         time.sleep(0.05)
-
 
 class Main(Ste):
 

@@ -94,6 +94,9 @@
     <div class="mui-container">
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
+                <a data-mui-toggle="tab" data-mui-controls="demo">Demo</a>
+            </li>
+            <li>
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
@@ -115,19 +118,34 @@
                 <a data-mui-toggle="tab" data-mui-controls="trolley">Trolley</a>
             </li> -->
         </ul>
-        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+        <div class="mui-tabs__pane mui--is-active" id="demo" style="padding-top:0.5rem;">
+            <h1>Animator - City Lights</h1>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+                data-url="/mode">Left</button>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+                data-url="/mode">Right</button>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+                data-url="/mode">Three</button>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+                data-url="/mode">Four</button>
+            <div id="demoMediaContainer"></div>
+            <h2>Current Media Queue</h2>
+            <div id="demoCurrentMedia"></div>
+            <ul id="demoQueueList" class="MuiList-root MuiList-padding"></ul>
+        </div>
+        <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
             <h1>Animator - City Lights</h1>
             <p style="padding-top:0.5rem;">
                 Use this web app to control and setup your Animator - City Lights
                 product. Have fun animating.
             </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
                 data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
                 data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
                 data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
                 data-url="/mode">Four</button>
             <h2>Random play:</h2>
             <div id="topicButtonContainer"></div>
@@ -136,25 +154,6 @@
             <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
             <h2>Media:</h2>
             <div id="mediaContainer"></div>
-            <h2>Intermission between movies:</h2>
-            <div>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0" data-url="/mode"
-                    type="button">
-                    Off
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.33" data-url="/mode"
-                    type="button">
-                    Infrequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_0.66" data-url="/mode"
-                    type="button">
-                    Frequent
-                </button>
-                <button class="mui-btn mui-btn--primary animator-action" data-value="intermission_1" data-url="/mode"
-                    type="button">
-                    Always
-                </button>
-            </div>
             <h2>Animation settings:</h2>
             <div>
                 <button class="mui-btn mui-btn--primary animator-action" data-value="cont_mode_on" data-url="/mode"
@@ -174,10 +173,12 @@
             </p>
             <h2>Animation timing:</h2>
             <p>
-                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press the
+                Time stamp mode allows you to change your animation timing. Once time stamp mode is turned on press
+                the
                 left button to start your animation. Once the media starts press the right button for each point
                 that you want an animation timestamp. Time your button presses to key moments in the media. Continue
-                to do this until the animation finishes. Then timestamp mode will be automatically turned off and your
+                to do this until the animation finishes. Then timestamp mode will be automatically turned off and
+                your
                 animation script will be ready to add animations to.
             </p>
             <div>
@@ -200,18 +201,6 @@
                     Terminal Mode Off
                 </button>
             </div>
-
-            <div class="mui-textfield">
-                <h2>Upload a File</h1>
-                    <form id="uploadForm" enctype="multipart/form-data">
-                        <label class="mui-btn mui-btn--primary" for="fileInput">Upload File</label>
-                        <input type="file" id="fileInput" name="file" style="display: none;" required>
-                    </form>
-                    <div id="progressContainer">
-                        <div id="progressBar">0%</div>
-                    </div>
-                    <p id="status"></p>
-            </div>
         </div>
         <div class="mui-tabs__pane" id="lighting" style="padding-top:0.5rem;">
             <h1>Animator - City Lights</h1>
@@ -219,18 +208,19 @@
                 Use this web app to control and setup your Animator - City Lights
                 product. Have fun animating.
             </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
                 data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
                 data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
                 data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
                 data-url="/mode">Four</button>
             <h2>Setup light string:</h2>
             <div class="mui-textfield">
                 <p>
-                    Enter your light string in the order which each component is connected together by pressing neo-6,
+                    Enter your light string in the order which each component is connected together by pressing
+                    neo-6,
                     cane-4...
                     When finished press "Save".
                 </p>
@@ -491,13 +481,13 @@
                 Use this web app to control and setup your Animator - City Lights
                 product. Have fun animating.
             </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
                 data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
                 data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
                 data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
                 data-url="/mode">Four</button>
             <div class="mui-textfield">
                 <input class="input" id="volume" type="number" disabled>
@@ -596,17 +586,18 @@
                 Use this web app to control and setup your Animator - City Lights
                 product. Have fun animating.
             </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
                 data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
                 data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
                 data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
                 data-url="/mode">Four</button>
             <h2>Animation scripts:</h2>
             <p>
-                Animation scripts run the animation. To load the script press the button for the sound track you want to
+                Animation scripts run the animation. To load the script press the button for the sound track you
+                want to
                 modify.
                 Modify the script as needed and press save to save the script.
             </p>
@@ -648,7 +639,10 @@
             <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
             <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            <div>NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>
+            <div>NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on
+            </div>
+            <div>NRZZZ_I_XXX_TTT = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1
+                on, TTT pulse opposite</div>
             <div>NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command
                 abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^</div>
             <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
@@ -657,7 +651,8 @@
                 between
                 transitions in decimal seconds
             </div>
-            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based
+            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or
+                1-based
                 pixel index</div>
             <div>SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
@@ -671,6 +666,7 @@
             <div>QXXX/XXX = Add media to queue XXX/XXX ("folder/filename" or use "random_folder")</div>
             <div>API_UUU_EEE_DDD = Api POST call UUU base url, EEE endpoint, DDD data object i.e. {"an":
                 data_object}</div>
+            <div>WXXX = Wait XXX decimal seconds</div>
             <div>E = End script</div>
             <table id="animationsTable" class="mui-table">
                 <thead>
@@ -690,19 +686,20 @@
                 Use this web app to control and setup your Animator - City Lights
                 product. Have fun animating.
             </p>
-            <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
                 data-url="/mode">Left</button>
-            <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
                 data-url="/mode">Right</button>
-            <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
                 data-url="/mode">Three</button>
-            <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
                 data-url="/mode">Four</button>
             <h2>Animator setup:</h2>
             <p>Follow these steps to setup animators to be controlled by Lionel Legacy/TMCC remotes:</p>
             <ol>
                 <li><strong>Create:</strong> Click the create button to add a new animator.</li>
-                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then use the
+                <li><strong>Duplicate, Rename, or Delete:</strong> Select the animator you want to edit, then
+                    use the
                     corresponding buttons to duplicate, rename, or delete it.</li>
             </ol>
             <div class="mui-checkbox">
@@ -727,8 +724,10 @@
             <div>LNZZZ_R_G_B = Neopixel lights/Neo 6 modules ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LXZZZ_R_G_B = Lifx lights ZZZ (0 All, 1 to 999) RGB 0 to 255</div>
             <div>LPZZZ_YYY = Lifx lights power ZZZ (0 All, 1 to 999) YYY ON or OFF</div>
-            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255</div>
-            <div>NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1 on</div>
+            <div>NMZZZ_I_XXX = Neo 6 modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 6) XXX 0 to 255
+            </div>
+            <div>NRZZZ_I_XXX = Neo relay modules only ZZZ (0 All, 1 to 999) I index (0 All, 1 to 3) XXX 0 off 1
+                on</div>
             <div>NPZZZ_XXX = Neo pico modules only ZZZ (0 All, 1 to 999) XXX command
                 abcdefghijklmnopqrstuvwxyz0123456789,_/.+-*!@#$%^</div>
             <div>BNYYY = Brightness (Neopixel lights/Neo 6 modules) YYY 000 to 100</div>
@@ -737,7 +736,8 @@
                 between
                 transitions in decimal seconds
             </div>
-            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or 1-based
+            <div>SCNZZZ_RS_GS_BS = per-pixel per-color scaler (0.0..1.0) ZZZ = 0 (all allowed light pixels) or
+                1-based
                 pixel index</div>
             <div>SCCZZZ = Scale Clear Calibration. ZZZ=0 clears all, else clears pixel (1-based)</div>
             <div>ZRAND = Random rainbow, fire, or color change</div>
@@ -780,19 +780,19 @@
                         style="width: 300px; padding: 5px; margin: 5px;">
                 </div>
             </form>
-            <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save
-                <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP Address
-                    Animator</button>
-                <table id="animatorTable" class="mui-table">
-                    <thead>
-                        <tr>
-                            <th>Button</th>
-                            <th>Commands</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+            <button id="saveAnimatorButton" class="mui-btn mui-btn--primary" type="button">Save Animator</button>
+            <button id="getAnimatorIpAddressButton" class="mui-btn mui-btn--primary" type="button">Get IP
+                Address</button>
+            <table id="animatorTable" class="mui-table">
+                <thead>
+                    <tr>
+                        <th>Button</th>
+                        <th>Commands</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
         <div class="mui-tabs__pane" id="files" style="padding-top:0.5rem;">
             <h2>File Manager</h2>
@@ -805,7 +805,8 @@
             </div>
             <button class="mui-btn mui-btn--primary" type="button" onclick="selectPiFolder()">Open / Create
                 Folder</button>
-            <button class="mui-btn mui-btn--primary" type="button" onclick="choosePiFolder()">Browse Folders</button>
+            <button class="mui-btn mui-btn--primary" type="button" onclick="choosePiFolder()">Browse
+                Folders</button>
             <div>
                 <input type="file" id="soundFile" style="display:none;" onchange="uploadSound()">
                 <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button"
@@ -817,14 +818,14 @@
         </div>
         <div class="mui-tabs__pane" id="camera">
             <div class="iframe-container">
-                <iframe src="http://animator-camera-train.local:8083/control" width="100%" height="400"
+                <iframe src="https://animator-camera-train.local:8083/control" width="100%" height="400"
                     title="Embedded Page" frameborder="0">
                 </iframe>
             </div>
         </div>
         <div class="mui-tabs__pane" id="trolley">
             <div class="iframe-container">
-                <iframe src="http://t.local/" width="100%" height="400" title="Embedded Page" frameborder="0">
+                <iframe src="https://t.local/" width="100%" height="400" title="Embedded Page" frameborder="0">
                 </iframe>
             </div>
         </div>
@@ -862,14 +863,6 @@
         return result;
     }
 
-    function selectedStandaloneAnimation() {
-        const filename = document.getElementById("animationName").value;
-        if (!filename.startsWith("animations/") || !filename.toLowerCase().endsWith(".json")) {
-            showAlert("Select a standalone JSON animation first.");
-            return "";
-        }
-        return filename;
-    }
 
     function animationDialog(title, filename, action, deleteMode = false) {
         const modalEl = document.getElementById("modalEl");
@@ -1483,12 +1476,13 @@
             },
         })
             .then(function (response) {
-                return response.text(); // assuming the response is plain text
+                return response.text();
             })
             .then(function (data) {
-                my_data = JSON.parse(data)
-                setMediaButtons(my_data)
-                setMediaScriptButtons(my_data)
+                const my_data = JSON.parse(data);
+                setMediaButtons(my_data, "mediaContainer", "topicButtonContainer");
+                setMediaButtons(my_data, "demoMediaContainer", null);
+                setMediaScriptButtons(my_data);
             })
             .catch(function (error) {
                 console.log(error);
@@ -1709,21 +1703,18 @@
         });
     }
 
-    function setMediaButtons(my_data) {
-        // Clear the existing buttons (if needed)
-        const topicButtonContainer = document.getElementById("topicButtonContainer");
-        topicButtonContainer.innerHTML = '';
-
-        // Clear the existing buttons (if needed)
-        const mediaContainer = document.getElementById("mediaContainer");
+    function setMediaButtons(my_data, mediaContainerId, topicContainerId) {
+        let topicButtonContainer = null;
+        if (topicContainerId !== null) {
+            topicButtonContainer = document.getElementById(topicContainerId);
+            topicButtonContainer.innerHTML = '';
+        }
+        const mediaContainer = document.getElementById(mediaContainerId);
         mediaContainer.innerHTML = '';
-
-        // Loop through each folder (topic) in my_data
         Object.keys(my_data).forEach((topic) => {
             if (topic.includes('pictures') || topic.includes('random_config') || topic.includes('animator')) {
-                return; // Skip this topic
+                return;
             }
-            // Create and add a button for the folder (topic)
             const topicButton = document.createElement("button");
             topicButton.textContent = topic;
             topicButton.classList.add("mui-btn", "mui-btn--primary", "animator-action");
@@ -1734,15 +1725,10 @@
                 var url = topicButton.getAttribute('data-url');
                 var animation = topicButton.getAttribute('data-value');
                 var redirectUrl = topicButton.getAttribute('data-redirect');
-
-                // Create an object with the data to be sent in the request
                 var data = {
                     an: animation,
                 };
-
                 topicButton.setAttribute('disabled', 'true');
-
-                // Make a POST request using fetch
                 fetch(url, {
                     method: 'POST',
                     headers: {
@@ -1751,7 +1737,6 @@
                     body: JSON.stringify(data),
                 })
                     .then(function (response) {
-                        // Handle the response from the server
                         if (redirectUrl) {
                             window.location.href = redirectUrl;
                         } else {
@@ -1764,23 +1749,16 @@
                         showAlert(error);
                     });
             });
-
-            // Append the topic button to the topic button container
-            topicButtonContainer.appendChild(topicButton);
-
-            if (topic.includes('random_config') || topic.includes('all') || topic.includes('play lists')) {
-                return; // Skip adding files
+            if (topicButtonContainer !== null) {
+                topicButtonContainer.appendChild(topicButton);
             }
-
-            // Create and add a title for the folder (topic)
+            if (topic.includes('random_config') || topic.includes('all') || topic.includes('play lists')) {
+                return;
+            }
             const title = document.createElement("h2");
             title.textContent = topic + " :";
             mediaContainer.appendChild(title);
-
-            // Get the array of files for this topic
             const files = my_data[topic];
-
-            // Loop through each file in the topic and create a button for it
             files.forEach((file) => {
                 const fileButton = document.createElement("button");
                 fileButton.textContent = file.replace("customers_owned_music_", "");
@@ -1792,15 +1770,10 @@
                     var url = fileButton.getAttribute('data-url');
                     var animation = fileButton.getAttribute('data-value');
                     var redirectUrl = fileButton.getAttribute('data-redirect');
-
-                    // Create an object with the data to be sent in the request
                     var data = {
                         an: animation,
                     };
-
                     fileButton.setAttribute('disabled', 'true');
-
-                    // Make a POST request using fetch
                     fetch(url, {
                         method: 'POST',
                         headers: {
@@ -1809,7 +1782,6 @@
                         body: JSON.stringify(data),
                     })
                         .then(function (response) {
-                            // Handle the response from the server
                             if (redirectUrl) {
                                 window.location.href = redirectUrl;
                             } else {
@@ -1822,8 +1794,6 @@
                             showAlert(error);
                         });
                 });
-
-                // Append the file button to the file button container
                 mediaContainer.appendChild(fileButton);
             });
         });
