@@ -678,7 +678,7 @@ def calibrate_loop():
     bumper_position_success = False
     current_throttle = 0
     print("Loop calibration starting...")
-    ply_a_0(mvc_folder + "bumper_cal_starting.mp3")
+    ply_a_0(mvc_folder + "loop_cal_starting.mp3")
     forward_time = calibrate_loop_direction(1)
     if forward_time is None:
         train.throttle = 0
@@ -1640,6 +1640,24 @@ def rst_def():
 
 lst_opt = ""
 
+async def park_trolley():
+    if cfg["bumper_mode"] != "bumper":
+        return
+    if not bumper_calibrated:
+        return
+    if get_track_voltage() < MIN_TRACK_VOLTAGE:
+        return
+    position = bumper_progress * 100
+    if position < 20:
+        if position <= 5:
+            if not await position_trolley(20, 0):
+                return
+        await position_trolley(20, 20)
+    elif position > 80:
+        if position >= 95:
+            if not await position_trolley(20, 100):
+                return
+        await position_trolley(20, 80)
 
 async def an_async(f_nm):
     global lst_opt, ts_mode
@@ -1648,11 +1666,9 @@ async def an_async(f_nm):
     try:
         if f_nm == "random all":
             h_i = len(snd_opt) - 1
-            cur_opt = snd_opt[random.randint(
-                0, h_i)]
+            cur_opt = snd_opt[random.randint(0, h_i)]
             while lst_opt == cur_opt and len(snd_opt) > 1:
-                cur_opt = snd_opt[random.randint(
-                    0, h_i)]
+                cur_opt = snd_opt[random.randint(0, h_i)]
             lst_opt = cur_opt
             print("Random sound option: " + f_nm)
             print("Sound file: " + cur_opt)
@@ -1665,6 +1681,8 @@ async def an_async(f_nm):
         await no_trk()
         cfg["option_selected"] = "random all"
         return
+    if not exit_set_hdw_async:
+        await park_trolley()
     gc_col("Animation complete.")
 
 
@@ -2707,8 +2725,13 @@ else:
 # initialize items
 upd_vol(.5)
 
-
-if cfg["bumper_mode"] == "bumper" and not debug_ir_sensor_voltage:
+if l_sw_io.value or r_sw_io.value:
+    train.throttle = 0
+    current_throttle = 0
+    cfg["bumper_mode"] = "off"
+    ply_a_0(mvc_folder + "bumper_mode_off.mp3")
+    print("Both bumpers pressed at startup - bumper mode off")
+elif cfg["bumper_mode"] == "bumper" and not debug_ir_sensor_voltage:
     calibrate_bumper()
 elif cfg["bumper_mode"] == "loop" and not debug_ir_sensor_voltage:
     calibrate_loop()
