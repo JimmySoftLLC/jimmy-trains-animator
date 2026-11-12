@@ -1614,6 +1614,13 @@ def get_track_voltage(samples=20):
         time.sleep(.0017)
     return total / samples
 
+def check_light_power():
+    if get_track_voltage(3) < MIN_TRACK_VOLTAGE:
+        led.fill((0, 0, 0))
+        led.show()
+        return False
+    return True
+
 def get_ir_sensor_voltage(samples=20):         
     total = 0.0
     for _ in range(samples):
@@ -2114,24 +2121,27 @@ async def random_effect(il, ih, d):
 
 async def rbow(spd, dur):
     st = time.monotonic()
-    te = time.monotonic()-st
-
-    while te < dur:
-        for j in range(0, 255, 1):
-            if exit_set_hdw_async:
+    last_j = -1
+    next_power_check = 0
+    while True:
+        if exit_set_hdw_async:
+            return
+        now = time.monotonic()
+        elapsed = now - st
+        if elapsed >= dur:
+            return
+        if now >= next_power_check:
+            if not check_light_power():
                 return
+            next_power_check = now + .05
+        j = int(elapsed / spd) & 255
+        if j != last_j:
+            last_j = j
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = colorwheel(pixel_index & 255)
             led.show()
-            if an_running:
-                if await animation_wait(spd):
-                    return
-            else:
-                time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
+        await asyncio.sleep(0)
 
 def red_white_blue_wheel(pos):
     pos &= 255
@@ -2155,24 +2165,27 @@ def red_white_blue_wheel(pos):
 
 async def rwb_bow(spd, dur):
     st = time.monotonic()
-    te = time.monotonic()-st
-
-    while te < dur:
-        for j in range(0, 255, 1):
-            if exit_set_hdw_async:
+    last_j = -1
+    next_power_check = 0
+    while True:
+        if exit_set_hdw_async:
+            return
+        now = time.monotonic()
+        elapsed = now - st
+        if elapsed >= dur:
+            return
+        if now >= next_power_check:
+            if not check_light_power():
                 return
+            next_power_check = now + .05
+        j = int(elapsed / spd) & 255
+        if j != last_j:
+            last_j = j
             for i in range(n_px):
                 pixel_index = (i * 256 // n_px) + j
                 led[i] = red_white_blue_wheel(pixel_index & 255)
             led.show()
-            if an_running:
-                if await animation_wait(spd):
-                    return
-            else:
-                time.sleep(spd)
-            te = time.monotonic()-st
-            if te > dur:
-                return
+        await asyncio.sleep(0)
 
 
 def multi_color(r=None, g=None, b=None, set_one_color=True):
@@ -2206,6 +2219,8 @@ def multi_color(r=None, g=None, b=None, set_one_color=True):
 
 async def fire(dur, r=None, g=None, b=None):
     st = time.monotonic()
+    next_change = st
+    next_power_check = 0
     if r is None:
         r = random.randint(128, 255)
     if g is None:
@@ -2215,22 +2230,23 @@ async def fire(dur, r=None, g=None, b=None):
     while True:
         if exit_set_hdw_async:
             return
-        for i in range(n_px):
-            f = random.randint(0, 110)
-            r1 = bnd(r-f, 0, 255)
-            g1 = bnd(g-f, 0, 255)
-            b1 = bnd(b-f, 0, 255)
-            led[i] = (r1, g1, b1)
-        led.show()
-        upd_vol(0)
-        if an_running:
-            if await animation_wait(random.uniform(0.05, 0.1)):
-                return
-        else:
-            time.sleep(random.uniform(0.05, 0.1))
-        te = time.monotonic()-st
-        if te > dur:
+        now = time.monotonic()
+        if now - st >= dur:
             return
+        if now >= next_power_check:
+            if not check_light_power():
+                return
+            next_power_check = now + .05
+        if now >= next_change:
+            next_change = now + random.uniform(0.05, 0.1)
+            for i in range(n_px):
+                f = random.randint(0, 110)
+                r1 = bnd(r-f, 0, 255)
+                g1 = bnd(g-f, 0, 255)
+                b1 = bnd(b-f, 0, 255)
+                led[i] = (r1, g1, b1)
+            led.show()
+        await asyncio.sleep(0)
 
 
 def bnd(c, l, u):
