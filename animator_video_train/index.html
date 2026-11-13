@@ -66,21 +66,11 @@
 <body>
     <div id="modalEl"></div>
     <div class="mui-container">
-        <h1>Animator - Video train</h1>
-        <p style="padding-top:0.5rem;">
-            Use this web app to control and setup your Animator - Video train
-            product. Have fun animating.
-        </p>
-        <button id="leftButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
-            data-url="/mode">Left</button>
-        <button id="rightButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
-            data-url="/mode">Right</button>
-        <button id="threeButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
-            data-url="/mode">Three</button>
-        <button id="fourButton" class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
-            data-url="/mode">Four</button>
         <ul class="mui-tabs__bar">
             <li class="mui--is-active">
+                <a data-mui-toggle="tab" data-mui-controls="camera">Camera car</a>
+            </li>
+            <li>
                 <a data-mui-toggle="tab" data-mui-controls="animations">Animations</a>
             </li>
             <li>
@@ -92,18 +82,32 @@
             <li>
                 <a data-mui-toggle="tab" data-mui-controls="tables">Animation tables</a>
             </li>
-            <li>
-                <a data-mui-toggle="tab" data-mui-controls="camera">Camera car</a>
-            </li>
         </ul>
-        <div class="mui-tabs__pane mui--is-active" id="animations" style="padding-top:0.5rem;">
+        <div class="mui-tabs__pane mui--is-active" id="camera">
+            <div class="stream-container" onclick="refreshCamera()" style="cursor:pointer;">
+                <img id="stream" src="http://animator-camera-train.local/stream.mjpg" onload="cameraConnected()"
+                    onerror="cameraDisconnected()" alt="Tap to reconnect camera">
+            </div>
+        </div>
+        <div class="mui-tabs__pane" id="animations" style="padding-top:0.5rem;">
+            <h1>Animator - Video train</h1>
+            <p style="padding-top:0.5rem;">
+                Use this web app to control and setup your Animator - Video train
+                product. Have fun animating.
+            </p>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="left"
+                data-url="/mode">Left</button>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="right"
+                data-url="/mode">Right</button>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="three"
+                data-url="/mode">Three</button>
+            <button class="mui-btn mui-btn--primary animator-action" type="button" data-value="four"
+                data-url="/mode">Four</button>
             <h2>Random play:</h2>
             <div id="topicButtonContainer"></div>
             <h2>Current Media Queue</h2>
             <div id="currentMedia"></div>
             <ul id="queueList" class="MuiList-root MuiList-padding"></ul>
-            <!-- <h2>Playlists:</h2>
-            <div id="playlistContainer"></div> -->
             <h2>Media:</h2>
             <div id="mediaContainer"></div>
             <h2>Intermission between movies:</h2>
@@ -504,12 +508,6 @@
                 Reset to defaults
             </button>
         </div>
-        <div class="mui-tabs__pane" id="camera">
-            <div class="stream-container">
-                <img id="stream" src='http://animator-camera-train.local/stream.mjpg' alt="MJPEG Stream">
-            </div>
-        </div>
-
         <div class="mui-tabs__pane" id="tables">
             <h2>Animation scripts:</h2>
             <p>
@@ -596,6 +594,25 @@
         getLifxEnabled()
         getLocalIp()
     });
+
+    let cameraRetryTimer = null;
+
+    function refreshCamera() {
+        window.location.reload();
+    }
+
+    function cameraConnected() {
+        clearTimeout(cameraRetryTimer);
+        cameraRetryTimer = null;
+        console.log("Camera connected");
+    }
+
+    function cameraDisconnected() {
+        console.log("Camera disconnected");
+        if (cameraRetryTimer === null) {
+            cameraRetryTimer = setTimeout(refreshCamera, 3000);
+        }
+    }
 
     function getLightString() {
         fetch('/get-light-string', {
