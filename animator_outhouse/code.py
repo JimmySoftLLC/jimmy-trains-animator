@@ -358,6 +358,11 @@ if (web):
         def buttonpress(req: Request):
             return Response(req, cfg["HOST_NAME"])
 
+        @server.route("/get-local-ip", [POST])
+        def buttonpress(req: Request):
+            stop_a_0()
+            return Response(req, local_ip)
+
         @server.route("/update-volume", [POST])
         def buttonpress(req: Request):
             global cfg
