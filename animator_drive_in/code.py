@@ -1706,7 +1706,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.file_manager_reply(200, json.dumps(folders))
         except Exception as e:
             print("Get folders error:", e)
-            self.file_manager_reply(400, "[]")
+            self.file_manager_reply(400, str(e))
+
 
     def check_folder(self):
         try:
@@ -1719,7 +1720,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.file_manager_reply(200, "success")
         except Exception as e:
             print("Check folder error:", e)
-            self.file_manager_reply(400, "invalid")
+            self.file_manager_reply(400, str(e))
 
     def get_sound_files(self):
         try:
@@ -1731,6 +1732,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
                     continue
                 if name.lower() in ("cfg.json", "default_cfg.json", "env.json", "secrets.json"):
                     continue
+                if name.lower() in ("random_config", "rand_config"):
+                    continue
                 child = self.file_manager_path(path, name)
                 if os.path.isfile(child):
                     names.append(name)
@@ -1738,7 +1741,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.file_manager_reply(200, json.dumps(names))
         except Exception as e:
             print("Get files error:", e)
-            self.file_manager_reply(400, "[]")
+            self.file_manager_reply(400, str(e))
 
     def delete_sound_file(self):
         try:
@@ -1751,7 +1754,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.file_manager_reply(200, "success")
         except Exception as e:
             print("Delete file error:", e)
-            self.file_manager_reply(400, "error")
+            self.file_manager_reply(400, str(e))
 
     
     def delete_folder(self):
@@ -1813,7 +1816,7 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print("Download error:", e)
             if not response_started:
-                self.file_manager_reply(400, "download error")
+                self.file_manager_reply(400, str(e))
 
 
     def upload_sound(self):
@@ -1824,6 +1827,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             offset = int(query.get("offset", ["0"])[0])
             length = int(self.headers.get("Content-Length", "0"))
             file_path = self.file_manager_path(location, filename)
+            root = os.path.realpath("/home/drivein/media")
+            if os.path.dirname(file_path) == root:
+                raise ValueError("Uploads must be inside a folder under media")
             part_path = file_path + ".part"
             if not filename or offset < 0 or length < 1 or length > 262144:
                 raise ValueError("Invalid upload chunk")
@@ -1850,8 +1856,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.file_manager_reply(200, "success")
         except Exception as e:
             print("Upload error:", e)
-            self.file_manager_reply(400, "error")
-            
+            self.file_manager_reply(400, str(e))
+                
 
     def upload_sound_complete(self):
         try:
@@ -1860,6 +1866,9 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             location = request.get("location", media_folder)
             expected_size = int(request["size"])
             file_path = self.file_manager_path(location, filename)
+            root = os.path.realpath("/home/drivein/media")
+            if os.path.dirname(file_path) == root:
+                raise ValueError("Uploads must be inside a folder under media")
             part_path = file_path + ".part"
             if not filename or expected_size < 0:
                 raise ValueError("Invalid upload")
@@ -1870,13 +1879,12 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             print("Expected size:", expected_size)
             print("Actual size:", actual_size)
             if actual_size != expected_size:
-                self.file_manager_reply(400, "size mismatch")
-                return
+                raise ValueError("Upload size mismatch: expected " + str(expected_size) + ", received " + str(actual_size))
             os.replace(part_path, file_path)
             self.file_manager_reply(200, "success")
         except Exception as e:
             print("Upload complete error:", e)
-            self.file_manager_reply(400, "error")
+            self.file_manager_reply(400, str(e))
 
     def handle_serve_file(self, path, content_type="text/html"):
         file_path = path.lstrip("/")

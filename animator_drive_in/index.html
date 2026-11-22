@@ -640,10 +640,11 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ path: browsingPiFolder })
             });
+            const result = await response.text();
             if (!response.ok) {
-                throw new Error("Folder request failed");
+                throw new Error(result);
             }
-            const folders = await response.json();
+            const folders = JSON.parse(result);
             container.innerHTML = "";
             if (browsingPiFolder != piHomeFolder) {
                 const upButton = document.createElement("button");
@@ -683,7 +684,8 @@
             }
         } catch (error) {
             console.log(error);
-            container.textContent = "Unable to browse folders.";
+            container.textContent = "Unable to browse folders: " + error.message;
+            showAlert(container.textContent);
         }
     }
 
@@ -700,10 +702,14 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ path: path })
             });
+            const filesResult = await filesResponse.text();
             if (!filesResponse.ok) {
-                throw new Error("Unable to list files");
+                throw new Error(filesResult);
             }
-            const filenames = await filesResponse.json();
+            const filenames = JSON.parse(filesResult);
+            if (selectedPiFolder != path) {
+                return;
+            }
             container.innerHTML = "";
             if (filenames.length == 0) {
                 container.textContent = "No files in selected folder.";
@@ -738,21 +744,24 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ path: path })
                 });
+                const foldersResult = await foldersResponse.text();
                 if (!foldersResponse.ok) {
-                    throw new Error("Unable to check subfolders");
+                    throw new Error(foldersResult);
                 }
-                const folders = await foldersResponse.json();
+                const folders = JSON.parse(foldersResult);
                 if (folders.length == 0 && selectedPiFolder == path) {
                     deleteButton.style.display = "inline-block";
                 }
             }
         } catch (error) {
             console.log(error);
-            container.textContent = "Unable to load files.";
-            deleteButton.style.display = "none";
+            if (selectedPiFolder == path) {
+                container.textContent = "Unable to load files: " + error.message;
+                deleteButton.style.display = "none";
+                showAlert(container.textContent);
+            }
         }
     }
-
 
 
     async function downloadSoundFile(filename) {
@@ -761,38 +770,37 @@
             "&path=" + encodeURIComponent(selectedPiFolder);
         status.textContent = "Downloading " + filename + "...";
         try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                const result = await response.text();
+                throw new Error(result);
+            }
+            let blob;
             if (filename.toLowerCase().endsWith(".json")) {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error("Download failed");
-                }
                 const data = await response.json();
                 const formatted = JSON.stringify(data, null, 4) + "\n";
-                const blob = new Blob([formatted], { type: "application/json" });
-                const downloadUrl = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = downloadUrl;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                setTimeout(function () {
-                    URL.revokeObjectURL(downloadUrl);
-                }, 1000);
+                blob = new Blob([formatted], { type: "application/json" });
             } else {
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                blob = await response.blob();
             }
-            status.textContent = "Download requested: " + filename;
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(function () {
+                URL.revokeObjectURL(downloadUrl);
+            }, 1000);
+            status.textContent = "Downloaded: " + filename;
         } catch (error) {
             console.log(error);
-            status.textContent = "Download failed: " + filename;
+            status.textContent = "Download failed: " + error.message;
+            showAlert(status.textContent);
         }
     }
+
 
 
     async function deleteSoundFile(filename) {
