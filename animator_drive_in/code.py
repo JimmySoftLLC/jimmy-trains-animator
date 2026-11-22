@@ -1655,6 +1655,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.get_sound_files()
         elif route == "/delete-sound-file":
             self.delete_sound_file()
+        elif route == "/delete-folder":
+            self.delete_folder()
         elif route == "/upload-sound":
             self.upload_sound()
         elif route == "/upload-sound-complete":
@@ -1750,6 +1752,24 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             print("Delete file error:", e)
             self.file_manager_reply(400, "error")
+
+    
+    def delete_folder(self):
+        try:
+            request = self.file_manager_json()
+            path = self.file_manager_path(request.get("path", ""))
+            root = os.path.realpath("/home/drivein/media")
+            if path == root:
+                raise ValueError("Cannot delete main media folder")
+            if not os.path.isdir(path):
+                raise ValueError("Folder not found")
+            os.rmdir(path)
+            upd_media()
+            self.file_manager_reply(200, "success")
+        except Exception as e:
+            print("Delete folder error:", e)
+            self.file_manager_reply(400, str(e))
+
 
     def file_manager_json(self):
         content_length = int(self.headers.get("Content-Length", "0"))

@@ -512,11 +512,15 @@
                     <input type="text" id="uploadLocation" value="" style="flex:1;">
                 </div>
             </div>
-            <button class="mui-btn mui-btn--primary" type="button" onclick="selectPiFolder()">Open / Create Folder</button>
+            <button class="mui-btn mui-btn--primary" type="button" onclick="selectPiFolder()">Open / Create
+                Folder</button>
             <button class="mui-btn mui-btn--primary" type="button" onclick="choosePiFolder()">Browse Folders</button>
+            <button id="deleteFolderButton" class="mui-btn mui-btn--danger" type="button" onclick="deletePiFolder()"
+                style="display:none;">Delete Folder</button>
             <div>
                 <input type="file" id="soundFile" style="display:none;" onchange="uploadSound()">
-                <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button" onclick="document.getElementById('soundFile').click()">Upload File</button>
+                <button id="uploadSoundButton" class="mui-btn mui-btn--primary" type="button"
+                    onclick="document.getElementById('soundFile').click()">Upload File</button>
             </div>
             <div id="uploadStatus" style="padding-top:0.5rem;"></div>
             <h3>Files in <span id="selectedFolder">/home/drivein/media/</span></h3>
@@ -557,7 +561,7 @@
         return path;
     }
 
-    
+
     function setSelectedPiFolder(path) {
         selectedPiFolder = normalizePiFolder(path);
         if (!selectedPiFolder.startsWith(piHomeFolder)) {
@@ -607,8 +611,8 @@
         try {
             const response = await fetch("/check-folder", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({path: path, create: !fromBrowser})
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: path, create: !fromBrowser })
             });
             const result = await response.text();
             if (!response.ok || result != "success") {
@@ -626,80 +630,83 @@
     }
 
     async function browsePiFolder(path) {
-    browsingPiFolder = normalizePiFolder(path);
-    document.getElementById("piBrowsePath").textContent = browsingPiFolder;
-    const container = document.getElementById("piFolderList");
-    container.textContent = "Loading...";
-    try {
-        const response = await fetch("/get-folders", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({path: browsingPiFolder})
-        });
-        if (!response.ok) {
-            throw new Error("Folder request failed");
-        }
-        const folders = await response.json();
-        container.innerHTML = "";
-        if (browsingPiFolder != piHomeFolder) {
-            const upButton = document.createElement("button");
-            upButton.className = "mui-btn";
-            upButton.textContent = ".. (Parent Folder)";
-            upButton.style.display = "block";
-            upButton.style.marginLeft = "0";
-            upButton.style.textAlign = "left";
-            upButton.onclick = function () {
-                const parts = browsingPiFolder.split("/").filter(Boolean);
-                parts.pop();
-                const parent = "/" + parts.join("/") + "/";
-                if (parent.startsWith(piHomeFolder)) {
-                    browsePiFolder(parent);
-                } else {
-                    browsePiFolder(piHomeFolder);
-                }
-            };
-            container.appendChild(upButton);
-        }
-        folders.forEach(function (folder) {
-            const button = document.createElement("button");
-            button.className = "mui-btn";
-            button.style.display = "block";
-            button.style.marginLeft = "0";
-            button.style.textAlign = "left";
-            button.textContent = "📁 " + folder;
-            button.onclick = function () {
-                browsePiFolder(browsingPiFolder + folder + "/");
-            };
-            container.appendChild(button);
-        });
-        if (folders.length == 0) {
-            const message = document.createElement("p");
-            message.textContent = "No subfolders.";
-            container.appendChild(message);
-        }
-    } catch (error) {
-        console.log(error);
-        container.textContent = "Unable to browse folders.";
-    }
-} 
-    
-    async function refreshSoundFiles() {
-        const container = document.getElementById("soundFilesContainer");
+        browsingPiFolder = normalizePiFolder(path);
+        document.getElementById("piBrowsePath").textContent = browsingPiFolder;
+        const container = document.getElementById("piFolderList");
         container.textContent = "Loading...";
         try {
-            const response = await fetch("/get-sound-files", {
+            const response = await fetch("/get-folders", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({path: selectedPiFolder})
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: browsingPiFolder })
             });
             if (!response.ok) {
+                throw new Error("Folder request failed");
+            }
+            const folders = await response.json();
+            container.innerHTML = "";
+            if (browsingPiFolder != piHomeFolder) {
+                const upButton = document.createElement("button");
+                upButton.className = "mui-btn";
+                upButton.textContent = ".. (Parent Folder)";
+                upButton.style.display = "block";
+                upButton.style.marginLeft = "0";
+                upButton.style.textAlign = "left";
+                upButton.onclick = function () {
+                    const parts = browsingPiFolder.split("/").filter(Boolean);
+                    parts.pop();
+                    const parent = "/" + parts.join("/") + "/";
+                    if (parent.startsWith(piHomeFolder)) {
+                        browsePiFolder(parent);
+                    } else {
+                        browsePiFolder(piHomeFolder);
+                    }
+                };
+                container.appendChild(upButton);
+            }
+            folders.forEach(function (folder) {
+                const button = document.createElement("button");
+                button.className = "mui-btn";
+                button.style.display = "block";
+                button.style.marginLeft = "0";
+                button.style.textAlign = "left";
+                button.textContent = "📁 " + folder;
+                button.onclick = function () {
+                    browsePiFolder(browsingPiFolder + folder + "/");
+                };
+                container.appendChild(button);
+            });
+            if (folders.length == 0) {
+                const message = document.createElement("p");
+                message.textContent = "No subfolders.";
+                container.appendChild(message);
+            }
+        } catch (error) {
+            console.log(error);
+            container.textContent = "Unable to browse folders.";
+        }
+    }
+
+
+    async function refreshSoundFiles() {
+        const container = document.getElementById("soundFilesContainer");
+        const deleteButton = document.getElementById("deleteFolderButton");
+        const path = selectedPiFolder;
+        container.textContent = "Loading...";
+        deleteButton.style.display = "none";
+        try {
+            const filesResponse = await fetch("/get-sound-files", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: path })
+            });
+            if (!filesResponse.ok) {
                 throw new Error("Unable to list files");
             }
-            const filenames = await response.json();
+            const filenames = await filesResponse.json();
             container.innerHTML = "";
             if (filenames.length == 0) {
                 container.textContent = "No files in selected folder.";
-                return;
             }
             filenames.forEach(function (filename) {
                 const row = document.createElement("div");
@@ -716,20 +723,37 @@
                     downloadSoundFile(filename);
                 };
                 row.appendChild(downloadButton);
-                const deleteButton = document.createElement("button");
-                deleteButton.className = "mui-btn mui-btn--primary";
-                deleteButton.textContent = "Delete";
-                deleteButton.onclick = function () {
+                const fileDeleteButton = document.createElement("button");
+                fileDeleteButton.className = "mui-btn mui-btn--primary";
+                fileDeleteButton.textContent = "Delete";
+                fileDeleteButton.onclick = function () {
                     deleteSoundFile(filename);
                 };
-                row.appendChild(deleteButton);
+                row.appendChild(fileDeleteButton);
                 container.appendChild(row);
             });
+            if (filenames.length == 0 && path != piHomeFolder) {
+                const foldersResponse = await fetch("/get-folders", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ path: path })
+                });
+                if (!foldersResponse.ok) {
+                    throw new Error("Unable to check subfolders");
+                }
+                const folders = await foldersResponse.json();
+                if (folders.length == 0 && selectedPiFolder == path) {
+                    deleteButton.style.display = "inline-block";
+                }
+            }
         } catch (error) {
             console.log(error);
             container.textContent = "Unable to load files.";
+            deleteButton.style.display = "none";
         }
     }
+
+
 
     async function downloadSoundFile(filename) {
         const status = document.getElementById("uploadStatus");
@@ -744,7 +768,7 @@
                 }
                 const data = await response.json();
                 const formatted = JSON.stringify(data, null, 4) + "\n";
-                const blob = new Blob([formatted], {type: "application/json"});
+                const blob = new Blob([formatted], { type: "application/json" });
                 const downloadUrl = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = downloadUrl;
@@ -770,31 +794,70 @@
         }
     }
 
+
     async function deleteSoundFile(filename) {
+        const path = selectedPiFolder;
+        showConfirm("Delete " + path + filename + "?", async function () {
+            const status = document.getElementById("uploadStatus");
+            status.textContent = "Deleting " + filename + "...";
+            try {
+                const response = await fetch("/delete-sound-file", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ filename: filename, path: path })
+                });
+                const result = await response.text();
+                if (!response.ok || result != "success") {
+                    throw new Error(result);
+                }
+                status.textContent = "Deleted: " + filename;
+                refreshSoundFiles();
+            } catch (error) {
+                console.log(error);
+                status.textContent = "Delete failed: " + error.message;
+                showAlert(status.textContent);
+            }
+        });
+    }
+
+
+    async function deletePiFolder() {
         const status = document.getElementById("uploadStatus");
-        if (!confirm("Delete " + selectedPiFolder + filename + "?")) {
+        const deleteButton = document.getElementById("deleteFolderButton");
+        const path = selectedPiFolder;
+        if (path == piHomeFolder || !path.startsWith(piHomeFolder)) {
+            showAlert("Cannot delete this folder.");
             return;
         }
-        status.textContent = "Deleting " + filename + "...";
-        try {
-            const response = await fetch("/delete-sound-file", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    filename: filename,
-                    path: selectedPiFolder
-                })
-            });
-            const result = await response.text();
-            if (!response.ok || result != "success") {
-                throw new Error(result);
+        showConfirm("Delete empty folder " + path + "?", async function () {
+            deleteButton.disabled = true;
+            deleteButton.style.display = "none";
+            status.textContent = "Deleting folder...";
+            try {
+                const response = await fetch("/delete-folder", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ path: path })
+                });
+                const result = await response.text();
+                if (!response.ok || result != "success") {
+                    throw new Error(result);
+                }
+                const parts = path.split("/").filter(Boolean);
+                parts.pop();
+                const parent = "/" + parts.join("/") + "/";
+                setSelectedPiFolder(parent);
+                status.textContent = "Deleted folder: " + path;
+                getMedia();
+            } catch (error) {
+                console.log(error);
+                status.textContent = "Unable to delete folder: " + error.message;
+                showAlert(status.textContent);
+                refreshSoundFiles();
+            } finally {
+                deleteButton.disabled = false;
             }
-            status.textContent = "Deleted: " + filename;
-            refreshSoundFiles();
-        } catch (error) {
-            console.log(error);
-            status.textContent = "Delete failed: " + error.message;
-        }
+        });
     }
 
     async function uploadSound() {
@@ -803,6 +866,11 @@
         const uploadButton = document.getElementById("uploadSoundButton");
         const location = selectedPiFolder;
         if (!input.files.length) {
+            return;
+        }
+        if (location == piHomeFolder) {
+            showAlert("Please select or create a folder under /home/drivein/media/ before uploading files.");
+            input.value = "";
             return;
         }
         const file = input.files[0];
@@ -821,7 +889,7 @@
                     "&offset=" + offset;
                 const response = await fetch(url, {
                     method: "POST",
-                    headers: {"Content-Type": "application/octet-stream"},
+                    headers: { "Content-Type": "application/octet-stream" },
                     body: chunk
                 });
                 const result = await response.text();
@@ -835,7 +903,7 @@
             status.textContent = "Verifying upload...";
             const response = await fetch("/upload-sound-complete", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     filename: file.name,
                     location: location,
@@ -851,12 +919,12 @@
         } catch (error) {
             console.log("Upload error:", error);
             status.textContent = "Upload failed: " + error.message;
+            showAlert(status.textContent);
         } finally {
             uploadButton.disabled = false;
             input.value = "";
         }
     }
-    
     function getLightString() {
         fetch('/get-light-string', {
             method: 'POST',
@@ -1482,7 +1550,7 @@
                 })
                 .catch(function (error) {
                     button.removeAttribute('disabled');
-                    alert('Try Again');
+                    showAlert("Try Again");
                 });
         });
     });
@@ -2112,6 +2180,41 @@
             </div>`;
 
         mui.overlay('on', alertModal);
+    }
+
+
+    function showConfirm(message, onConfirm) {
+        const dialog = document.createElement("div");
+        dialog.className = "mui-container";
+        dialog.style.width = "min(400px, 90vw)";
+        dialog.style.margin = "100px auto";
+        dialog.style.backgroundColor = "#fff";
+        dialog.style.borderRadius = "5px";
+        dialog.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.1)";
+        dialog.style.padding = "20px";
+        const title = document.createElement("h3");
+        title.textContent = "Confirm Delete";
+        dialog.appendChild(title);
+        const text = document.createElement("p");
+        text.textContent = message;
+        text.style.overflowWrap = "anywhere";
+        dialog.appendChild(text);
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "mui-btn mui-btn--danger";
+        deleteButton.textContent = "Delete";
+        deleteButton.onclick = function () {
+            mui.overlay("off");
+            onConfirm();
+        };
+        dialog.appendChild(deleteButton);
+        const cancelButton = document.createElement("button");
+        cancelButton.className = "mui-btn";
+        cancelButton.textContent = "Cancel";
+        cancelButton.onclick = function () {
+            mui.overlay("off");
+        };
+        dialog.appendChild(cancelButton);
+        mui.overlay("on", dialog);
     }
 
 
