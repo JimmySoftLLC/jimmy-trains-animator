@@ -722,6 +722,22 @@
                 name.style.display = "inline-block";
                 name.style.minWidth = "300px";
                 row.appendChild(name);
+                if (filename.toLowerCase().endsWith(".wav") || filename.toLowerCase().endsWith(".mp4")) {
+                    const playButton = document.createElement("button");
+                    playButton.className = "mui-btn mui-btn--primary";
+                    playButton.textContent = "Play";
+                    playButton.onclick = function () {
+                        playSoundFile(filename);
+                    };
+                    row.appendChild(playButton);
+                    const stopButton = document.createElement("button");
+                    stopButton.className = "mui-btn mui-btn--primary";
+                    stopButton.textContent = "Stop";
+                    stopButton.onclick = function () {
+                        stopSoundFile();
+                    };
+                    row.appendChild(stopButton);
+                }
                 const downloadButton = document.createElement("button");
                 downloadButton.className = "mui-btn mui-btn--primary";
                 downloadButton.textContent = "Download";
@@ -763,6 +779,47 @@
         }
     }
 
+
+    async function playSoundFile(filename) {
+        const status = document.getElementById("uploadStatus");
+        try {
+            const relativePath = selectedPiFolder.substring(piHomeFolder.length) + filename;
+            const response = await fetch("/animation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ an: relativePath })
+            });
+            const result = await response.text();
+            if (!response.ok) {
+                throw new Error(result);
+            }
+            status.textContent = "Animation queued: " + filename;
+        } catch (error) {
+            console.log(error);
+            status.textContent = "Play failed: " + error.message;
+            showAlert(status.textContent);
+        }
+    }
+
+    async function stopSoundFile() {
+        const status = document.getElementById("uploadStatus");
+        try {
+            const response = await fetch("/stop", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({})
+            });
+            const result = await response.text();
+            if (!response.ok) {
+                throw new Error(result);
+            }
+            status.textContent = "Animation stopped.";
+        } catch (error) {
+            console.log(error);
+            status.textContent = "Stop failed: " + error.message;
+            showAlert(status.textContent);
+        }
+    }
 
     async function downloadSoundFile(filename) {
         const status = document.getElementById("uploadStatus");
