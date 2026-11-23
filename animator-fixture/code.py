@@ -38,6 +38,7 @@ from adafruit_debouncer import Debouncer
 import utilities
 import pwmio
 from adafruit_motor import servo
+import math
 
 
 def gc_col(collection_point):
@@ -125,7 +126,7 @@ s_3 = servo.Servo(s_3, min_pulse=500, max_pulse=2500)
 
 s_4 = servo.Servo(s_4, min_pulse=500, max_pulse=2500)
 s_5 = servo.Servo(s_5, min_pulse=500, max_pulse=2500)
-s_6 = servo.Servo(s_6, min_pulse=500, max_pulse=2500)
+s_6 = servo.Servo(s_6, min_pulse=944, max_pulse=2056)
 
 s_arr = [s_1, s_2, s_3, s_4, s_5, s_6]
 
@@ -1016,6 +1017,14 @@ async def set_hdw_async(input_string, dur):
                 return "STOP"
             if seg[0] == 'E':  # end an
                 return "STOP"
+            # SAWn_CYCLES_SPEED_DELAY = Sawing with a pause at each end
+            elif seg.startswith("SAW"):
+                parts = seg.split("_")
+                num = int(parts[0][3:])
+                cycles = int(parts[1])
+                stroke_time = float(parts[2])
+                end_delay = float(parts[3])
+                await saw_servo(num, cycles, stroke_time, end_delay)
             # SNXXX = Servo N (0 All, 1-6) XXX 0 to 180
             elif seg[0] == 'S':
                 num = int(seg[1])
@@ -1073,12 +1082,36 @@ async def set_hdw_async(input_string, dur):
                 multi_color()
                 await asyncio.sleep(dur)
             # QXXX/XXX = Add media to queue XXX/XXX (folder/filename)
-            if seg[0] == 'Q':
+            elif seg[0] == 'Q':
                 file_nm = seg[1:]
                 add_command(file_nm)
     except Exception as e:
         files.log_item(e)
 
+async def saw_servo(num, cycles, stroke_time, end_delay):
+    global exit_set_hdw_async
+    if num < 1 or num > 6:
+        return
+    if cycles < 1 or stroke_time <= 0 or end_delay < 0:
+        return
+    index = num - 1
+    steps = 60
+    for cycle in range(cycles):
+        for stroke in range(2):
+            for i in range(steps + 1):
+                if exit_set_hdw_async:
+                    return
+                progress = i / steps
+                eased = (1 - math.cos(math.pi * progress)) / 2
+                if stroke == 0:
+                    angle = 180 * eased
+                else:
+                    angle = 180 * (1 - eased)
+                s_arr[index].angle = angle
+                time.sleep(stroke_time / steps)
+            if exit_set_hdw_async:
+                return
+            time.sleep(end_delay)
 
 def is_neo(number, nested_array):
     return any(number in sublist for sublist in nested_array)
