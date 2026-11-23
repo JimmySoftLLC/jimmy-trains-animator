@@ -722,7 +722,8 @@
                 name.style.display = "inline-block";
                 name.style.minWidth = "300px";
                 row.appendChild(name);
-                if (filename.toLowerCase().endsWith(".wav") || filename.toLowerCase().endsWith(".mp4")) {
+                const extension = filename.toLowerCase();
+                if (extension.endsWith(".wav") || extension.endsWith(".mp4")) {
                     const playButton = document.createElement("button");
                     playButton.className = "mui-btn mui-btn--primary";
                     playButton.textContent = "Play";
@@ -738,6 +739,15 @@
                     };
                     row.appendChild(stopButton);
                 }
+                if (extension.endsWith(".jpg")) {
+                    const showButton = document.createElement("button");
+                    showButton.className = "mui-btn mui-btn--primary";
+                    showButton.textContent = "Show";
+                    showButton.onclick = function () {
+                        showPicture(filename);
+                    };
+                    row.appendChild(showButton);
+                }
                 const downloadButton = document.createElement("button");
                 downloadButton.className = "mui-btn mui-btn--primary";
                 downloadButton.textContent = "Download";
@@ -745,13 +755,17 @@
                     downloadSoundFile(filename);
                 };
                 row.appendChild(downloadButton);
-                const fileDeleteButton = document.createElement("button");
-                fileDeleteButton.className = "mui-btn mui-btn--primary";
-                fileDeleteButton.textContent = "Delete";
-                fileDeleteButton.onclick = function () {
-                    deleteSoundFile(filename);
-                };
-                row.appendChild(fileDeleteButton);
+                const relativePath = path.substring(piHomeFolder.length) + filename;
+                if (relativePath.toLowerCase() != "pictures/logo.jpg" &&
+                    relativePath.toLowerCase() != "pictures/black.jpg") {
+                    const fileDeleteButton = document.createElement("button");
+                    fileDeleteButton.className = "mui-btn mui-btn--primary";
+                    fileDeleteButton.textContent = "Delete";
+                    fileDeleteButton.onclick = function () {
+                        deleteSoundFile(filename);
+                    };
+                    row.appendChild(fileDeleteButton);
+                }
                 container.appendChild(row);
             });
             if (filenames.length == 0 && path != piHomeFolder) {
@@ -776,6 +790,29 @@
                 deleteButton.style.display = "none";
                 showAlert(container.textContent);
             }
+        }
+    }
+
+    async function showPicture(filename) {
+        const status = document.getElementById("uploadStatus");
+        try {
+            const response = await fetch("/show-picture", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    path: selectedPiFolder,
+                    filename: filename
+                })
+            });
+            const result = await response.text();
+            if (!response.ok || result != "success") {
+                throw new Error(result);
+            }
+            status.textContent = "Showing picture: " + filename;
+        } catch (error) {
+            console.log(error);
+            status.textContent = "Show picture failed: " + error.message;
+            showAlert(status.textContent);
         }
     }
 

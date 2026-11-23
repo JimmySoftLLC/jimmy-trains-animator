@@ -1661,8 +1661,25 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.upload_sound()
         elif route == "/upload-sound-complete":
             self.upload_sound_complete()
+        elif route == "/show-picture":
+            self.show_picture()
         else:
             self.handle_generic_post(route)
+
+    def show_picture(self):
+        try:
+            request = self.file_manager_json()
+            filename = request["filename"]
+            path = self.file_manager_path(request.get("path", media_folder), filename)
+            if not os.path.isfile(path):
+                raise ValueError("Picture not found: " + filename)
+            if os.path.splitext(filename)[1].lower() != ".jpg":
+                raise ValueError("Only JPG pictures can be displayed")
+            change_wallpaper(path)
+            self.file_manager_reply(200, "success")
+        except Exception as e:
+            print("Show picture error:", e)
+            self.file_manager_reply(400, str(e))
 
     def file_manager_path(self, path, filename=""):
         if not isinstance(path, str) or not isinstance(filename, str):
