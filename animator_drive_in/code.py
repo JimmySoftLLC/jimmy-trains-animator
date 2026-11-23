@@ -2716,7 +2716,7 @@ def no_trk():
         if switch_state == "left":
             break
         if switch_state == "right":
-            play_mix(code_folder + "mvc/create_sound_track_files.wav")
+            play_mix(code_folder + "mvc/drive_in_media_instructions.wav")
             break
 
 
